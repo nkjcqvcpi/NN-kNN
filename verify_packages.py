@@ -8,7 +8,7 @@ packages_to_check = [
     'pandas',
     'sklearn',
     'scipy',
-    'ipython',
+    'IPython',
     'jupyter',
     'requests',
     'gymnasium',

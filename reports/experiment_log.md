@@ -1,0 +1,8 @@
+# Experiment Log — rl-iclr2027
+
+## 2026-07-31 — Phase 0 — Environment set up with latest deps; all smoke modes pass
+Runs: results/rl/dqn_cartpole_20260731_162701_012310 (rl smoke), results/rl/nec_cartpole_20260731_162704_510780 (nec smoke), results/rl/nnknn_rl_cartpole_20260731_1627{11_376292,11_947776,12_189329} (nnknn_rl smoke)
+Command(s): uv venv .venv --python 3.12; uv pip install -U -r requirements-latest.txt; verify_packages.py; codex/smoke_test.py --mode {imports,rl,nec,nnknn_rl}
+Key numbers: all four smoke modes exit 0. Resolved stack (reports/env_freeze.txt): torch 2.13.0+cu130, numpy 2.5.1, gymnasium 1.3.0, scipy 1.18.0, scikit-learn 1.9.0, Python 3.12. CUDA available (H100 NVL); torch from PyPI ships CUDA wheels, no extra index needed.
+Diagnostics: clone HEAD c09719576b3519e9878764190773916cd9ce82e6 matches remote main. One fix-forward patch: verify_packages.py imported `ipython` (invalid module name); changed to `IPython`. No numpy-2.x or gymnasium API breaks surfaced in any smoke mode. Note: the pre-existing run folders cited in HANDOFF.md (dqn_cartpole_20260702_135146_537913, nec_cartpole_20260703_173129_688189, nnknn_rl_cartpole_20260626_150805_689987) are not present in the repo — results/rl/ is not tracked by git — so Phase 1a config diffing will use CleanRL reference values rather than an on-disk solved checkpoint.
+Interpretation & next step: environment is reproducible against reports/env_freeze.txt and plumbing is validated on latest package versions. Proceed to Phase 1: DQN fast seed 0 (broken baseline reproduction) and NEC fast seed 0 (450.55 reference), both on cuda.
