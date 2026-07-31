@@ -28,6 +28,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", default="results/rl", help="Parent folder for timestamped run dirs.")
     parser.add_argument("--device", default=None, help="Optional torch device override, such as cpu or cuda.")
     parser.add_argument("--total-timesteps", type=int, default=None)
+    parser.add_argument("--learning-rate", type=float, default=None)
+    parser.add_argument("--buffer-size", type=int, default=None)
+    parser.add_argument("--gamma", type=float, default=None)
+    parser.add_argument("--target-network-frequency", type=int, default=None)
+    parser.add_argument("--batch-size", type=int, default=None)
+    parser.add_argument("--start-e", type=float, default=None)
+    parser.add_argument("--end-e", type=float, default=None)
+    parser.add_argument("--exploration-fraction", type=float, default=None)
+    parser.add_argument("--learning-starts", type=int, default=None)
+    parser.add_argument("--train-frequency", type=int, default=None)
+    parser.add_argument("--max-grad-norm", type=float, default=None)
     parser.add_argument("--eval-frequency", type=int, default=None)
     parser.add_argument("--eval-episodes", type=int, default=None)
     parser.add_argument("--eval-seed", type=int, default=None)
@@ -59,6 +70,28 @@ def _config_from_args(args: argparse.Namespace) -> DQNConfig:
     overrides = {"seed": args.seed}
     if args.total_timesteps is not None:
         overrides["total_timesteps"] = args.total_timesteps
+    if args.learning_rate is not None:
+        overrides["learning_rate"] = args.learning_rate
+    if args.buffer_size is not None:
+        overrides["buffer_size"] = args.buffer_size
+    if args.gamma is not None:
+        overrides["gamma"] = args.gamma
+    if args.target_network_frequency is not None:
+        overrides["target_network_frequency"] = args.target_network_frequency
+    if args.batch_size is not None:
+        overrides["batch_size"] = args.batch_size
+    if args.start_e is not None:
+        overrides["start_e"] = args.start_e
+    if args.end_e is not None:
+        overrides["end_e"] = args.end_e
+    if args.exploration_fraction is not None:
+        overrides["exploration_fraction"] = args.exploration_fraction
+    if args.learning_starts is not None:
+        overrides["learning_starts"] = args.learning_starts
+    if args.train_frequency is not None:
+        overrides["train_frequency"] = args.train_frequency
+    if args.max_grad_norm is not None:
+        overrides["max_grad_norm"] = args.max_grad_norm
     if args.eval_frequency is not None:
         overrides["eval_frequency"] = args.eval_frequency
     if args.eval_episodes is not None:
