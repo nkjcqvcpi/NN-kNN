@@ -10,6 +10,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from datasets.rl_tasks import get_rl_task_spec  # noqa: E402
 from model.nec_workflow import (  # noqa: E402
     NECConfig,
     evaluate_nec,
@@ -50,6 +51,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--early-stopping-min-delta", type=float, default=None)
     parser.add_argument("--early-stopping-min-steps", type=int, default=None)
     parser.add_argument("--early-stopping-target-score", type=float, default=None)
+    parser.add_argument(
+        "--success-threshold",
+        type=float,
+        default=None,
+        help="Mean-return solve threshold; defaults to the task spec for non-CartPole tasks.",
+    )
     parser.add_argument("--eval-only", action="store_true", help="Evaluate a saved checkpoint without training.")
     parser.add_argument("--checkpoint", default=None, help="Checkpoint path for --eval-only.")
     parser.add_argument("--quiet", action="store_true", help="Disable progress logging during training.")
@@ -78,7 +85,28 @@ def _config_from_args(args: argparse.Namespace) -> NECConfig:
         overrides["early_stopping_min_steps"] = args.early_stopping_min_steps
     if args.early_stopping_target_score is not None:
         overrides["early_stopping_target_score"] = args.early_stopping_target_score
+    _apply_task_success_defaults(args, overrides)
     return make_nec_config(args.profile, **overrides)
+
+
+def _apply_task_success_defaults(args: argparse.Namespace, overrides: dict) -> None:
+    """Resolve task-level success protocol for non-CartPole tasks.
+
+    CartPole keeps the profile-baked 475/500 values untouched so existing runs
+    stay bit-identical; other tasks read their thresholds from the task spec
+    unless the user overrides them on the command line.
+    """
+    spec = get_rl_task_spec(args.task)
+    if args.success_threshold is not None:
+        overrides["success_threshold"] = args.success_threshold
+    elif spec.name != "cartpole" and spec.success_threshold is not None:
+        overrides["success_threshold"] = spec.success_threshold
+    if (
+        args.early_stopping_target_score is None
+        and spec.name != "cartpole"
+        and spec.target_mean_return is not None
+    ):
+        overrides["early_stopping_target_score"] = spec.target_mean_return
 
 
 def _write_eval_only_summary(outdir: Path, payload: dict) -> None:
