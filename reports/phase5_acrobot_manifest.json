@@ -1,0 +1,30 @@
+{
+  "dqn": {
+    "0": "results/rl/dqn_acrobot_20260802_124432_945965",
+    "1": "results/rl/dqn_acrobot_20260802_194644_017898",
+    "2": "results/rl/dqn_acrobot_20260802_194643_946020",
+    "3": "results/rl/dqn_acrobot_20260802_194643_975917",
+    "4": "results/rl/dqn_acrobot_20260802_194643_975410"
+  },
+  "nec": {
+    "0": "results/rl/nec_acrobot_20260802_124432_922588",
+    "1": "results/rl/nec_acrobot_20260802_194643_983297",
+    "2": "results/rl/nec_acrobot_20260802_194644_010208",
+    "3": "results/rl/nec_acrobot_20260802_194643_967743",
+    "4": "results/rl/nec_acrobot_20260802_194643_955069"
+  },
+  "nnknn_hybrid": {
+    "0": "results/rl/nnknn_rl_acrobot_20260802_124433_833453",
+    "1": "results/rl/nnknn_rl_acrobot_20260802_155944_359989",
+    "2": "results/rl/nnknn_rl_acrobot_20260802_155944_353002",
+    "3": "results/rl/nnknn_rl_acrobot_20260802_155944_342765",
+    "4": "results/rl/nnknn_rl_acrobot_20260802_155944_352518"
+  },
+  "mlp_ac": {
+    "0": "results/rl/nnknn_rl_acrobot_20260802_124433_789935",
+    "1": "results/rl/nnknn_rl_acrobot_20260802_194645_174711",
+    "2": "results/rl/nnknn_rl_acrobot_20260802_194645_154897",
+    "3": "results/rl/nnknn_rl_acrobot_20260802_194645_177797",
+    "4": "results/rl/nnknn_rl_acrobot_20260802_194645_135672"
+  }
+}
