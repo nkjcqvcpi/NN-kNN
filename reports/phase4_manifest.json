@@ -1,0 +1,30 @@
+{
+  "dqn": {
+    "0": "results/rl/dqn_cartpole_20260801_100616_108720",
+    "1": "results/rl/dqn_cartpole_20260801_100616_224781",
+    "2": "results/rl/dqn_cartpole_20260801_100616_101319",
+    "3": "results/rl/dqn_cartpole_20260801_100616_325950",
+    "4": "results/rl/dqn_cartpole_20260801_100615_956106"
+  },
+  "nec": {
+    "0": "results/rl/nec_cartpole_20260801_100616_193085",
+    "1": "results/rl/nec_cartpole_20260801_100616_232715",
+    "2": "results/rl/nec_cartpole_20260801_100615_834204",
+    "3": "results/rl/nec_cartpole_20260801_100616_217382",
+    "4": "results/rl/nec_cartpole_20260801_100616_213584"
+  },
+  "nnknn_hybrid": {
+    "0": "results/rl/nnknn_rl_cartpole_20260801_100617_252466",
+    "1": "results/rl/nnknn_rl_cartpole_20260801_100617_279889",
+    "2": "results/rl/nnknn_rl_cartpole_20260801_100617_202061",
+    "3": "results/rl/nnknn_rl_cartpole_20260801_100617_191472",
+    "4": "results/rl/nnknn_rl_cartpole_20260801_100617_727608"
+  },
+  "mlp_ac": {
+    "0": "results/rl/nnknn_rl_cartpole_20260801_100617_914984",
+    "1": "results/rl/nnknn_rl_cartpole_20260801_100617_764055",
+    "2": "results/rl/nnknn_rl_cartpole_20260801_100617_223273",
+    "3": "results/rl/nnknn_rl_cartpole_20260801_100617_641145",
+    "4": "results/rl/nnknn_rl_cartpole_20260801_100617_944588"
+  }
+}
