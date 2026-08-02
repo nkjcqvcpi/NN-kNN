@@ -16,6 +16,12 @@ class RLTaskSpec:
     max_episode_steps: int
     default_profile: str
     literature_notes: tuple[str, ...]
+    # Task-level success protocol. `success_threshold` marks a run as solved;
+    # `target_mean_return` is the mean return treated as task-maximum for
+    # immediate early stopping. None keeps the workflow-config defaults
+    # (CartPole's 475/max_episode_steps behavior).
+    success_threshold: float | None = None
+    target_mean_return: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -36,7 +42,25 @@ _RL_TASKS: dict[str, RLTaskSpec] = {
             "Fast DQN sanity task used by the official PyTorch DQN tutorial.",
             "Engineering gate before moving to Atari/ALE, the DQN and NEC paper-aligned benchmark family.",
         ),
-    )
+        success_threshold=475.0,
+        target_mean_return=500.0,
+    ),
+    "acrobot": RLTaskSpec(
+        name="acrobot",
+        env_id="Acrobot-v1",
+        family="classic_control",
+        observation_kind="flat_box",
+        action_kind="discrete",
+        max_episode_steps=500,
+        default_profile="fast",
+        literature_notes=(
+            "Sparse-ish negative-reward swing-up task; gymnasium reward threshold is -100.",
+            "Returns are -1 per step until the goal, so success_threshold=-100 and the",
+            "immediate-stop target -60 approximates the physical best-case swing-up.",
+        ),
+        success_threshold=-100.0,
+        target_mean_return=-60.0,
+    ),
 }
 
 
@@ -47,6 +71,8 @@ def normalize_rl_task_name(task_name: str) -> str:
         "cartpole_v1": "cartpole",
         "cartpole-v1": "cartpole",
         "cartpolev1": "cartpole",
+        "acrobot_v1": "acrobot",
+        "acrobotv1": "acrobot",
     }
     return aliases.get(normalized, normalized)
 
