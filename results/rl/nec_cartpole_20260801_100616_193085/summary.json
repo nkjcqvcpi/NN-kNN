@@ -1,0 +1,56 @@
+{
+  "task": "cartpole",
+  "env_id": "CartPole-v1",
+  "profile": "fast",
+  "seed": 0,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "eval_episodes": 20,
+  "success_threshold": 475.0,
+  "passed": true,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 500.0,
+    "std_return": 0.0,
+    "min_return": 500.0,
+    "max_return": 500.0,
+    "mean_length": 500.0
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 423.3999938964844,
+    "std_return": 116.09281158447266,
+    "min_return": 142.0,
+    "max_return": 500.0,
+    "mean_length": 423.3999938964844
+  },
+  "selected_step": 2056,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 2056,
+    "best_model_training_fraction": 0.013706666666666667,
+    "first_success_step": 2056,
+    "first_success_training_fraction": 0.013706666666666667,
+    "best_minus_last_return": 76.60000610351562,
+    "budget_interpretation": "regressed_after_best"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 500.0,
+    "best_mean_return": 500.0,
+    "evaluations": 14,
+    "evaluations_without_improvement": 6,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "dictionary_entries": 2056,
+  "checkpoint_path": "results/rl/nec_cartpole_20260801_100616_193085/checkpoint.pt",
+  "run_dir": "results/rl/nec_cartpole_20260801_100616_193085"
+}

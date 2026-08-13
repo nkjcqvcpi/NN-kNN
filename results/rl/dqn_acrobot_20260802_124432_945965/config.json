@@ -1,0 +1,51 @@
+{
+  "created_at_utc": "2026-08-02T12:44:34.115597+00:00",
+  "task": {
+    "name": "acrobot",
+    "env_id": "Acrobot-v1",
+    "family": "classic_control",
+    "observation_kind": "flat_box",
+    "action_kind": "discrete",
+    "max_episode_steps": 500,
+    "default_profile": "fast",
+    "literature_notes": [
+      "Sparse-ish negative-reward swing-up task; gymnasium reward threshold is -100.",
+      "Returns are -1 per step until the goal, so success_threshold=-100 and the",
+      "immediate-stop target -60 approximates the physical best-case swing-up."
+    ],
+    "success_threshold": -100.0,
+    "target_mean_return": -60.0
+  },
+  "config": {
+    "profile": "fast",
+    "seed": 0,
+    "total_timesteps": 150000,
+    "learning_rate": 0.001,
+    "buffer_size": 10000,
+    "gamma": 0.99,
+    "target_network_frequency": 250,
+    "max_grad_norm": 0.5,
+    "batch_size": 128,
+    "start_e": 1.0,
+    "end_e": 0.05,
+    "exploration_fraction": 0.5,
+    "learning_starts": 1000,
+    "train_frequency": 1,
+    "eval_frequency": 5000,
+    "eval_episodes": 20,
+    "eval_seed": 10000,
+    "success_threshold": -100.0,
+    "early_stopping": true,
+    "early_stopping_patience": 30,
+    "early_stopping_min_delta": 1.0,
+    "early_stopping_min_steps": 25000,
+    "early_stopping_target_score": -60.0,
+    "hidden_sizes": [
+      120,
+      84
+    ],
+    "source_reference": "CleanRL dqn.py"
+  },
+  "device": "cuda",
+  "source_reference": "CleanRL dqn.py"
+}

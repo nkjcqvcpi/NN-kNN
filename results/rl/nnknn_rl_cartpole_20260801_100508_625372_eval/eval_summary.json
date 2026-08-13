@@ -1,0 +1,16 @@
+{
+  "created_at_utc": "2026-08-01T10:05:08.625622+00:00",
+  "task": "cartpole",
+  "checkpoint": "results/rl/nnknn_rl_cartpole_20260731_234506_952291/checkpoint.pt",
+  "episodes": 100,
+  "eval_seed": 20000,
+  "metrics": {
+    "episodes": 100,
+    "seed": 20000,
+    "mean_return": 406.2200012207031,
+    "std_return": 109.53680419921875,
+    "min_return": 130.0,
+    "max_return": 500.0,
+    "mean_length": 406.2200012207031
+  }
+}
