@@ -1,0 +1,4 @@
+global_step,episode,eval_global_step,eval_episode,eval_trigger,candidate_episode_return,mean_return,std_return,min_return,max_return,mean_length,episodes,dictionary_entries
+50000,100,50000,100,episode,-500.0,-500.0,0.0,-500.0,-500.0,500.0,20,30000
+54793,110,99435,200,episode,-321.0,-436.1499938964844,85.55132293701172,-500.0,-215.0,436.6499938964844,20,30000
+143484,296,145234,300,episode,-232.0,-438.45001220703125,80.10835266113281,-500.0,-286.0,438.8500061035156,20,30000

@@ -1,0 +1,4 @@
+global_step,case_store,source,cases_pruned,cases_replaced,case_entries,action_counts,bias_min,bias_mean,bias_max
+84,actor,scheduled_batch_boundary,5,0,79,"[34, 45]",-0.0016064358642324805,0.00014910506433807313,0.0019963739905506372
+239,actor,scheduled_batch_boundary,12,0,222,"[102, 120]",-0.0019792409148067236,0.00018457384430803359,0.003958328627049923
+256,actor,scheduled_batch_boundary,12,0,227,"[108, 119]",-0.00155913014896214,0.0002818908542394638,0.004920915700495243

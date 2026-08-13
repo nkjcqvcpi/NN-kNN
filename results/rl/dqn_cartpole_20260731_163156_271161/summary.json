@@ -1,0 +1,55 @@
+{
+  "task": "cartpole",
+  "env_id": "CartPole-v1",
+  "profile": "fast",
+  "seed": 0,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "eval_episodes": 20,
+  "success_threshold": 475.0,
+  "passed": false,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 9.449999809265137,
+    "std_return": 0.5894913077354431,
+    "min_return": 9.0,
+    "max_return": 11.0,
+    "mean_length": 9.449999809265137
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 9.399999618530273,
+    "std_return": 0.6633250117301941,
+    "min_return": 8.0,
+    "max_return": 10.0,
+    "mean_length": 9.399999618530273
+  },
+  "selected_step": 5000,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 5000,
+    "best_model_training_fraction": 0.03333333333333333,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 0.05000019073486328,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": true,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 500.0,
+    "best_mean_return": 9.449999809265137,
+    "evaluations": 30,
+    "evaluations_without_improvement": 26,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "checkpoint_path": "results/rl/dqn_cartpole_20260731_163156_271161/checkpoint.pt",
+  "run_dir": "results/rl/dqn_cartpole_20260731_163156_271161"
+}

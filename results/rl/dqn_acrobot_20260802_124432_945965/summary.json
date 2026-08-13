@@ -1,0 +1,55 @@
+{
+  "task": "acrobot",
+  "env_id": "Acrobot-v1",
+  "profile": "fast",
+  "seed": 0,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "eval_episodes": 20,
+  "success_threshold": -100.0,
+  "passed": true,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": -72.1500015258789,
+    "std_return": 10.494165420532227,
+    "min_return": -96.0,
+    "max_return": -62.0,
+    "mean_length": 73.1500015258789
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": -79.75,
+    "std_return": 17.198474884033203,
+    "min_return": -136.0,
+    "max_return": -61.0,
+    "mean_length": 80.75
+  },
+  "selected_step": 130000,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 130000,
+    "best_model_training_fraction": 0.8666666666666667,
+    "first_success_step": 30000,
+    "first_success_training_fraction": 0.2,
+    "best_minus_last_return": 7.599998474121094,
+    "budget_interpretation": "regressed_after_best"
+  },
+  "early_stopping": {
+    "enabled": true,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": -60.0,
+    "best_mean_return": -72.1500015258789,
+    "evaluations": 30,
+    "evaluations_without_improvement": 4,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "checkpoint_path": "results/rl/dqn_acrobot_20260802_124432_945965/checkpoint.pt",
+  "run_dir": "results/rl/dqn_acrobot_20260802_124432_945965"
+}

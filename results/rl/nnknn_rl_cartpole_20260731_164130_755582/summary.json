@@ -1,0 +1,122 @@
+{
+  "task": "cartpole",
+  "env_id": "CartPole-v1",
+  "profile": "fast",
+  "seed": 0,
+  "total_timesteps": 4810,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 4810,
+  "eval_episodes": 20,
+  "success_threshold": 475.0,
+  "passed": true,
+  "algorithm": "nnknn_actor_critic_separate_memory_gae",
+  "actor_type": "nnknn",
+  "critic_type": "nnknn",
+  "architecture": {
+    "separate_case_bases": true,
+    "shared_nnknn_representation": true,
+    "critic_target_shared_case_store": true,
+    "actor_case_insertion": "raw_positive_advantage_only"
+  },
+  "gae": {
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "advantage_clip": 5.0
+  },
+  "exploration": {
+    "mode": "epsilon_mixed_policy",
+    "applies_to_actor": true,
+    "initial_epsilon": 1.0,
+    "final_epsilon": 0.05,
+    "fraction": 0.5,
+    "final_step_epsilon": 0.9390733333333333,
+    "readiness": {
+      "min_case_entries": 32,
+      "min_cases_per_action": 8
+    }
+  },
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 500.0,
+    "std_return": 0.0,
+    "min_return": 500.0,
+    "max_return": 500.0,
+    "mean_length": 500.0
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 500.0,
+    "std_return": 0.0,
+    "min_return": 500.0,
+    "max_return": 500.0,
+    "mean_length": 500.0
+  },
+  "selected_step": 4810,
+  "selected_source": "final",
+  "training_efficiency": {
+    "best_model_step": 4810,
+    "best_model_training_fraction": 1.0,
+    "first_success_step": 4810,
+    "first_success_training_fraction": 1.0,
+    "best_minus_last_return": 0.0,
+    "budget_interpretation": "final_is_best_check_for_underfit"
+  },
+  "early_stopping": {
+    "enabled": true,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 500.0,
+    "best_mean_return": 500.0,
+    "evaluations": 2,
+    "evaluations_without_improvement": 0,
+    "stopped_early": true,
+    "stopping_reason": "target_score",
+    "stopping_step": 4810
+  },
+  "case_entries": 500,
+  "critic_case_entries": 500,
+  "action_counts": [
+    243,
+    257
+  ],
+  "cases_pruned": 3869,
+  "cases_replaced": 2485,
+  "actor_cases_pruned": 1589,
+  "actor_cases_replaced": 456,
+  "critic_cases_pruned": 2280,
+  "critic_cases_replaced": 2029,
+  "critic_label_updates": 1,
+  "critic_label_update_samples": 1,
+  "partial_rollout_segments": 0,
+  "partial_rollout_samples": 0,
+  "critic_target_enabled": true,
+  "critic_target_value_mode": "ema",
+  "critic_target_sync_interval": 4,
+  "critic_target_ema_tau": 0.05,
+  "critic_target_value_syncs": 13,
+  "critic_holdout_evaluations": 2,
+  "latest_critic_holdout": {
+    "global_step": 4810,
+    "completed_episodes": 200,
+    "diagnostic_index": 2,
+    "critic_holdout_mse": 26.22990608215332,
+    "critic_holdout_explained_variance": 0.6227350234985352,
+    "critic_holdout_value_mean": 13.813885688781738,
+    "critic_holdout_target_mean": 13.22226333618164,
+    "critic_holdout_samples": 119,
+    "critic_holdout_episodes": 5,
+    "critic_holdout_environment_steps": 119,
+    "critic_holdout_mean_episode_return": 23.8,
+    "critic_holdout_mean_episode_length": 23.8,
+    "critic_holdout_behavior_epsilon": 0.9390733333333333,
+    "critic_holdout_truncated_bootstraps": 0,
+    "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+    "critic_holdout_bootstrap_source": "target_value_model",
+    "critic_holdout_seed": 30005
+  },
+  "checkpoint_path": "results/rl/nnknn_rl_cartpole_20260731_164130_755582/checkpoint.pt",
+  "run_dir": "results/rl/nnknn_rl_cartpole_20260731_164130_755582"
+}
