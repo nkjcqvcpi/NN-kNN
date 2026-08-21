@@ -76,13 +76,16 @@ the durable summary of where things stand and what to do next.
   0): `reports/cartpole_12variant_sweep.csv`. 10/12 rows complete; the
   NN-actor mutable/trainable rows are still training (see Pending below). The
   MLP-actor label ablation (figure
-  `reports/figures/label_mode_ev_comparison.png`) shows: trainable labels =
-  fast but drift and collapse (497.2 best → 357.1 last, holdout EV stalls);
-  fixed labels = slow but stable (491.4, best==last, EV surges to 0.62 late);
-  mutable labels = fastest to a perfect 500 (target stop at 119k) but weakest
-  critic generalization; hybrid = fixed-like stability with trainable-like
-  adaptivity (498.5, best==last, EV 0.59). This is the ablation showing both
-  halves of the hybrid design are necessary.
+  `reports/figures/label_mode_ev_comparison.png`) originally showed, on seed
+  0 alone: trainable = fast but collapses, fixed = slow but stable, mutable =
+  fastest to 500 but weakest critic EV, hybrid = stability + adaptivity.
+  **5-seed revision (2026-08-21):** trainable 499.45 ± 1.23 and fixed
+  494.25 ± 8.03 across seeds 0–4, both 5/5 ≥ 475 — the seed-0 trainable
+  collapse did not recur on seeds 1–4, and fixed had its own weak seed
+  (481.4). On CartPole the label modes are within seed noise; treat the EV
+  figure as a one-seed mechanism illustration, not a general ranking. The
+  hybrid-necessity argument rests on the NN-actor side (hybrid 497.98 ± 4.52
+  at Gate G1) and on Acrobot, not on this MLP-actor grid.
 
 ### Robustness caveats to respect when making claims
 
@@ -165,19 +168,20 @@ run's console log is the matching gitignored `p6_*/p7_*/p8_*.log`.
      −79.45 with best step 122,145. Note: no CLI flag exists for
      positive-advantage insertion pressure — flag it for a code-level knob if
      exploration/LR knobs do not move the late-crossing pattern.
-3. **In flight — label-mode 5-seed confirmation:** MLP-actor NN-critic
-   trainable vs fixed, seeds 1–4 (8 CPU runs, `p7_lbl_{trn,fix}_s{1..4}.log`).
-   Combines with the existing seed-0 pair to give 5 seeds per mode; check
-   whether the fast-but-collapses vs slow-but-stable contrast (and the
-   best−last gap) survives seed variance before publishing it.
-4. **In flight — LunarLander and MinAtar seed-0 batteries:** DQN, NEC,
-   MLP-AC, MLP-actor+hybrid-critic per task on CPU (`p8_*`/relaunched
-   `p8b_*`); NN-actor hybrid (both tasks) and NN-actor default (lunarlander)
-   queued on a GPU-memory-gated chain (`p8_gpu_chain.log`, launches when GPU
-   used < 88 GB). After seed-0 lands: pick per-task best NN-kNN variant, run
-   seeds 1–4, then the fixed-budget 4-method × 5-seed table via
-   `tools/make_phase4_report.py` (LunarLander: `--success-threshold 200
-   --ylim -600 320`; MinAtar: `--success-threshold 10`, pick ylim from data).
+3. **DONE — label-mode 5-seed confirmation (2026-08-21):** the contrast did
+   NOT survive seed variance — see the revised grid bullet above and the
+   Harvest 1 log entry. Publish only the 5-seed numbers.
+4. **In flight — LunarLander and MinAtar batteries.** CPU seed-0 rows are
+   done: LunarLander — DQN 224.30 (SOLVED ≥200, best 75k, last_eval −0.78),
+   NEC −84.27 (rising), MLP-AC −234.98, MLP+hybrid-critic −229.90; MinAtar —
+   DQN 13.60 (crosses the 10 marker), NEC 5.60, MLP-AC 1.40, MLP+hybrid 1.40
+   (both patience-stopped). NN-actor hybrid (both tasks) and NN-actor default
+   (lunarlander) remain queued on the GPU-memory-gated chain
+   (`p8_gpu_chain.log`, fires when GPU used < 88 GB). After they land: pick
+   per-task best NN-kNN variant, run seeds 1–4, then the fixed-budget
+   4-method × 5-seed table via `tools/make_phase4_report.py` (LunarLander:
+   `--success-threshold 200 --ylim -600 320`; MinAtar:
+   `--success-threshold 10`, pick ylim from data).
 5. **Closed:** the held-in-reserve ordered Phase-3 knob sweep — G1 passed
    untuned; superseded by the targeted Acrobot knob pass above.
 6. **Still needs the human:** a results remote (fork or separate repo) so
