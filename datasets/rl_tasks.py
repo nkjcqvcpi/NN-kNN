@@ -61,6 +61,41 @@ _RL_TASKS: dict[str, RLTaskSpec] = {
         success_threshold=-100.0,
         target_mean_return=-60.0,
     ),
+    "lunarlander": RLTaskSpec(
+        name="lunarlander",
+        env_id="LunarLander-v3",
+        family="box2d",
+        observation_kind="flat_box",
+        action_kind="discrete",
+        max_episode_steps=1000,
+        default_profile="fast",
+        literature_notes=(
+            "Shaped-reward landing task; gymnasium reward threshold is 200.",
+            "Requires gymnasium[box2d]. The immediate-stop target 280 sits above",
+            "the solve threshold so only an excellent policy stops a run early.",
+        ),
+        success_threshold=200.0,
+        target_mean_return=280.0,
+    ),
+    "minatar_breakout": RLTaskSpec(
+        name="minatar_breakout",
+        env_id="MinAtar/Breakout-v1",
+        family="minatar",
+        observation_kind="flat_box",
+        action_kind="discrete",
+        max_episode_steps=5000,
+        default_profile="fast",
+        literature_notes=(
+            "MinAtar Breakout with the minimal action set; 10x10x4 binary planes",
+            "flattened to a 400-dim vector by the shared env wrapper.",
+            "MinAtar defines no canonical solve threshold: success_threshold=10 is",
+            "a non-canonical progress marker (MinAtar-paper DQN reaches ~15-25 at",
+            "millions of frames); target_mean_return=50 keeps immediate stopping",
+            "out of reach so patience-based early stopping governs.",
+        ),
+        success_threshold=10.0,
+        target_mean_return=50.0,
+    ),
 }
 
 
@@ -73,6 +108,9 @@ def normalize_rl_task_name(task_name: str) -> str:
         "cartpolev1": "cartpole",
         "acrobot_v1": "acrobot",
         "acrobotv1": "acrobot",
+        "lunar_lander": "lunarlander",
+        "lunarlander_v3": "lunarlander",
+        "lunarlanderv3": "lunarlander",
     }
     return aliases.get(normalized, normalized)
 
