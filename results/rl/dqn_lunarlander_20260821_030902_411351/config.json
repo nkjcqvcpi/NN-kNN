@@ -1,0 +1,51 @@
+{
+  "created_at_utc": "2026-08-21T03:09:03.788015+00:00",
+  "task": {
+    "name": "lunarlander",
+    "env_id": "LunarLander-v3",
+    "family": "box2d",
+    "observation_kind": "flat_box",
+    "action_kind": "discrete",
+    "max_episode_steps": 1000,
+    "default_profile": "fast",
+    "literature_notes": [
+      "Shaped-reward landing task; gymnasium reward threshold is 200.",
+      "Requires gymnasium[box2d]. The immediate-stop target 280 sits above",
+      "the solve threshold so only an excellent policy stops a run early."
+    ],
+    "success_threshold": 200.0,
+    "target_mean_return": 280.0
+  },
+  "config": {
+    "profile": "smoke",
+    "seed": 0,
+    "total_timesteps": 256,
+    "learning_rate": 0.00025,
+    "buffer_size": 1000,
+    "gamma": 0.99,
+    "target_network_frequency": 100,
+    "max_grad_norm": 0.5,
+    "batch_size": 32,
+    "start_e": 1.0,
+    "end_e": 0.05,
+    "exploration_fraction": 0.5,
+    "learning_starts": 32,
+    "train_frequency": 1,
+    "eval_frequency": 128,
+    "eval_episodes": 2,
+    "eval_seed": 10000,
+    "success_threshold": 200.0,
+    "early_stopping": false,
+    "early_stopping_patience": 30,
+    "early_stopping_min_delta": 1.0,
+    "early_stopping_min_steps": 25000,
+    "early_stopping_target_score": 280.0,
+    "hidden_sizes": [
+      120,
+      84
+    ],
+    "source_reference": "CleanRL dqn.py"
+  },
+  "device": "cpu",
+  "source_reference": "CleanRL dqn.py"
+}
