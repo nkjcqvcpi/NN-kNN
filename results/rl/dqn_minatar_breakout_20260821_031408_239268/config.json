@@ -1,0 +1,54 @@
+{
+  "created_at_utc": "2026-08-21T03:14:10.893941+00:00",
+  "task": {
+    "name": "minatar_breakout",
+    "env_id": "MinAtar/Breakout-v1",
+    "family": "minatar",
+    "observation_kind": "flat_box",
+    "action_kind": "discrete",
+    "max_episode_steps": 5000,
+    "default_profile": "fast",
+    "literature_notes": [
+      "MinAtar Breakout with the minimal action set; 10x10x4 binary planes",
+      "flattened to a 400-dim vector by the shared env wrapper.",
+      "MinAtar defines no canonical solve threshold: success_threshold=10 is",
+      "a non-canonical progress marker (MinAtar-paper DQN reaches ~15-25 at",
+      "millions of frames); target_mean_return=50 keeps immediate stopping",
+      "out of reach so patience-based early stopping governs."
+    ],
+    "success_threshold": 10.0,
+    "target_mean_return": 50.0
+  },
+  "config": {
+    "profile": "fast",
+    "seed": 0,
+    "total_timesteps": 150000,
+    "learning_rate": 0.001,
+    "buffer_size": 10000,
+    "gamma": 0.99,
+    "target_network_frequency": 250,
+    "max_grad_norm": 0.5,
+    "batch_size": 128,
+    "start_e": 1.0,
+    "end_e": 0.05,
+    "exploration_fraction": 0.5,
+    "learning_starts": 1000,
+    "train_frequency": 1,
+    "eval_frequency": 5000,
+    "eval_episodes": 20,
+    "eval_seed": 10000,
+    "success_threshold": 10.0,
+    "early_stopping": true,
+    "early_stopping_patience": 30,
+    "early_stopping_min_delta": 1.0,
+    "early_stopping_min_steps": 25000,
+    "early_stopping_target_score": 50.0,
+    "hidden_sizes": [
+      120,
+      84
+    ],
+    "source_reference": "CleanRL dqn.py"
+  },
+  "device": "cpu",
+  "source_reference": "CleanRL dqn.py"
+}

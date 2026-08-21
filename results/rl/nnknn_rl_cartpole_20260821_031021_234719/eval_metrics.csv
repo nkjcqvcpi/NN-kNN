@@ -1,0 +1,2 @@
+global_step,episode,mean_return,std_return,min_return,max_return,mean_length,episodes,actor_type,case_entries
+5,0,9.0,0.0,9.0,9.0,9.0,1,mlp,

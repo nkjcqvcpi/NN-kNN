@@ -1,0 +1,104 @@
+{
+  "task": "cartpole",
+  "env_id": "CartPole-v1",
+  "profile": "smoke",
+  "seed": 1,
+  "total_timesteps": 256,
+  "configured_total_timesteps": 256,
+  "actual_timesteps": 256,
+  "eval_episodes": 2,
+  "success_threshold": null,
+  "passed": true,
+  "algorithm": "nnknn_actor_critic_separate_memory_gae",
+  "actor_type": "nnknn",
+  "critic_type": "nnknn",
+  "architecture": {
+    "separate_case_bases": true,
+    "shared_nnknn_representation": true,
+    "critic_target_shared_case_store": true,
+    "actor_case_insertion": "raw_positive_advantage_only"
+  },
+  "gae": {
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "advantage_clip": 5.0
+  },
+  "exploration": {
+    "mode": "epsilon_mixed_policy",
+    "applies_to_actor": true,
+    "initial_epsilon": 1.0,
+    "final_epsilon": 0.05,
+    "fraction": 0.5,
+    "final_step_epsilon": 0.05,
+    "readiness": {
+      "min_case_entries": 8,
+      "min_cases_per_action": 2
+    }
+  },
+  "final_eval": {
+    "episodes": 2,
+    "seed": 10000,
+    "mean_return": 52.0,
+    "std_return": 4.0,
+    "min_return": 48.0,
+    "max_return": 56.0,
+    "mean_length": 52.0
+  },
+  "last_eval": {
+    "episodes": 2,
+    "seed": 10000,
+    "mean_return": 52.0,
+    "std_return": 4.0,
+    "min_return": 48.0,
+    "max_return": 56.0,
+    "mean_length": 52.0
+  },
+  "selected_step": 256,
+  "selected_source": "final",
+  "training_efficiency": {
+    "best_model_step": 256,
+    "best_model_training_fraction": 1.0,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 0.0,
+    "budget_interpretation": "final_is_best_check_for_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 500.0,
+    "best_mean_return": null,
+    "evaluations": 0,
+    "evaluations_without_improvement": 0,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 256
+  },
+  "case_entries": 163,
+  "critic_case_entries": 223,
+  "action_counts": [
+    85,
+    78
+  ],
+  "cases_pruned": 56,
+  "cases_replaced": 0,
+  "actor_cases_pruned": 23,
+  "actor_cases_replaced": 0,
+  "critic_cases_pruned": 33,
+  "critic_cases_replaced": 0,
+  "critic_label_updates": 0,
+  "critic_label_update_samples": 0,
+  "partial_rollout_segments": 1,
+  "partial_rollout_samples": 54,
+  "critic_target_enabled": true,
+  "critic_target_value_mode": "ema",
+  "critic_target_sync_interval": 1,
+  "critic_target_ema_tau": 0.05,
+  "critic_target_value_syncs": 11,
+  "critic_holdout_evaluations": 0,
+  "latest_critic_holdout": null,
+  "checkpoint_path": "results/rl/nnknn_rl_cartpole_20260821_031151_202340/checkpoint.pt",
+  "run_dir": "results/rl/nnknn_rl_cartpole_20260821_031151_202340"
+}
