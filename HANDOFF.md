@@ -47,6 +47,14 @@ the durable summary of where things stand and what to do next.
   (103k). Caveat: 14/20 runs are
   regressed_after_best — these are best-checkpoint-under-budget claims, not
   end-policy claims (DQN's last_eval mean is 140.85).
+- **LunarLander-v3 and MinAtar/Breakout-v1 are registered and smoke-passed**
+  (2026-08-21): `lunarlander` (box2d, success 200 = gymnasium reward
+  threshold, immediate-stop target 280; needs `gymnasium[box2d]`) and
+  `minatar_breakout` (explicit MinAtar registration + observation flattening
+  added to the shared `_make_env`; 5,000-step cap; success 10 is a documented
+  non-canonical progress marker, target 50). All three CLIs pass smoke on
+  both tasks; CartPole regression smokes stay bit-identical (9.5 / 85.0 /
+  279.5). Seed-0 batteries are in flight (see Pending).
 - **Acrobot (first Tier-1 transfer) is complete.**
   `datasets/rl_tasks.py` now registers `acrobot` (Acrobot-v1, success
   threshold −100 from the gymnasium reward threshold, immediate-stop target
@@ -110,6 +118,10 @@ the durable summary of where things stand and what to do next.
   nothing over MLP (batched queries only). Speed-ups worth trying if it becomes
   blocking: smaller case base, sampled/approximate retrieval, batching/caching
   on the actor's per-step query path.
+- Operational gotcha (torch 2.13): `--device cpu` runs still touch CUDA via
+  the Adam accelerator health-check, so they crash with CUDA OOM when the GPU
+  is fully occupied by other jobs. Launch CPU runs with
+  `CUDA_VISIBLE_DEVICES="" ` to make them truly CPU-only.
 
 ### Classification (unchanged by the RL campaign)
 
@@ -126,36 +138,50 @@ the durable summary of where things stand and what to do next.
 
 ## Pending / Next Steps
 
-1. **In flight:** the two NN-actor label-mode runs (NN/NN-mutable and
-   NN/NN-trainable, CartPole fast seed 0) — run dirs
-   `nnknn_rl_cartpole_20260820_075536_{795975,798185}` (variant attribution
-   final only at completion; both dirs stay empty until then — read each
-   dir's `config.json` label-mode flags at completion to map dir → variant).
-   They are crawling under GPU contention from unrelated jobs (~90k/150k
-   after ~30h). Progress signals are the gitignored console logs
-   `p6_nn_mutable.log` (PID 3235367) and `p6_nn_trainable.log` (PID 3235368)
-   in the repo root; PID map in `p6_pids.txt`. If a run dies, relaunch with
-   `tools/run_rl_nnknn.py cartpole --profile fast --seed 0 --device cuda
-   --critic-type nnknn --critic-mutable-value-labels` (mutable) or the same
-   with `--critic-trainable-value-labels` instead (trainable). When they
-   finish, fold their rows into `reports/cartpole_12variant_sweep.csv`, log
-   them, and commit the run dirs.
-2. **Awaiting human decision** (each flagged in the experiment log):
-   - Acrobot hybrid seed-1 probe: 300k `--no-early-stopping` (deferred —
-     exceeds the 2-hour single-run ask-first gate; seed 1 shows the classic
-     under-budget signature at −201, best==final, curve rising).
-   - An Acrobot-targeted knob pass for the hybrid (first knobs: exploration
-     schedule and case-insertion pressure, given late 94–146k crossings).
-   - LunarLander battery (needs `uv pip install -U "gymnasium[box2d]"` plus a
-     `rl_tasks.py` entry; current gymnasium uses LunarLander-v3) and MinAtar
-     battery (needs `minatar` + a small wrapper) — each is another multi-hour
-     20-run cycle. Repeat the Phase 2→4 protocol per environment.
-   - The held-in-reserve ordered knob sweep from plan Phase 3 (skipped because
-     G1 passed untuned).
-   - A 5-seed confirmation of the trainable-vs-fixed label contrast before it
-     goes in a paper figure (currently single-seed).
-3. Consider a results remote (fork or separate repo) so `rl-iclr2027` can be
-   pushed; it currently exists only in this local clone.
+All previously deferred experiment tasks were launched on 2026-08-21 with
+explicit user authorization ("finish all tasks"); the 2-hour ask-first gate
+was thereby satisfied for the 300k probe. PID maps live in the gitignored
+root files `p6_pids.txt`, `p7_pids.txt`, `p8_pids.txt`, `p8b_pids.txt`; each
+run's console log is the matching gitignored `p6_*/p7_*/p8_*.log`.
+
+1. **In flight — CartPole 12-grid stragglers:** NN/NN-mutable and
+   NN/NN-trainable (fast seed 0) — run dirs
+   `nnknn_rl_cartpole_20260820_075536_{795975,798185}` (dirs stay empty until
+   completion; map dir → variant via each `config.json`'s label-mode flags).
+   Crawling under GPU contention (~90k/150k after ~30h). Logs
+   `p6_nn_mutable.log` (PID 3235367) / `p6_nn_trainable.log` (PID 3235368).
+   Relaunch if dead: `tools/run_rl_nnknn.py cartpole --profile fast --seed 0
+   --device cuda --critic-type nnknn --critic-mutable-value-labels` (mutable)
+   or with `--critic-trainable-value-labels` instead (trainable). On
+   completion: fold rows into `reports/cartpole_12variant_sweep.csv`, log,
+   commit the run dirs.
+2. **In flight — Acrobot follow-ups (launched 2026-08-21):**
+   - Seed-1 under-budget probe: hybrid, 300k `--no-early-stopping`
+     (`p7_probe_s1_300k.log`). Question: does seed 1 (−201 at 150k, curve
+     rising) cross −100 with doubled budget?
+   - Knob pass, hybrid seed 0, one knob each: `--exploration-fraction 0.2`
+     (knob A), `--critic-learning-rate 1e-3` (knob B), `--case-learning-rate
+     1e-2` (knob C, chained behind A for GPU headroom). Baseline to beat:
+     −79.45 with best step 122,145. Note: no CLI flag exists for
+     positive-advantage insertion pressure — flag it for a code-level knob if
+     exploration/LR knobs do not move the late-crossing pattern.
+3. **In flight — label-mode 5-seed confirmation:** MLP-actor NN-critic
+   trainable vs fixed, seeds 1–4 (8 CPU runs, `p7_lbl_{trn,fix}_s{1..4}.log`).
+   Combines with the existing seed-0 pair to give 5 seeds per mode; check
+   whether the fast-but-collapses vs slow-but-stable contrast (and the
+   best−last gap) survives seed variance before publishing it.
+4. **In flight — LunarLander and MinAtar seed-0 batteries:** DQN, NEC,
+   MLP-AC, MLP-actor+hybrid-critic per task on CPU (`p8_*`/relaunched
+   `p8b_*`); NN-actor hybrid (both tasks) and NN-actor default (lunarlander)
+   queued on a GPU-memory-gated chain (`p8_gpu_chain.log`, launches when GPU
+   used < 88 GB). After seed-0 lands: pick per-task best NN-kNN variant, run
+   seeds 1–4, then the fixed-budget 4-method × 5-seed table via
+   `tools/make_phase4_report.py` (LunarLander: `--success-threshold 200
+   --ylim -600 320`; MinAtar: `--success-threshold 10`, pick ylim from data).
+5. **Closed:** the held-in-reserve ordered Phase-3 knob sweep — G1 passed
+   untuned; superseded by the targeted Acrobot knob pass above.
+6. **Still needs the human:** a results remote (fork or separate repo) so
+   `rl-iclr2027` can be pushed; the branch exists only in this local clone.
 
 ## Current Work Focus (architecture — documents code behavior)
 
