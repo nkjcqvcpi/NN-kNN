@@ -1,117 +1,182 @@
 # Handoff
 
+Last updated 2026-08-21 on branch `rl-iclr2027` (clone of read-only upstream
+`Heuzi/NN-kNN`, branched from `c097195`; never push to upstream). The canonical
+chronological experiment record is `reports/experiment_log.md`; this file is
+the durable summary of where things stand and what to do next.
+
 ## Current Status
 
-- The maintained NN-kNN core supports both regression and classification.
-- A repo-native RL/DQN baseline now exists for `CartPole-v1`; it is the first
-  engineering step toward DQN, NEC, and NN-kNN-RL comparisons.
-- A repo-native RL/NEC baseline now exists for `CartPole-v1`; it uses exact
-  per-action kNN dictionaries and the same evaluation, early-stopping, and
-  best-checkpoint reporting protocol as DQN.
-- An experimental actor-critic workflow now exists for `CartPole-v1`; it
-  defaults to NN-kNN as the actor, supports MLP-actor comparison baselines,
-  supports MLP or NN-kNN regression value critics with GAE advantages, and
-  writes the same budget/early-stopping/best-checkpoint artifacts as DQN and
-  NEC. Treat it as a
-  research/debug surface, not as a solved or reliable baseline. NN-kNN actor
-  and critic memories are separate; when both are selected they share only the
-  state feature extractor/global feature-distance representation.
+### Environment
+
+- The working environment is uv-managed: `.venv` with Python 3.12 and the
+  latest package versions (ignore the pins in `requirements.txt`;
+  `requirements-latest.txt` holds the stripped package list). The resolved
+  stack is recorded in `reports/env_freeze.txt`: torch 2.13.0+cu130,
+  numpy 2.5.1, gymnasium 1.3.0, scipy 1.18.0, scikit-learn 1.9.0. GPU: H100
+  NVL. All four smoke modes (`imports`, `rl`, `nec`, `nnknn_rl`) pass on this
+  stack; no numpy-2.x or gymnasium API breaks surfaced. One fix-forward patch:
+  `verify_packages.py` now imports `IPython` (was `ipython`).
+- Refresh `reports/env_freeze.txt` after any dependency change.
+
+### RL headline results (2026-07-31 through 2026-08-02 campaign)
+
+- **Gate G1 of RESEARCH_PROPOSAL_ICLR2027.md (external document, not in this repo) is PASSED** (2026-08-01, ahead of
+  the Aug 14 deadline). The untuned hybrid NN-kNN-RL config —
+  `tools/run_rl_nnknn.py cartpole --profile fast --device cuda --critic-type
+  nnknn --critic-mutable-value-labels --critic-trainable-value-labels` —
+  reaches final_eval 497.98 ± 4.52 across seeds {0..4}, 5/5 seeds ≥ 475.
+  Four of five seeds solve outright at 500.0 with target-score stops at
+  4,474–13,156 steps; seed 4 reaches 489.90 (best step 114,344).
+- **DQN is a solved CartPole reference again.** Fast seed 0 reaches 500.0
+  (target-score stop at 95,000 steps; checkpoint reload 500.0 ± 0 over 100
+  fresh-seed episodes). The previously recorded 110.85 failure does not
+  reproduce on the current stack — same plateau dynamics through ~85k, then a
+  breakout once epsilon floors. Treat the old failure note as stack/run-level
+  variance, not a config bug.
+- **NEC reproduces with wide seed variance.** Seed 0 solves at 500.0
+  (selected checkpoint at step 2,056; 487.25 over 100 fresh-seed episodes);
+  seed 1 plateaus at ~419–431 even with a 300k-step probe, so the old
+  under-budget hypothesis is not supported. The old 450.55 reference sits
+  inside this seed band.
+- **CartPole fixed-budget table** (150k steps, no early stopping, seeds 0–4;
+  `reports/phase4_manifest.json`, figures in `reports/figures/phase4_*`):
+  NN-kNN-RL hybrid 497.98 ± 4.52 (best), MLP-AC 482.00 ± 35.97,
+  DQN 466.13 ± 75.74, NEC 465.11 ± 30.98. The hybrid's median best_model_step
+  (4,810) is ~15× earlier than DQN's (70k) and ~21× earlier than MLP-AC's
+  (103k). Caveat: 14/20 runs are
+  regressed_after_best — these are best-checkpoint-under-budget claims, not
+  end-policy claims (DQN's last_eval mean is 140.85).
+- **Acrobot (first Tier-1 transfer) is complete.**
+  `datasets/rl_tasks.py` now registers `acrobot` (Acrobot-v1, success
+  threshold −100 from the gymnasium reward threshold, immediate-stop target
+  −60), and the three CLIs resolve task-level success protocol from the spec
+  for non-CartPole tasks (CartPole behavior bit-identical; smoke-verified).
+  Fixed-budget table (`reports/phase5_acrobot_manifest.json`, figures
+  `reports/figures/phase5_acrobot_*`): DQN −72.94 ± 1.40 (5/5 seeds solve,
+  crossing −100 by 20–50k), NN-kNN-RL hybrid −105.54 ± 53.47 (4/5 seeds solve
+  at −79 to −85; seed 1 unsolved at −201 with the under-budget signature),
+  NEC −327.34 ± 135.54 (0/5), MLP-AC −416.09 ± 187.63 (collapses to −500).
+- **Key transfer finding:** on Acrobot the NN-kNN regression critic is the
+  difference-maker — every NN-kNN-critic variant solves while both MLP-critic
+  variants stay flat at −500 (the nnknn-actor + mlp-critic run starves at 85
+  actor cases because no positive advantages ever appear). But DQN beats the
+  hybrid on Acrobot, so CartPole cross-family sample-efficiency claims do not
+  generalize untuned.
+- **CartPole 12-configuration label-mode grid** ({NN, MLP} actor × {MLP,
+  NN-fixed, NN-mutable, NN-trainable, NN-hybrid} critic + DQN + NEC, fast seed
+  0): `reports/cartpole_12variant_sweep.csv`. 10/12 rows complete; the
+  NN-actor mutable/trainable rows are still training (see Pending below). The
+  MLP-actor label ablation (figure
+  `reports/figures/label_mode_ev_comparison.png`) shows: trainable labels =
+  fast but drift and collapse (497.2 best → 357.1 last, holdout EV stalls);
+  fixed labels = slow but stable (491.4, best==last, EV surges to 0.62 late);
+  mutable labels = fastest to a perfect 500 (target stop at 119k) but weakest
+  critic generalization; hybrid = fixed-like stability with trainable-like
+  adaptivity (498.5, best==last, EV 0.59). This is the ablation showing both
+  halves of the hybrid design are necessary.
+
+### Robustness caveats to respect when making claims
+
+- Gate G1 is defined on the protocol metric (final_eval over the standard
+  20-episode eval block). Under a stricter 100-episode fresh-seed-20000
+  checkpoint-reload check, the hybrid seed means drop to 466.2 with 3/5 seeds
+  ≥ 475 (seeds 1 and 4 degrade to ~431/~406 — partial overfit of checkpoint
+  selection to the 20 fixed eval starts). Cite the protocol metric for G1 and
+  mention the fresh-seed check for robustness statements.
+- Best-vs-last gaps are training instability/forgetting, not overfitting in
+  the supervised sense; diagnose critic overfitting via the
+  `critic_train_mse` vs `critic_holdout_explained_variance` gap instead.
+- Holdout EV and episode-frequency evals fire every 100 completed episodes,
+  so late-training coverage is sparse (~30–35k-step gaps once episodes run
+  ~350–500 steps; the last measurement lands anywhere from ~119k to ~148k in a
+  150k run depending on episode lengths). EV is also ill-conditioned near a solved policy (target variance
+  shrinks). Densify via `critic_holdout_episode_frequency` if a paper figure
+  needs late coverage.
+- DQN implementation caveat: this codebase deviates from CleanRL (smooth-L1 +
+  grad-clip 0.5 vs MSE + no clip). Transplanting CleanRL reference
+  hyperparameters diverges catastrophically (final_eval 9.45, Q → ~5.5e5, peak ~5.9e5);
+  lr 2.5e-4 with per-step training also solves (494.85). The maintained
+  profile defaults are fine; solving is not knife-edge on the learning rate.
+- Config-equivalence gotcha: plan variant 6
+  (`--critic-value-label-activation-threshold 0
+  --critic-target-sync-interval 4`) exactly equals the `--critic-type nnknn`
+  defaults (threshold 0.0, sync 4, target mode "ema") — do not re-run it as a
+  distinct variant.
+- NN-kNN-actor runs are wall-clock slow (roughly 1–2.5 h per 150k CartPole
+  run on an uncontended machine per collaborator timings; 633–1,026 min
+  observed here under multi-job GPU contention) because the actor does a single-state
+  exact-kNN retrieval every environment step; the NN-kNN critic adds almost
+  nothing over MLP (batched queries only). Speed-ups worth trying if it becomes
+  blocking: smaller case base, sampled/approximate retrieval, batching/caching
+  on the actor's per-step query path.
+
+### Classification (unchanged by the RL campaign)
+
 - Classification uses normalized case activation as class probability mass
-  with NLL loss; it does not restore the older class-weight formulation.
-- `model/classification_workflow.py` and `datasets/classification_data.py`
-  provide tabular and image classification workflows and representative
-  baselines.
-- `model/rl_workflow.py`, `datasets/rl_tasks.py`, and `tools/run_rl_dqn.py`
-  provide the maintained DQN baseline workflow. The implementation is
-  CleanRL-style, but repo-native so NN-kNN-RL can be swapped in later.
-- `model/nec_workflow.py` and `tools/run_rl_nec.py` provide the maintained NEC
-  baseline workflow.
-- `model/nnknn_rl_workflow.py` and `tools/run_rl_nnknn.py` provide the
-  experimental actor-critic workflow for NN-kNN and MLP actor comparisons.
-- `nnknn_sample_classification.ipynb` is the maintained classification
-  notebook entry point.
-- `dqn_cartpole_demo.ipynb` is the maintained RL notebook entry point; it
-  should call Python workflow functions rather than duplicating DQN logic.
-- `nnknn_cartpole_demo.ipynb` is the maintained NN-kNN-RL notebook entry point;
-  it should call Python workflow functions rather than duplicating training
-  logic.
-- `Outdated NN-kNN Reinforcement Learning.ipynb` and `OutdatedNewCartpole.ipynb`
-  are archival only. Do not use them as RL implementation references.
-- Representative checks completed: one-epoch regression and classification
-  smokes, RL smoke, sparsemax Iris folds, portable small/image loaders, and a
-  tiny all-image-method MNIST subset comparison.
-- The current DQN fast CartPole notebook/artifact run did not reproduce the
-  older solved checkpoint result:
-  - run folder: `results/rl/dqn_cartpole_20260702_135146_537913/`
-  - selected checkpoint step: `110000`
-  - selected eval mean return: `110.85` over 20 episodes
-  - last/end-of-budget eval mean return: `89.45`
-  - interpretation: the success threshold was never reached, so treat this run
-    as `unsolved_or_underfit` rather than a solved DQN reference.
-- The current NEC fast CartPole notebook/artifact run is much stronger than the
-  older NEC run but remains just below the solve threshold:
-  - run folder: `results/rl/nec_cartpole_20260703_173129_688189/`
-  - selected checkpoint step: `150000`
-  - selected eval mean return: `450.55` over 20 episodes
-  - last/end-of-budget eval mean return: `450.55`
-  - interpretation: NEC now reaches several 500-return episodes but the mean
-    remains below the `475.0` success threshold; because the selected checkpoint
-    is the final model, treat it as `unsolved_or_underfit` or possible
-    under-budget before making paper-style claims.
-- The previous NEC 25k-step debug-sized run selected step `17663` with mean
-  return `281.2`, so the larger 150k-step NEC profile substantially improved
-  the best evaluation.
-- Current NN-kNN-RL smoke runs are functional but not competitive. The expanded
-  smoke now checks all actor/critic variants, checkpoint reloads,
-  final-partial-rollout training, episode-boundary-aware GAE, staged actor case
-  insertion, separate actor/critic memories, EMA target critics, and NN-kNN
-  maintenance reporting. Treat smoke as plumbing validation only.
-- The previous NN-kNN-RL fast NN-kNN-critic artifact remains unsolved:
-  `results/rl/nnknn_rl_cartpole_20260626_150805_689987/`, selected eval mean
-  return `369.5` over 20 episodes at step `150000`. It predates the latest
-  separate-memory architecture and remains below the `475.0` threshold.
-- A full six-variant `fast` CPU sweep launched from
-  `results/rl/run_cartpole_variant_fast_sweep.py` was stopped because it was
-  still on the first variant after several hours. A smaller CUDA debug sweep
-  was launched under `results/rl/cartpole_variant_debug_gpu_sweep_*/` with
-  logs in `results/rl/debug_gpu_sweep_logs/`; use that for quick variant
-  inspection, not paper-style claims.
-- A fresh June 1 NN-kNN-only 10-fold rerun confirmed the recorded Iris and
-  Zebra representative results exactly. These are current-core functionality
-  checks, not exact reproductions of IJCAI-25 results from the older
-  classification formulation.
+  with NLL loss; it does not restore the older class-weight formulation. Do
+  not restore the retired legacy case-weight path solely to reproduce old
+  numbers.
+- June 1 10-fold reruns: `iris` 0.9600 ± 0.0562, `zebra` 0.5182 ± 0.1488,
+  `zebra_special` 0.5227 ± 0.0890 (in
+  `results/classification_nnknn_rerun_20260601_103353/`). Zebra (a)/(b) are
+  near chance and remain the classification-side debugging priority; then
+  rerun the remaining small suite (`wine`, `breast_cancer`, `balance`,
+  `digits`). Use `nnknn_sample_classification.ipynb` for inspection.
 
-## Current Work Focus
+## Pending / Next Steps
 
-- Classification support is now functional; current work is focused on
-  improving scores on the earlier IJCAI-25 classification tasks while keeping
-  the maintained IJCAI-26-based NN-kNN retrieval/core implementation.
-- RL work is in a baseline-establishment/debugging phase. DQN currently needs
-  reproduction/debugging before serving as the solved CartPole reference; NEC is
-  near-solved but still below threshold, and NN-kNN-RL has
-  been refactored to actor-critic GAE with selectable NN-kNN or MLP actors and
-  selectable MLP or NN-kNN regression value critics. The major NN-kNN-RL focus
-  now is the actor/critic model structure:
-  - an NN-kNN actor should be an optimizable policy network even when the
-    critic is an MLP
-  - an NN-kNN critic should be an optimizable value network even when the actor
-    is an MLP; it should append value-target cases and train its NN-kNN
-    retrieval parameters with the value loss
-  - when both actor and critic are NN-kNN, they use separate case bases and
-    per-case parameters while sharing the state feature extractor/global
-    feature-distance module
-  Tuning and diagnostics should support those goals, especially actor
-  probabilities, critic value loss, explained variance, case maintenance, and
-  selected-checkpoint behavior.
-  Current training behavior is:
+1. **In flight:** the two NN-actor label-mode runs (NN/NN-mutable and
+   NN/NN-trainable, CartPole fast seed 0) — run dirs
+   `nnknn_rl_cartpole_20260820_075536_{795975,798185}` (variant attribution
+   final only at completion; both dirs stay empty until then — read each
+   dir's `config.json` label-mode flags at completion to map dir → variant).
+   They are crawling under GPU contention from unrelated jobs (~90k/150k
+   after ~30h). Progress signals are the gitignored console logs
+   `p6_nn_mutable.log` (PID 3235367) and `p6_nn_trainable.log` (PID 3235368)
+   in the repo root; PID map in `p6_pids.txt`. If a run dies, relaunch with
+   `tools/run_rl_nnknn.py cartpole --profile fast --seed 0 --device cuda
+   --critic-type nnknn --critic-mutable-value-labels` (mutable) or the same
+   with `--critic-trainable-value-labels` instead (trainable). When they
+   finish, fold their rows into `reports/cartpole_12variant_sweep.csv`, log
+   them, and commit the run dirs.
+2. **Awaiting human decision** (each flagged in the experiment log):
+   - Acrobot hybrid seed-1 probe: 300k `--no-early-stopping` (deferred —
+     exceeds the 2-hour single-run ask-first gate; seed 1 shows the classic
+     under-budget signature at −201, best==final, curve rising).
+   - An Acrobot-targeted knob pass for the hybrid (first knobs: exploration
+     schedule and case-insertion pressure, given late 94–146k crossings).
+   - LunarLander battery (needs `uv pip install -U "gymnasium[box2d]"` plus a
+     `rl_tasks.py` entry; current gymnasium uses LunarLander-v3) and MinAtar
+     battery (needs `minatar` + a small wrapper) — each is another multi-hour
+     20-run cycle. Repeat the Phase 2→4 protocol per environment.
+   - The held-in-reserve ordered knob sweep from plan Phase 3 (skipped because
+     G1 passed untuned).
+   - A 5-seed confirmation of the trainable-vs-fixed label contrast before it
+     goes in a paper figure (currently single-seed).
+3. Consider a results remote (fork or separate repo) so `rl-iclr2027` can be
+   pushed; it currently exists only in this local clone.
+
+## Current Work Focus (architecture — documents code behavior)
+
+- The RL scope now covers `cartpole` and `acrobot` (see
+  `datasets/rl_tasks.py`; `RLTaskSpec` gained optional `success_threshold` and
+  `target_mean_return` fields, and all three CLIs gained
+  `--success-threshold`, resolving the task spec for non-CartPole tasks).
+- `tools/run_rl_dqn.py` also gained optional hyperparameter override flags
+  (learning rate, buffer, gamma, target sync, batch, epsilon schedule, warmup,
+  train frequency, grad clip); defaults unchanged.
+- The NN-kNN-RL design remains an on-policy actor-critic workflow with
+  selectable NN-kNN or MLP actors, selectable MLP or NN-kNN regression value
+  critics, and GAE. Current training behavior:
   - rollout is on-policy and does not mutate case memory; complete or final
-    partial batches compute GAE and optimizer losses against the frozen rollout
-    representation before any actor/critic cases are updated
+    partial batches compute GAE and optimizer losses against the frozen
+    rollout representation before any actor/critic cases are updated
   - GAE masks value bootstrapping with `terminated` and stops lambda recursion
     with an episode-boundary mask, so traces do not cross truncated episode or
     final partial-rollout boundaries
   - NN-kNN actor loss uses all raw advantages, including negative advantages;
-    only raw-positive-advantage transitions are inserted afterward as
+    only raw-positive-advantage transitions are inserted afterwards as
     `(state, recommended_action)` cases
   - MLP actors are standard stochastic-policy baselines: training samples
     directly from `pi(a|s)` with entropy regularization and effective epsilon
@@ -120,9 +185,10 @@
   - NN-kNN critics train on every rollout target, then update/append
     `(state, V_target)` cases regardless of advantage sign
   - NN-kNN critic value labels default to fixed GAE targets; optional mutable
-    labels use raw `case_bias - distance` activation thresholding and aggregate
-    matching batch targets before one EMA update; optional trainable labels make
-    labels optimizer parameters, and both options form the hybrid mode
+    labels use raw `case_bias - distance` activation thresholding and
+    aggregate matching batch targets before one EMA update; optional trainable
+    labels make labels optimizer parameters, and both options form the hybrid
+    mode
   - trainable value labels use the same case-level optimizer group as case
     biases and per-case glocal weights; tune this group with
     `case_learning_rate` / `--case-learning-rate`
@@ -132,50 +198,37 @@
   - when both sides are NN-kNN, their losses are computed before one joint
     optimizer step so the shared representation remains consistent with the
     rollout policy; their memories and per-case parameters remain separate
-  - every NN-kNN critic can use a lagged target critic for GAE bootstrap values;
-    online and target critics share raw state cases/stable IDs, while target
-    labels, biases, per-case weights, and encoder parameters remain separate and
-    EMA-update on the configured synchronization interval
-  - training should keep stochastic action selection (`greedy=False`) and reserve
-    greedy action selection for evaluation; NN-kNN uses readiness-driven random
-    sampling and scheduled epsilon mixing, while MLP samples its policy directly
+  - every NN-kNN critic can use a lagged target critic for GAE bootstrap
+    values; online and target critics share raw state cases/stable IDs, while
+    target labels, biases, per-case weights, and encoder parameters remain
+    separate and EMA-update on the configured synchronization interval
+  - training keeps stochastic action selection (`greedy=False`) and reserves
+    greedy action selection for evaluation; NN-kNN uses readiness-driven
+    random sampling and scheduled epsilon mixing, while MLP samples its policy
+    directly
   - actor and critic maintenance runs at batch boundaries, reports each store
     separately, and clears stale Adam state after per-case compaction
   - every NN-kNN-RL profile defaults to `case_capacity=500`; larger capacities
-    are explicit ablations because exact retrieval becomes the dominant runtime
-    cost
+    are explicit ablations because exact retrieval becomes the dominant
+    runtime cost
   - critic reporting separates `critic_optimization_mse` from periodic
-    post-update in-sample fields prefixed `critic_train_`; these diagnostics do
-    not affect gradients, checkpoint selection, or early stopping and are not a
-    held-out critic validation set
-  - periodic critic holdout rollouts use the current stochastic behavior policy
-    with independent seeds, are excluded from gradients and all case memories,
-    and report Monte Carlo-return MSE/explained variance separately in
-    `critic_holdout_metrics.csv`; truncations alone bootstrap from the lagged
-    target critic
-- Do not restore the retired legacy case-weight classification path solely to
-  reproduce old numbers. Improvements should come from the current workflow,
-  dataset protocol checks, hyperparameter tuning, or appropriate current-core
-  feature extractors.
-- A June 1 rerun of the 10-fold stratified CV checks using `softmax`, `tau=0.5`,
-  50 epochs, and seed 42 reproduced:
-  - `iris`: `0.9600 +/- 0.0562`
-  - `zebra` / Zebra (a): `0.5182 +/- 0.1488`
-  - `zebra_special` / Zebra (b): `0.5227 +/- 0.0890`
-- Zebra (a) and (b) are currently close to chance, so they are the immediate
-  debugging priority. Inspect their alternating-boundary structure,
-  preprocessing/splitting protocol, retrieved cases, feature weights,
-  temperature, normalizer choice, and possible current-core feature mapping.
-- Use `nnknn_sample_classification.ipynb` for interactive inspection. Use
-  `"zebra"` for Zebra (a) and `"zebra_special"` for Zebra (b).
-- Before expanding to full prior-paper comparisons, establish better
-  representative results on Zebra and then rerun the remaining small
-  classification suite (`wine`, `breast_cancer`, `balance`, `digits`).
+    post-update in-sample fields prefixed `critic_train_`; these diagnostics
+    do not affect gradients, checkpoint selection, or early stopping and are
+    not a held-out critic validation set
+  - periodic critic holdout rollouts use the current stochastic behavior
+    policy with independent seeds, are excluded from gradients and all case
+    memories, and report Monte Carlo-return MSE/explained variance separately
+    in `critic_holdout_metrics.csv`; truncations alone bootstrap from the
+    lagged target critic
 - DQN, NEC, and NN-kNN-RL use one configurable early-stopping protocol.
   `fast` enables it for every workflow, as does `debug` where available;
   `smoke` and `gold` disable it. Defaults are 30 stale evaluation checkpoints,
   `min_delta=1.0`, patience counting only after 25,000 environment steps, and
-  immediate stopping at task-maximum mean return.
+  immediate stopping at the task-target mean return (500 for CartPole, −60
+  for Acrobot). On Acrobot, early stopping never fires in practice — all fast
+  runs exhaust the 150k budget, which makes completed fast Acrobot runs
+  protocol-equivalent to `--no-early-stopping` runs and reusable in
+  fixed-budget tables (8 of the 20 Phase 5 table runs were reused this way).
 - Use `gold` or `--no-early-stopping` for strict fixed-budget comparisons.
   Always inspect `configured_total_timesteps`, `actual_timesteps`,
   `early_stopping`, and `training_efficiency` in `summary.json`.
@@ -184,57 +237,67 @@
   best model is the final model and the curve is still rising, increase the
   budget or tune before comparing methods. Use `best_model_step` and
   `first_success_step` as sample-efficiency proxies.
-- For NN-kNN-RL specifically, do not treat a poor smoke/debug run or an
-  unsolved fast run as a final method result. The current design is now an
-  on-policy actor-critic workflow with selectable NN-kNN or MLP actors,
-  selectable MLP or NN-kNN regression value critics, and GAE.
+- Do not treat a poor smoke/debug run as a method result; smoke validates
+  plumbing only.
 - MLP artifacts without `actor_behavior_policy="standard_stochastic_policy"`
-  predate the standard baseline behavior and should be treated as epsilon-mixed
-  MLP variants rather than current MLP actor-critic results.
+  predate the standard baseline behavior and should be treated as
+  epsilon-mixed MLP variants rather than current MLP actor-critic results.
 
 ## Current Local Artifacts
 
-- `checkpoints/` and transient smoke-test/runtime artifacts are expected and
-  gitignored.
-- Root checkpoint files such as `nnknn_regression_best.pth` and
-  `nnknn_regression_best_retr.pth` may change when experiments are run.
-- Classification runs write checkpoints beneath `checkpoints/` by default.
-  The CLI creates a fresh `results/classification_<suite>_<timestamp>/` folder
-  with summary, per-run, and manifest files for each benchmark invocation.
-- RL runs write timestamped folders under `results/rl/`. A DQN run folder
-  contains `config.json`, `training_metrics.csv`, `loss_metrics.csv`,
-  `eval_metrics.csv`, `final_eval_episodes.csv`, `last_eval_episodes.csv`,
-  `summary.json`, `manifest.json`, and `checkpoint.pt`.
-- NEC run folders use the same artifact names as DQN run folders.
-- Every RL checkpoint and summary records configured and actual timesteps plus
-  the early-stopping configuration, counters, stopping reason, and stopping
-  step. A budget-complete run reports `stopping_reason="budget_exhausted"`.
-- NN-kNN-RL run folders use the same artifact names as DQN and NEC run folders
-  and add `critic_holdout_metrics.csv`, `algorithm`, `gae`, `actor_type`,
-  `critic_type`, and comparison diagnostics to the saved summary. NN-kNN actor
-  runs record `case_entries` and
-  action-count fields; NN-kNN critic runs record `critic_case_entries`.
-  Summaries also record total and per-store actor/critic
-  `*_cases_pruned`, `*_cases_replaced`, `partial_rollout_segments`,
-  `partial_rollout_samples`, `critic_target_value_syncs`,
-  `critic_label_updates`, and `critic_label_update_samples` where applicable.
-  Current actor-critic checkpoints record
-  `algorithm="nnknn_actor_critic_separate_memory_gae"` and include both actor
-  and critic state. Older reward-to-go and shared-case-base checkpoints are
-  legacy and should be retrained rather than loaded.
+- `results/rl/` run artifacts (minus model checkpoints) are now tracked in
+  git — see `results/rl/README.md` for the conventions. `checkpoint.pt` /
+  `*.pth` and root-level console logs / PID files are intentionally excluded;
+  the structured files in each run directory are the canonical record.
+  Folders ending in `_eval` hold `eval_summary.json` from checkpoint-reload
+  robustness evaluations.
+- Aggregates and interpretation live in `reports/`:
+  - `reports/experiment_log.md` — chronological record (Phases 0–5 plus the
+    12-grid entry); the run manifests are the citation mechanism for seed
+    batches.
+  - `reports/phase4_manifest.json` / `reports/phase5_acrobot_manifest.json` —
+    method × seed → run-dir maps for the two fixed-budget tables.
+  - `reports/cartpole_12variant_sweep.csv` — the 12-configuration grid.
+  - `reports/figures/` — learning-curve and ablation figures (regenerate via
+    `tools/make_phase4_report.py --manifest <manifest> [--task ...
+    --success-threshold ... --ylim ... --prefix ...]`).
+  - `reports/env_freeze.txt` — the resolved dependency stack.
+- A run folder contains `config.json`, `training_metrics.csv`,
+  `loss_metrics.csv`, `eval_metrics.csv`, `final_eval_episodes.csv`,
+  `last_eval_episodes.csv`, `summary.json`, `manifest.json` (and
+  `checkpoint.pt` locally). NN-kNN-RL folders add
+  `critic_holdout_metrics.csv`, `algorithm`, `gae`, `actor_type`,
+  `critic_type`, and comparison diagnostics; NN-kNN actor runs record
+  `case_entries` and action-count fields, NN-kNN critic runs record
+  `critic_case_entries`, plus per-store `*_cases_pruned`, `*_cases_replaced`,
+  `partial_rollout_*`, `critic_target_value_syncs`, `critic_label_updates`.
 - `summary.json` records both the selected best checkpoint evaluation
-  (`final_eval`) and the end-of-budget model evaluation (`last_eval`). It also
-  records `training_efficiency`, including `best_model_step`,
-  `first_success_step`, training fractions, best-vs-last return gap, and
-  `budget_interpretation`.
-- The June 1 representative rerun is in
-  `results/classification_nnknn_rerun_20260601_103353/`. Its completed
-  `manifest.json`, `summary.csv`, and `runs.csv` record 30 NN-kNN fold rows.
-- `results/` contains completed Table 1 output folders. Keep old run folders
-  for comparison and postmortem context rather than overwriting them.
+  (`final_eval`) and the end-of-budget model evaluation (`last_eval`), plus
+  `training_efficiency` (`best_model_step`, `first_success_step`, fractions,
+  best-vs-last gap, `budget_interpretation`).
+- Current actor-critic checkpoints record
+  `algorithm="nnknn_actor_critic_separate_memory_gae"`. Older reward-to-go
+  and shared-case-base checkpoints are legacy and should be retrained rather
+  than loaded. Artifacts predating this algorithm string (including the
+  legacy 369.5 run) are outdated; retrain, never compare against them.
+- `checkpoints/` and transient smoke/runtime artifacts remain gitignored;
+  root checkpoint files such as `nnknn_regression_best.pth` may change when
+  experiments run. Classification runs write under `checkpoints/` and
+  `results/classification_<suite>_<timestamp>/` as before.
 
 ## Where Durable Guidance Lives
 
-Read `NNKNN_AGENT_GUIDE.md` for model descriptions, workflow entry points,
-RL/DQN/NEC protocol details, Table 1 protocol details, output schemas,
-restart/resume patterns, and machine-specific caveats.
+- `NNKNN_AGENT_GUIDE.md` — model descriptions, workflow entry points,
+  RL/DQN/NEC protocol details, Table 1 protocol details, output schemas,
+  restart/resume patterns, machine-specific caveats. (Its 'Current CartPole DQN fast result', 'Current CartPole NEC reference
+  result', and 'Current NN-kNN-RL status' sections predate this campaign;
+  where they conflict with this file or the experiment log, this file wins.)
+- `CLAUDE_CODE_REPRODUCTION_PLAN.md` — the phase plan this campaign followed.
+  Its Ground rules and Stop conditions remain in force for all future work:
+  never push to `Heuzi/NN-kNN`; ask the human before any single run expected
+  to exceed 2 hours; stop if any smoke test fails after a code edit; source
+  every run claim from its `summary.json` (final_eval, last_eval,
+  actual_timesteps, stopping_reason, budget_interpretation); append
+  experiment-log entries using the plan's template and commit after each
+  phase.
+- `reports/experiment_log.md` — the chronological experiment record.
