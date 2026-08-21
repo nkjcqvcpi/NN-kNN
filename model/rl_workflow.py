@@ -320,7 +320,20 @@ def _require_gymnasium() -> Any:
 
 def _make_env(spec: RLTaskSpec, seed: int | None = None) -> Any:
     gym = _require_gymnasium()
-    env = gym.make(spec.env_id)
+    if spec.env_id.startswith("MinAtar/"):
+        # MinAtar ships gymnasium bindings but does not auto-register them,
+        # and its registrations carry no episode cap.
+        if spec.env_id not in gym.registry:
+            import minatar.gym as _minatar_gym
+
+            _minatar_gym.register_envs()
+        env = gym.make(spec.env_id, max_episode_steps=spec.max_episode_steps)
+    else:
+        env = gym.make(spec.env_id)
+    if len(env.observation_space.shape) != 1:
+        # Grid observations (e.g. MinAtar HxWxC binary planes) flatten to the
+        # 1-D Box the repo's flat workflows expect.
+        env = gym.wrappers.FlattenObservation(env)
     if seed is not None:
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
