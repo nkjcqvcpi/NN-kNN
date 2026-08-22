@@ -69,6 +69,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--exploration-initial-epsilon", type=float, default=None)
     parser.add_argument("--exploration-final-epsilon", type=float, default=None)
     parser.add_argument("--exploration-fraction", type=float, default=None)
+    parser.add_argument("--case-capacity", type=int, default=None,
+                        help="Actor NN-kNN case-base capacity (config default 500).")
+    parser.add_argument("--critic-case-capacity", type=int, default=None,
+                        help="Critic NN-kNN case-base capacity; defaults to the actor capacity.")
     parser.add_argument("--min-case-entries", type=int, default=None)
     parser.add_argument("--min-cases-per-action", type=int, default=None)
     parser.add_argument("--actor-type", choices=["nnknn", "mlp"], default=None)
@@ -156,6 +160,10 @@ def _config_from_args(args: argparse.Namespace) -> NNKNNRLConfig:
         overrides["exploration_final_epsilon"] = args.exploration_final_epsilon
     if args.exploration_fraction is not None:
         overrides["exploration_fraction"] = args.exploration_fraction
+    if args.case_capacity is not None:
+        overrides["case_capacity"] = args.case_capacity
+    if args.critic_case_capacity is not None:
+        overrides["critic_case_capacity"] = args.critic_case_capacity
     if args.min_case_entries is not None:
         overrides["min_case_entries"] = args.min_case_entries
     if args.min_cases_per_action is not None:
