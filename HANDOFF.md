@@ -44,7 +44,10 @@ the durable summary of where things stand and what to do next.
   NN-kNN-RL hybrid 497.98 ± 4.52 (best), MLP-AC 482.00 ± 35.97,
   DQN 466.13 ± 75.74, NEC 465.11 ± 30.98. The hybrid's median best_model_step
   (4,810) is ~15× earlier than DQN's (70k) and ~21× earlier than MLP-AC's
-  (103k). Caveat: 14/20 runs are
+  (103k). The hybrid row here is a *separate* 20260801_1006* fixed-budget
+  batch (see `reports/phase4_manifest.json`); its per-seed final_evals
+  coincidentally match the Phase 3 early-stop runs, so 497.98 ± 4.52 is not a
+  reused number. Caveat: 14/20 runs are
   regressed_after_best — these are best-checkpoint-under-budget claims, not
   end-policy claims (DQN's last_eval mean is 140.85).
 - **LunarLander-v3 and MinAtar/Breakout-v1 are registered, and seed-0
@@ -63,11 +66,21 @@ the durable summary of where things stand and what to do next.
   **Finding, and a reversal of Acrobot:** on both new tasks the gain inside
   the actor-critic family comes from the NN-kNN *actor*, not the critic
   (LunarLander NN-actor ~−121 vs MLP-actor ~−230 regardless of critic;
-  MinAtar 4.15 vs 1.40 with the critic making no difference) — the opposite
+  MinAtar NN-actor+hybrid 4.15 vs both MLP-actor runs 1.40 — critic-invariance
+  holds only on the MLP-actor side there, since the NN-actor + MLP-critic cell
+  was never run at 150k) — the opposite
   of Acrobot, where the critic was decisive and the actor starved. Both
   LunarLander NN-actor runs peak at ~9.2k steps then collapse (hybrid
   last_eval −599.22): the case memory locks in an early hovering policy and
-  degrades. Value-based DQN dominates both tasks.
+  degrades. Value-based DQN dominates both tasks — and so does **NEC, the
+  closest episodic-memory baseline** (LunarLander −84.27 vs our −121;
+  MinAtar 5.60 vs our 4.15), which is the load-bearing negative result for a
+  paper whose contribution is an episodic memory.
+  All figures above are final_eval (best selected checkpoint) at seed 0 only;
+  no seeds 1–4 exist for either task. The best-vs-last caveat applies as on
+  CartPole: DQN's LunarLander end policy collapses to −0.78 and its MinAtar
+  end policy is 10.70. The three MinAtar AC runs early-stopped on patience at
+  81k–122k of 150k, so those are not matched-budget numbers.
 - **Acrobot (first Tier-1 transfer) is complete.**
   `datasets/rl_tasks.py` now registers `acrobot` (Acrobot-v1, success
   threshold −100 from the gymnasium reward threshold, immediate-stop target
@@ -86,20 +99,30 @@ the durable summary of where things stand and what to do next.
   A one-knob-at-a-time pass (exploration fraction 0.2; case LR 1e-2) moved
   final_eval by under 1 point, so the late-crossing pattern is not an
   exploration- or LR-schedule artifact.
-- **Key transfer finding:** on Acrobot the NN-kNN regression critic is the
-  difference-maker — every NN-kNN-critic variant solves while both MLP-critic
-  variants stay flat at −500 (the nnknn-actor + mlp-critic run starves at 85
-  actor cases because no positive advantages ever appear). But DQN beats the
-  hybrid on Acrobot, so CartPole cross-family sample-efficiency claims do not
+- **Key transfer finding (seed-0 variant battery, n=1 per variant — the
+  5-seed evidence covers only the hybrid):** at seed 0 the NN-kNN regression
+  critic is what makes the AC family work on Acrobot at all — every
+  NN-kNN-critic variant solves while both MLP-critic variants stay flat at
+  −500 (the nnknn-actor + mlp-critic run starves at 85 actor cases because no
+  positive advantages ever appear). Across 5 seeds, though, MLP-AC is
+  −416.09 ± 187.63 with a transient seed-4 crossing at 31k, so "always flat at
+  −500" is a seed-0 statement, not a 5-seed one. DQN also beats the hybrid on
+  Acrobot, so CartPole cross-family sample-efficiency claims do not
   generalize untuned.
 - **CartPole 12-configuration label-mode grid** ({NN, MLP} actor × {MLP,
   NN-fixed, NN-mutable, NN-trainable, NN-hybrid} critic + DQN + NEC, fast seed
   0): `reports/cartpole_12variant_sweep.csv` — **complete (12/12)**. Every
   configuration reaches ≥491.35 final_eval, so all actor/critic pairings
   work on CartPole. Within the NN-actor + NN-critic family the hybrid is
-  the only member that reaches 500 *and holds it* (best==last at 4,810
-  steps); fixed/mutable/trainable each peak early (7.5k–32k) then regress
-  to 235–382 — the hybrid-necessity argument on the NN-actor side. The
+  the only member that reaches 500 at all, and it gets there in 4,810 steps.
+  **Do not read its best==last as stability:** the target-score stop fired
+  immediately (2 evals, 4,810 of 150,000 steps), while fixed/mutable/trainable
+  each ran the full 150k and had 145k more steps in which to regress. The
+  identical config run to 150k with `--no-early-stopping`
+  (`results/rl/nnknn_rl_cartpole_20260801_100617_252466`) also regresses
+  (last_eval 490.9; 297–491 across seeds 0–4). The contrast with
+  fixed/mutable/trainable (last 381.8 / 330.2 / 235.4) is a difference of
+  degree at unmatched budgets. The
   MLP-actor label ablation (figure
   `reports/figures/label_mode_ev_comparison.png`) originally showed, on seed
   0 alone: trainable = fast but collapses, fixed = slow but stable, mutable =
@@ -174,9 +197,18 @@ the durable summary of where things stand and what to do next.
 ## Pending / Next Steps
 
 **All experiment tasks from the reproduction plan and the previous handoff are
-complete** (final harvest 2026-08-22; every run committed, every number in
-`reports/experiment_log.md`). Nothing is in flight. What remains is
-manuscript-facing work plus one item only the human can do.
+complete** (final harvest 2026-08-22; every number in
+`reports/experiment_log.md`). What remains is manuscript-facing work plus one
+item only the human can do.
+
+**IN FLIGHT — capacity ablation** (launched 2026-08-22 16:11; PIDs in
+`p9_pids.txt`, logs `p9_cap{100,2000}_s{0,1,2}.log`): the CartPole hybrid
+config at `--case-capacity 100` and `2000`, seeds 0–2, `--profile fast`
+(early stopping ON). The 500 arm is the profile default, already covered by
+the Gate-G1 seed batch under the same profile. Wall-clock is unbounded if an
+arm fails to early-stop; the capacity-100 arm is the likelier one to burn the
+full 150k. On completion: tabulate final_eval and wall-clock per arm (the
+retrieval-cost/performance trade-off), log, and commit the run dirs.
 
 ### Needs the human
 
@@ -203,18 +235,25 @@ long appendix (full tables, hyperparameters).
    lift: a clipped surrogate objective over the existing rollout/GAE
    machinery in `model/nnknn_rl_workflow.py`, or a repo-native CleanRL-style
    PPO alongside `model/rl_workflow.py`.
-2. **Capacity ablation** (`case_capacity` 100 / 500 / 2000 — plan knob 5,
-   never run). Doubles as the compute-cost story: it turns the wall-clock
+2. **Capacity ablation** (`case_capacity` 100 / 500 / 2000 — plan knob 5):
+   **partially launched 2026-08-22** (seeds 0–2 of the 100 and 2000 arms; see
+   IN FLIGHT above). Needs seeds 3–4 to match the 5-seed protocol used
+   elsewhere. Doubles as the compute-cost story: it turns the wall-clock
    weakness into a measured retrieval-cost/performance trade-off instead of
    an omission a reviewer finds.
-3. **Environment breadth.** Two classic-control wins plus two negative
+3. **Seeds 1–4 for the Acrobot variant battery and the new-environment
+   batteries.** Every reviewer-facing architectural claim (Acrobot
+   critic-necessity, the LunarLander/MinAtar actor reversal) currently rests
+   on a single seed per variant. This is the cheapest way to make the paper's
+   central claims defensible and arguably outranks items 1-2.
+4. **Environment breadth.** Two classic-control wins plus two negative
    transfers is a defensible but thin suite. Extending MinAtar to all five
    games is now ~10 lines of registry per game plus the standard
    4-method x 5-seed protocol.
-4. **An interpretability figure** — which stored cases activate along a
+5. **An interpretability figure** — which stored cases activate along a
    swing-up trajectory. Cheap, differentiates the CBR narrative, and ICLR
    rewards it.
-5. **Cheap rigor upgrades:** 10 seeds on the CartPole headline rows; report
+6. **Cheap rigor upgrades:** 10 seeds on the CartPole headline rows; report
    protocol *and* fresh-seed metrics side by side; a per-step timing table
    (NN-actor ~1-2.5 h vs MLP-actor minutes per 150k run).
 
@@ -224,17 +263,30 @@ long appendix (full tables, hyperparameters).
   its best checkpoint than DQN and ~21x fewer than MLP-AC at matched 150k
   budgets. Caveat: best-checkpoint-under-budget, not end-policy (14/20 runs
   regressed after best); fresh-seed reload gives 466.2 with 3/5 >= 475.
-- Acrobot: the NN-kNN critic is *necessary* — every MLP-critic variant stays
-  flat at -500, every NN-kNN-critic variant solves. Hybrid is -80.47 +/- 3.45,
-  5/5, with the "seed 1 needed 300k" qualifier. Caveat: DQN is better and
-  faster on this task (-72.94 +/- 1.40, crossing by 20-50k).
-- Label modes: on the NN-actor side hybrid is the only variant that reaches
-  and holds 500. On the MLP-actor side the modes are within seed noise
-  (trainable 499.45 +/- 1.23 vs fixed 494.25 +/- 8.03) — the EV figure is a
-  one-seed mechanism illustration, not a ranking.
-- Negative transfer: on LunarLander and MinAtar the method does not compete
-  untuned; the gain inside the AC family comes from the NN-kNN actor there,
-  reversing the Acrobot pattern. State this as a scope boundary.
+- Acrobot, matched 150k budget: DQN -72.94 +/- 1.40 (5/5, crossing -100 by
+  20-50k) vs hybrid -105.54 +/- 53.47 (4/5, crossing late at 94-146k). Given
+  seed 1 an adequate 300k budget the hybrid is -80.47 +/- 3.45, 5/5 — cite
+  that only with the "seed 1 needed 300k" qualifier and never against the
+  150k DQN number. Architectural claim (seed 0, n=1 per variant): the NN-kNN
+  critic is what makes the AC family work on Acrobot at all — every
+  MLP-critic variant stays flat at -500 at seed 0, every NN-kNN-critic
+  variant solves. Across 5 seeds MLP-AC is -416.09 +/- 187.63 with a
+  transient seed-4 crossing, so avoid the word "always".
+- Label modes: on CartPole all 12 actor/critic pairings reach >=491.35
+  final_eval, so no pairing is *necessary* on the protocol metric. Within the
+  NN-actor + NN-critic family the hybrid is the only member that reaches 500,
+  in 4,810 steps; its best==last is an early-stop artifact, not stability
+  (the same config at 150k regresses to 490.9). NN-actor + MLP-critic also
+  reaches and holds 500, at 95,898 steps. On the MLP-actor side the modes are
+  within seed noise (trainable 499.45 +/- 1.23 vs fixed 494.25 +/- 8.03) —
+  the EV figure is a one-seed mechanism illustration, not a ranking.
+- Negative transfer (seed 0 only, no seeds 1-4 on either task): on
+  LunarLander and MinAtar the method is beaten by DQN *and by NEC*, the
+  closest episodic-memory baseline (LunarLander -84.27 vs our -121; MinAtar
+  5.60 vs our 4.15). Inside the AC family the NN-kNN actor helps (~-121 vs
+  ~-230), reversing the Acrobot pattern, but both NN-actor LunarLander runs
+  peak at ~9.2k steps and then collapse (hybrid last_eval -599.22). State
+  this as a scope boundary, and do not omit the NEC comparison.
 - Reproducibility: manifests, env freeze, git-tracked run artifacts, and
   fresh-seed robustness checks are all in place and worth a short paragraph.
 
@@ -291,7 +343,9 @@ long appendix (full tables, hyperparameters).
     separately, and clears stale Adam state after per-case compaction
   - every NN-kNN-RL profile defaults to `case_capacity=500`; larger capacities
     are explicit ablations because exact retrieval becomes the dominant
-    runtime cost
+    runtime cost. `tools/run_rl_nnknn.py` gained `--case-capacity` /
+    `--critic-case-capacity` overrides (defaults unchanged); use them for
+    capacity ablations rather than editing profile defaults
   - critic reporting separates `critic_optimization_mse` from periodic
     post-update in-sample fields prefixed `critic_train_`; these diagnostics
     do not affect gradients, checkpoint selection, or early stopping and are
@@ -333,9 +387,14 @@ long appendix (full tables, hyperparameters).
   Folders ending in `_eval` hold `eval_summary.json` from checkpoint-reload
   robustness evaluations.
 - Aggregates and interpretation live in `reports/`:
-  - `reports/experiment_log.md` — chronological record (Phases 0–5 plus the
-    12-grid entry); the run manifests are the citation mechanism for seed
-    batches.
+  - `reports/experiment_log.md` — chronological record: Phases 0–5, the
+    12-grid entry, and four later entries (2026-08-21 launch, Harvest 1,
+    2026-08-22 Harvest 2 final, capacity-ablation launch) holding the
+    LunarLander/MinAtar seed-0 results, the Acrobot 300k probe, the knob pass,
+    and the label-mode 5-seed revision. Manifests are the citation mechanism
+    for the CartPole and Acrobot seed batches; **no manifest exists for the
+    new-environment batteries** (seed 0 only) — cite those by the run dirs
+    listed in the Harvest 2 entry.
   - `reports/phase4_manifest.json` / `reports/phase5_acrobot_manifest.json` —
     method × seed → run-dir maps for the two fixed-budget tables.
   - `reports/cartpole_12variant_sweep.csv` — the 12-configuration grid.
