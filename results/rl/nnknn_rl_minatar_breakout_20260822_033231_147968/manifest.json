@@ -1,0 +1,20 @@
+{
+  "created_at_utc": "2026-08-22T03:32:32.571329+00:00",
+  "algorithm": "nnknn_actor_critic_separate_memory_gae",
+  "task": "minatar_breakout",
+  "env_id": "MinAtar/Breakout-v1",
+  "profile": "fast",
+  "outputs": [
+    "config.json",
+    "training_metrics.csv",
+    "loss_metrics.csv",
+    "eval_metrics.csv",
+    "critic_holdout_metrics.csv",
+    "case_maintenance.csv",
+    "final_eval_episodes.csv",
+    "last_eval_episodes.csv",
+    "summary.json",
+    "manifest.json",
+    "checkpoint.pt"
+  ]
+}

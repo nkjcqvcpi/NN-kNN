@@ -1,0 +1,17 @@
+{
+  "created_at_utc": "2026-08-21T03:09:22.810640+00:00",
+  "task": "cartpole",
+  "env_id": "CartPole-v1",
+  "profile": "smoke",
+  "outputs": [
+    "config.json",
+    "training_metrics.csv",
+    "loss_metrics.csv",
+    "eval_metrics.csv",
+    "final_eval_episodes.csv",
+    "last_eval_episodes.csv",
+    "summary.json",
+    "manifest.json",
+    "checkpoint.pt"
+  ]
+}

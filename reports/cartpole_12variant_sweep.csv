@@ -3,8 +3,8 @@ DQN,results/rl/dqn_cartpole_20260731_162812_896944,500.0,500.0,95000,95000,targe
 NEC,results/rl/nec_cartpole_20260731_162814_251462,500.0,260.35,2056,2351,target_score,1.1
 NN actor / MLP critic,results/rl/nnknn_rl_cartpole_20260731_164130_522501,500.0,500.0,95898,95898,target_score,633.1
 NN actor / NN fixed critic,results/rl/nnknn_rl_cartpole_20260731_164130_546970,496.8,381.8,25583,150000,budget_exhausted,1026.3
-NN actor / NN mutable critic,"one of nnknn_rl_cartpole_20260820_075536_{795975,798185} (mapping known only at completion)",PENDING,,,,still running,
-NN actor / NN trainable critic,"one of nnknn_rl_cartpole_20260820_075536_{795975,798185} (mapping known only at completion)",PENDING,,,,still running,
+NN actor / NN mutable critic,results/rl/nnknn_rl_cartpole_20260820_075536_798185,495.9,330.15,7566,150000,budget_exhausted,2447.9
+NN actor / NN trainable critic,results/rl/nnknn_rl_cartpole_20260820_075536_795975,495.55,235.35,32027,150000,budget_exhausted,2431.9
 NN actor / NN hybrid critic,results/rl/nnknn_rl_cartpole_20260731_164130_755582,500.0,500.0,4810,4810,target_score,29.7
 MLP actor / MLP critic,results/rl/nnknn_rl_cartpole_20260731_164130_973567,499.45,480.7,102808,150000,budget_exhausted,24.1
 MLP actor / NN fixed critic,results/rl/nnknn_rl_cartpole_20260731_164130_544008,491.35,491.35,150000,150000,budget_exhausted,36.6
