@@ -419,10 +419,312 @@ def run_ppo_smoke() -> None:
     if torch.allclose(before, agent.actor_logstd.detach()):
         raise AssertionError("Continuous PPO update did not train the Gaussian log-std parameter.")
 
+    # The registry carries continuous tasks (datasets/rl_tasks.py), so the full
+    # registered path — task spec -> _make_env -> Gaussian head -> eval -> run
+    # dir — is covered too, not just the raw-gymnasium probe above.
+    from datasets.rl_tasks import get_rl_task_spec
+    from model.ppo_workflow import _validate_ppo_env_spaces
+    from model.rl_workflow import _make_env
+
+    for continuous_task, expected_dim in (("pendulum", 1), ("lunarlander_continuous", 2)):
+        spec = get_rl_task_spec(continuous_task)
+        registered_env = _make_env(spec, seed=0)
+        try:
+            _obs_dim, registered_action_spec = _validate_ppo_env_spaces(registered_env, spec)
+        finally:
+            registered_env.close()
+        if registered_action_spec.kind != "continuous" or registered_action_spec.dim != expected_dim:
+            raise AssertionError(f"PPO did not accept the registered continuous task '{continuous_task}'.")
+    registered_cfg = make_ppo_config(
+        "smoke",
+        seed=0,
+        total_timesteps=64,
+        rollout_length=32,
+        num_minibatches=2,
+        update_epochs=2,
+        eval_frequency=64,
+        eval_episodes=1,
+    )
+    registered_state = train_ppo("pendulum", registered_cfg, progress=False)
+    if registered_state["summary"]["action_kind"] != "continuous":
+        raise AssertionError("PPO did not record a continuous head for the pendulum task.")
+    if registered_state["action_spec"].dim != 1:
+        raise AssertionError("PPO did not build a 1-dim Gaussian head for Pendulum-v1.")
+    if registered_state["summary"]["updates"] <= 0:
+        raise AssertionError("PPO ran no updates on the registered continuous task.")
+
     print("ppo smoke ok")
     print(f"run_dir={state['run_dir']}")
+    print(f"pendulum_run_dir={registered_state['run_dir']}")
     print(f"mean_return={float(final_eval['mean_return']):.6f}")
     print(f"continuous_entropy={float(update_metrics['entropy']):.6f}")
+
+
+def run_td3_smoke() -> None:
+    from pathlib import Path as _Path
+
+    import numpy as np
+    import torch.optim as optim
+
+    from datasets.rl_tasks import get_rl_task_spec
+    from model.rl_workflow import _make_env
+    from model.td3_workflow import (
+        ALGORITHM_NAME,
+        ContinuousReplayBuffer,
+        TD3Agent,
+        _soft_update,
+        continuous_rl_task_names,
+        describe_action_space,
+        evaluate_td3,
+        load_td3_checkpoint,
+        make_td3_config,
+        require_continuous_task,
+        select_td3_action,
+        td3_update,
+        train_td3,
+    )
+
+    device = torch.device("cpu")
+
+    # -- registry: env_kwargs threading and the continuous task entries --------
+    for discrete_task in ("cartpole", "acrobot", "lunarlander", "minatar_breakout"):
+        if get_rl_task_spec(discrete_task).env_kwargs_dict() != {}:
+            raise AssertionError(
+                f"Task '{discrete_task}' predates env_kwargs and must keep an empty mapping "
+                "so its gym.make call is unchanged."
+            )
+    lunar_continuous_spec = get_rl_task_spec("lunarlander_continuous")
+    if lunar_continuous_spec.env_kwargs_dict() != {"continuous": True}:
+        raise AssertionError("lunarlander_continuous must request the continuous LunarLander variant.")
+    if lunar_continuous_spec.to_dict()["env_kwargs"] != {"continuous": True}:
+        raise AssertionError("Task env_kwargs must serialize as a mapping for config.json.")
+    pendulum_spec = get_rl_task_spec("pendulum")
+    if (pendulum_spec.success_threshold, pendulum_spec.target_mean_return) != (-200.0, -140.0):
+        raise AssertionError("Pendulum must keep its documented non-canonical success markers.")
+    if not any("NON-CANONICAL" in note for note in pendulum_spec.literature_notes):
+        raise AssertionError("Pendulum notes must flag its thresholds as non-canonical.")
+    if sorted(continuous_rl_task_names()) != ["lunarlander_continuous", "pendulum"]:
+        raise AssertionError("The continuous task list did not match the registry.")
+    for task_name, expected_action_dim in (("pendulum", 1), ("lunarlander_continuous", 2)):
+        probe_env = _make_env(get_rl_task_spec(task_name), seed=0)
+        try:
+            probe_action_spec = describe_action_space(probe_env.action_space)
+        finally:
+            probe_env.close()
+        if probe_action_spec.kind != "continuous" or probe_action_spec.dim != expected_action_dim:
+            raise AssertionError(f"Task '{task_name}' did not build a {expected_action_dim}-dim Box action space.")
+
+    # -- configuration protocol -----------------------------------------------
+    cfg = make_td3_config("smoke", seed=0)
+    if cfg.early_stopping_patience != 30 or cfg.early_stopping_min_steps != 25_000:
+        raise AssertionError("TD3 early stopping must share the repo protocol (patience 30, min steps 25k).")
+    if cfg.early_stopping or make_td3_config("gold").early_stopping:
+        raise AssertionError("smoke and gold profiles must disable early stopping.")
+    if not make_td3_config("fast").early_stopping or not make_td3_config("debug").early_stopping:
+        raise AssertionError("fast and debug profiles must enable early stopping.")
+    fast_cfg = make_td3_config("fast")
+    if (fast_cfg.tau, fast_cfg.gamma, fast_cfg.policy_frequency) != (0.005, 0.99, 2):
+        raise AssertionError("TD3 defaults must keep tau 0.005, gamma 0.99, policy frequency 2.")
+    if (fast_cfg.policy_noise, fast_cfg.noise_clip, fast_cfg.exploration_noise) != (0.2, 0.5, 0.1):
+        raise AssertionError("TD3 defaults must keep smoothing noise 0.2 clipped 0.5 and exploration noise 0.1.")
+    if fast_cfg.actor_learning_rate != fast_cfg.learning_rate:
+        raise AssertionError("The actor must follow the critic learning rate unless overridden.")
+    if make_td3_config("fast", policy_learning_rate=1e-4).actor_learning_rate != 1e-4:
+        raise AssertionError("policy_learning_rate must override the actor learning rate.")
+    for invalid_overrides in (
+        {"tau": 0.0},
+        {"tau": 1.5},
+        {"policy_frequency": 0},
+        {"train_frequency": 0},
+        {"batch_size": 0},
+        {"buffer_size": 0},
+        {"learning_starts": -1},
+        {"policy_noise": -0.1},
+        {"noise_clip": -0.1},
+        {"exploration_noise": -0.1},
+        {"policy_learning_rate": 0.0},
+        {"max_grad_norm": 0.0},
+    ):
+        try:
+            make_td3_config("smoke", **invalid_overrides)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"TD3 should reject invalid config {invalid_overrides}.")
+
+    # -- continuous-only scope -------------------------------------------------
+    require_continuous_task(pendulum_spec)
+    for discrete_task in ("cartpole", "minatar_breakout"):
+        try:
+            require_continuous_task(get_rl_task_spec(discrete_task))
+        except ValueError as exc:
+            if "continuous-control" not in str(exc):
+                raise AssertionError("TD3 must explain that it is a continuous-control algorithm.") from exc
+        else:
+            raise AssertionError(f"TD3 must refuse the discrete task '{discrete_task}'.")
+    try:
+        train_td3("cartpole", make_td3_config("smoke"), progress=False)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("train_td3 must refuse a discrete-action task before training.")
+
+    # -- replay buffer ---------------------------------------------------------
+    buffer = ContinuousReplayBuffer.create(2, 3, 2)
+    buffer.add(np.zeros(3, dtype=np.float32), np.array([0.5, -0.5], dtype=np.float32), 1.0,
+               np.ones(3, dtype=np.float32), False)
+    buffer.add(np.ones(3, dtype=np.float32), np.array([-1.0, 1.0], dtype=np.float32), 2.0,
+               np.zeros(3, dtype=np.float32), True)
+    buffer.add(np.full(3, 2.0, dtype=np.float32), np.array([0.25, 0.25], dtype=np.float32), 3.0,
+               np.zeros(3, dtype=np.float32), False)
+    if buffer.size != 2 or buffer.pos != 1:
+        raise AssertionError("The continuous replay buffer did not wrap like the DQN ring buffer.")
+    if buffer.actions.shape != (2, 2) or buffer.actions.dtype != np.float32:
+        raise AssertionError("The continuous replay buffer must store float32 action vectors.")
+    sampled = buffer.sample(4, device)
+    if sampled["actions"].shape != (4, 2) or sampled["actions"].dtype != torch.float32:
+        raise AssertionError("Sampled continuous actions have the wrong shape or dtype.")
+
+    # -- networks, twin critics, target smoothing, delayed updates -------------
+    pendulum_env = _make_env(pendulum_spec)
+    try:
+        action_spec = describe_action_space(pendulum_env.action_space)
+    finally:
+        pendulum_env.close()
+    agent = TD3Agent(3, action_spec, hidden_sizes=(16, 16)).to(device)
+    target_agent = TD3Agent(3, action_spec, hidden_sizes=(16, 16)).to(device)
+    target_agent.load_state_dict(agent.state_dict())
+    if torch.allclose(agent.qf1.network[0].weight, agent.qf2.network[0].weight):
+        raise AssertionError("The twin critics must be independently initialized.")
+    bounded_probe = agent.act(torch.randn(8, 3))
+    if bool((bounded_probe < agent.actor.action_low).any() or (bounded_probe > agent.actor.action_high).any()):
+        raise AssertionError("The tanh actor must emit actions inside the Box bounds.")
+    noisy_action = select_td3_action(agent, np.zeros(3, dtype=np.float32), exploration_noise=50.0, device=device)
+    if not (float(action_spec.low[0]) <= float(noisy_action[0]) <= float(action_spec.high[0])):
+        raise AssertionError("Exploration noise must be clipped back into the Box bounds.")
+
+    polyak_probe = TD3Agent(3, action_spec, hidden_sizes=(16, 16)).to(device)
+    with torch.no_grad():
+        for parameter in polyak_probe.parameters():
+            parameter.zero_()
+    _soft_update(polyak_probe, agent, 0.5)
+    if not torch.allclose(polyak_probe.qf1.network[0].weight, agent.qf1.network[0].weight * 0.5, atol=1e-6):
+        raise AssertionError("Target networks must Polyak-average with the configured tau.")
+
+    batch = {
+        "observations": torch.randn(8, 3),
+        "actions": torch.rand(8, 1) * 4.0 - 2.0,
+        "rewards": torch.randn(8),
+        "next_observations": torch.randn(8, 3),
+        "dones": torch.tensor([0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0]),
+    }
+    # noise_clip=0 removes target policy smoothing, so the twin-min bootstrap
+    # target is deterministic and can be checked exactly.
+    deterministic_cfg = make_td3_config("smoke", noise_clip=0.0, gamma=0.9)
+    with torch.no_grad():
+        target_actions = target_agent.act(batch["next_observations"])
+        target_q1, target_q2 = target_agent.q_values(batch["next_observations"], target_actions)
+        expected_td_target = batch["rewards"] + 0.9 * (1.0 - batch["dones"]) * torch.min(target_q1, target_q2)
+    if not torch.allclose(expected_td_target[batch["dones"] > 0], batch["rewards"][batch["dones"] > 0], atol=1e-6):
+        raise AssertionError("Terminated transitions must not bootstrap.")
+    critic_optimizer = optim.Adam(agent.critic_parameters(), lr=1e-3)
+    actor_optimizer = optim.Adam(agent.actor.parameters(), lr=1e-3)
+    target_actor_before = target_agent.actor.network[0].weight.detach().clone()
+    qf1_before = agent.qf1.network[0].weight.detach().clone()
+    qf2_before = agent.qf2.network[0].weight.detach().clone()
+    actor_before = agent.actor.network[0].weight.detach().clone()
+    delayed_metrics = td3_update(
+        agent, target_agent, critic_optimizer, actor_optimizer, deterministic_cfg, batch, update_policy=False
+    )
+    if abs(delayed_metrics["mean_td_target"] - float(expected_td_target.mean())) > 1e-5:
+        raise AssertionError("TD3 target values did not match the twin-min bootstrap with smoothing disabled.")
+    if delayed_metrics["actor_loss"] is not None or delayed_metrics["policy_updated"]:
+        raise AssertionError("A delayed step must not update the policy.")
+    if not torch.equal(agent.actor.network[0].weight.detach(), actor_before):
+        raise AssertionError("The actor must not move on a critic-only step.")
+    if not torch.equal(target_agent.actor.network[0].weight.detach(), target_actor_before):
+        raise AssertionError("Target networks must only sync on policy updates.")
+    if torch.equal(agent.qf1.network[0].weight.detach(), qf1_before) or torch.equal(
+        agent.qf2.network[0].weight.detach(), qf2_before
+    ):
+        raise AssertionError("Both critics must take a gradient step every training step.")
+    policy_metrics = td3_update(
+        agent, target_agent, critic_optimizer, actor_optimizer, deterministic_cfg, batch, update_policy=True
+    )
+    if policy_metrics["actor_loss"] is None or not policy_metrics["policy_updated"]:
+        raise AssertionError("A policy step must report its actor loss.")
+    if torch.equal(agent.actor.network[0].weight.detach(), actor_before):
+        raise AssertionError("The actor must move on a policy step.")
+    if torch.equal(target_agent.actor.network[0].weight.detach(), target_actor_before):
+        raise AssertionError("Target networks must sync on policy steps.")
+
+    # -- end-to-end smoke training --------------------------------------------
+    state = train_td3("pendulum", cfg, progress=False)
+    final_eval = state["final_eval"]
+    if final_eval["episodes"] != cfg.eval_episodes:
+        raise AssertionError("TD3 smoke evaluation did not run the configured number of episodes.")
+    if not state["checkpoint_path"].exists():
+        raise AssertionError("TD3 smoke did not write a checkpoint.")
+    summary = state["summary"]
+    if summary["algorithm"] != ALGORITHM_NAME:
+        raise AssertionError("TD3 summary did not record its algorithm name.")
+    if summary["action_kind"] != "continuous" or summary["action_dim"] != 1:
+        raise AssertionError("TD3 summary did not record the continuous action space.")
+    if summary["policy_updates"] != (summary["critic_updates"] + 1) // 2:
+        raise AssertionError("TD3 did not delay policy updates by policy_frequency=2.")
+    run_dir = _Path(state["run_dir"])
+    for artifact in (
+        "config.json",
+        "summary.json",
+        "manifest.json",
+        "eval_metrics.csv",
+        "training_metrics.csv",
+        "loss_metrics.csv",
+        "final_eval_episodes.csv",
+        "last_eval_episodes.csv",
+    ):
+        if not (run_dir / artifact).exists():
+            raise AssertionError(f"TD3 run directory is missing {artifact}.")
+
+    reloaded = load_td3_checkpoint(state["checkpoint_path"])
+    if reloaded["config"].profile != "smoke" or reloaded["action_spec"].kind != "continuous":
+        raise AssertionError("TD3 checkpoint reload did not preserve the config and action spec.")
+    if "target_model" not in reloaded:
+        raise AssertionError("TD3 checkpoint reload did not return the target networks.")
+    rng_before = torch.random.get_rng_state().clone()
+    reload_metrics = evaluate_td3("pendulum", reloaded["model"], episodes=1, seed=cfg.eval_seed,
+                                  device=reloaded["device"])
+    if reload_metrics["episodes"] != 1:
+        raise AssertionError("TD3 checkpoint reload evaluation did not run.")
+    if not torch.equal(torch.random.get_rng_state(), rng_before):
+        raise AssertionError("Deterministic TD3 evaluation must not consume the training RNG stream.")
+
+    early_cfg = make_td3_config(
+        "smoke",
+        seed=1,
+        total_timesteps=64,
+        eval_frequency=16,
+        eval_episodes=1,
+        early_stopping=True,
+        early_stopping_target_score=-1e6,
+    )
+    early_state = train_td3("pendulum", early_cfg, progress=False)
+    if early_state["summary"]["actual_timesteps"] != 16:
+        raise AssertionError("TD3 did not stop at its first target-reaching evaluation.")
+    if early_state["summary"]["early_stopping"]["stopping_reason"] != "target_score":
+        raise AssertionError("TD3 summary did not record its early-stopping reason.")
+
+    lunar_cfg = make_td3_config("smoke", seed=0, total_timesteps=64, eval_frequency=64, eval_episodes=1)
+    lunar_state = train_td3("lunarlander_continuous", lunar_cfg, progress=False)
+    if lunar_state["summary"]["action_dim"] != 2:
+        raise AssertionError("TD3 did not train the 2-dim continuous LunarLander variant.")
+    if lunar_state["summary"]["env_id"] != "LunarLander-v3":
+        raise AssertionError("lunarlander_continuous must reuse the LunarLander-v3 env id with env_kwargs.")
+
+    print("td3 smoke ok")
+    print(f"run_dir={state['run_dir']}")
+    print(f"lunarlander_continuous_run_dir={lunar_state['run_dir']}")
+    print(f"mean_return={float(final_eval['mean_return']):.6f}")
 
 
 def run_nnknn_rl_smoke() -> None:
@@ -1006,7 +1308,7 @@ def main() -> None:
     parser.add_argument(
         "--mode",
         default="imports",
-        choices=("imports", "train", "classification", "rl", "nec", "ppo", "nnknn_rl"),
+        choices=("imports", "train", "classification", "rl", "nec", "ppo", "td3", "nnknn_rl"),
         help="Choose a lightweight import check or a tiny training run.",
     )
     args = parser.parse_args()
@@ -1021,6 +1323,8 @@ def main() -> None:
         run_nec_smoke()
     elif args.mode == "ppo":
         run_ppo_smoke()
+    elif args.mode == "td3":
+        run_td3_smoke()
     elif args.mode == "nnknn_rl":
         run_nnknn_rl_smoke()
     else:

@@ -320,6 +320,10 @@ def _require_gymnasium() -> Any:
 
 def _make_env(spec: RLTaskSpec, seed: int | None = None) -> Any:
     gym = _require_gymnasium()
+    # Task-level constructor arguments (e.g. LunarLander's continuous=True).
+    # Empty for every task that does not declare them, so the `gym.make` call
+    # is unchanged for the tasks that predate `RLTaskSpec.env_kwargs`.
+    env_kwargs = spec.env_kwargs_dict()
     if spec.env_id.startswith("MinAtar/"):
         # MinAtar ships gymnasium bindings but does not auto-register them,
         # and its registrations carry no episode cap.
@@ -327,9 +331,9 @@ def _make_env(spec: RLTaskSpec, seed: int | None = None) -> Any:
             import minatar.gym as _minatar_gym
 
             _minatar_gym.register_envs()
-        env = gym.make(spec.env_id, max_episode_steps=spec.max_episode_steps)
+        env = gym.make(spec.env_id, max_episode_steps=spec.max_episode_steps, **env_kwargs)
     else:
-        env = gym.make(spec.env_id)
+        env = gym.make(spec.env_id, **env_kwargs)
     if len(env.observation_space.shape) != 1:
         # Grid observations (e.g. MinAtar HxWxC binary planes) flatten to the
         # 1-D Box the repo's flat workflows expect.
