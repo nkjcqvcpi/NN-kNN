@@ -197,6 +197,234 @@ def run_nec_smoke() -> None:
     print(f"mean_return={float(final_eval['mean_return']):.6f}")
 
 
+def run_ppo_smoke() -> None:
+    from pathlib import Path as _Path
+
+    import numpy as np
+    import torch.optim as optim
+
+    from model.ppo_workflow import (
+        ALGORITHM_NAME,
+        ActionSpaceSpec,
+        PPOAgent,
+        compute_gae,
+        describe_action_space,
+        evaluate_ppo,
+        load_ppo_checkpoint,
+        make_ppo_config,
+        ppo_update,
+        resolve_task_action_kind,
+        train_ppo,
+    )
+
+    cfg = make_ppo_config("smoke", seed=0)
+    if cfg.early_stopping_patience != 30 or cfg.early_stopping_min_steps != 25_000:
+        raise AssertionError("PPO early stopping must share the repo protocol (patience 30, min steps 25k).")
+    if cfg.early_stopping or make_ppo_config("gold").early_stopping:
+        raise AssertionError("smoke and gold profiles must disable early stopping.")
+    if not make_ppo_config("fast").early_stopping or not make_ppo_config("debug").early_stopping:
+        raise AssertionError("fast and debug profiles must enable early stopping.")
+    fast_cfg = make_ppo_config("fast")
+    if (fast_cfg.clip_coef, fast_cfg.gae_lambda, fast_cfg.gamma) != (0.2, 0.95, 0.99):
+        raise AssertionError("PPO defaults must keep clip 0.2, GAE lambda 0.95, gamma 0.99.")
+    if (fast_cfg.ent_coef, fast_cfg.vf_coef, fast_cfg.max_grad_norm) != (0.01, 0.5, 0.5):
+        raise AssertionError("PPO defaults must keep entropy 0.01, value 0.5, grad-norm clip 0.5.")
+
+    # The PPO GAE helper must agree with the NN-kNN-RL convention, including
+    # the episode-boundary mask that stops traces leaking across episodes.
+    from model.nnknn_rl_workflow import compute_gae as nnknn_compute_gae
+
+    gae_kwargs = dict(
+        rewards=[1.0, 1.0, 1.0, 1.0],
+        values=[0.5, 0.25, 0.75, 0.5],
+        next_values=[0.25, 0.75, 0.5, 0.0],
+        terminated=[False, True, False, False],
+        episode_boundaries=[False, True, False, True],
+        gamma=0.99,
+        gae_lambda=0.95,
+    )
+    ppo_advantages, ppo_targets = compute_gae(**gae_kwargs)
+    reference_advantages, reference_targets = nnknn_compute_gae(**gae_kwargs)
+    if not torch.allclose(ppo_advantages, reference_advantages, atol=1e-6):
+        raise AssertionError("PPO GAE does not match the NN-kNN-RL advantage convention.")
+    if not torch.allclose(ppo_targets, reference_targets, atol=1e-6):
+        raise AssertionError("PPO GAE does not match the NN-kNN-RL value-target convention.")
+    boundary_advantages, _ = compute_gae(
+        rewards=[1.0, 1.0],
+        values=[0.0, 0.0],
+        next_values=[0.0, 0.0],
+        terminated=[False, True],
+        episode_boundaries=[True, True],
+        gamma=0.99,
+        gae_lambda=0.95,
+    )
+    if not torch.allclose(boundary_advantages, torch.tensor([1.0, 1.0]), atol=1e-5):
+        raise AssertionError("PPO GAE leaked advantage across an episode boundary.")
+
+    if resolve_task_action_kind("discrete") != "discrete" or resolve_task_action_kind("continuous") != "continuous":
+        raise AssertionError("PPO did not resolve task action kinds.")
+
+    state = train_ppo("cartpole", cfg, progress=False)
+    final_eval = state["final_eval"]
+    if final_eval["episodes"] != cfg.eval_episodes:
+        raise AssertionError("PPO smoke evaluation did not run the configured number of episodes.")
+    if not state["checkpoint_path"].exists():
+        raise AssertionError("PPO smoke did not write a checkpoint.")
+    if state["summary"]["algorithm"] != ALGORITHM_NAME:
+        raise AssertionError("PPO summary did not record its algorithm name.")
+    if state["summary"]["updates"] <= 0:
+        raise AssertionError("PPO smoke ran no policy updates.")
+    run_dir = _Path(state["run_dir"])
+    for artifact in (
+        "config.json",
+        "summary.json",
+        "manifest.json",
+        "eval_metrics.csv",
+        "training_metrics.csv",
+        "loss_metrics.csv",
+        "final_eval_episodes.csv",
+        "last_eval_episodes.csv",
+    ):
+        if not (run_dir / artifact).exists():
+            raise AssertionError(f"PPO run directory is missing {artifact}.")
+
+    reloaded = load_ppo_checkpoint(state["checkpoint_path"])
+    if reloaded["config"].profile != "smoke" or reloaded["action_spec"].kind != "discrete":
+        raise AssertionError("PPO checkpoint reload did not preserve the config and action spec.")
+    reload_metrics = evaluate_ppo(
+        "cartpole",
+        reloaded["model"],
+        episodes=1,
+        seed=cfg.eval_seed,
+        device=reloaded["device"],
+    )
+    if reload_metrics["episodes"] != 1:
+        raise AssertionError("PPO checkpoint reload evaluation did not run.")
+
+    early_cfg = make_ppo_config(
+        "smoke",
+        seed=1,
+        total_timesteps=64,
+        rollout_length=32,
+        eval_frequency=16,
+        eval_episodes=1,
+        early_stopping=True,
+        early_stopping_target_score=0.0,
+    )
+    early_state = train_ppo("cartpole", early_cfg, progress=False)
+    if early_state["summary"]["actual_timesteps"] != 16:
+        raise AssertionError("PPO did not stop at its first target-reaching evaluation.")
+    if early_state["summary"]["early_stopping"]["stopping_reason"] != "target_score":
+        raise AssertionError("PPO summary did not record its early-stopping reason.")
+    if early_state["summary"]["updates"] != 1:
+        raise AssertionError("PPO did not train the final partial rollout before stopping.")
+
+    # Continuous (diagonal Gaussian) head. Pendulum-v1 is exercised straight
+    # through gymnasium so the continuous path is covered without adding an
+    # unregistered task to datasets/rl_tasks.py.
+    import gymnasium as gym
+
+    continuous_env = gym.make("Pendulum-v1")
+    continuous_env.action_space.seed(0)
+    action_spec = describe_action_space(continuous_env.action_space)
+    if action_spec.kind != "continuous" or action_spec.dim != 1:
+        raise AssertionError("PPO did not describe the Pendulum Box action space.")
+    if action_spec != ActionSpaceSpec.from_dict(action_spec.to_dict()):
+        raise AssertionError("PPO action-space spec did not round-trip through its dict form.")
+    if describe_action_space(gym.spaces.Discrete(3)).kind != "discrete":
+        raise AssertionError("PPO did not describe a Discrete action space.")
+
+    obs_dim = int(np.prod(continuous_env.observation_space.shape))
+    continuous_cfg = make_ppo_config(
+        "smoke",
+        seed=0,
+        rollout_length=32,
+        num_minibatches=2,
+        update_epochs=2,
+    )
+    device = torch.device("cpu")
+    agent = PPOAgent(
+        obs_dim,
+        action_spec,
+        hidden_sizes=continuous_cfg.hidden_sizes,
+        log_std_init=continuous_cfg.log_std_init,
+    ).to(device)
+    if not agent.is_continuous:
+        raise AssertionError("PPO agent did not select the continuous policy head.")
+
+    observations: list[np.ndarray] = []
+    next_observations: list[np.ndarray] = []
+    actions: list[np.ndarray] = []
+    log_probs: list[float] = []
+    rewards: list[float] = []
+    terminated_flags: list[bool] = []
+    boundaries: list[bool] = []
+    obs, _ = continuous_env.reset(seed=0)
+    try:
+        for _ in range(continuous_cfg.rollout_length):
+            obs_array = np.asarray(obs, dtype=np.float32)
+            obs_tensor = torch.as_tensor(obs_array, dtype=torch.float32, device=device).unsqueeze(0)
+            with torch.no_grad():
+                action, log_prob, value = agent.act(obs_tensor)
+            if action.shape != (1, 1) or log_prob.shape != (1,) or value.shape != (1,):
+                raise AssertionError("Continuous PPO head returned unexpected sample shapes.")
+            env_action = agent.env_action(action)
+            if env_action.shape != (1,):
+                raise AssertionError("Continuous PPO env action has the wrong shape.")
+            if not continuous_env.action_space.contains(env_action):
+                raise AssertionError("Continuous PPO env action was not clipped into the Box bounds.")
+            next_obs, reward, term, trunc, _ = continuous_env.step(env_action)
+            observations.append(obs_array)
+            next_observations.append(np.asarray(next_obs, dtype=np.float32))
+            actions.append(action.view(-1).numpy().astype(np.float32))
+            log_probs.append(float(log_prob.view(-1)[0].item()))
+            rewards.append(float(reward))
+            terminated_flags.append(bool(term))
+            boundaries.append(bool(term or trunc))
+            obs = next_obs if not (term or trunc) else continuous_env.reset(seed=1)[0]
+    finally:
+        continuous_env.close()
+
+    out_of_bounds = torch.tensor([[5.0]], dtype=torch.float32)
+    if float(agent.env_action(out_of_bounds)[0]) != float(action_spec.high[0]):
+        raise AssertionError("Continuous PPO actions are clipped to the Box bounds, not squashed.")
+    probe_obs = torch.as_tensor(np.asarray(observations[:2], dtype=np.float32), dtype=torch.float32)
+    with torch.no_grad():
+        deterministic_action, _, _ = agent.act(probe_obs, deterministic=True)
+        distribution_mean = agent.policy_distribution(probe_obs).base_dist.loc
+    if not torch.allclose(deterministic_action, distribution_mean, atol=1e-6):
+        raise AssertionError("Deterministic continuous evaluation must use the Gaussian mean.")
+
+    optimizer = optim.Adam(agent.parameters(), lr=continuous_cfg.learning_rate, eps=1e-5)
+    before = agent.actor_logstd.detach().clone()
+    update_metrics = ppo_update(
+        agent,
+        optimizer,
+        continuous_cfg,
+        observations=np.asarray(observations, dtype=np.float32),
+        next_observations=np.asarray(next_observations, dtype=np.float32),
+        actions=np.asarray(actions, dtype=np.float32),
+        log_probs=np.asarray(log_probs, dtype=np.float32),
+        rewards=np.asarray(rewards, dtype=np.float32),
+        terminated=np.asarray(terminated_flags, dtype=bool),
+        episode_boundaries=np.asarray(boundaries, dtype=bool),
+        device=device,
+    )
+    if update_metrics["rollout_steps"] != continuous_cfg.rollout_length:
+        raise AssertionError("Continuous PPO update did not consume the whole rollout.")
+    if update_metrics["minibatch_updates"] <= 0:
+        raise AssertionError("Continuous PPO update ran no minibatch steps.")
+    if not np.isfinite(update_metrics["policy_loss"]) or not np.isfinite(update_metrics["value_loss"]):
+        raise AssertionError("Continuous PPO update produced non-finite losses.")
+    if torch.allclose(before, agent.actor_logstd.detach()):
+        raise AssertionError("Continuous PPO update did not train the Gaussian log-std parameter.")
+
+    print("ppo smoke ok")
+    print(f"run_dir={state['run_dir']}")
+    print(f"mean_return={float(final_eval['mean_return']):.6f}")
+    print(f"continuous_entropy={float(update_metrics['entropy']):.6f}")
+
+
 def run_nnknn_rl_smoke() -> None:
     from model.nnknn_rl_workflow import (
         ALGORITHM_NAME,
@@ -778,7 +1006,7 @@ def main() -> None:
     parser.add_argument(
         "--mode",
         default="imports",
-        choices=("imports", "train", "classification", "rl", "nec", "nnknn_rl"),
+        choices=("imports", "train", "classification", "rl", "nec", "ppo", "nnknn_rl"),
         help="Choose a lightweight import check or a tiny training run.",
     )
     args = parser.parse_args()
@@ -791,6 +1019,8 @@ def main() -> None:
         run_rl_smoke()
     elif args.mode == "nec":
         run_nec_smoke()
+    elif args.mode == "ppo":
+        run_ppo_smoke()
     elif args.mode == "nnknn_rl":
         run_nnknn_rl_smoke()
     else:
