@@ -1303,12 +1303,313 @@ def run_nnknn_rl_smoke() -> None:
     print(f"mean_return={float(final_eval['mean_return']):.6f}")
 
 
+def run_ale_smoke() -> None:
+    """Cover the ALE image-observation path end to end.
+
+    Checks the registry contract for the ALE/MinAtar entries added in
+    NEXT_STEPS_PLAN.md I-3, the shared AtariPreprocessing + FrameStackObservation
+    pipeline, the Nature-CNN encoder, and one tiny training run per workflow
+    (DQN, NEC, PPO, NN-kNN-RL) on `ale_pong`.
+    """
+
+    from pathlib import Path as _Path
+
+    import numpy as np
+
+    from datasets.rl_tasks import get_rl_task_spec, list_supported_rl_tasks
+    from model.cnn_encoders import NATURE_CNN_FEATURE_DIM, NatureCNNEncoder
+    from model.nec_workflow import (
+        AtariNECEmbeddingNetwork,
+        build_nec_embedding_network,
+        load_nec_checkpoint,
+        make_nec_config,
+        train_nec,
+    )
+    from model.nnknn_rl_workflow import (
+        NNKNNPolicyNetwork,
+        NNKNNValueNetwork,
+        load_nnknn_rl_checkpoint,
+        make_nnknn_rl_config,
+        train_nnknn_rl,
+    )
+    from model.ppo_workflow import load_ppo_checkpoint, make_ppo_config, train_ppo
+    from model.rl_workflow import (
+        AtariDQNNetwork,
+        IMAGE_TASK_EVAL_EPISODES,
+        ReplayBuffer,
+        _make_env,
+        build_q_network,
+        describe_observation_space,
+        load_dqn_checkpoint,
+        make_dqn_config,
+        resolve_env_spaces,
+        resolve_image_task_eval_episodes,
+        train_dqn,
+    )
+
+    # -- registry contract -----------------------------------------------------
+    tasks = list_supported_rl_tasks()
+    if sorted(tasks.get("ale", [])) != ["ale_breakout", "ale_pong"]:
+        raise AssertionError("The ALE family must register exactly ale_pong and ale_breakout.")
+    expected_minatar = [
+        "minatar_asterix",
+        "minatar_breakout",
+        "minatar_freeway",
+        "minatar_seaquest",
+        "minatar_space_invaders",
+    ]
+    if sorted(tasks.get("minatar", [])) != expected_minatar:
+        raise AssertionError("All five MinAtar games must be registered.")
+    for name, env_id, success, target in (
+        ("ale_pong", "ALE/Pong-v5", 0.0, 18.0),
+        ("ale_breakout", "ALE/Breakout-v5", 20.0, 100.0),
+    ):
+        spec = get_rl_task_spec(name)
+        if spec.env_id != env_id or spec.observation_kind != "image_atari":
+            raise AssertionError(f"{name} must map to {env_id} with image observations.")
+        if not spec.is_image_observation:
+            raise AssertionError(f"{name} must report is_image_observation.")
+        if spec.success_threshold != success or spec.target_mean_return != target:
+            raise AssertionError(f"{name} success protocol drifted from the registered markers.")
+        notes = " ".join(spec.literature_notes).upper()
+        if "NON-CANONICAL" not in notes:
+            raise AssertionError(f"{name} must document its markers as NON-CANONICAL.")
+        if "POST-FRAMESKIP" not in notes:
+            raise AssertionError(f"{name} must document that timesteps count post-frameskip steps.")
+    for name, success, target in (
+        ("minatar_asterix", 10.0, 50.0),
+        ("minatar_freeway", 25.0, 60.0),
+        ("minatar_seaquest", 5.0, 50.0),
+        ("minatar_space_invaders", 20.0, 100.0),
+    ):
+        spec = get_rl_task_spec(name)
+        if spec.success_threshold != success or spec.target_mean_return != target:
+            raise AssertionError(f"{name} success protocol drifted from the registered markers.")
+        if "NON-CANONICAL" not in " ".join(spec.literature_notes).upper():
+            raise AssertionError(f"{name} must document its markers as NON-CANONICAL.")
+        if spec.is_image_observation:
+            raise AssertionError("MinAtar games run on the flat observation path.")
+
+    # -- shared env pipeline ---------------------------------------------------
+    pong_spec = get_rl_task_spec("ale_pong")
+    env = _make_env(pong_spec, seed=0)
+    try:
+        obs_spec, action_dim = resolve_env_spaces(env, pong_spec)
+        if obs_spec.shape != (4, 84, 84):
+            raise AssertionError(f"ALE pipeline must yield 4x84x84 frames, got {obs_spec.shape}.")
+        if obs_spec.numpy_dtype != "uint8" or obs_spec.dim != 4 * 84 * 84:
+            raise AssertionError("ALE observations must be described as uint8 with a 28224 flat size.")
+        if not obs_spec.is_image:
+            raise AssertionError("ALE observation spec must report is_image.")
+        if action_dim != 6:
+            raise AssertionError(f"ALE/Pong-v5 exposes 6 minimal actions, got {action_dim}.")
+        wrapper_names = []
+        probe = env
+        while hasattr(probe, "env"):
+            wrapper_names.append(type(probe).__name__)
+            probe = probe.env
+        if "FrameStackObservation" not in wrapper_names or "AtariPreprocessing" not in wrapper_names:
+            raise AssertionError(f"ALE pipeline is missing its wrappers: {wrapper_names}.")
+        # The episode cap must be denominated in POST-frameskip agent steps.
+        # A gymnasium TimeLimit on the frameskip=1 base env would count emulator
+        # frames and cut episodes four times too early, so the ALE's own
+        # max_num_frames_per_episode carries the cap instead.
+        from model.rl_workflow import ATARI_FRAME_SKIP
+
+        ale_kwargs = env.unwrapped.spec.kwargs
+        if ale_kwargs.get("frameskip") != 1:
+            raise AssertionError("The ALE base env must be built with frameskip=1 for AtariPreprocessing.")
+        expected_frames = int(pong_spec.max_episode_steps) * ATARI_FRAME_SKIP
+        if ale_kwargs.get("max_num_frames_per_episode") != expected_frames:
+            raise AssertionError(
+                "The ALE frame budget must be max_episode_steps * frame_skip, got "
+                f"{ale_kwargs.get('max_num_frames_per_episode')} instead of {expected_frames}."
+            )
+        if "TimeLimit" in wrapper_names:
+            raise AssertionError("A TimeLimit on the frameskip=1 base env would cap episodes four times early.")
+        obs, _ = env.reset(seed=0)
+        if np.asarray(obs).dtype != np.uint8:
+            raise AssertionError("Stacked ALE frames must stay uint8.")
+        if describe_observation_space(env, pong_spec) != obs_spec:
+            raise AssertionError("describe_observation_space must be deterministic for one env.")
+    finally:
+        env.close()
+
+    # -- Nature-CNN encoder ----------------------------------------------------
+    encoder = NatureCNNEncoder((4, 84, 84))
+    if encoder.conv_output_dim != 3136 or encoder.feature_dim != NATURE_CNN_FEATURE_DIM:
+        raise AssertionError("Nature CNN must flatten 3136 conv features into a 512-d vector.")
+    conv_layers = [layer for layer in encoder.conv if isinstance(layer, torch.nn.Conv2d)]
+    expected_conv = [(4, 32, 8, 4), (32, 64, 4, 2), (64, 64, 3, 1)]
+    actual_conv = [
+        (layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.stride[0]) for layer in conv_layers
+    ]
+    if actual_conv != expected_conv:
+        raise AssertionError(f"Nature CNN layer stack drifted: {actual_conv}.")
+    frames = torch.randint(0, 256, (3, 4, 84, 84), dtype=torch.uint8)
+    with torch.no_grad():
+        batched = encoder(frames)
+        single = encoder(frames[0])
+        as_float = encoder(frames.float())
+    if batched.shape != (3, 512) or single.shape != (1, 512):
+        raise AssertionError("Nature CNN must accept batched and single observations.")
+    if not torch.allclose(batched[:1], single, atol=1e-6):
+        raise AssertionError("Single-observation encoding must match its batched counterpart.")
+    if not torch.allclose(batched, as_float, atol=1e-6):
+        raise AssertionError("uint8 and float32 frames on the 0-255 scale must encode identically.")
+    if float(batched.min().item()) < 0.0:
+        raise AssertionError("The Nature CNN encoder ends in a ReLU, so features must be non-negative.")
+    try:
+        NatureCNNEncoder((4, 84))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Nature CNN must reject non-(C, H, W) observation shapes.")
+
+    # -- replay buffer keeps frames in uint8 ----------------------------------
+    buffer = ReplayBuffer.create_for_observation(4, obs_spec)
+    if buffer.observations.dtype != np.uint8 or buffer.observations.shape != (4, 4, 84, 84):
+        raise AssertionError("Image replay buffers must store uint8 frame stacks.")
+    frame = np.full((4, 84, 84), 7, dtype=np.uint8)
+    buffer.add(frame, 1, 0.5, frame, False)
+    batch = buffer.sample(2, torch.device("cpu"))
+    if batch["observations"].dtype != torch.float32:
+        raise AssertionError("Sampled image observations must be cast to float32.")
+    if float(batch["observations"].max().item()) != 7.0:
+        raise AssertionError("Sampled image observations must stay on the raw 0-255 scale.")
+
+    # -- per-workflow network selection ---------------------------------------
+    if not isinstance(build_q_network(obs_spec, action_dim), AtariDQNNetwork):
+        raise AssertionError("DQN must select the CNN Q-network for image tasks.")
+    if not isinstance(build_nec_embedding_network(obs_spec, 32), AtariNECEmbeddingNetwork):
+        raise AssertionError("NEC must select the CNN embedding network for image tasks.")
+    nnknn_actor = NNKNNPolicyNetwork(obs_spec, action_dim, case_capacity=8)
+    if nnknn_actor.nnknn_model.cases.shape != (8, 4, 84, 84):
+        raise AssertionError("The NN-kNN actor case store must hold raw stacked frames.")
+    if nnknn_actor.nnknn_model.feature_extractor is None:
+        raise AssertionError("The NN-kNN actor must attach a CNN feature extractor on image tasks.")
+    if nnknn_actor.case_feature_dim != NATURE_CNN_FEATURE_DIM:
+        raise AssertionError("NN-kNN case distances must be measured in the 512-d CNN feature space.")
+    if nnknn_actor.nnknn_model.glocal_weightor.feature_dim != NATURE_CNN_FEATURE_DIM:
+        raise AssertionError("The glocal feature weightor must be sized to the CNN feature dim.")
+    nnknn_critic = NNKNNValueNetwork(obs_spec, case_capacity=8)
+    if nnknn_critic.nnknn_model.cases.shape != (8, 4, 84, 84):
+        raise AssertionError("The NN-kNN critic case store must hold raw stacked frames.")
+
+    # -- task-aware eval-episode cap ------------------------------------------
+    if resolve_image_task_eval_episodes(pong_spec, 20) != IMAGE_TASK_EVAL_EPISODES:
+        raise AssertionError("Image tasks must cap eval episodes.")
+    if resolve_image_task_eval_episodes(pong_spec, 2) != 2:
+        raise AssertionError("The image eval cap must never raise a smaller profile default.")
+    if resolve_image_task_eval_episodes(get_rl_task_spec("cartpole"), 20) != 20:
+        raise AssertionError("Flat tasks must keep their profile eval-episode count.")
+
+    # -- tiny end-to-end runs --------------------------------------------------
+    dqn_cfg = make_dqn_config("smoke", seed=0, total_timesteps=32, eval_frequency=0, eval_episodes=1)
+    dqn_state = train_dqn("ale_pong", dqn_cfg, progress=False)
+    if not isinstance(dqn_state["model"], AtariDQNNetwork):
+        raise AssertionError("The DQN ALE run did not build a CNN Q-network.")
+    dqn_run_dir = _Path(dqn_state["run_dir"])
+    for artifact in (
+        "config.json",
+        "summary.json",
+        "eval_metrics.csv",
+        "final_eval_episodes.csv",
+        "manifest.json",
+        "checkpoint.pt",
+    ):
+        if not (dqn_run_dir / artifact).exists():
+            raise AssertionError(f"The DQN ALE run did not write {artifact}.")
+    import json as _json
+
+    recorded = _json.loads((dqn_run_dir / "config.json").read_text())["observation"]
+    if recorded["kind"] != "image_atari" or recorded["shape"] != [4, 84, 84]:
+        raise AssertionError("config.json must record the resolved image observation spec.")
+    reloaded = load_dqn_checkpoint(dqn_state["checkpoint_path"])
+    if not isinstance(reloaded["model"], AtariDQNNetwork):
+        raise AssertionError("Reloading an ALE DQN checkpoint must rebuild the CNN Q-network.")
+
+    nec_cfg = make_nec_config(
+        "smoke",
+        seed=0,
+        total_timesteps=32,
+        eval_frequency=0,
+        eval_episode_frequency=0,
+        eval_episodes=1,
+    )
+    nec_state = train_nec("ale_pong", nec_cfg, progress=False)
+    if not isinstance(nec_state["model"], AtariNECEmbeddingNetwork):
+        raise AssertionError("The NEC ALE run did not build a CNN embedding network.")
+    if nec_state["dnd"].observation_dim is not None:
+        raise AssertionError("The NEC DND must not store raw frames for image tasks.")
+    if not isinstance(load_nec_checkpoint(nec_state["checkpoint_path"])["model"], AtariNECEmbeddingNetwork):
+        raise AssertionError("Reloading an ALE NEC checkpoint must rebuild the CNN embedding network.")
+
+    ppo_cfg = make_ppo_config(
+        "smoke",
+        seed=0,
+        total_timesteps=32,
+        rollout_length=16,
+        num_minibatches=2,
+        update_epochs=1,
+        eval_frequency=0,
+        eval_episodes=1,
+    )
+    ppo_state = train_ppo("ale_pong", ppo_cfg, progress=False)
+    if not ppo_state["agent"].is_image_observation:
+        raise AssertionError("The PPO ALE run did not build an image agent.")
+    ppo_trunk = _json.loads((_Path(ppo_state["run_dir"]) / "config.json").read_text())["ppo"]["trunk"]
+    if ppo_trunk != "nature_cnn_separate_actor_critic":
+        raise AssertionError("PPO must record its Nature-CNN trunk in config.json.")
+    if not load_ppo_checkpoint(ppo_state["checkpoint_path"])["agent"].is_image_observation:
+        raise AssertionError("Reloading an ALE PPO checkpoint must rebuild the CNN trunks.")
+
+    nnknn_cfg = make_nnknn_rl_config(
+        "smoke",
+        seed=0,
+        total_timesteps=32,
+        case_capacity=32,
+        critic_type="nnknn",
+        critic_mutable_value_labels=True,
+        critic_trainable_value_labels=True,
+        eval_episodes=1,
+    )
+    nnknn_state = train_nnknn_rl("ale_pong", nnknn_cfg, progress=False)
+    actor = nnknn_state["model"]
+    critic = nnknn_state["value_model"]
+    if not isinstance(actor, NNKNNPolicyNetwork) or not isinstance(critic, NNKNNValueNetwork):
+        raise AssertionError("The NN-kNN-RL ALE hybrid run did not build NN-kNN actor and critic.")
+    if actor.nnknn_model.feature_extractor is not critic.nnknn_model.feature_extractor:
+        raise AssertionError("share_nnknn_representation must share ONE CNN trunk across actor and critic.")
+    if actor.nnknn_model.labels is critic.nnknn_model.labels:
+        raise AssertionError("Actor and critic case memories must stay separate.")
+    if nnknn_state["summary"]["critic_case_entries"] <= 0:
+        raise AssertionError("The NN-kNN-RL ALE run inserted no critic value cases.")
+    if not isinstance(
+        load_nnknn_rl_checkpoint(nnknn_state["checkpoint_path"])["model"], NNKNNPolicyNetwork
+    ):
+        raise AssertionError("Reloading an ALE NN-kNN-RL checkpoint must rebuild the NN-kNN actor.")
+
+    # -- one new MinAtar game on the flat path --------------------------------
+    minatar_cfg = make_dqn_config("smoke", seed=0, total_timesteps=32, eval_frequency=0, eval_episodes=1)
+    minatar_state = train_dqn("minatar_freeway", minatar_cfg, progress=False)
+    if minatar_state["final_eval"]["episodes"] != 1:
+        raise AssertionError("The MinAtar Freeway smoke did not run its configured evaluation.")
+
+    print("ale smoke ok")
+    print(f"dqn_run_dir={dqn_state['run_dir']}")
+    print(f"nec_run_dir={nec_state['run_dir']}")
+    print(f"ppo_run_dir={ppo_state['run_dir']}")
+    print(f"nnknn_run_dir={nnknn_state['run_dir']}")
+    print(f"minatar_run_dir={minatar_state['run_dir']}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Smoke checks for Codex cloud environments.")
     parser.add_argument(
         "--mode",
         default="imports",
-        choices=("imports", "train", "classification", "rl", "nec", "ppo", "td3", "nnknn_rl"),
+        choices=("imports", "train", "classification", "rl", "nec", "ppo", "td3", "nnknn_rl", "ale"),
         help="Choose a lightweight import check or a tiny training run.",
     )
     args = parser.parse_args()
@@ -1327,6 +1628,8 @@ def main() -> None:
         run_td3_smoke()
     elif args.mode == "nnknn_rl":
         run_nnknn_rl_smoke()
+    elif args.mode == "ale":
+        run_ale_smoke()
     else:
         run_import_smoke()
 

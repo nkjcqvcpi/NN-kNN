@@ -19,6 +19,7 @@ from model.nnknn_rl_workflow import (  # noqa: E402
     make_nnknn_rl_output_dir,
     train_nnknn_rl,
 )
+from model.rl_workflow import resolve_image_task_eval_episodes  # noqa: E402
 
 
 def _optional_float_arg(value: str) -> float | None:
@@ -202,7 +203,20 @@ def _config_from_args(args: argparse.Namespace) -> NNKNNRLConfig:
     if args.critic_target_ema_tau is not None:
         overrides["critic_target_ema_tau"] = args.critic_target_ema_tau
     _apply_task_success_defaults(args, overrides)
+    _apply_task_eval_defaults(args, overrides)
     return make_nnknn_rl_config(args.profile, **overrides)
+
+
+def _apply_task_eval_defaults(args: argparse.Namespace, overrides: dict) -> None:
+    """Lower `eval_episodes` for image (ALE) tasks unless the user set it."""
+
+    if args.eval_episodes is not None:
+        return
+    spec = get_rl_task_spec(args.task)
+    if not spec.is_image_observation:
+        return
+    profile_default = make_nnknn_rl_config(args.profile).eval_episodes
+    overrides["eval_episodes"] = resolve_image_task_eval_episodes(spec, profile_default)
 
 
 def _apply_task_success_defaults(args: argparse.Namespace, overrides: dict) -> None:
