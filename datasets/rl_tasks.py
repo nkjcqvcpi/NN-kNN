@@ -110,6 +110,106 @@ _RL_TASKS: dict[str, RLTaskSpec] = {
         target_mean_return=50.0,
     ),
     # ---------------------------------------------------------------------
+    # Remaining MinAtar games (NEXT_STEPS_PLAN.md I-3 / HANDOFF item 4).
+    #
+    # SCOPE NOTE: MinAtar defines NO canonical solve threshold for any of its
+    # five games, so every `success_threshold` below is a repo-internal
+    # NON-CANONICAL progress marker and every `target_mean_return` is set out
+    # of realistic reach so patience-based early stopping governs instead of
+    # immediate target-score stopping. Reference points come from the MinAtar
+    # paper (Young & Tian, 2019) and its DQN/AC baselines at millions of
+    # frames; do not report these numbers as "solved" criteria. All five games
+    # expose 10x10xC binary planes that the shared `_make_env` flattens to a
+    # 100*C vector, so they run on the flat MLP path like `minatar_breakout`.
+    # ---------------------------------------------------------------------
+    "minatar_asterix": RLTaskSpec(
+        name="minatar_asterix",
+        env_id="MinAtar/Asterix-v1",
+        family="minatar",
+        observation_kind="flat_box",
+        action_kind="discrete",
+        max_episode_steps=5000,
+        default_profile="fast",
+        literature_notes=(
+            "MinAtar Asterix with the minimal action set; 10x10x4 binary planes",
+            "flattened to a 400-dim vector by the shared env wrapper (5 actions).",
+            "Dodge-and-collect game: reward +1 per treasure, episode ends on an",
+            "enemy collision, and spawn rate ramps up over time.",
+            "NON-CANONICAL: MinAtar publishes no solve threshold.",
+            "success_threshold=10 is a repo progress marker (MinAtar-paper DQN",
+            "reaches roughly 15-20 at millions of frames); target_mean_return=50",
+            "is deliberately out of reach so patience-based early stopping governs.",
+        ),
+        success_threshold=10.0,
+        target_mean_return=50.0,
+    ),
+    "minatar_freeway": RLTaskSpec(
+        name="minatar_freeway",
+        env_id="MinAtar/Freeway-v1",
+        family="minatar",
+        observation_kind="flat_box",
+        action_kind="discrete",
+        max_episode_steps=5000,
+        default_profile="fast",
+        literature_notes=(
+            "MinAtar Freeway with the minimal action set; 10x10x7 binary planes",
+            "flattened to a 700-dim vector by the shared env wrapper (3 actions).",
+            "Fixed-length crossing game: reward +1 per successful crossing and the",
+            "episode always runs to the internal 2500-frame timer, so returns are",
+            "dense and bounded rather than survival-driven.",
+            "NON-CANONICAL: MinAtar publishes no solve threshold.",
+            "success_threshold=25 is a repo progress marker (MinAtar-paper DQN",
+            "reaches roughly 50-60 at millions of frames); target_mean_return=60",
+            "is deliberately out of reach so patience-based early stopping governs.",
+        ),
+        success_threshold=25.0,
+        target_mean_return=60.0,
+    ),
+    "minatar_seaquest": RLTaskSpec(
+        name="minatar_seaquest",
+        env_id="MinAtar/Seaquest-v1",
+        family="minatar",
+        observation_kind="flat_box",
+        action_kind="discrete",
+        max_episode_steps=5000,
+        default_profile="fast",
+        literature_notes=(
+            "MinAtar Seaquest with the minimal action set; 10x10x10 binary planes",
+            "flattened to a 1000-dim vector by the shared env wrapper (6 actions).",
+            "Hardest MinAtar game: oxygen management plus diver rescue plus",
+            "shooting, so credit assignment is long and returns stay low for a",
+            "long time.",
+            "NON-CANONICAL: MinAtar publishes no solve threshold.",
+            "success_threshold=5 is a repo progress marker (MinAtar-paper DQN",
+            "reaches roughly 5-15 at millions of frames); target_mean_return=50",
+            "is deliberately out of reach so patience-based early stopping governs.",
+        ),
+        success_threshold=5.0,
+        target_mean_return=50.0,
+    ),
+    "minatar_space_invaders": RLTaskSpec(
+        name="minatar_space_invaders",
+        env_id="MinAtar/SpaceInvaders-v1",
+        family="minatar",
+        observation_kind="flat_box",
+        action_kind="discrete",
+        max_episode_steps=5000,
+        default_profile="fast",
+        literature_notes=(
+            "MinAtar SpaceInvaders with the minimal action set; 10x10x6 binary",
+            "planes flattened to a 600-dim vector by the shared env wrapper",
+            "(4 actions).",
+            "Reward +1 per alien destroyed; waves respawn faster after each clear,",
+            "so returns are unbounded in principle and grow with policy quality.",
+            "NON-CANONICAL: MinAtar publishes no solve threshold.",
+            "success_threshold=20 is a repo progress marker (MinAtar-paper DQN",
+            "reaches roughly 50-90 at millions of frames); target_mean_return=100",
+            "is deliberately out of reach so patience-based early stopping governs.",
+        ),
+        success_threshold=20.0,
+        target_mean_return=100.0,
+    ),
+    # ---------------------------------------------------------------------
     # Continuous-action tasks (NEXT_STEPS_PLAN.md I-2).
     #
     # SCOPE NOTE: the two entries below exist for the TD3 continuous-control
@@ -189,6 +289,17 @@ def normalize_rl_task_name(task_name: str) -> str:
         "lunarlandercontinuous": "lunarlander_continuous",
         "lunarlandercontinuous_v3": "lunarlander_continuous",
         "lunarlander_continuous_v3": "lunarlander_continuous",
+        "minatar_spaceinvaders": "minatar_space_invaders",
+        "minatar/asterix": "minatar_asterix",
+        "minatar/asterix_v1": "minatar_asterix",
+        "minatar/freeway": "minatar_freeway",
+        "minatar/freeway_v1": "minatar_freeway",
+        "minatar/seaquest": "minatar_seaquest",
+        "minatar/seaquest_v1": "minatar_seaquest",
+        "minatar/spaceinvaders": "minatar_space_invaders",
+        "minatar/spaceinvaders_v1": "minatar_space_invaders",
+        "minatar/breakout": "minatar_breakout",
+        "minatar/breakout_v1": "minatar_breakout",
     }
     return aliases.get(normalized, normalized)
 
