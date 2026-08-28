@@ -652,7 +652,16 @@ class NN_KNN_Model(nn.Module):
         self.feature_dim = None
         if feature_extractor is not None:
             with torch.no_grad():
-                dummy_input = cases[0].unsqueeze(0).to(device)
+                # Probe on the extractor's own device. Callers that pre-move the
+                # extractor to the module-level `device` (the regression /
+                # classification workflows) are unaffected; RL workflows build
+                # the extractor on CPU and move the whole model afterwards, and
+                # the old unconditional `.to(device)` crashed for them.
+                try:
+                    probe_device = next(feature_extractor.parameters()).device
+                except StopIteration:
+                    probe_device = device
+                dummy_input = cases[0].unsqueeze(0).to(probe_device)
                 self.feature_dim = feature_extractor(dummy_input).shape[-1]
         else:
             self.feature_dim = cases.shape[-1]

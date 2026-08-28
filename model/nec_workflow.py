@@ -15,7 +15,9 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from datasets.rl_tasks import get_rl_task_spec
+from model.cnn_encoders import NATURE_CNN_FEATURE_DIM, NatureCNNEncoder
 from model.rl_workflow import (
+    ObservationSpec,
     _build_early_stopping_tracker,
     _finalize_early_stopping_tracker,
     _build_training_efficiency,
@@ -25,6 +27,8 @@ from model.rl_workflow import (
     _resolve_device_arg,
     _validate_env_spaces,
     _validate_early_stopping_config,
+    observation_to_array,
+    resolve_env_spaces,
     seed_everything,
 )
 
@@ -50,6 +54,41 @@ class NECEmbeddingNetwork(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.network(x)
+
+
+class AtariNECEmbeddingNetwork(nn.Module):
+    """Nature-CNN embedding network for stacked-grayscale image observations.
+
+    The DND keys stay `embedding_dim`-dimensional exactly as on the flat tasks;
+    only the map from observation to key changes (MLP -> Nature CNN + linear).
+    """
+
+    def __init__(
+        self,
+        obs_shape: tuple[int, ...],
+        embedding_dim: int = 32,
+        feature_dim: int = NATURE_CNN_FEATURE_DIM,
+    ):
+        super().__init__()
+        self.obs_shape = tuple(int(value) for value in obs_shape)
+        self.encoder = NatureCNNEncoder(self.obs_shape, feature_dim=feature_dim)
+        self.head = nn.Linear(self.encoder.feature_dim, int(embedding_dim))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.head(self.encoder(x))
+
+
+def build_nec_embedding_network(
+    obs_spec: ObservationSpec,
+    embedding_dim: int,
+    *,
+    hidden_sizes: tuple[int, int] = (128, 128),
+) -> nn.Module:
+    """Build the NEC embedding network matching the task's observation kind."""
+
+    if obs_spec.is_image:
+        return AtariNECEmbeddingNetwork(obs_spec.shape, embedding_dim)
+    return NECEmbeddingNetwork(obs_spec.dim, embedding_dim, hidden_sizes=hidden_sizes)
 
 
 @dataclass(frozen=True)
@@ -103,12 +142,27 @@ class NECReplayBuffer:
     size: int = 0
 
     @classmethod
-    def create(cls, replay_size: int, obs_dim: int) -> "NECReplayBuffer":
+    def create(
+        cls,
+        replay_size: int,
+        obs_dim: int | tuple[int, ...],
+        *,
+        obs_dtype: Any = np.float32,
+    ) -> "NECReplayBuffer":
+        obs_shape = (int(obs_dim),) if isinstance(obs_dim, (int, np.integer)) else tuple(int(v) for v in obs_dim)
         return cls(
-            observations=np.zeros((replay_size, obs_dim), dtype=np.float32),
+            observations=np.zeros((replay_size, *obs_shape), dtype=obs_dtype),
             actions=np.zeros(replay_size, dtype=np.int64),
             returns=np.zeros(replay_size, dtype=np.float32),
             terminals=np.zeros(replay_size, dtype=np.float32),
+        )
+
+    @classmethod
+    def create_for_observation(cls, replay_size: int, obs_spec: ObservationSpec) -> "NECReplayBuffer":
+        return cls.create(
+            replay_size,
+            obs_spec.shape if obs_spec.is_image else obs_spec.dim,
+            obs_dtype=np.dtype(obs_spec.numpy_dtype),
         )
 
     def add(self, obs: np.ndarray, action: int, return_value: float, terminal: bool) -> None:
@@ -121,8 +175,10 @@ class NECReplayBuffer:
 
     def sample(self, batch_size: int, device: torch.device) -> dict[str, torch.Tensor]:
         indices = np.random.randint(0, self.size, size=batch_size)
+        # `.float()` is a no-op for float32 flat buffers and converts uint8
+        # image frames (0-255 scale) after the cheaper host transfer.
         return {
-            "observations": torch.as_tensor(self.observations[indices], device=device),
+            "observations": torch.as_tensor(self.observations[indices], device=device).float(),
             "actions": torch.as_tensor(self.actions[indices], device=device).long(),
             "returns": torch.as_tensor(self.returns[indices], device=device),
             "terminals": torch.as_tensor(self.terminals[indices], device=device),
@@ -563,11 +619,27 @@ def train_nec(
     run_device = _resolve_device_arg(device)
 
     env = _make_env(spec, seed=cfg.seed)
-    obs_dim, action_dim = _validate_env_spaces(env, spec)
-    model = NECEmbeddingNetwork(obs_dim, cfg.embedding_dim, hidden_sizes=cfg.hidden_sizes).to(run_device)
-    dnd = DifferentiableNeuralDictionary(action_dim, cfg.dictionary_size, cfg.embedding_dim, obs_dim)
+    obs_spec, action_dim = resolve_env_spaces(env, spec)
+    obs_dim = obs_spec.dim
+    model = build_nec_embedding_network(
+        obs_spec,
+        cfg.embedding_dim,
+        hidden_sizes=cfg.hidden_sizes,
+    ).to(run_device)
+    # The DND stores the raw observation alongside each key only for flat
+    # tasks (it is a debugging/explanation aid). For image tasks a
+    # 10,000-entry-per-action raw-frame store would be tens of gigabytes, so
+    # observation storage is disabled and `dnd.add(..., observation)` ignores
+    # the frame it is handed.
+    dnd_observation_dim = None if obs_spec.is_image else obs_dim
+    dnd = DifferentiableNeuralDictionary(
+        action_dim,
+        cfg.dictionary_size,
+        cfg.embedding_dim,
+        dnd_observation_dim,
+    )
     optimizer = optim.Adam(model.parameters(), lr=cfg.learning_rate)
-    replay_buffer = NECReplayBuffer.create(cfg.replay_size, obs_dim)
+    replay_buffer = NECReplayBuffer.create_for_observation(cfg.replay_size, obs_spec)
 
     run_dir = Path(output_dir) if output_dir is not None else make_nec_output_dir(spec.name)
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -611,7 +683,10 @@ def train_nec(
                 int(cfg.exploration_fraction * cfg.total_timesteps),
                 global_step,
             )
-            obs_array = np.asarray(obs, dtype=np.float32)
+            # uint8 for image tasks: the per-episode observation list can hold
+            # thousands of stacked frames before it is flushed to the replay
+            # buffer at episode end.
+            obs_array = observation_to_array(obs, obs_spec)
             action, greedy_value, embedding, q_values = _select_action(
                 model,
                 dnd,
@@ -910,6 +985,8 @@ def train_nec(
         "task": spec.to_dict(),
         "config": cfg.to_dict(),
         "obs_dim": obs_dim,
+        "obs_shape": list(obs_spec.shape),
+        "observation_spec": obs_spec.to_dict(),
         "action_dim": action_dim,
         "selected_eval": {k: v for k, v in selected_eval.items() if k != "episode_metrics"},
         "last_eval": {k: v for k, v in last_eval.items() if k != "episode_metrics"},
@@ -930,6 +1007,7 @@ def train_nec(
             "task": spec.to_dict(),
             "config": cfg.to_dict(),
             "device": str(run_device),
+            "observation": obs_spec.to_dict(),
             "source_reference": cfg.source_reference,
         },
     )
@@ -1015,11 +1093,15 @@ def load_nec_checkpoint(
     config_data = dict(checkpoint["config"])
     config_data["hidden_sizes"] = tuple(config_data["hidden_sizes"])
     cfg = NECConfig(**config_data)
-    model = NECEmbeddingNetwork(
-        int(checkpoint["obs_dim"]),
-        cfg.embedding_dim,
-        hidden_sizes=cfg.hidden_sizes,
-    ).to(run_device)
+    obs_shape = tuple(int(value) for value in checkpoint.get("obs_shape", (int(checkpoint["obs_dim"]),)))
+    if len(obs_shape) == 3:
+        model: nn.Module = AtariNECEmbeddingNetwork(obs_shape, cfg.embedding_dim).to(run_device)
+    else:
+        model = NECEmbeddingNetwork(
+            int(checkpoint["obs_dim"]),
+            cfg.embedding_dim,
+            hidden_sizes=cfg.hidden_sizes,
+        ).to(run_device)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
     dnd = DifferentiableNeuralDictionary.from_state(checkpoint["dnd_state"])

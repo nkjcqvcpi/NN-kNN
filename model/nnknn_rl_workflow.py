@@ -16,8 +16,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from datasets.rl_tasks import get_rl_task_spec
+from model.cnn_encoders import NATURE_CNN_FEATURE_DIM, NatureCNNEncoder
 from model.nnknn_model import GlocalFeatureWeight, NN_KNN_Model, normalize_cases
 from model.rl_workflow import (
+    ObservationSpec,
     _build_early_stopping_tracker,
     _finalize_early_stopping_tracker,
     _build_training_efficiency,
@@ -28,10 +30,59 @@ from model.rl_workflow import (
     _resolve_device_arg,
     _validate_env_spaces,
     _validate_early_stopping_config,
+    observation_to_array,
+    resolve_env_spaces,
     seed_everything,
 )
 
 ALGORITHM_NAME = "nnknn_actor_critic_separate_memory_gae"
+
+
+def _resolve_observation(observation: "ObservationSpec | int | tuple[int, ...]") -> ObservationSpec:
+    """Accept an ObservationSpec, a flat dimension, or a shape tuple."""
+
+    if isinstance(observation, ObservationSpec):
+        return observation
+    if isinstance(observation, (int, np.integer)):
+        dim = int(observation)
+        return ObservationSpec(kind="flat_box", shape=(dim,), dim=dim, numpy_dtype="float32")
+    shape = tuple(int(value) for value in observation)
+    if len(shape) == 1:
+        return ObservationSpec(kind="flat_box", shape=shape, dim=shape[0], numpy_dtype="float32")
+    return ObservationSpec(
+        kind="image_atari",
+        shape=shape,
+        dim=int(np.prod(shape)),
+        numpy_dtype="uint8",
+    )
+
+
+def _ensure_batched(observations: torch.Tensor, obs_shape: tuple[int, ...]) -> torch.Tensor:
+    """Add a leading batch dimension when a single observation was passed.
+
+    For flat observations `obs_shape` is `(obs_dim,)`, so this reduces exactly
+    to the previous `if observations.dim() == 1: unsqueeze(0)` behaviour.
+    """
+
+    if observations.dim() == len(obs_shape):
+        return observations.unsqueeze(0)
+    return observations
+
+
+def _build_observation_feature_extractor(obs_spec: ObservationSpec) -> nn.Module | None:
+    """Nature-CNN state encoder for image tasks; None for flat observations.
+
+    For NN-kNN networks this becomes the case store's `feature_extractor`: the
+    case base keeps RAW stacked frames as cases and the CNN maps both the query
+    and the stored cases into the 512-d space where case distances are
+    measured. That is the module the actor and critic SHARE when
+    `share_nnknn_representation` is on -- exactly the "shared neural trunk with
+    separate policy and value heads" analogy in AGENTS.md, extended to images.
+    """
+
+    if not obs_spec.is_image:
+        return None
+    return NatureCNNEncoder(obs_spec.shape, feature_dim=NATURE_CNN_FEATURE_DIM)
 
 
 @dataclass(frozen=True)
@@ -114,7 +165,7 @@ class NNKNNPolicyNetwork(nn.Module):
 
     def __init__(
         self,
-        obs_dim: int,
+        observation: "ObservationSpec | int | tuple[int, ...]",
         action_dim: int,
         *,
         case_capacity: int,
@@ -127,7 +178,9 @@ class NNKNNPolicyNetwork(nn.Module):
         glocal_fw_set_num: int = 1,
     ):
         super().__init__()
-        self.obs_dim = int(obs_dim)
+        self.observation_spec = _resolve_observation(observation)
+        self.obs_shape = self.observation_spec.shape
+        self.obs_dim = int(self.observation_spec.dim)
         self.action_dim = int(action_dim)
         self.case_capacity = int(case_capacity)
         self.min_cases_per_action = int(min_cases_per_action)
@@ -139,10 +192,19 @@ class NNKNNPolicyNetwork(nn.Module):
         self._prune_quantile = 0.0
         self._prune_bias_threshold: float | None = None
 
-        cases = torch.zeros(self.case_capacity, self.obs_dim, dtype=torch.float32)
+        # Image tasks store RAW frames as cases and put a Nature CNN in front
+        # of the distance computation; flat tasks keep feature_extractor=None so
+        # the case store and the glocal weightor are built exactly as before.
+        feature_extractor = _build_observation_feature_extractor(self.observation_spec)
+        self.case_feature_dim = (
+            int(feature_extractor.feature_dim) if feature_extractor is not None else self.obs_dim
+        )
+        cases = torch.zeros(self.case_capacity, *self.obs_shape, dtype=torch.float32)
         labels = torch.zeros(self.case_capacity, self.action_dim, dtype=torch.float32)
         glocal_weightor = (
-            GlocalFeatureWeight(self.obs_dim, self.glocal_fw_set_num) if self.use_glocal_weightor else None
+            GlocalFeatureWeight(self.case_feature_dim, self.glocal_fw_set_num)
+            if self.use_glocal_weightor
+            else None
         )
         model_config = {
             "task_type": "classification",
@@ -177,7 +239,7 @@ class NNKNNPolicyNetwork(nn.Module):
         self.nnknn_model = NN_KNN_Model(
             cases,
             labels,
-            feature_extractor=None,
+            feature_extractor=feature_extractor,
             glocal_weightor=glocal_weightor,
             **model_config,
         )
@@ -211,8 +273,7 @@ class NNKNNPolicyNetwork(nn.Module):
         return bool(torch.all(self.action_counts() >= self.min_cases_per_action).detach().cpu().item())
 
     def policy_probs(self, observations: torch.Tensor) -> torch.Tensor:
-        if observations.dim() == 1:
-            observations = observations.unsqueeze(0)
+        observations = _ensure_batched(observations, self.obs_shape)
         observations = observations.to(next(self.parameters()).device, dtype=torch.float32)
         batch_size = observations.shape[0]
         if self.case_entries <= 0:
@@ -234,8 +295,7 @@ class NNKNNPolicyNetwork(nn.Module):
     def add_cases(self, observations: torch.Tensor | np.ndarray, actions: torch.Tensor | np.ndarray) -> dict[str, int]:
         obs_t = torch.as_tensor(observations, dtype=torch.float32, device=self.nnknn_model.cases.device)
         actions_t = torch.as_tensor(actions, dtype=torch.long, device=self.nnknn_model.labels.device).view(-1)
-        if obs_t.dim() == 1:
-            obs_t = obs_t.unsqueeze(0)
+        obs_t = _ensure_batched(obs_t, self.obs_shape)
         if obs_t.shape[0] != actions_t.shape[0]:
             raise ValueError("observations and actions must have the same batch size")
         if torch.any(actions_t < 0) or torch.any(actions_t >= self.action_dim):
@@ -342,7 +402,7 @@ class NNKNNPolicyNetwork(nn.Module):
         if self.case_entries <= 0:
             return {"case_entries": 0, "neighbors": []}
         device = next(self.parameters()).device
-        obs_t = torch.as_tensor(observation, dtype=torch.float32, device=device).view(1, self.obs_dim)
+        obs_t = torch.as_tensor(observation, dtype=torch.float32, device=device).view(1, *self.obs_shape)
         was_training = self.training
         self.eval()
         with torch.no_grad():
@@ -374,12 +434,22 @@ class NNKNNPolicyNetwork(nn.Module):
 class MLPPolicyNetwork(nn.Module):
     """Small MLP policy actor for discrete-action actor-critic baselines."""
 
-    def __init__(self, obs_dim: int, action_dim: int, hidden_sizes: tuple[int, ...] = (128, 128)):
+    def __init__(
+        self,
+        observation: "ObservationSpec | int | tuple[int, ...]",
+        action_dim: int,
+        hidden_sizes: tuple[int, ...] = (128, 128),
+    ):
         super().__init__()
-        self.obs_dim = int(obs_dim)
+        self.observation_spec = _resolve_observation(observation)
+        self.obs_shape = self.observation_spec.shape
+        self.obs_dim = int(self.observation_spec.dim)
         self.action_dim = int(action_dim)
+        # Image tasks get the shared Nature CNN in front of the MLP head; flat
+        # tasks build the identical MLP they always did.
+        self.encoder = _build_observation_feature_extractor(self.observation_spec)
         layers: list[nn.Module] = []
-        in_features = int(obs_dim)
+        in_features = self.obs_dim if self.encoder is None else int(self.encoder.feature_dim)
         for hidden_size in hidden_sizes:
             layers.append(nn.Linear(in_features, int(hidden_size)))
             layers.append(nn.ReLU())
@@ -395,9 +465,9 @@ class MLPPolicyNetwork(nn.Module):
         return True
 
     def policy_probs(self, observations: torch.Tensor) -> torch.Tensor:
-        if observations.dim() == 1:
-            observations = observations.unsqueeze(0)
-        logits = self.net(observations.float())
+        observations = _ensure_batched(observations, self.obs_shape)
+        features = observations.float() if self.encoder is None else self.encoder(observations)
+        logits = self.net(features)
         return F.softmax(logits, dim=1)
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
@@ -407,10 +477,18 @@ class MLPPolicyNetwork(nn.Module):
 class ValueNetwork(nn.Module):
     """Small MLP critic that predicts V(s)."""
 
-    def __init__(self, obs_dim: int, hidden_sizes: tuple[int, ...] = (128, 128)):
+    def __init__(
+        self,
+        observation: "ObservationSpec | int | tuple[int, ...]",
+        hidden_sizes: tuple[int, ...] = (128, 128),
+    ):
         super().__init__()
+        self.observation_spec = _resolve_observation(observation)
+        self.obs_shape = self.observation_spec.shape
+        self.obs_dim = int(self.observation_spec.dim)
+        self.encoder = _build_observation_feature_extractor(self.observation_spec)
         layers: list[nn.Module] = []
-        in_features = int(obs_dim)
+        in_features = self.obs_dim if self.encoder is None else int(self.encoder.feature_dim)
         for hidden_size in hidden_sizes:
             layers.append(nn.Linear(in_features, int(hidden_size)))
             layers.append(nn.ReLU())
@@ -419,9 +497,9 @@ class ValueNetwork(nn.Module):
         self.net = nn.Sequential(*layers)
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
-        if observations.dim() == 1:
-            observations = observations.unsqueeze(0)
-        values = self.net(observations.float())
+        observations = _ensure_batched(observations, self.obs_shape)
+        features = observations.float() if self.encoder is None else self.encoder(observations)
+        values = self.net(features)
         return values.squeeze(-1)
 
 
@@ -430,7 +508,7 @@ class NNKNNValueNetwork(nn.Module):
 
     def __init__(
         self,
-        obs_dim: int,
+        observation: "ObservationSpec | int | tuple[int, ...]",
         *,
         case_capacity: int,
         tau: float = 1.0,
@@ -446,7 +524,9 @@ class NNKNNValueNetwork(nn.Module):
         value_label_append_on_no_match: bool = True,
     ):
         super().__init__()
-        self.obs_dim = int(obs_dim)
+        self.observation_spec = _resolve_observation(observation)
+        self.obs_shape = self.observation_spec.shape
+        self.obs_dim = int(self.observation_spec.dim)
         self.case_capacity = int(case_capacity)
         self.tau = float(tau)
         self.top_k = int(top_k)
@@ -471,10 +551,16 @@ class NNKNNValueNetwork(nn.Module):
         self.register_buffer("case_ids", torch.full((self.case_capacity,), -1, dtype=torch.long))
         self.register_buffer("next_case_id", torch.zeros((), dtype=torch.long))
 
-        cases = torch.zeros(self.case_capacity, self.obs_dim, dtype=torch.float32)
+        feature_extractor = _build_observation_feature_extractor(self.observation_spec)
+        self.case_feature_dim = (
+            int(feature_extractor.feature_dim) if feature_extractor is not None else self.obs_dim
+        )
+        cases = torch.zeros(self.case_capacity, *self.obs_shape, dtype=torch.float32)
         labels = torch.zeros(self.case_capacity, 1, dtype=torch.float32)
         glocal_weightor = (
-            GlocalFeatureWeight(self.obs_dim, self.glocal_fw_set_num) if self.use_glocal_weightor else None
+            GlocalFeatureWeight(self.case_feature_dim, self.glocal_fw_set_num)
+            if self.use_glocal_weightor
+            else None
         )
         model_config = {
             "task_type": "regression",
@@ -508,7 +594,7 @@ class NNKNNValueNetwork(nn.Module):
         self.nnknn_model = NN_KNN_Model(
             cases,
             labels,
-            feature_extractor=None,
+            feature_extractor=feature_extractor,
             glocal_weightor=glocal_weightor,
             **model_config,
         )
@@ -549,8 +635,7 @@ class NNKNNValueNetwork(nn.Module):
         return removed
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
-        if observations.dim() == 1:
-            observations = observations.unsqueeze(0)
+        observations = _ensure_batched(observations, self.obs_shape)
         observations = observations.to(next(self.parameters()).device, dtype=torch.float32)
         if self.case_entries <= 0:
             return torch.zeros(observations.shape[0], dtype=observations.dtype, device=observations.device)
@@ -558,15 +643,26 @@ class NNKNNValueNetwork(nn.Module):
         return final_predictions.view(observations.shape[0], -1)[:, 0]
 
     def _case_distances_and_weights(self, observations: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        if observations.dim() == 1:
-            observations = observations.unsqueeze(0)
+        observations = _ensure_batched(observations, self.obs_shape)
         observations = observations.to(self.nnknn_model.cases.device, dtype=torch.float32)
         active_count = self.case_entries
         if active_count <= 0:
             raise ValueError("NN-kNN value critic requires at least one active case")
-        case_features = self.nnknn_model.cases[:active_count]
-        query_expanded = observations.unsqueeze(1).expand(-1, active_count, -1)
-        case_expanded = case_features.unsqueeze(0).expand(observations.shape[0], -1, -1)
+        # Distances live in the case store's FEATURE space. With no feature
+        # extractor (every flat task) the two branches are literally the same
+        # tensors the previous implementation used, so flat behaviour is
+        # unchanged; on image tasks the raw (C, H, W) frames must go through the
+        # Nature CNN first, both because pixel-space distance is meaningless
+        # here and because the 3-D broadcast below has no valid image form.
+        extractor = self.nnknn_model.feature_extractor
+        if extractor is None:
+            query_features = observations
+            case_features = self.nnknn_model.cases[:active_count]
+        else:
+            query_features = extractor(observations)
+            case_features = extractor(self.nnknn_model.cases[:active_count])
+        query_expanded = query_features.unsqueeze(1).expand(-1, active_count, -1)
+        case_expanded = case_features.unsqueeze(0).expand(query_features.shape[0], -1, -1)
         elementwise_distance = (query_expanded - case_expanded) ** 2
         if self.nnknn_model.glocal_weightor is not None:
             glocal_weights = self.nnknn_model.glocal_weights[:active_count]
@@ -600,8 +696,7 @@ class NNKNNValueNetwork(nn.Module):
             return {"label_updates": 0, "label_update_samples": 0}
         values_t = torch.as_tensor(values, dtype=torch.float32, device=self.nnknn_model.labels.device).view(-1)
         obs_t = torch.as_tensor(observations, dtype=torch.float32, device=self.nnknn_model.cases.device)
-        if obs_t.dim() == 1:
-            obs_t = obs_t.unsqueeze(0)
+        obs_t = _ensure_batched(obs_t, self.obs_shape)
         if obs_t.shape[0] != values_t.numel():
             raise ValueError("observations and values must have the same batch size")
         with torch.no_grad():
@@ -631,8 +726,7 @@ class NNKNNValueNetwork(nn.Module):
     def add_cases(self, observations: torch.Tensor | np.ndarray, values: torch.Tensor | np.ndarray) -> dict[str, int]:
         obs_t = torch.as_tensor(observations, dtype=torch.float32, device=self.nnknn_model.cases.device)
         values_t = torch.as_tensor(values, dtype=torch.float32, device=self.nnknn_model.labels.device).view(-1, 1)
-        if obs_t.dim() == 1:
-            obs_t = obs_t.unsqueeze(0)
+        obs_t = _ensure_batched(obs_t, self.obs_shape)
         if obs_t.shape[0] != values_t.shape[0]:
             raise ValueError("observations and values must have the same batch size")
         mutable_stats = {"label_updates": 0, "label_update_samples": 0}
@@ -1446,13 +1540,18 @@ def _build_shared_actor_critic_model(
     raise RuntimeError("The shared NN-kNN actor-critic case-base architecture has been retired")
 
 
-def _build_actor_model(obs_dim: int, action_dim: int, cfg: NNKNNRLConfig, device: torch.device) -> PolicyActor:
+def _build_actor_model(
+    obs_spec: "ObservationSpec | int",
+    action_dim: int,
+    cfg: NNKNNRLConfig,
+    device: torch.device,
+) -> PolicyActor:
     actor_type = cfg.actor_type.strip().lower()
     if actor_type == "mlp":
-        return MLPPolicyNetwork(obs_dim, action_dim, tuple(cfg.actor_hidden_sizes)).to(device)
+        return MLPPolicyNetwork(obs_spec, action_dim, tuple(cfg.actor_hidden_sizes)).to(device)
     if actor_type == "nnknn":
         model = NNKNNPolicyNetwork(
-            obs_dim,
+            obs_spec,
             action_dim,
             case_capacity=cfg.case_capacity,
             tau=cfg.tau,
@@ -1471,13 +1570,17 @@ def _build_actor_model(obs_dim: int, action_dim: int, cfg: NNKNNRLConfig, device
     raise ValueError("actor_type must be either 'nnknn' or 'mlp'")
 
 
-def _build_value_model(obs_dim: int, cfg: NNKNNRLConfig, device: torch.device) -> ValueCritic:
+def _build_value_model(
+    obs_spec: "ObservationSpec | int",
+    cfg: NNKNNRLConfig,
+    device: torch.device,
+) -> ValueCritic:
     critic_type = cfg.critic_type.strip().lower()
     if critic_type == "mlp":
-        return ValueNetwork(obs_dim, tuple(cfg.critic_hidden_sizes)).to(device)
+        return ValueNetwork(obs_spec, tuple(cfg.critic_hidden_sizes)).to(device)
     if critic_type == "nnknn":
         model = NNKNNValueNetwork(
-            obs_dim,
+            obs_spec,
             case_capacity=cfg.critic_case_capacity or cfg.case_capacity,
             tau=cfg.tau,
             top_k=cfg.top_k,
@@ -1500,13 +1603,13 @@ def _build_value_model(obs_dim: int, cfg: NNKNNRLConfig, device: torch.device) -
 
 
 def _build_actor_critic_models(
-    obs_dim: int,
+    obs_spec: "ObservationSpec | int",
     action_dim: int,
     cfg: NNKNNRLConfig,
     device: torch.device,
 ) -> tuple[PolicyActor, ValueCritic]:
-    actor = _build_actor_model(obs_dim, action_dim, cfg, device)
-    value_model = _build_value_model(obs_dim, cfg, device)
+    actor = _build_actor_model(obs_spec, action_dim, cfg, device)
+    value_model = _build_value_model(obs_spec, cfg, device)
     if (
         cfg.share_nnknn_representation
         and isinstance(actor, NNKNNPolicyNetwork)
@@ -1514,6 +1617,10 @@ def _build_actor_critic_models(
     ):
         # Share only the state representation/global metric. Case memories and
         # all per-case parameters remain private to their policy/value roles.
+        # On image tasks `feature_extractor` is the Nature CNN, so this is the
+        # shared visual trunk; the critic's own freshly built CNN is dropped
+        # here rather than never built, which keeps the flat-task RNG
+        # consumption order byte-for-byte what it was.
         value_model.nnknn_model.feature_extractor = actor.nnknn_model.feature_extractor
         value_model.nnknn_model.glocal_weightor = actor.nnknn_model.glocal_weightor
     return actor, value_model
@@ -2539,8 +2646,9 @@ def train_nnknn_rl(
     run_device = _resolve_device_arg(device)
 
     env = _make_env(spec, seed=cfg.seed)
-    obs_dim, action_dim = _validate_env_spaces(env, spec)
-    actor, value_network = _build_actor_critic_models(obs_dim, action_dim, cfg, run_device)
+    obs_spec, action_dim = resolve_env_spaces(env, spec)
+    obs_dim = obs_spec.dim
+    actor, value_network = _build_actor_critic_models(obs_spec, action_dim, cfg, run_device)
     target_value_model: NNKNNValueNetwork | None = None
     if isinstance(value_network, NNKNNValueNetwork) and cfg.critic_target_value_mode != "none":
         target_value_model = _build_nnknn_target_value_model(value_network, device=run_device)
@@ -2741,7 +2849,9 @@ def train_nnknn_rl(
     try:
         for global_step in range(cfg.total_timesteps):
             stop_requested = False
-            obs_array = np.asarray(obs, dtype=np.float32)
+            # uint8 for image tasks: a rollout batch holds every frame of the
+            # pending episodes until `_train_actor_critic_batch` consumes it.
+            obs_array = observation_to_array(obs, obs_spec)
             exploration_epsilon = _actor_exploration_epsilon(actor, cfg, global_step)
             selection = _select_action(
                 actor,
@@ -2756,7 +2866,7 @@ def train_nnknn_rl(
             next_obs, reward, terminated, truncated, _ = env.step(action)
 
             episode_observations.append(obs_array)
-            episode_next_observations.append(np.asarray(next_obs, dtype=np.float32))
+            episode_next_observations.append(observation_to_array(next_obs, obs_spec))
             episode_actions.append(action)
             episode_behavior_epsilons.append(selection.behavior_epsilon)
             episode_rewards.append(float(reward))
@@ -3035,6 +3145,8 @@ def train_nnknn_rl(
         "task": spec.to_dict(),
         "config": cfg.to_dict(),
         "obs_dim": obs_dim,
+        "obs_shape": list(obs_spec.shape),
+        "observation_spec": obs_spec.to_dict(),
         "action_dim": action_dim,
         "gae": {
             "gamma": cfg.gamma,
@@ -3075,6 +3187,7 @@ def train_nnknn_rl(
             "task": spec.to_dict(),
             "config": cfg.to_dict(),
             "device": str(run_device),
+            "observation": obs_spec.to_dict(),
             "source_reference": cfg.source_reference,
         },
     )
@@ -3235,8 +3348,18 @@ def load_nnknn_rl_checkpoint(
     config_data.setdefault("critic_nnknn_config", {})
     config_data.setdefault("critic_case_capacity", None)
     cfg = NNKNNRLConfig(**config_data)
+    recorded_observation = checkpoint.get("observation_spec")
+    if recorded_observation is None:
+        observation: ObservationSpec | int = int(checkpoint["obs_dim"])
+    else:
+        observation = ObservationSpec(
+            kind=str(recorded_observation["kind"]),
+            shape=tuple(int(value) for value in recorded_observation["shape"]),
+            dim=int(recorded_observation["dim"]),
+            numpy_dtype=str(recorded_observation["numpy_dtype"]),
+        )
     model, value_model = _build_actor_critic_models(
-        int(checkpoint["obs_dim"]),
+        observation,
         int(checkpoint["action_dim"]),
         cfg,
         run_device,

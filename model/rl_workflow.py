@@ -14,8 +14,29 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from datasets.rl_tasks import RLTaskSpec, get_rl_task_spec, list_supported_rl_tasks
+from datasets.rl_tasks import (
+    RLTaskSpec,
+    get_rl_task_spec,
+    is_image_observation_kind,
+    list_supported_rl_tasks,
+)
+from model.cnn_encoders import NATURE_CNN_FEATURE_DIM, NatureCNNEncoder
 from model.device_utils import resolve_runtime_device
+
+
+# Eval episodes on image (ALE) tasks are capped: a single Atari episode is
+# thousands of post-frameskip steps, so the 20-episode default the flat tasks
+# use would dominate wall clock. Runners lower `eval_episodes` to at most this
+# many for `image_atari` tasks unless the user passes --eval-episodes.
+IMAGE_TASK_EVAL_EPISODES = 5
+
+# AtariPreprocessing / FrameStackObservation settings for `image_atari` tasks.
+# These are the Nature-DQN / Machado-protocol values and are deliberately fixed
+# here (not per task) so every workflow sees identical frames.
+ATARI_NOOP_MAX = 30
+ATARI_FRAME_SKIP = 4
+ATARI_SCREEN_SIZE = 84
+ATARI_FRAME_STACK = 4
 
 
 class DQNNetwork(nn.Module):
@@ -34,6 +55,24 @@ class DQNNetwork(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.network(x)
+
+
+class AtariDQNNetwork(nn.Module):
+    """Nature-CNN Q-network for stacked-grayscale image observations."""
+
+    def __init__(
+        self,
+        obs_shape: tuple[int, ...],
+        action_dim: int,
+        feature_dim: int = NATURE_CNN_FEATURE_DIM,
+    ):
+        super().__init__()
+        self.obs_shape = tuple(int(value) for value in obs_shape)
+        self.encoder = NatureCNNEncoder(self.obs_shape, feature_dim=feature_dim)
+        self.head = nn.Linear(self.encoder.feature_dim, int(action_dim))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.head(self.encoder(x))
 
 
 @dataclass(frozen=True)
@@ -177,13 +216,35 @@ class ReplayBuffer:
     size: int = 0
 
     @classmethod
-    def create(cls, buffer_size: int, obs_dim: int) -> "ReplayBuffer":
+    def create(
+        cls,
+        buffer_size: int,
+        obs_dim: int | tuple[int, ...],
+        *,
+        obs_dtype: Any = np.float32,
+    ) -> "ReplayBuffer":
+        """Allocate the buffer.
+
+        `obs_dim` is an int for flat observations (unchanged behaviour) or a
+        shape tuple for image observations, where `obs_dtype=np.uint8` keeps
+        frame stacks at a quarter of the float32 footprint.
+        """
+
+        obs_shape = (int(obs_dim),) if isinstance(obs_dim, (int, np.integer)) else tuple(int(v) for v in obs_dim)
         return cls(
-            observations=np.zeros((buffer_size, obs_dim), dtype=np.float32),
-            next_observations=np.zeros((buffer_size, obs_dim), dtype=np.float32),
+            observations=np.zeros((buffer_size, *obs_shape), dtype=obs_dtype),
+            next_observations=np.zeros((buffer_size, *obs_shape), dtype=obs_dtype),
             actions=np.zeros(buffer_size, dtype=np.int64),
             rewards=np.zeros(buffer_size, dtype=np.float32),
             dones=np.zeros(buffer_size, dtype=np.float32),
+        )
+
+    @classmethod
+    def create_for_observation(cls, buffer_size: int, obs_spec: ObservationSpec) -> "ReplayBuffer":
+        return cls.create(
+            buffer_size,
+            obs_spec.shape if obs_spec.is_image else obs_spec.dim,
+            obs_dtype=np.dtype(obs_spec.numpy_dtype),
         )
 
     def add(
@@ -204,11 +265,14 @@ class ReplayBuffer:
 
     def sample(self, batch_size: int, device: torch.device) -> dict[str, torch.Tensor]:
         indices = np.random.randint(0, self.size, size=batch_size)
+        # `.float()` is a no-op for the float32 flat-observation buffers and
+        # converts uint8 image frames (still on the 0-255 scale, which the
+        # Nature-CNN encoder divides by 255) after the cheaper host transfer.
         return {
-            "observations": torch.as_tensor(self.observations[indices], device=device),
+            "observations": torch.as_tensor(self.observations[indices], device=device).float(),
             "actions": torch.as_tensor(self.actions[indices], device=device).long(),
             "rewards": torch.as_tensor(self.rewards[indices], device=device),
-            "next_observations": torch.as_tensor(self.next_observations[indices], device=device),
+            "next_observations": torch.as_tensor(self.next_observations[indices], device=device).float(),
             "dones": torch.as_tensor(self.dones[indices], device=device),
         }
 
@@ -318,12 +382,74 @@ def _require_gymnasium() -> Any:
     return gym
 
 
+def _require_ale_py() -> Any:
+    try:
+        import ale_py
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "ale-py is required for ALE/Atari tasks. Install it with "
+            "`uv pip install --python .venv/bin/python ale-py opencv-python`."
+        ) from exc
+    return ale_py
+
+
+def _make_atari_env(gym: Any, spec: RLTaskSpec, env_kwargs: dict[str, Any]) -> Any:
+    """Build the shared ALE image pipeline for an `image_atari` task.
+
+    The base env is created with `frameskip=1` because
+    `gymnasium.wrappers.AtariPreprocessing` performs the frame skipping (and
+    the max-pooling over the skipped pair) itself; leaving the ALE's own
+    frameskip on would skip frames twice. On top of it:
+
+      AtariPreprocessing(noop_max=30, frame_skip=4, screen_size=84,
+                         grayscale_obs=True, scale_obs=False)  -> (84, 84) uint8
+      FrameStackObservation(stack_size=4)                      -> (4, 84, 84) uint8
+
+    Episode capping deliberately does NOT go through `gym.make`'s
+    `max_episode_steps`: that wraps a `TimeLimit` around the *frameskip=1* base
+    env, so it would count emulator frames and cut episodes at a quarter of the
+    intended length. The ALE's own `max_num_frames_per_episode` is used instead,
+    set to `spec.max_episode_steps * ATARI_FRAME_SKIP`, so the task spec's cap
+    stays denominated in POST-frameskip agent steps like every other task's.
+    """
+
+    ale_py = _require_ale_py()
+    # ale-py registers its envs as an import side effect on gymnasium 1.3.0;
+    # the explicit call is idempotent and documents the dependency.
+    if spec.env_id not in gym.registry:
+        gym.register_envs(ale_py)
+    from gymnasium.wrappers import AtariPreprocessing, FrameStackObservation
+
+    make_kwargs: dict[str, Any] = {"frameskip": 1}
+    if spec.max_episode_steps is not None:
+        make_kwargs["max_num_frames_per_episode"] = int(spec.max_episode_steps) * ATARI_FRAME_SKIP
+    make_kwargs.update(env_kwargs)
+    env = gym.make(spec.env_id, **make_kwargs)
+    env = AtariPreprocessing(
+        env,
+        noop_max=ATARI_NOOP_MAX,
+        frame_skip=ATARI_FRAME_SKIP,
+        screen_size=ATARI_SCREEN_SIZE,
+        terminal_on_life_loss=False,
+        grayscale_obs=True,
+        grayscale_newaxis=False,
+        scale_obs=False,
+    )
+    return FrameStackObservation(env, ATARI_FRAME_STACK)
+
+
 def _make_env(spec: RLTaskSpec, seed: int | None = None) -> Any:
     gym = _require_gymnasium()
     # Task-level constructor arguments (e.g. LunarLander's continuous=True).
     # Empty for every task that does not declare them, so the `gym.make` call
     # is unchanged for the tasks that predate `RLTaskSpec.env_kwargs`.
     env_kwargs = spec.env_kwargs_dict()
+    if spec.is_image_observation:
+        env = _make_atari_env(gym, spec, env_kwargs)
+        if seed is not None:
+            env.action_space.seed(seed)
+            env.observation_space.seed(seed)
+        return env
     if spec.env_id.startswith("MinAtar/"):
         # MinAtar ships gymnasium bindings but does not auto-register them,
         # and its registrations carry no episode cap.
@@ -344,16 +470,118 @@ def _make_env(spec: RLTaskSpec, seed: int | None = None) -> Any:
     return env
 
 
-def _validate_env_spaces(env: Any, spec: RLTaskSpec) -> tuple[int, int]:
+@dataclass(frozen=True)
+class ObservationSpec:
+    """Resolved observation description shared by every RL workflow.
+
+    `kind` is the task spec's `observation_kind` ("flat_box" or "image_atari"),
+    `shape` is the wrapped env's observation shape, `dim` is its flattened size
+    and `numpy_dtype` is the dtype replay buffers should store.
+    """
+
+    kind: str
+    shape: tuple[int, ...]
+    dim: int
+    numpy_dtype: str
+
+    @property
+    def is_image(self) -> bool:
+        return is_image_observation_kind(self.kind)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "shape": list(self.shape),
+            "dim": int(self.dim),
+            "numpy_dtype": self.numpy_dtype,
+        }
+
+
+def describe_observation_space(env: Any, spec: RLTaskSpec) -> ObservationSpec:
+    """Validate the env observation space against the task spec and describe it."""
+
     gym = _require_gymnasium()
     if not isinstance(env.observation_space, gym.spaces.Box):
-        raise ValueError(f"{spec.env_id} must use a Box observation space for this DQN baseline.")
-    if not isinstance(env.action_space, gym.spaces.Discrete):
-        raise ValueError(f"{spec.env_id} must use a Discrete action space for this DQN baseline.")
-    obs_shape = env.observation_space.shape
+        raise ValueError(f"{spec.env_id} must use a Box observation space for this baseline.")
+    obs_shape = tuple(int(value) for value in env.observation_space.shape)
+    if spec.is_image_observation:
+        if len(obs_shape) != 3:
+            raise ValueError(
+                f"Task '{spec.name}' declares observation_kind='{spec.observation_kind}' but "
+                f"{spec.env_id} produced observation shape {obs_shape}; expected (C, H, W)."
+            )
+        # Frames stay uint8 in replay buffers; the Nature-CNN encoder casts and
+        # divides by 255 internally.
+        return ObservationSpec(
+            kind=spec.observation_kind,
+            shape=obs_shape,
+            dim=int(np.prod(obs_shape)),
+            numpy_dtype="uint8",
+        )
     if len(obs_shape) != 1:
         raise ValueError(f"{spec.env_id} observation shape must be flat, got {obs_shape}.")
-    return int(np.prod(obs_shape)), int(env.action_space.n)
+    return ObservationSpec(
+        kind=spec.observation_kind,
+        shape=obs_shape,
+        dim=int(np.prod(obs_shape)),
+        numpy_dtype="float32",
+    )
+
+
+def resolve_image_task_eval_episodes(spec: RLTaskSpec, profile_eval_episodes: int) -> int:
+    """Task-aware eval-episode default.
+
+    Image (ALE) episodes run for thousands of post-frameskip steps, so the
+    runners cap `eval_episodes` at `IMAGE_TASK_EVAL_EPISODES` for those tasks.
+    The cap only ever LOWERS the profile default (smoke's 2 stays 2) and every
+    flat task is returned unchanged, so no existing run changes.
+    """
+
+    episodes = int(profile_eval_episodes)
+    if not spec.is_image_observation:
+        return episodes
+    return min(episodes, IMAGE_TASK_EVAL_EPISODES)
+
+
+def resolve_env_spaces(env: Any, spec: RLTaskSpec) -> tuple[ObservationSpec, int]:
+    """Validate spaces for a discrete-action workflow and return (obs spec, n)."""
+
+    gym = _require_gymnasium()
+    obs_spec = describe_observation_space(env, spec)
+    if not isinstance(env.action_space, gym.spaces.Discrete):
+        raise ValueError(f"{spec.env_id} must use a Discrete action space for this DQN baseline.")
+    return obs_spec, int(env.action_space.n)
+
+
+def observation_to_array(obs: Any, obs_spec: ObservationSpec) -> np.ndarray:
+    """Convert a raw env observation to the array a replay buffer stores."""
+
+    return np.asarray(obs, dtype=np.dtype(obs_spec.numpy_dtype))
+
+
+def build_q_network(
+    obs_spec: ObservationSpec,
+    action_dim: int,
+    *,
+    hidden_sizes: tuple[int, int] = (120, 84),
+) -> nn.Module:
+    """Build the DQN Q-network for the observation kind of the task."""
+
+    if obs_spec.is_image:
+        return AtariDQNNetwork(obs_spec.shape, action_dim)
+    return DQNNetwork(obs_spec.dim, action_dim, hidden_sizes=hidden_sizes)
+
+
+def _validate_env_spaces(env: Any, spec: RLTaskSpec) -> tuple[int, int]:
+    """Flat-observation validation kept for callers that require a 1-D Box."""
+
+    obs_spec, action_dim = resolve_env_spaces(env, spec)
+    if obs_spec.is_image:
+        raise ValueError(
+            f"{spec.env_id} produces image observations; use resolve_env_spaces() and the "
+            "CNN network builders instead of _validate_env_spaces()."
+        )
+    return obs_spec.dim, action_dim
 
 
 def _json_default(obj: Any) -> Any:
@@ -437,7 +665,7 @@ def _build_training_efficiency(
 
 
 def _select_action(
-    model: DQNNetwork,
+    model: nn.Module,
     obs: np.ndarray,
     *,
     action_dim: int,
@@ -454,7 +682,7 @@ def _select_action(
 
 def evaluate_dqn(
     task_name: str,
-    model: DQNNetwork,
+    model: nn.Module,
     *,
     episodes: int = 20,
     seed: int = 10_000,
@@ -533,12 +761,13 @@ def train_dqn(
     run_device = _resolve_device_arg(device)
 
     env = _make_env(spec, seed=cfg.seed)
-    obs_dim, action_dim = _validate_env_spaces(env, spec)
-    q_network = DQNNetwork(obs_dim, action_dim, hidden_sizes=cfg.hidden_sizes).to(run_device)
-    target_network = DQNNetwork(obs_dim, action_dim, hidden_sizes=cfg.hidden_sizes).to(run_device)
+    obs_spec, action_dim = resolve_env_spaces(env, spec)
+    obs_dim = obs_spec.dim
+    q_network = build_q_network(obs_spec, action_dim, hidden_sizes=cfg.hidden_sizes).to(run_device)
+    target_network = build_q_network(obs_spec, action_dim, hidden_sizes=cfg.hidden_sizes).to(run_device)
     target_network.load_state_dict(q_network.state_dict())
     optimizer = optim.Adam(q_network.parameters(), lr=cfg.learning_rate)
-    replay_buffer = ReplayBuffer.create(cfg.buffer_size, obs_dim)
+    replay_buffer = ReplayBuffer.create_for_observation(cfg.buffer_size, obs_spec)
 
     run_dir = Path(output_dir) if output_dir is not None else make_dqn_output_dir(spec.name)
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -583,10 +812,10 @@ def train_dqn(
             train_done = bool(terminated)
             episode_done = bool(terminated or truncated)
             replay_buffer.add(
-                np.asarray(obs, dtype=np.float32),
+                observation_to_array(obs, obs_spec),
                 action,
                 float(reward),
-                np.asarray(next_obs, dtype=np.float32),
+                observation_to_array(next_obs, obs_spec),
                 train_done,
             )
             obs = next_obs
@@ -739,6 +968,8 @@ def train_dqn(
         "task": spec.to_dict(),
         "config": cfg.to_dict(),
         "obs_dim": obs_dim,
+        "obs_shape": list(obs_spec.shape),
+        "observation_spec": obs_spec.to_dict(),
         "action_dim": action_dim,
         "selected_eval": {k: v for k, v in selected_eval.items() if k != "episode_metrics"},
         "last_eval": {k: v for k, v in last_eval.items() if k != "episode_metrics"},
@@ -759,6 +990,7 @@ def train_dqn(
             "task": spec.to_dict(),
             "config": cfg.to_dict(),
             "device": str(run_device),
+            "observation": obs_spec.to_dict(),
             "source_reference": cfg.source_reference,
         },
     )
@@ -841,11 +1073,15 @@ def load_dqn_checkpoint(
     config_data = dict(checkpoint["config"])
     config_data["hidden_sizes"] = tuple(config_data["hidden_sizes"])
     cfg = DQNConfig(**config_data)
-    model = DQNNetwork(
-        int(checkpoint["obs_dim"]),
-        int(checkpoint["action_dim"]),
-        hidden_sizes=cfg.hidden_sizes,
-    ).to(run_device)
+    obs_shape = tuple(int(value) for value in checkpoint.get("obs_shape", (int(checkpoint["obs_dim"]),)))
+    if len(obs_shape) == 3:
+        model: nn.Module = AtariDQNNetwork(obs_shape, int(checkpoint["action_dim"])).to(run_device)
+    else:
+        model = DQNNetwork(
+            int(checkpoint["obs_dim"]),
+            int(checkpoint["action_dim"]),
+            hidden_sizes=cfg.hidden_sizes,
+        ).to(run_device)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
     return {
