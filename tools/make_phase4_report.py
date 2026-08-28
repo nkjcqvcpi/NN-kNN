@@ -3,14 +3,18 @@
 Usage:
     .venv/bin/python tools/make_phase4_report.py --manifest reports/phase4_manifest.json
 
-The manifest maps method -> {seed: run_dir}. Emits a markdown table on stdout
-and writes PNGs under reports/figures/.
+The manifest maps method -> {seed: run_dir}. Which methods appear in the table
+and figures is driven by the manifest keys: every key must be one of the known
+methods below, and the known-method order fixes the plotting/table order, so a
+4-method manifest and a 6-method manifest both work with no code change.
+Emits a markdown table on stdout and writes PNGs under reports/figures/.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 import matplotlib
@@ -20,12 +24,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-METHOD_ORDER = ["dqn", "nec", "nnknn_hybrid", "mlp_ac"]
+# Canonical presentation order. A manifest supplies a SUBSET of these keys;
+# unknown keys are a hard error (see resolve_method_order).
+METHOD_ORDER = ["dqn", "nec", "nnknn_hybrid", "mlp_ac", "ppo", "td3"]
 METHOD_LABEL = {
     "dqn": "DQN",
     "nec": "NEC",
     "nnknn_hybrid": "NN-kNN-RL (hybrid)",
     "mlp_ac": "MLP actor-critic",
+    "ppo": "PPO",
+    "td3": "TD3",
 }
 # Validated categorical palette (dataviz reference instance, light mode).
 METHOD_COLOR = {
@@ -33,8 +41,27 @@ METHOD_COLOR = {
     "nec": "#eb6834",
     "nnknn_hybrid": "#1baf7a",
     "mlp_ac": "#eda100",
+    "ppo": "#8358d6",
+    "td3": "#c2418a",
 }
 SUCCESS_THRESHOLD = 475.0  # overridden by --success-threshold
+PLOT_NCOLS = 2  # per-method grid width; rows scale with the method count
+
+
+def resolve_method_order(manifest: dict, *, source: str = "manifest") -> list[str]:
+    """Order the manifest's method keys by METHOD_ORDER, rejecting unknowns."""
+    unknown = [key for key in manifest if key not in METHOD_LABEL or key not in METHOD_COLOR]
+    if unknown:
+        raise SystemExit(
+            f"{source}: unknown method key(s) {', '.join(repr(k) for k in unknown)}. "
+            f"Known keys: {', '.join(METHOD_ORDER)}. "
+            "Add a METHOD_ORDER/METHOD_LABEL/METHOD_COLOR entry in "
+            "tools/make_phase4_report.py to support a new method."
+        )
+    order = [key for key in METHOD_ORDER if key in manifest]
+    if not order:
+        raise SystemExit(f"{source}: no methods found; the manifest is empty.")
+    return order
 
 
 def load_runs(manifest: dict) -> dict:
@@ -59,12 +86,12 @@ def fmt_pm(values: list[float]) -> str:
     return f"{arr.mean():.2f} ± {arr.std(ddof=1):.2f}"
 
 
-def build_table(data: dict, threshold: float) -> str:
+def build_table(data: dict, threshold: float, order: list[str]) -> str:
     lines = [
         f"| method | final_eval (mean ± std) | last_eval (mean ± std) | best_model_step (mean ± std) | steps-to-{threshold:g} per seed (eval grid) |",
         "|---|---|---|---|---|",
     ]
-    for method in METHOD_ORDER:
+    for method in order:
         runs = data[method]
         finals = [r["summary"]["final_eval"]["mean_return"] for r in runs.values()]
         lasts = [r["summary"]["last_eval"]["mean_return"] for r in runs.values()]
@@ -87,9 +114,12 @@ def style_axis(ax):
 
 
 def plot_per_method(data: dict, outdir: Path, *, task: str, threshold: float,
-                    ylim: tuple[float, float], prefix: str) -> Path:
-    fig, axes = plt.subplots(2, 2, figsize=(11, 7.5), sharex=True, sharey=True)
-    for ax, method in zip(axes.flat, METHOD_ORDER):
+                    ylim: tuple[float, float], prefix: str, order: list[str]) -> Path:
+    ncols = PLOT_NCOLS
+    nrows = math.ceil(len(order) / ncols)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(11, 3.75 * nrows),
+                             sharex=True, sharey=True, squeeze=False)
+    for ax, method in zip(axes.flat, order):
         color = METHOD_COLOR[method]
         for seed, run in sorted(data[method].items()):
             ev = run["evals"]
@@ -102,10 +132,19 @@ def plot_per_method(data: dict, outdir: Path, *, task: str, threshold: float,
                 fontsize=8.5, color="#5f5e56", va="top")
         style_axis(ax)
         ax.set_ylim(*ylim)
-    for ax in axes[1]:
-        ax.set_xlabel("environment steps (thousands)", fontsize=9, color="#5f5e56")
-    for ax in axes[:, 0]:
-        ax.set_ylabel("eval mean return (20 eps)", fontsize=9, color="#5f5e56")
+    # Drop unused panels when the method count does not fill the grid.
+    for ax in list(axes.flat)[len(order):]:
+        fig.delaxes(ax)
+    for col in range(ncols):
+        used_rows = [r for r in range(nrows) if r * ncols + col < len(order)]
+        if not used_rows:
+            continue
+        bottom = axes[used_rows[-1], col]
+        bottom.set_xlabel("environment steps (thousands)", fontsize=9, color="#5f5e56")
+        bottom.tick_params(labelbottom=True)  # sharex hides these off the last row
+    for row in range(nrows):
+        if row * ncols < len(order):
+            axes[row, 0].set_ylabel("eval mean return (20 eps)", fontsize=9, color="#5f5e56")
     fig.suptitle(f"{task} fixed-budget evaluation curves — dashed line marks {threshold:g} success threshold",
                  fontsize=11, color="#1a1a19")
     fig.tight_layout(rect=(0, 0, 1, 0.97))
@@ -116,14 +155,14 @@ def plot_per_method(data: dict, outdir: Path, *, task: str, threshold: float,
 
 
 def plot_means(data: dict, outdir: Path, *, task: str, threshold: float,
-               ylim: tuple[float, float], prefix: str) -> Path:
+               ylim: tuple[float, float], prefix: str, order: list[str]) -> Path:
     # Eval steps differ per run (episode-boundary evals), so resample every
     # seed curve onto one grid before aggregating across seeds.
     grid = np.arange(2_500, 150_001, 2_500)
     label_gap = (ylim[1] - ylim[0]) * 0.046
     fig, ax = plt.subplots(figsize=(9.5, 5.5))
     label_pos = []
-    for method in METHOD_ORDER:
+    for method in order:
         color = METHOD_COLOR[method]
         curves = []
         for run in data[method].values():
@@ -173,14 +212,15 @@ def main() -> None:
     args = parser.parse_args()
 
     manifest = json.loads(Path(args.manifest).read_text())
+    order = resolve_method_order(manifest, source=args.manifest)
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
     data = load_runs(manifest)
-    print(build_table(data, args.success_threshold))
+    print(build_table(data, args.success_threshold, order))
     print()
     kwargs = dict(task=args.task, threshold=args.success_threshold,
-                  ylim=tuple(args.ylim), prefix=args.prefix)
+                  ylim=tuple(args.ylim), prefix=args.prefix, order=order)
     print(f"figure: {plot_per_method(data, outdir, **kwargs)}")
     print(f"figure: {plot_means(data, outdir, **kwargs)}")
 
