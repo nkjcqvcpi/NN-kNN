@@ -67,7 +67,9 @@ import torch.nn as nn
 import torch.optim as optim
 
 from datasets.rl_tasks import RLTaskSpec, get_rl_task_spec
+from model.cnn_encoders import NATURE_CNN_FEATURE_DIM, NatureCNNEncoder, orthogonal_layer_init
 from model.rl_workflow import (
+    ObservationSpec,
     _build_early_stopping_tracker,
     _build_training_efficiency,
     _finalize_early_stopping_tracker,
@@ -77,6 +79,8 @@ from model.rl_workflow import (
     _require_gymnasium,
     _resolve_device_arg,
     _validate_early_stopping_config,
+    describe_observation_space,
+    observation_to_array,
     seed_everything,
 )
 
@@ -355,25 +359,58 @@ def _mlp_trunk(obs_dim: int, hidden_sizes: tuple[int, int]) -> tuple[nn.Sequenti
     return trunk, h2
 
 
+def _cnn_trunk(obs_shape: tuple[int, ...]) -> tuple[nn.Module, int]:
+    """Nature-CNN trunk for image observations, orthogonally initialised.
+
+    PPO keeps its SEPARATE-trunk design on images: the actor and the critic get
+    one encoder each (CleanRL's `ppo_atari.py` shares a single trunk instead).
+    That is deliberate -- it keeps the image path structurally identical to the
+    flat path, where this repo's PPO also uses two independent trunks.
+    """
+
+    trunk = NatureCNNEncoder(
+        obs_shape,
+        feature_dim=NATURE_CNN_FEATURE_DIM,
+        layer_init=orthogonal_layer_init,
+    )
+    return trunk, trunk.feature_dim
+
+
+def _as_observation_spec(observation: "ObservationSpec | int") -> ObservationSpec:
+    if isinstance(observation, ObservationSpec):
+        return observation
+    dim = int(observation)
+    return ObservationSpec(kind="flat_box", shape=(dim,), dim=dim, numpy_dtype="float32")
+
+
 class PPOAgent(nn.Module):
     """Separate-trunk PPO actor-critic with a discrete or continuous head."""
 
     def __init__(
         self,
-        obs_dim: int,
+        observation: "ObservationSpec | int",
         action_spec: ActionSpaceSpec,
         *,
         hidden_sizes: tuple[int, int] = (64, 64),
         log_std_init: float = 0.0,
     ):
         super().__init__()
-        self.obs_dim = int(obs_dim)
+        self.observation_spec = _as_observation_spec(observation)
+        self.obs_dim = int(self.observation_spec.dim)
         self.action_spec = action_spec
         self.hidden_sizes = tuple(hidden_sizes)
 
-        critic_trunk, critic_out = _mlp_trunk(self.obs_dim, self.hidden_sizes)
+        # Trunks are constructed critic-first, then actor, in both branches, so
+        # the torch RNG consumption order of the flat path is unchanged.
+        if self.observation_spec.is_image:
+            critic_trunk, critic_out = _cnn_trunk(self.observation_spec.shape)
+        else:
+            critic_trunk, critic_out = _mlp_trunk(self.obs_dim, self.hidden_sizes)
         self.critic = nn.Sequential(critic_trunk, _layer_init(nn.Linear(critic_out, 1), std=1.0))
-        actor_trunk, actor_out = _mlp_trunk(self.obs_dim, self.hidden_sizes)
+        if self.observation_spec.is_image:
+            actor_trunk, actor_out = _cnn_trunk(self.observation_spec.shape)
+        else:
+            actor_trunk, actor_out = _mlp_trunk(self.obs_dim, self.hidden_sizes)
         self.actor = nn.Sequential(
             actor_trunk,
             _layer_init(nn.Linear(actor_out, action_spec.dim), std=0.01),
@@ -392,6 +429,10 @@ class PPOAgent(nn.Module):
     @property
     def is_continuous(self) -> bool:
         return self.action_spec.kind == "continuous"
+
+    @property
+    def is_image_observation(self) -> bool:
+        return self.observation_spec.is_image
 
     def get_value(self, obs: torch.Tensor) -> torch.Tensor:
         return self.critic(obs).view(-1)
@@ -520,6 +561,26 @@ def explained_variance(predictions: torch.Tensor, targets: torch.Tensor) -> floa
     return float((1.0 - residual_var / target_var).cpu().item())
 
 
+def _rollout_obs_tensor(observations: np.ndarray | torch.Tensor, device: torch.device) -> torch.Tensor:
+    """Move a rollout's observations to `device`.
+
+    Flat observations become float32 exactly as before. `uint8` image frames
+    stay `uint8` on the device -- a whole 2048-step rollout of 4x84x84 frames is
+    4x smaller that way -- because `NatureCNNEncoder` casts to float and divides
+    by 255 itself. Only the discrete head consumes image observations, so no
+    dtype-sensitive continuous-action path sees a uint8 tensor.
+    """
+
+    if isinstance(observations, torch.Tensor):
+        if observations.dtype == torch.uint8:
+            return observations.to(device)
+        return observations.to(device=device, dtype=torch.float32)
+    array = np.asarray(observations)
+    if array.dtype == np.uint8:
+        return torch.as_tensor(array, device=device)
+    return torch.as_tensor(np.asarray(array, dtype=np.float32), dtype=torch.float32, device=device)
+
+
 def ppo_update(
     agent: PPOAgent,
     optimizer: optim.Optimizer,
@@ -546,10 +607,8 @@ def ppo_update(
     gradients, checkpoint selection, or early stopping.
     """
 
-    obs_t = torch.as_tensor(np.asarray(observations, dtype=np.float32), dtype=torch.float32, device=device)
-    next_obs_t = torch.as_tensor(
-        np.asarray(next_observations, dtype=np.float32), dtype=torch.float32, device=device
-    )
+    obs_t = _rollout_obs_tensor(observations, device)
+    next_obs_t = _rollout_obs_tensor(next_observations, device)
     rewards_t = torch.as_tensor(np.asarray(rewards, dtype=np.float32), dtype=torch.float32, device=device)
     terminated_t = torch.as_tensor(np.asarray(terminated, dtype=bool), dtype=torch.bool, device=device)
     boundaries_t = torch.as_tensor(
@@ -686,15 +745,10 @@ def ppo_update(
 # ---------------------------------------------------------------------------
 
 
-def _validate_ppo_env_spaces(env: Any, spec: RLTaskSpec) -> tuple[int, ActionSpaceSpec]:
+def _validate_ppo_env_spaces(env: Any, spec: RLTaskSpec) -> tuple[ObservationSpec, ActionSpaceSpec]:
     """Validate observation/action spaces and reconcile them with the task spec."""
 
-    gym = _require_gymnasium()
-    if not isinstance(env.observation_space, gym.spaces.Box):
-        raise ValueError(f"{spec.env_id} must use a Box observation space for this PPO baseline.")
-    obs_shape = env.observation_space.shape
-    if len(obs_shape) != 1:
-        raise ValueError(f"{spec.env_id} observation shape must be flat, got {obs_shape}.")
+    obs_spec = describe_observation_space(env, spec)
     action_spec = describe_action_space(env.action_space)
     expected_kind = resolve_task_action_kind(spec.action_kind)
     if action_spec.kind != expected_kind:
@@ -702,7 +756,12 @@ def _validate_ppo_env_spaces(env: Any, spec: RLTaskSpec) -> tuple[int, ActionSpa
             f"Task '{spec.name}' declares action_kind='{spec.action_kind}' but {spec.env_id} "
             f"exposes a {action_spec.kind} action space."
         )
-    return int(np.prod(obs_shape)), action_spec
+    if obs_spec.is_image and action_spec.kind != "discrete":
+        raise ValueError(
+            f"Task '{spec.name}' pairs image observations with a {action_spec.kind} action space; "
+            "the image path is discrete-action only."
+        )
+    return obs_spec, action_spec
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -828,9 +887,10 @@ def train_ppo(
     run_device = _resolve_device_arg(device)
 
     env = _make_env(spec, seed=cfg.seed)
-    obs_dim, action_spec = _validate_ppo_env_spaces(env, spec)
+    obs_spec, action_spec = _validate_ppo_env_spaces(env, spec)
+    obs_dim = obs_spec.dim
     agent = PPOAgent(
-        obs_dim,
+        obs_spec,
         action_spec,
         hidden_sizes=cfg.hidden_sizes,
         log_std_init=cfg.log_std_init,
@@ -878,7 +938,7 @@ def train_ppo(
 
             agent.eval()
             for _step in range(rollout_steps):
-                obs_array = np.asarray(obs, dtype=np.float32)
+                obs_array = observation_to_array(obs, obs_spec)
                 obs_tensor = torch.as_tensor(obs_array, dtype=torch.float32, device=run_device).unsqueeze(0)
                 with torch.no_grad():
                     action, log_prob, _value = agent.act(obs_tensor)
@@ -886,7 +946,7 @@ def train_ppo(
                 episode_done = bool(terminated or truncated)
 
                 buf_obs.append(obs_array)
-                buf_next_obs.append(np.asarray(next_obs, dtype=np.float32))
+                buf_next_obs.append(observation_to_array(next_obs, obs_spec))
                 if agent.is_continuous:
                     buf_actions.append(action.view(-1).detach().cpu().numpy().astype(np.float32))
                 else:
@@ -979,8 +1039,8 @@ def train_ppo(
                     agent,
                     optimizer,
                     cfg,
-                    observations=np.asarray(buf_obs, dtype=np.float32),
-                    next_observations=np.asarray(buf_next_obs, dtype=np.float32),
+                    observations=np.asarray(buf_obs),
+                    next_observations=np.asarray(buf_next_obs),
                     actions=np.asarray(buf_actions),
                     log_probs=np.asarray(buf_log_probs, dtype=np.float32),
                     rewards=np.asarray(buf_rewards, dtype=np.float32),
@@ -1057,6 +1117,8 @@ def train_ppo(
         "task": spec.to_dict(),
         "config": cfg.to_dict(),
         "obs_dim": obs_dim,
+        "obs_shape": list(obs_spec.shape),
+        "observation_spec": obs_spec.to_dict(),
         "action_spec": action_spec.to_dict(),
         "action_dim": action_spec.dim,
         "selected_eval": {k: v for k, v in selected_eval.items() if k != "episode_metrics"},
@@ -1081,6 +1143,7 @@ def train_ppo(
             "config": cfg.to_dict(),
             "action_spec": action_spec.to_dict(),
             "device": str(run_device),
+            "observation": obs_spec.to_dict(),
             "source_reference": cfg.source_reference,
             "gae": {
                 "gamma": cfg.gamma,
@@ -1104,6 +1167,11 @@ def train_ppo(
                     "categorical"
                     if action_spec.kind == "discrete"
                     else "diagonal_gaussian_clipped_to_action_bounds"
+                ),
+                "trunk": (
+                    "nature_cnn_separate_actor_critic"
+                    if obs_spec.is_image
+                    else "mlp_tanh_separate_actor_critic"
                 ),
             },
         },
@@ -1201,8 +1269,19 @@ def load_ppo_checkpoint(
     config_data["hidden_sizes"] = tuple(config_data["hidden_sizes"])
     cfg = PPOConfig(**config_data)
     action_spec = ActionSpaceSpec.from_dict(checkpoint["action_spec"])
+    recorded_observation = checkpoint.get("observation_spec")
+    observation: ObservationSpec | int
+    if recorded_observation is None:
+        observation = int(checkpoint["obs_dim"])
+    else:
+        observation = ObservationSpec(
+            kind=str(recorded_observation["kind"]),
+            shape=tuple(int(value) for value in recorded_observation["shape"]),
+            dim=int(recorded_observation["dim"]),
+            numpy_dtype=str(recorded_observation["numpy_dtype"]),
+        )
     agent = PPOAgent(
-        int(checkpoint["obs_dim"]),
+        observation,
         action_spec,
         hidden_sizes=cfg.hidden_sizes,
         log_std_init=cfg.log_std_init,

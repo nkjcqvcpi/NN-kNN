@@ -4,6 +4,26 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 
+# Supported `RLTaskSpec.observation_kind` values.
+#
+# - "flat_box": a 1-D Box observation (or a grid that the shared `_make_env`
+#   flattens into one, as MinAtar does). Every workflow feeds these to an MLP.
+# - "image_atari": a stacked-grayscale ALE image observation. `_make_env`
+#   builds the base env with frameskip=1 and applies AtariPreprocessing
+#   (grayscale, 84x84, frame_skip=4) followed by FrameStackObservation(4), so
+#   the workflows see a (4, 84, 84) uint8 Box and build a Nature-CNN encoder
+#   (`model/cnn_encoders.py`) instead of an MLP.
+FLAT_BOX_OBSERVATION = "flat_box"
+IMAGE_ATARI_OBSERVATION = "image_atari"
+SUPPORTED_OBSERVATION_KINDS = (FLAT_BOX_OBSERVATION, IMAGE_ATARI_OBSERVATION)
+
+
+def is_image_observation_kind(observation_kind: str) -> bool:
+    """Return True when `observation_kind` requires the CNN observation path."""
+
+    return str(observation_kind).strip().lower() == IMAGE_ATARI_OBSERVATION
+
+
 @dataclass(frozen=True)
 class RLTaskSpec:
     """Metadata for a reinforcement-learning task supported by the repo."""
@@ -34,6 +54,12 @@ class RLTaskSpec:
         """Return `env_kwargs` as the mapping `gymnasium.make` expects."""
 
         return dict(self.env_kwargs)
+
+    @property
+    def is_image_observation(self) -> bool:
+        """True when the task needs the CNN (ALE image) observation path."""
+
+        return is_image_observation_kind(self.observation_kind)
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -210,6 +236,83 @@ _RL_TASKS: dict[str, RLTaskSpec] = {
         target_mean_return=100.0,
     ),
     # ---------------------------------------------------------------------
+    # ALE / Atari image-observation tasks (NEXT_STEPS_PLAN.md I-3).
+    #
+    # SCOPE NOTE: these are the repo's only `observation_kind="image_atari"`
+    # tasks. The shared `model/rl_workflow.py::_make_env` builds the base env
+    # with frameskip=1 and then applies
+    #   AtariPreprocessing(noop_max=30, frame_skip=4, screen_size=84,
+    #                      grayscale_obs=True, scale_obs=False)
+    #   FrameStackObservation(stack_size=4)
+    # yielding a (4, 84, 84) uint8 Box. Every workflow then swaps its MLP for
+    # the shared Nature-CNN encoder in `model/cnn_encoders.py`.
+    #
+    # TIMESTEP UNITS: one environment step in this repo's budgets, logs and
+    # `total_timesteps` is one POST-FRAMESKIP agent step = 4 emulator frames.
+    # A 1,000,000-step run is therefore a 4,000,000-frame run. Compare against
+    # published Atari numbers in frames, not steps.
+    #
+    # ALE v5 defaults are kept: repeat_action_probability=0.25 (sticky
+    # actions) and the minimal per-game action set. That is the modern
+    # Machado et al. (2018) protocol and it is HARDER than the deterministic
+    # NoFrameskip-v4 setting most published Nature-DQN numbers use, so scores
+    # here are not directly comparable to those papers.
+    # ---------------------------------------------------------------------
+    "ale_pong": RLTaskSpec(
+        name="ale_pong",
+        env_id="ALE/Pong-v5",
+        family="ale",
+        observation_kind="image_atari",
+        action_kind="discrete",
+        max_episode_steps=27_000,
+        default_profile="fast",
+        literature_notes=(
+            "Atari 2600 Pong through ale-py; 6 minimal actions, returns in",
+            "[-21, +21] (points scored minus points conceded in a first-to-21 game).",
+            "Observation is a 4-frame stack of 84x84 grayscale frames after",
+            "AtariPreprocessing(frame_skip=4) on a frameskip=1 base env.",
+            "max_episode_steps=27000 post-frameskip steps mirrors the ALE default",
+            "cap of 108000 emulator frames.",
+            "NON-CANONICAL MARKERS: gymnasium/ALE define no reward threshold for",
+            "ALE/Pong-v5. success_threshold=0.0 is a repo progress marker meaning",
+            "'breaks even against the built-in opponent'; target_mean_return=18.0",
+            "approximates Nature-DQN-level play. Nature DQN only reaches roughly",
+            "+18 on Pong after 10M+ AGENT STEPS (40M+ frames), far beyond the",
+            "budgets this repo runs, so ALE runs here are declared EXPLORATORY:",
+            "the deliverable is a partial learning curve, not a solved game.",
+            "TIMESTEPS COUNT POST-FRAMESKIP STEPS: 1 step = 4 emulator frames.",
+        ),
+        success_threshold=0.0,
+        target_mean_return=18.0,
+    ),
+    "ale_breakout": RLTaskSpec(
+        name="ale_breakout",
+        env_id="ALE/Breakout-v5",
+        family="ale",
+        observation_kind="image_atari",
+        action_kind="discrete",
+        max_episode_steps=27_000,
+        default_profile="fast",
+        literature_notes=(
+            "Atari 2600 Breakout through ale-py; 4 minimal actions (NOOP, FIRE,",
+            "RIGHT, LEFT), reward is bricks destroyed, and the ball must be",
+            "launched with FIRE, so a policy that never fires idles until the",
+            "27000-step cap. Keep eval episode counts small.",
+            "Observation is a 4-frame stack of 84x84 grayscale frames after",
+            "AtariPreprocessing(frame_skip=4) on a frameskip=1 base env.",
+            "NON-CANONICAL MARKERS: gymnasium/ALE define no reward threshold for",
+            "ALE/Breakout-v5. success_threshold=20.0 is a repo progress marker",
+            "('clears a meaningful part of the first wall') and",
+            "target_mean_return=100.0 is an out-of-reach immediate-stop guard.",
+            "Nature DQN reaches roughly 400 on Breakout only after 10M+ AGENT",
+            "STEPS (40M+ frames), so ALE runs here are declared EXPLORATORY:",
+            "the deliverable is a partial learning curve, not a solved game.",
+            "TIMESTEPS COUNT POST-FRAMESKIP STEPS: 1 step = 4 emulator frames.",
+        ),
+        success_threshold=20.0,
+        target_mean_return=100.0,
+    ),
+    # ---------------------------------------------------------------------
     # Continuous-action tasks (NEXT_STEPS_PLAN.md I-2).
     #
     # SCOPE NOTE: the two entries below exist for the TD3 continuous-control
@@ -300,6 +403,14 @@ def normalize_rl_task_name(task_name: str) -> str:
         "minatar/spaceinvaders_v1": "minatar_space_invaders",
         "minatar/breakout": "minatar_breakout",
         "minatar/breakout_v1": "minatar_breakout",
+        "pong": "ale_pong",
+        "ale/pong": "ale_pong",
+        "ale/pong_v5": "ale_pong",
+        "ale_pong_v5": "ale_pong",
+        "breakout": "ale_breakout",
+        "ale/breakout": "ale_breakout",
+        "ale/breakout_v5": "ale_breakout",
+        "ale_breakout_v5": "ale_breakout",
     }
     return aliases.get(normalized, normalized)
 

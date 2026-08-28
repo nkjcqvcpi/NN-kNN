@@ -17,6 +17,7 @@ from model.rl_workflow import (  # noqa: E402
     load_dqn_checkpoint,
     make_dqn_config,
     make_dqn_output_dir,
+    resolve_image_task_eval_episodes,
     train_dqn,
 )
 
@@ -116,7 +117,26 @@ def _config_from_args(args: argparse.Namespace) -> DQNConfig:
     if args.early_stopping_target_score is not None:
         overrides["early_stopping_target_score"] = args.early_stopping_target_score
     _apply_task_success_defaults(args, overrides)
+    _apply_task_eval_defaults(args, overrides)
     return make_dqn_config(args.profile, **overrides)
+
+
+def _apply_task_eval_defaults(args: argparse.Namespace, overrides: dict) -> None:
+    """Lower `eval_episodes` for image (ALE) tasks unless the user set it.
+
+    ALE episodes are thousands of post-frameskip steps long, so the flat-task
+    20-episode default would dominate wall clock. Only image tasks are touched
+    and the cap never raises the profile default, so flat-task runs are
+    bit-identical.
+    """
+
+    if args.eval_episodes is not None:
+        return
+    spec = get_rl_task_spec(args.task)
+    if not spec.is_image_observation:
+        return
+    profile_default = make_dqn_config(args.profile).eval_episodes
+    overrides["eval_episodes"] = resolve_image_task_eval_episodes(spec, profile_default)
 
 
 def _apply_task_success_defaults(args: argparse.Namespace, overrides: dict) -> None:
