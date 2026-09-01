@@ -1,0 +1,95 @@
+{
+  "created_at_utc": "2026-08-28T01:24:40.757606+00:00",
+  "algorithm": "ppo_clipped_surrogate_gae",
+  "task": {
+    "name": "lunarlander",
+    "env_id": "LunarLander-v3",
+    "family": "box2d",
+    "observation_kind": "flat_box",
+    "action_kind": "discrete",
+    "max_episode_steps": 1000,
+    "default_profile": "fast",
+    "literature_notes": [
+      "Shaped-reward landing task; gymnasium reward threshold is 200.",
+      "Requires gymnasium[box2d]. The immediate-stop target 280 sits above",
+      "the solve threshold so only an excellent policy stops a run early."
+    ],
+    "success_threshold": 200.0,
+    "target_mean_return": 280.0,
+    "env_kwargs": {}
+  },
+  "config": {
+    "profile": "fast",
+    "seed": 4,
+    "total_timesteps": 150000,
+    "learning_rate": 0.0003,
+    "anneal_lr": true,
+    "rollout_length": 2048,
+    "num_minibatches": 32,
+    "update_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_coef": 0.2,
+    "clip_vloss": true,
+    "ent_coef": 0.01,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "target_kl": null,
+    "normalize_advantages": true,
+    "advantage_epsilon": 1e-08,
+    "hidden_sizes": [
+      64,
+      64
+    ],
+    "log_std_init": 0.0,
+    "continuous_action_handling": "clip",
+    "eval_frequency": 5000,
+    "eval_episodes": 20,
+    "eval_seed": 10000,
+    "eval_deterministic": true,
+    "success_threshold": 200.0,
+    "early_stopping": false,
+    "early_stopping_patience": 30,
+    "early_stopping_min_delta": 1.0,
+    "early_stopping_min_steps": 25000,
+    "early_stopping_target_score": 280.0,
+    "source_reference": "PPO (Schulman et al. 2017); CleanRL ppo.py / ppo_continuous_action.py and Stable-Baselines3 MlpPolicy defaults as reference only"
+  },
+  "action_spec": {
+    "kind": "discrete",
+    "dim": 4,
+    "low": null,
+    "high": null
+  },
+  "device": "cpu",
+  "observation": {
+    "kind": "flat_box",
+    "shape": [
+      8
+    ],
+    "dim": 8,
+    "numpy_dtype": "float32"
+  },
+  "source_reference": "PPO (Schulman et al. 2017); CleanRL ppo.py / ppo_continuous_action.py and Stable-Baselines3 MlpPolicy defaults as reference only",
+  "gae": {
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "episode_boundary_aware": true,
+    "truncation_bootstrap": true
+  },
+  "ppo": {
+    "clip_coef": 0.2,
+    "clip_vloss": true,
+    "ent_coef": 0.01,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "rollout_length": 2048,
+    "num_minibatches": 32,
+    "update_epochs": 10,
+    "normalize_advantages": true,
+    "anneal_lr": true,
+    "target_kl": null,
+    "policy_head": "categorical",
+    "trunk": "mlp_tanh_separate_actor_critic"
+  }
+}

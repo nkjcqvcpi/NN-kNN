@@ -26,5 +26,12 @@
     "2": "results/rl/nnknn_rl_acrobot_20260802_194645_154897",
     "3": "results/rl/nnknn_rl_acrobot_20260802_194645_177797",
     "4": "results/rl/nnknn_rl_acrobot_20260802_194645_135672"
+  },
+  "ppo": {
+    "0": "results/rl/ppo_acrobot_20260828_012117_678055",
+    "1": "results/rl/ppo_acrobot_20260828_012117_711955",
+    "2": "results/rl/ppo_acrobot_20260828_012244_804790",
+    "3": "results/rl/ppo_acrobot_20260828_012245_818864",
+    "4": "results/rl/ppo_acrobot_20260828_012303_284141"
   }
 }

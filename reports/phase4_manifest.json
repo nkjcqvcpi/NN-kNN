@@ -26,5 +26,12 @@
     "2": "results/rl/nnknn_rl_cartpole_20260801_100617_223273",
     "3": "results/rl/nnknn_rl_cartpole_20260801_100617_641145",
     "4": "results/rl/nnknn_rl_cartpole_20260801_100617_944588"
+  },
+  "ppo": {
+    "0": "results/rl/ppo_cartpole_20260828_011912_860851",
+    "1": "results/rl/ppo_cartpole_20260828_012117_673599",
+    "2": "results/rl/ppo_cartpole_20260828_012117_686042",
+    "3": "results/rl/ppo_cartpole_20260828_012117_726888",
+    "4": "results/rl/ppo_cartpole_20260828_012117_711646"
   }
 }

@@ -1,0 +1,59 @@
+{
+  "task": "cartpole",
+  "env_id": "CartPole-v1",
+  "algorithm": "ppo_clipped_surrogate_gae",
+  "profile": "fast",
+  "seed": 1,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "updates": 74,
+  "rollout_length": 2048,
+  "action_kind": "discrete",
+  "eval_episodes": 20,
+  "success_threshold": 475.0,
+  "passed": true,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 500.0,
+    "std_return": 0.0,
+    "min_return": 500.0,
+    "max_return": 500.0,
+    "mean_length": 500.0
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 500.0,
+    "std_return": 0.0,
+    "min_return": 500.0,
+    "max_return": 500.0,
+    "mean_length": 500.0
+  },
+  "selected_step": 150000,
+  "selected_source": "final",
+  "training_efficiency": {
+    "best_model_step": 150000,
+    "best_model_training_fraction": 1.0,
+    "first_success_step": 20000,
+    "first_success_training_fraction": 0.13333333333333333,
+    "best_minus_last_return": 0.0,
+    "budget_interpretation": "final_is_best_check_for_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 500.0,
+    "best_mean_return": 500.0,
+    "evaluations": 30,
+    "evaluations_without_improvement": 26,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "checkpoint_path": "results/rl/ppo_cartpole_20260828_012117_673599/checkpoint.pt",
+  "run_dir": "results/rl/ppo_cartpole_20260828_012117_673599"
+}
