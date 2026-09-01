@@ -1,0 +1,59 @@
+{
+  "task": "minatar_breakout",
+  "env_id": "MinAtar/Breakout-v1",
+  "algorithm": "ppo_clipped_surrogate_gae",
+  "profile": "fast",
+  "seed": 3,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "updates": 74,
+  "rollout_length": 2048,
+  "action_kind": "discrete",
+  "eval_episodes": 20,
+  "success_threshold": 10.0,
+  "passed": false,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 7.199999809265137,
+    "std_return": 2.420743703842163,
+    "min_return": 1.0,
+    "max_return": 9.0,
+    "mean_length": 83.9000015258789
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 7.099999904632568,
+    "std_return": 2.0223748683929443,
+    "min_return": 2.0,
+    "max_return": 10.0,
+    "mean_length": 83.5999984741211
+  },
+  "selected_step": 100000,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 100000,
+    "best_model_training_fraction": 0.6666666666666666,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 0.09999990463256836,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 50.0,
+    "best_mean_return": 7.199999809265137,
+    "evaluations": 30,
+    "evaluations_without_improvement": 10,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "checkpoint_path": "results/rl/ppo_minatar_breakout_20260828_012621_889452/checkpoint.pt",
+  "run_dir": "results/rl/ppo_minatar_breakout_20260828_012621_889452"
+}

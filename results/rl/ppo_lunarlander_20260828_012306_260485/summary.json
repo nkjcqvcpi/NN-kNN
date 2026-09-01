@@ -1,0 +1,59 @@
+{
+  "task": "lunarlander",
+  "env_id": "LunarLander-v3",
+  "algorithm": "ppo_clipped_surrogate_gae",
+  "profile": "fast",
+  "seed": 2,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "updates": 74,
+  "rollout_length": 2048,
+  "action_kind": "discrete",
+  "eval_episodes": 20,
+  "success_threshold": 200.0,
+  "passed": false,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 64.92121887207031,
+    "std_return": 54.283084869384766,
+    "min_return": -62.19134521484375,
+    "max_return": 165.18710327148438,
+    "mean_length": 933.7999877929688
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 45.06237030029297,
+    "std_return": 50.11518478393555,
+    "min_return": -75.8435287475586,
+    "max_return": 119.20809936523438,
+    "mean_length": 949.7000122070312
+  },
+  "selected_step": 130000,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 130000,
+    "best_model_training_fraction": 0.8666666666666667,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 19.858848571777344,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 280.0,
+    "best_mean_return": 64.92121887207031,
+    "evaluations": 30,
+    "evaluations_without_improvement": 4,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "checkpoint_path": "results/rl/ppo_lunarlander_20260828_012306_260485/checkpoint.pt",
+  "run_dir": "results/rl/ppo_lunarlander_20260828_012306_260485"
+}
