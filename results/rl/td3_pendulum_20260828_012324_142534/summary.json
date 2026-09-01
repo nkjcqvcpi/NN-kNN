@@ -1,0 +1,60 @@
+{
+  "task": "pendulum",
+  "env_id": "Pendulum-v1",
+  "algorithm": "td3_twin_delayed_ddpg",
+  "profile": "fast",
+  "seed": 0,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "critic_updates": 149001,
+  "policy_updates": 74501,
+  "action_kind": "continuous",
+  "action_dim": 1,
+  "eval_episodes": 20,
+  "success_threshold": -200.0,
+  "passed": true,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": -118.12931060791016,
+    "std_return": 79.223388671875,
+    "min_return": -229.22125244140625,
+    "max_return": -0.6831868290901184,
+    "mean_length": 200.0
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": -122.69063568115234,
+    "std_return": 79.3558120727539,
+    "min_return": -235.15170288085938,
+    "max_return": -5.454006195068359,
+    "mean_length": 200.0
+  },
+  "selected_step": 65000,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 65000,
+    "best_model_training_fraction": 0.43333333333333335,
+    "first_success_step": 10000,
+    "first_success_training_fraction": 0.06666666666666667,
+    "best_minus_last_return": 4.5613250732421875,
+    "budget_interpretation": "regressed_after_best"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": -140.0,
+    "best_mean_return": -119.0497055053711,
+    "evaluations": 30,
+    "evaluations_without_improvement": 25,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "checkpoint_path": "results/rl/td3_pendulum_20260828_012324_142534/checkpoint.pt",
+  "run_dir": "results/rl/td3_pendulum_20260828_012324_142534"
+}

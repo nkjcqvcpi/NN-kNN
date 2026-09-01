@@ -1,0 +1,90 @@
+{
+  "created_at_utc": "2026-08-28T01:23:25.124720+00:00",
+  "algorithm": "td3_twin_delayed_ddpg",
+  "task": {
+    "name": "pendulum",
+    "env_id": "Pendulum-v1",
+    "family": "classic_control",
+    "observation_kind": "flat_box",
+    "action_kind": "continuous",
+    "max_episode_steps": 200,
+    "default_profile": "fast",
+    "literature_notes": [
+      "Classic torque-limited inverted-pendulum swing-up; 3-dim observation",
+      "(cos, sin, angular velocity) and a 1-dim continuous torque in [-2, 2].",
+      "Every episode runs the full 200-step cap (no termination), so returns are",
+      "a dense negative cost and higher (less negative) is better.",
+      "NON-CANONICAL MARKERS: gymnasium defines NO reward threshold for",
+      "Pendulum-v1 (its registration sets reward_threshold=None), so neither",
+      "number below is a canonical solve criterion. success_threshold=-200.0 is",
+      "a repo progress marker for 'swings up and holds'; target_mean_return=-140.0",
+      "sits above published tuned continuous-control results (SB3 rl-zoo reports",
+      "roughly -150 for TD3/SAC) so immediate early stopping stays out of reach",
+      "and patience-based stopping governs, matching the lunarlander convention."
+    ],
+    "success_threshold": -200.0,
+    "target_mean_return": -140.0,
+    "env_kwargs": {}
+  },
+  "config": {
+    "profile": "fast",
+    "seed": 0,
+    "total_timesteps": 150000,
+    "learning_rate": 0.0003,
+    "policy_learning_rate": null,
+    "buffer_size": 100000,
+    "gamma": 0.99,
+    "tau": 0.005,
+    "batch_size": 256,
+    "policy_frequency": 2,
+    "policy_noise": 0.2,
+    "noise_clip": 0.5,
+    "exploration_noise": 0.1,
+    "learning_starts": 1000,
+    "train_frequency": 1,
+    "max_grad_norm": null,
+    "hidden_sizes": [
+      256,
+      256
+    ],
+    "eval_frequency": 5000,
+    "eval_episodes": 20,
+    "eval_seed": 10000,
+    "success_threshold": -200.0,
+    "early_stopping": false,
+    "early_stopping_patience": 30,
+    "early_stopping_min_delta": 1.0,
+    "early_stopping_min_steps": 25000,
+    "early_stopping_target_score": -140.0,
+    "source_reference": "TD3 (Fujimoto et al. 2018); CleanRL td3_continuous_action.py defaults as reference only"
+  },
+  "action_spec": {
+    "kind": "continuous",
+    "dim": 1,
+    "low": [
+      -2.0
+    ],
+    "high": [
+      2.0
+    ]
+  },
+  "device": "cpu",
+  "source_reference": "TD3 (Fujimoto et al. 2018); CleanRL td3_continuous_action.py defaults as reference only",
+  "td3": {
+    "twin_critics": true,
+    "policy_frequency": 2,
+    "target_policy_noise": 0.2,
+    "target_noise_clip": 0.5,
+    "exploration_noise": 0.1,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "buffer_size": 100000,
+    "batch_size": 256,
+    "learning_starts": 1000,
+    "critic_learning_rate": 0.0003,
+    "actor_learning_rate": 0.0003,
+    "noise_units": "normalized_action_units_scaled_by_action_scale",
+    "policy_head": "deterministic_tanh_scaled_to_action_bounds",
+    "truncation_bootstrap": true
+  }
+}
