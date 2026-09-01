@@ -1,9 +1,50 @@
 # Handoff
 
-Last updated 2026-08-22 on branch `rl-iclr2027` (clone of read-only upstream
+Last updated 2026-09-01 on branch `rl-iclr2027` (clone of read-only upstream
 `Heuzi/NN-kNN`, branched from `c097195`; never push to upstream). The canonical
 chronological experiment record is `reports/experiment_log.md`; this file is
 the durable summary of where things stand and what to do next.
+
+## READ FIRST — the 2026-09-01 campaign changed the paper's story
+
+The next-steps campaign of `NEXT_STEPS_PLAN.md` (capacity ablation, PPO/TD3
+baselines, ALE) is harvested. Its headline supersedes several claims in the
+2026-08-22 section below, which is kept intact as the historical record.
+
+1. **PPO beats the NN-kNN-RL hybrid at matched 150k budgets on every task
+   tested** (battery p11, seeds 0-4, `--no-early-stopping`): CartPole
+   500.00 ± 0.00 vs hybrid 497.98 ± 4.52; Acrobot **−78.24 ± 0.68 solving 5/5
+   seeds by 10k–40k steps** vs hybrid −105.54 ± 53.47 solving 4/5 late
+   (94k–146k); LunarLander 28.22 ± 72.60 vs hybrid −121.74 (seed 0);
+   MinAtar Breakout 5.93 ± 0.77 vs hybrid 4.15 (seed 0). CartPole/Acrobot are
+   seed- and budget-matched (`reports/phase4_manifest.json`,
+   `reports/phase5_acrobot_manifest.json`, now 5-method); LunarLander/MinAtar
+   are not (other methods are seed-0 only). **The sample-efficiency claim
+   survived DQN and NEC but does not survive PPO**, and the Acrobot margin is
+   not close. State this plainly; it does not erase the within-family results
+   (NN-kNN critic > MLP critic on Acrobot; NN-kNN actor > MLP actor on
+   LunarLander/MinAtar), which remain the defensible contribution.
+2. **Capacity: bigger is worse, and measurably slower** (`reports/capacity_ablation.md`).
+   cap 100 = 498.83 ± 2.62 ≈ cap 500 default 497.98 ± 4.52 > cap 2000
+   471.53 ± 14.35 (n=3, seeds 3-4 in flight as p14). Measured under matched
+   concurrent GPU contention: 4.4–4.7 steps/s at cap 100 vs 0.60 at cap 2000,
+   a **7.4x throughput penalty for a 20x memory that also scores worse**. This
+   converts the unmeasured wall-clock weakness into a reported trade-off.
+3. **TD3 is a continuous-control reference only.** TD3 dominates Pendulum
+   (−119.78 ± 1.17 vs PPO −822.42 ± 53.27; PPO has no observation/reward
+   normalization, the standard explanation); PPO is steadier on
+   LunarLander-continuous (145.98 ± 25.13 vs TD3 52.40 ± 93.07). No NN-kNN row
+   exists or can exist: the actor is discrete-only (one-hot action labels).
+   A continuous-action NN-kNN actor is future work, not an omission.
+4. **ALE: do not cite the p13 cross-method comparison.** PPO reached +12.80 on
+   ALE/Pong-v5 at 1M steps while DQN and NEC stayed at exactly −21.0 — but
+   DQN/NEC ran CartPole-profile hyperparameters that are wrong for Atari by
+   1–2 orders of magnitude (DQN buffer 10k vs 100k–1M, lr 1e-3 vs 1e-4, target
+   sync 250 vs 1k–10k, exploration_fraction 0.5 so epsilon floors only at
+   500k of 1M). PPO's defaults happen to be near-standard for Atari, which is
+   why only it learned. A corrected DQN arm (**p15**) is running; until it
+   lands the only supported claim is that classic-control hyperparameters
+   transfer to ALE for PPO and not for DQN/NEC. See the p13 ADDENDUM entry.
 
 ## Current Status
 
@@ -201,14 +242,35 @@ complete** (final harvest 2026-08-22; every number in
 `reports/experiment_log.md`). What remains is manuscript-facing work plus one
 item only the human can do.
 
-**IN FLIGHT — capacity ablation** (launched 2026-08-22 16:11; PIDs in
-`p9_pids.txt`, logs `p9_cap{100,2000}_s{0,1,2}.log`): the CartPole hybrid
-config at `--case-capacity 100` and `2000`, seeds 0–2, `--profile fast`
-(early stopping ON). The 500 arm is the profile default, already covered by
-the Gate-G1 seed batch under the same profile. Wall-clock is unbounded if an
-arm fails to early-stop; the capacity-100 arm is the likelier one to burn the
-full 150k. On completion: tabulate final_eval and wall-clock per arm (the
-retrieval-cost/performance trade-off), log, and commit the run dirs.
+**SUPERSEDED — the 2026-08-22 capacity ablation is harvested**; see
+`reports/capacity_ablation.md` and the READ FIRST section. The list below is
+the post-2026-09-01 state.
+
+**IN FLIGHT (launched 2026-09-01, detached with `setsid` so they survive a
+session teardown — the p10 attempt was killed that way):**
+- `p14_cap2000_s{3,4}.log` (PIDs in `p14_pids.txt`): the two missing cap-2000
+  seeds, ~3 days each at the measured 0.6 steps/s. On completion, fold into
+  the cap-2000 row (n=3 → n=5) in `reports/capacity_ablation.md` and decide
+  ablation-figure vs footnote.
+- `p15_dqn_ale_pong_atari_hp.log` (PID in `p15_pids.txt`): DQN on ALE/Pong-v5
+  with Atari-standard hyperparameters (buffer 100k, lr 1e-4, target sync 1k,
+  train_frequency 4, exploration_fraction 0.1, learning_starts 20k) at the
+  same 1M-step budget and eval grid as p13. This is the arm that decides
+  whether p13's DQN-vs-PPO gap is real or a hyperparameter artifact. If the
+  gap closes, re-run NEC the same way before any ALE cross-method claim.
+
+### What the 2026-09-01 campaign leaves open
+
+1. **A seed-matched multi-method table for LunarLander/MinAtar.** PPO now has
+   5 seeds at a forced 150k there; every other method is seed-0 only, and two
+   of the MinAtar actor-critic baselines early-stopped (86,886 and 121,690
+   steps) rather than running the full budget. Fresh `--no-early-stopping`
+   seeds 1-4 for DQN/NEC/hybrid/MLP-AC would make those two tasks quotable.
+2. **The p11 launch was never logged** (the 2026-08-28 launch entry is missing
+   from `reports/experiment_log.md`; the harvest entry is present). Not
+   backfilled, because a backdated launch entry would be fabricated.
+3. **ALE breadth.** Only `ale_pong` has been run; `ale_breakout` is registered
+   and smoke-passed but untouched, and the four new MinAtar games have no runs.
 
 ### Needs the human
 
@@ -230,26 +292,38 @@ convention for this type: method is the center of gravity, Related Work after
 the experiments, a Limitations paragraph rather than a threats section, and a
 long appendix (full tables, hyperparameters).
 
-1. **A PPO baseline (highest reviewer risk).** The current MLP-AC is A2C-like.
-   Reviewers will expect PPO as the standard on-policy control. Medium code
-   lift: a clipped surrogate objective over the existing rollout/GAE
-   machinery in `model/nnknn_rl_workflow.py`, or a repo-native CleanRL-style
-   PPO alongside `model/rl_workflow.py`.
-2. **Capacity ablation** (`case_capacity` 100 / 500 / 2000 — plan knob 5):
-   **partially launched 2026-08-22** (seeds 0–2 of the 100 and 2000 arms; see
-   IN FLIGHT above). Needs seeds 3–4 to match the 5-seed protocol used
-   elsewhere. Doubles as the compute-cost story: it turns the wall-clock
-   weakness into a measured retrieval-cost/performance trade-off instead of
-   an omission a reviewer finds.
+**2026-09-01 revision of this framing.** Items 1 and 2 are DONE, and item 1's
+result invalidates the premise of the paragraph above: the hybrid is *not*
+"far more sample-efficient than parametric AC" once the parametric AC is PPO
+rather than the A2C-like MLP-AC — PPO solves Acrobot 5/5 by 10k–40k steps
+against the hybrid's 94k–146k. A technique paper can still be written, but its
+claim has to be the within-family mechanism (an episodic case memory works as
+actor and/or critic inside an on-policy AC, and which of the two matters is
+task-dependent — critic on Acrobot, actor on LunarLander/MinAtar) plus the
+measured capacity/retrieval-cost trade-off, with PPO reported as a stronger
+baseline the method does not beat. Items 3-6 below are unchanged and item 3 is
+now the top priority, since the within-family claims are what is left to
+defend and most of them still rest on a single seed.
+
+1. ~~**A PPO baseline (highest reviewer risk).**~~ **DONE** (`model/ppo_workflow.py`,
+   `tools/run_rl_ppo.py`, battery p11). Discrete + continuous heads, same eval
+   protocol and run-dir schema as the other runners. Outcome in READ FIRST.
+2. ~~**Capacity ablation**~~ **DONE except two seeds** — see
+   `reports/capacity_ablation.md` and the IN FLIGHT list.
 3. **Seeds 1–4 for the Acrobot variant battery and the new-environment
    batteries.** Every reviewer-facing architectural claim (Acrobot
    critic-necessity, the LunarLander/MinAtar actor reversal) currently rests
    on a single seed per variant. This is the cheapest way to make the paper's
    central claims defensible and arguably outranks items 1-2.
-4. **Environment breadth.** Two classic-control wins plus two negative
-   transfers is a defensible but thin suite. Extending MinAtar to all five
-   games is now ~10 lines of registry per game plus the standard
-   4-method x 5-seed protocol.
+4. **Environment breadth.** Registry work is DONE — all five MinAtar games,
+   `ale_pong`/`ale_breakout`, `pendulum`, `lunarlander_continuous` are
+   registered and smoke-pass on every runner (an image-observation path with
+   AtariPreprocessing + 4-frame stack and a Nature-CNN encoder now serves
+   DQN/NEC/PPO and the NN-kNN trunk). What remains is *runs*: only `ale_pong`
+   has any, and only at seed 0. The four new MinAtar games are the cheapest
+   breadth per GPU-hour; `ale_breakout` is the most expensive (an untrained
+   greedy policy never fires and idles to the ~27,000-step cap, so keep eval
+   episode counts at the runner's image-task default of 5).
 5. **An interpretability figure** — which stored cases activate along a
    swing-up trajectory. Cheap, differentiates the CBR narrative, and ICLR
    rewards it.
