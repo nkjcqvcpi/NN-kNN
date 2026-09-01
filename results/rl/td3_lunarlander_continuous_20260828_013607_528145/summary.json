@@ -1,0 +1,60 @@
+{
+  "task": "lunarlander_continuous",
+  "env_id": "LunarLander-v3",
+  "algorithm": "td3_twin_delayed_ddpg",
+  "profile": "fast",
+  "seed": 2,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "critic_updates": 149001,
+  "policy_updates": 74501,
+  "action_kind": "continuous",
+  "action_dim": 2,
+  "eval_episodes": 20,
+  "success_threshold": 200.0,
+  "passed": false,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 0.5054877996444702,
+    "std_return": 96.4191665649414,
+    "min_return": -128.1440887451172,
+    "max_return": 235.20838928222656,
+    "mean_length": 876.8499755859375
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 0.5054877996444702,
+    "std_return": 96.4191665649414,
+    "min_return": -128.1440887451172,
+    "max_return": 235.20838928222656,
+    "mean_length": 876.8499755859375
+  },
+  "selected_step": 150000,
+  "selected_source": "final",
+  "training_efficiency": {
+    "best_model_step": 150000,
+    "best_model_training_fraction": 1.0,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 0.0,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 280.0,
+    "best_mean_return": 0.441671758890152,
+    "evaluations": 30,
+    "evaluations_without_improvement": 6,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "checkpoint_path": "results/rl/td3_lunarlander_continuous_20260828_013607_528145/checkpoint.pt",
+  "run_dir": "results/rl/td3_lunarlander_continuous_20260828_013607_528145"
+}

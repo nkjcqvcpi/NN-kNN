@@ -1,0 +1,59 @@
+{
+  "task": "pendulum",
+  "env_id": "Pendulum-v1",
+  "algorithm": "ppo_clipped_surrogate_gae",
+  "profile": "fast",
+  "seed": 1,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "updates": 74,
+  "rollout_length": 2048,
+  "action_kind": "continuous",
+  "eval_episodes": 20,
+  "success_threshold": -200.0,
+  "passed": false,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": -751.2374267578125,
+    "std_return": 168.69842529296875,
+    "min_return": -980.4662475585938,
+    "max_return": -522.0615234375,
+    "mean_length": 200.0
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": -783.0540771484375,
+    "std_return": 100.00312805175781,
+    "min_return": -941.788818359375,
+    "max_return": -634.9066772460938,
+    "mean_length": 200.0
+  },
+  "selected_step": 145000,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 145000,
+    "best_model_training_fraction": 0.9666666666666667,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 31.816650390625,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": -140.0,
+    "best_mean_return": -751.2374267578125,
+    "evaluations": 30,
+    "evaluations_without_improvement": 1,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "checkpoint_path": "results/rl/ppo_pendulum_20260828_013718_693369/checkpoint.pt",
+  "run_dir": "results/rl/ppo_pendulum_20260828_013718_693369"
+}

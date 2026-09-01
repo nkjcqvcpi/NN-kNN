@@ -1,0 +1,18 @@
+{
+  "created_at_utc": "2026-08-28T01:35:52.982745+00:00",
+  "task": "lunarlander_continuous",
+  "env_id": "LunarLander-v3",
+  "algorithm": "td3_twin_delayed_ddpg",
+  "profile": "fast",
+  "outputs": [
+    "config.json",
+    "training_metrics.csv",
+    "loss_metrics.csv",
+    "eval_metrics.csv",
+    "final_eval_episodes.csv",
+    "last_eval_episodes.csv",
+    "summary.json",
+    "manifest.json",
+    "checkpoint.pt"
+  ]
+}

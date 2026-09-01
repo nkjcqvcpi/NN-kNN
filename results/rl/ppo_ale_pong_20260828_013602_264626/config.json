@@ -1,0 +1,108 @@
+{
+  "created_at_utc": "2026-08-28T01:36:03.419677+00:00",
+  "algorithm": "ppo_clipped_surrogate_gae",
+  "task": {
+    "name": "ale_pong",
+    "env_id": "ALE/Pong-v5",
+    "family": "ale",
+    "observation_kind": "image_atari",
+    "action_kind": "discrete",
+    "max_episode_steps": 27000,
+    "default_profile": "fast",
+    "literature_notes": [
+      "Atari 2600 Pong through ale-py; 6 minimal actions, returns in",
+      "[-21, +21] (points scored minus points conceded in a first-to-21 game).",
+      "Observation is a 4-frame stack of 84x84 grayscale frames after",
+      "AtariPreprocessing(frame_skip=4) on a frameskip=1 base env.",
+      "max_episode_steps=27000 post-frameskip steps mirrors the ALE default",
+      "cap of 108000 emulator frames.",
+      "NON-CANONICAL MARKERS: gymnasium/ALE define no reward threshold for",
+      "ALE/Pong-v5. success_threshold=0.0 is a repo progress marker meaning",
+      "'breaks even against the built-in opponent'; target_mean_return=18.0",
+      "approximates Nature-DQN-level play. Nature DQN only reaches roughly",
+      "+18 on Pong after 10M+ AGENT STEPS (40M+ frames), far beyond the",
+      "budgets this repo runs, so ALE runs here are declared EXPLORATORY:",
+      "the deliverable is a partial learning curve, not a solved game.",
+      "TIMESTEPS COUNT POST-FRAMESKIP STEPS: 1 step = 4 emulator frames."
+    ],
+    "success_threshold": 0.0,
+    "target_mean_return": 18.0,
+    "env_kwargs": {}
+  },
+  "config": {
+    "profile": "fast",
+    "seed": 0,
+    "total_timesteps": 1000000,
+    "learning_rate": 0.0003,
+    "anneal_lr": true,
+    "rollout_length": 2048,
+    "num_minibatches": 32,
+    "update_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_coef": 0.2,
+    "clip_vloss": true,
+    "ent_coef": 0.01,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "target_kl": null,
+    "normalize_advantages": true,
+    "advantage_epsilon": 1e-08,
+    "hidden_sizes": [
+      64,
+      64
+    ],
+    "log_std_init": 0.0,
+    "continuous_action_handling": "clip",
+    "eval_frequency": 25000,
+    "eval_episodes": 5,
+    "eval_seed": 10000,
+    "eval_deterministic": true,
+    "success_threshold": 0.0,
+    "early_stopping": false,
+    "early_stopping_patience": 30,
+    "early_stopping_min_delta": 1.0,
+    "early_stopping_min_steps": 25000,
+    "early_stopping_target_score": 18.0,
+    "source_reference": "PPO (Schulman et al. 2017); CleanRL ppo.py / ppo_continuous_action.py and Stable-Baselines3 MlpPolicy defaults as reference only"
+  },
+  "action_spec": {
+    "kind": "discrete",
+    "dim": 6,
+    "low": null,
+    "high": null
+  },
+  "device": "cpu",
+  "observation": {
+    "kind": "image_atari",
+    "shape": [
+      4,
+      84,
+      84
+    ],
+    "dim": 28224,
+    "numpy_dtype": "uint8"
+  },
+  "source_reference": "PPO (Schulman et al. 2017); CleanRL ppo.py / ppo_continuous_action.py and Stable-Baselines3 MlpPolicy defaults as reference only",
+  "gae": {
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "episode_boundary_aware": true,
+    "truncation_bootstrap": true
+  },
+  "ppo": {
+    "clip_coef": 0.2,
+    "clip_vloss": true,
+    "ent_coef": 0.01,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "rollout_length": 2048,
+    "num_minibatches": 32,
+    "update_epochs": 10,
+    "normalize_advantages": true,
+    "anneal_lr": true,
+    "target_kl": null,
+    "policy_head": "categorical",
+    "trunk": "nature_cnn_separate_actor_critic"
+  }
+}

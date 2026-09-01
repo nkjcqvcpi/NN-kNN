@@ -1,0 +1,91 @@
+{
+  "created_at_utc": "2026-08-28T01:36:09.104771+00:00",
+  "algorithm": "td3_twin_delayed_ddpg",
+  "task": {
+    "name": "lunarlander_continuous",
+    "env_id": "LunarLander-v3",
+    "family": "box2d",
+    "observation_kind": "flat_box",
+    "action_kind": "continuous",
+    "max_episode_steps": 1000,
+    "default_profile": "fast",
+    "literature_notes": [
+      "Continuous-control variant of the `lunarlander` task, selected with the",
+      "env_kwargs continuous=True constructor argument; same 8-dim observation",
+      "and shaped reward, but a 2-dim continuous action (main engine, lateral",
+      "engines) in [-1, 1] instead of 4 discrete thrusters.",
+      "Gymnasium's reward threshold is 200 for this env id, so success_threshold",
+      "is canonical here. The immediate-stop target 280 mirrors the discrete",
+      "`lunarlander` entry so the two rows share one success protocol.",
+      "Requires gymnasium[box2d]."
+    ],
+    "success_threshold": 200.0,
+    "target_mean_return": 280.0,
+    "env_kwargs": {
+      "continuous": true
+    }
+  },
+  "config": {
+    "profile": "fast",
+    "seed": 2,
+    "total_timesteps": 150000,
+    "learning_rate": 0.0003,
+    "policy_learning_rate": null,
+    "buffer_size": 100000,
+    "gamma": 0.99,
+    "tau": 0.005,
+    "batch_size": 256,
+    "policy_frequency": 2,
+    "policy_noise": 0.2,
+    "noise_clip": 0.5,
+    "exploration_noise": 0.1,
+    "learning_starts": 1000,
+    "train_frequency": 1,
+    "max_grad_norm": null,
+    "hidden_sizes": [
+      256,
+      256
+    ],
+    "eval_frequency": 5000,
+    "eval_episodes": 20,
+    "eval_seed": 10000,
+    "success_threshold": 200.0,
+    "early_stopping": false,
+    "early_stopping_patience": 30,
+    "early_stopping_min_delta": 1.0,
+    "early_stopping_min_steps": 25000,
+    "early_stopping_target_score": 280.0,
+    "source_reference": "TD3 (Fujimoto et al. 2018); CleanRL td3_continuous_action.py defaults as reference only"
+  },
+  "action_spec": {
+    "kind": "continuous",
+    "dim": 2,
+    "low": [
+      -1.0,
+      -1.0
+    ],
+    "high": [
+      1.0,
+      1.0
+    ]
+  },
+  "device": "cpu",
+  "source_reference": "TD3 (Fujimoto et al. 2018); CleanRL td3_continuous_action.py defaults as reference only",
+  "td3": {
+    "twin_critics": true,
+    "policy_frequency": 2,
+    "target_policy_noise": 0.2,
+    "target_noise_clip": 0.5,
+    "exploration_noise": 0.1,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "buffer_size": 100000,
+    "batch_size": 256,
+    "learning_starts": 1000,
+    "critic_learning_rate": 0.0003,
+    "actor_learning_rate": 0.0003,
+    "noise_units": "normalized_action_units_scaled_by_action_scale",
+    "policy_head": "deterministic_tanh_scaled_to_action_bounds",
+    "truncation_bootstrap": true
+  }
+}
