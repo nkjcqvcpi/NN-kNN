@@ -29,6 +29,19 @@ def run_seconds(dirpath, name):
     secs = (end - start).total_seconds()
     return secs if secs > 0 else None
 
+
+# CUDA reference arms, quoted from reports/capacity_ablation.md (the r760
+# campaign). These are NOT recomputed by globbing results/rl: that directory
+# holds 63 runs at cap 500 alone -- smoke tests, MLP critics, other phases, and
+# duplicate runs at the same seed -- so a glob-and-average gives cap 100 =
+# 421.11 +/- 190.39 instead of the real arm's 498.83 +/- 2.62. The canonical
+# per-seed values live in the report and reports/phase4_manifest.json.
+CUDA_REF = {
+    100:  dict(n=5, mean=498.83, sd=2.62,  per=[500.00, 500.00, 494.15, 500.00, 500.00]),
+    500:  dict(n=5, mean=497.98, sd=4.52,  per=[500.00, 500.00, 500.00, 500.00, 489.90]),
+    2000: dict(n=3, mean=471.53, sd=14.35, per=[455.90, 484.10, 474.60]),
+}
+
 runs = []
 for name in sorted(os.listdir(OUT)):
     d = os.path.join(OUT, name)
@@ -85,3 +98,20 @@ json.dump({"campaign": "p17", "host": "g234", "device": "cpu",
            "runs": sorted(runs, key=lambda r: (r["capacity"], r["seed"]))},
           io.open(man, "w", encoding="utf-8"), indent=2, sort_keys=True)
 print("\nwrote reports/p17_capacity_cpu_manifest.json  (%d runs)" % len(runs))
+print("\n## CPU replication (g234) vs the CUDA arms (r760, reports/capacity_ablation.md)\n")
+print("| capacity | CUDA r760 (n) | CPU g234 (n) | delta |")
+print("|---|---|---|---|")
+for c in caps:
+    got = rows[c]
+    ref = CUDA_REF.get(c)
+    if ref:
+        print("| %d | %.2f +/- %.2f (%d) | %.2f +/- %.2f (%d) | %+.2f |"
+              % (c, ref["mean"], ref["sd"], ref["n"], got["mean"], got["sd"], got["n"],
+                 got["mean"] - ref["mean"]))
+    else:
+        print("| %d | -- (no CUDA arm; this is the new knee point) | %.2f +/- %.2f (%d) | -- |"
+              % (c, got["mean"], got["sd"], got["n"]))
+print("\nNote: the CUDA arms ran with early stopping on a contended H100; the CPU")
+print("arms ran on an idle 16-core box, 4 jobs concurrent (one per capacity).")
+print("Returns are comparable; the steps/s columns are NOT comparable across hosts.")
+
