@@ -42,9 +42,16 @@ baselines, ALE) is harvested. Its headline supersedes several claims in the
    1–2 orders of magnitude (DQN buffer 10k vs 100k–1M, lr 1e-3 vs 1e-4, target
    sync 250 vs 1k–10k, exploration_fraction 0.5 so epsilon floors only at
    500k of 1M). PPO's defaults happen to be near-standard for Atari, which is
-   why only it learned. A corrected DQN arm (**p15**) is running; until it
-   lands the only supported claim is that classic-control hyperparameters
-   transfer to ALE for PPO and not for DQN/NEC. See the p13 ADDENDUM entry.
+   why only it learned. The corrected DQN arm (**p15**) has LANDED (2026-09-03 harvest): with
+   standard Atari hyperparameters DQN learns Pong, reaching **+13.40** at
+   1M steps (best checkpoint 975k, first break-even 575k) versus the flat
+   -21.0 of the untuned arm. DQN is therefore at parity with PPO (+12.80)
+   on the same task/seed/budget -- the p13 'value-based methods do not
+   learn' reading is REFUTED, not merely unsupported. Both are seed 0 only,
+   so report parity, never an ordering. NEC still carries the untuned
+   configuration, so its -21.0 curve remains uninterpretable; a corrected
+   NEC arm (p16) is the required follow-up and needs human approval
+   (>2 h). See the p13 ADDENDUM and the 2026-09-03 p15 entry.
 
 ## Current Status
 
