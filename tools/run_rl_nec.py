@@ -58,6 +58,20 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Mean-return solve threshold; defaults to the task spec for non-CartPole tasks.",
     )
+    # Hyperparameter overrides (mirrors tools/run_rl_dqn.py). All default to
+    # None so omitting them leaves the profile defaults untouched.
+    parser.add_argument("--learning-rate", type=float, default=None)
+    parser.add_argument("--replay-size", type=int, default=None)
+    parser.add_argument("--dictionary-size", type=int, default=None)
+    parser.add_argument("--batch-size", type=int, default=None)
+    parser.add_argument("--learning-starts", type=int, default=None)
+    parser.add_argument("--train-frequency", type=int, default=None)
+    parser.add_argument("--exploration-fraction", type=float, default=None)
+    parser.add_argument("--exploration-initial-epsilon", type=float, default=None)
+    parser.add_argument("--exploration-final-epsilon", type=float, default=None)
+    parser.add_argument("--gamma", type=float, default=None)
+    parser.add_argument("--n-step", type=int, default=None)
+    parser.add_argument("--k-neighbors", type=int, default=None)
     parser.add_argument("--eval-only", action="store_true", help="Evaluate a saved checkpoint without training.")
     parser.add_argument("--checkpoint", default=None, help="Checkpoint path for --eval-only.")
     parser.add_argument("--quiet", action="store_true", help="Disable progress logging during training.")
@@ -86,6 +100,23 @@ def _config_from_args(args: argparse.Namespace) -> NECConfig:
         overrides["early_stopping_min_steps"] = args.early_stopping_min_steps
     if args.early_stopping_target_score is not None:
         overrides["early_stopping_target_score"] = args.early_stopping_target_score
+    for _arg_name, _cfg_name in (
+        ("learning_rate", "learning_rate"),
+        ("replay_size", "replay_size"),
+        ("dictionary_size", "dictionary_size"),
+        ("batch_size", "batch_size"),
+        ("learning_starts", "learning_starts"),
+        ("train_frequency", "train_frequency"),
+        ("exploration_fraction", "exploration_fraction"),
+        ("exploration_initial_epsilon", "start_e"),
+        ("exploration_final_epsilon", "end_e"),
+        ("gamma", "gamma"),
+        ("n_step", "n_step"),
+        ("k_neighbors", "k_neighbors"),
+    ):
+        _value = getattr(args, _arg_name, None)
+        if _value is not None:
+            overrides[_cfg_name] = _value
     _apply_task_success_defaults(args, overrides)
     _apply_task_eval_defaults(args, overrides)
     return make_nec_config(args.profile, **overrides)
