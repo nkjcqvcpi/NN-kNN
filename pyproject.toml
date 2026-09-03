@@ -1,0 +1,90 @@
+[project]
+name = "nnknn-work"
+version = "0.1.0"
+description = "NN-kNN reinforcement learning and regression/classification experiments"
+requires-python = "==3.12.*"
+
+# Pins mirror the LIVE r760 virtualenv (verified package-by-package), NOT the
+# stale checked-in requirements.txt, which had drifted badly (it still claimed
+# torch 2.9.1+cu128 / numpy 2.3.5 / pandas 2.3.3 / sklearn 1.8.0 while r760 was
+# actually running torch 2.13.0+cu130 / numpy 2.5.2 / pandas 3.0.5 / sklearn 1.9.0)
+# and omitted ale-py, MinAtar, opencv and Box2D entirely.
+#
+# The ONLY intentional difference from r760 is the PyTorch backend:
+#   r760 : torch 2.13.0+cu130   (NVIDIA CUDA 13.0)
+#   here : torch 2.13.0+xpu     (Intel Arc A770, Level Zero)
+# Same upstream version, so kernels and APIs match; only the device differs.
+dependencies = [
+    # --- core numerics / ML ---
+    "torch==2.13.0",
+    "torchvision==0.28.0",
+    # Required by torch 2.13.0+xpu. Declared directly (not left transitive)
+    # because uv's [tool.uv.sources] redirects only DIRECT dependencies, so a
+    # transitive triton-xpu would be looked up on PyPI and never found.
+    "triton-xpu==3.7.2",
+    "numpy==2.5.2",
+    "scipy==1.18.0",
+    "pandas==3.0.5",
+    "scikit-learn==1.9.0",
+    "imbalanced-learn==0.14.2",
+    "metric-learn==0.7.0",
+    # --- RL environments (all imported by model/rl_workflow.py) ---
+    "gymnasium[classic_control]==1.3.0",
+    "ale-py==0.12.1",
+    "MinAtar==1.0.15",
+    "opencv-python==5.0.0.93",
+    "cloudpickle==3.1.2",
+    # Box2D tasks (lunarlander, lunarlander_continuous). Use the `Box2D`
+    # distribution, NOT `box2d-py`: Box2D 2.3.10 ships a prebuilt
+    # cp312 win_amd64 wheel, so no SWIG/MSVC toolchain is needed, and it is
+    # the same version r760 has. gymnasium.envs.box2d imports `Box2D`.
+    "Box2D==2.3.10",
+    # --- data sources / config / io ---
+    "ucimlrepo==0.0.7",
+    "PyYAML==6.0.3",
+    "requests==2.34.2",
+    # --- experiment tracking + progress ---
+    "wandb==0.28.1",
+    "tqdm==4.70.0",
+    # --- plotting ---
+    "matplotlib==3.11.1",
+    "seaborn==0.13.2",
+]
+
+[project.optional-dependencies]
+# Jupyter notebooks in the repo root
+notebook = [
+    "ipykernel==7.3.0",
+    "ipywidgets==8.1.8",
+    "jupyter>=1.1",
+]
+# tools/create_nnknn_orientation_deck.py
+reporting = ["python-pptx>=1.0"]
+
+# ---------------------------------------------------------------------------
+# PyTorch comes from the Intel XPU wheel index (Arc A770 on this host; no CUDA).
+# To switch to CPU-only, change the url below to
+#     https://download.pytorch.org/whl/cpu
+# and re-run `uv sync`. Nothing else needs to change.
+# ---------------------------------------------------------------------------
+[[tool.uv.index]]
+name = "pytorch-xpu"
+url = "https://download.pytorch.org/whl/xpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-xpu" }
+torchvision = { index = "pytorch-xpu" }
+# torch 2.13.0+xpu requires triton-xpu==3.7.2, which is published ONLY on the
+# XPU index (PyPI has a stale, unrelated 3.3.0b1). It must be mapped explicitly
+# because the index above is marked explicit=true.
+triton-xpu = { index = "pytorch-xpu" }
+
+[tool.uv]
+# This is a working tree of experiments, not an installable distribution.
+package = false
+
+# Resolve only for this host. The XPU torch wheels declare a Linux-only
+# triton-xpu dependency, which makes uv's default universal (all-platform)
+# resolution unsatisfiable. g234 is the only target, so pin the environment.
+environments = ["sys_platform == 'win32' and platform_machine == 'AMD64'"]
