@@ -1,0 +1,73 @@
+{
+  "created_at_utc": "2026-09-01T21:48:00.047477+00:00",
+  "task": {
+    "name": "ale_pong",
+    "env_id": "ALE/Pong-v5",
+    "family": "ale",
+    "observation_kind": "image_atari",
+    "action_kind": "discrete",
+    "max_episode_steps": 27000,
+    "default_profile": "fast",
+    "literature_notes": [
+      "Atari 2600 Pong through ale-py; 6 minimal actions, returns in",
+      "[-21, +21] (points scored minus points conceded in a first-to-21 game).",
+      "Observation is a 4-frame stack of 84x84 grayscale frames after",
+      "AtariPreprocessing(frame_skip=4) on a frameskip=1 base env.",
+      "max_episode_steps=27000 post-frameskip steps mirrors the ALE default",
+      "cap of 108000 emulator frames.",
+      "NON-CANONICAL MARKERS: gymnasium/ALE define no reward threshold for",
+      "ALE/Pong-v5. success_threshold=0.0 is a repo progress marker meaning",
+      "'breaks even against the built-in opponent'; target_mean_return=18.0",
+      "approximates Nature-DQN-level play. Nature DQN only reaches roughly",
+      "+18 on Pong after 10M+ AGENT STEPS (40M+ frames), far beyond the",
+      "budgets this repo runs, so ALE runs here are declared EXPLORATORY:",
+      "the deliverable is a partial learning curve, not a solved game.",
+      "TIMESTEPS COUNT POST-FRAMESKIP STEPS: 1 step = 4 emulator frames."
+    ],
+    "success_threshold": 0.0,
+    "target_mean_return": 18.0,
+    "env_kwargs": {}
+  },
+  "config": {
+    "profile": "fast",
+    "seed": 0,
+    "total_timesteps": 1000000,
+    "learning_rate": 0.0001,
+    "buffer_size": 100000,
+    "gamma": 0.99,
+    "target_network_frequency": 1000,
+    "max_grad_norm": 0.5,
+    "batch_size": 128,
+    "start_e": 1.0,
+    "end_e": 0.05,
+    "exploration_fraction": 0.1,
+    "learning_starts": 20000,
+    "train_frequency": 4,
+    "eval_frequency": 25000,
+    "eval_episodes": 5,
+    "eval_seed": 10000,
+    "success_threshold": 0.0,
+    "early_stopping": false,
+    "early_stopping_patience": 30,
+    "early_stopping_min_delta": 1.0,
+    "early_stopping_min_steps": 25000,
+    "early_stopping_target_score": 18.0,
+    "hidden_sizes": [
+      120,
+      84
+    ],
+    "source_reference": "CleanRL dqn.py"
+  },
+  "device": "cuda",
+  "observation": {
+    "kind": "image_atari",
+    "shape": [
+      4,
+      84,
+      84
+    ],
+    "dim": 28224,
+    "numpy_dtype": "uint8"
+  },
+  "source_reference": "CleanRL dqn.py"
+}
