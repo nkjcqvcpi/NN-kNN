@@ -74,6 +74,36 @@ Measured on this host, all on ALE Pong except the last row:
 So "XPU is slower for this project" was too broad, and so was "XPU is faster
 for ALE". Only DQN gains. None of it matters while the driver faults.
 
+## Concurrency: the ceiling is memory bandwidth, not cores
+
+The host looks idle at ~23% CPU, but that headroom is not usable by every
+workload. Pure-compute burners reach **12.66 of 16 logical cores** and scale
+cleanly (1810 -> 3543 -> 5428 matmul/s at 2 -> 4 -> 8 processes), so the cycles
+are genuinely free. Large-footprint RL jobs cannot take them.
+
+Measured: p16 NEC's CPU share against the number of ALE jobs beside it.
+
+| ALE jobs alongside | NEC cores | system CPU |
+|---|---|---|
+| 0 | 3.31 | ~21% |
+| 2 | 1.37-1.87 | ~23% |
+| 4 | 0.71 | 25% |
+| 6 | 0.44 | 23% |
+
+Each doubling roughly halves NEC while system CPU barely moves. That is
+**memory bandwidth and L3 contention**, not scheduling: NEC holds a
+60,000-entry DND over 84x84x4 image embeddings, and every added ALE job
+evicts its working set.
+
+**Footprint decides whether concurrency helps.** The p17 CartPole capacity
+runs scaled about 10x with concurrency (27.6 -> 266.8 steps/s aggregate at 1
+-> 8 jobs) because their case bases are 100-2000 entries and stay in cache.
+ALE-sized jobs do not. Do not generalise a scaling result from the CartPole
+runs to the ALE runs -- that mistake cost a campaign restart here.
+
+Practical ceiling for ALE work on this host: **about 2 concurrent ALE jobs
+plus NEC**. Beyond that everything finishes later, not sooner.
+
 ## Thread count changes NEC's results
 
 The nec smoke is deterministic at a given thread count but differs between
