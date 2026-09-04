@@ -32,7 +32,56 @@ more jobs concurrently raises aggregate throughput without raising total CPU
 -- repacking the capacity campaign from 1 to 8 concurrent jobs took aggregate
 throughput from 27.6 to 266.8 steps/s.
 
-## XPU stability is driver-dependent
+## XPU: DO NOT USE FOR TRAINING
+
+Superseded finding. An earlier revision of this file said the `topk` crash was
+"FIXED" by driver 32.0.101.8991 and implied XPU was usable. It is not. The
+driver upgrade fixed that one op; the stack still faults arbitrarily under
+sustained load.
+
+Evidence, 2026-09-04, three python.exe crashes in 20 minutes with the faulting
+module inside Intel's Level Zero stack:
+
+| time | faulting module | exception |
+|---|---|---|
+| 08:22:09 | `ze_intel_gpu64.dll` 1.15.39183.3 | 0xc0000005 access violation |
+| 08:27:29 | `ze_intel_gpu64.dll` 1.15.39183.3 | 0xc0000409 stack buffer overrun |
+| 08:39:56 | `ur_adapter_level_zero.dll` 2026.0.0.0 | 0xc0000005 access violation |
+
+Python-visible as `RuntimeError: level_zero backend failed with error:
+2147483646 (UR_RESULT_ERROR_UNKNOWN)`, raised at two unrelated sites: Adam's
+`_multi_tensor_adam` -> `torch._foreach_div_`, and a plain `x / 255.0` in
+`model/cnn_encoders.py`. **The crash site is arbitrary**, so
+`adam_kwargs_for_device()`'s `foreach=False` (kept, XPU-only, harmless) does
+NOT prevent it. Three ALE DQN runs died at ~26k of 500k steps.
+
+XPU is genuinely faster for CNN-dominated work -- ALE DQN measured 48.89
+steps/s on XPU vs 18.93 on CPU -- but a run that dies a twentieth of the way in
+is worth nothing. **Run training on CPU.** `torch.xpu` remains fine for short
+interactive probes.
+
+## Device preference is set by workload shape, not by device
+
+Measured on this host, all on ALE Pong except the last row:
+
+| workload | CPU | XPU | faster | why |
+|---|---|---|---|---|
+| DQN (ALE) | 18.93 | 48.89 | XPU 2.6x | Nature-CNN over 84x84x4 dominates |
+| PPO (ALE) | 61.62 | 20.21 | CPU 3.0x | no replay buffer, so per-step host<->device transfer dominates short rollouts |
+| NEC (ALE) | 6.94 | 4.46 | CPU 1.6x | kNN lookup over the DND dominates |
+| kNN cdist (CartPole) | see below | | CPU | small-tensor cdist/topk |
+
+So "XPU is slower for this project" was too broad, and so was "XPU is faster
+for ALE". Only DQN gains. None of it matters while the driver faults.
+
+## Thread count changes NEC's results
+
+The nec smoke is deterministic at a given thread count but differs between
+them: **155.0 at default threads, 90.0 at OMP_NUM_THREADS=2**, same host, same
+code, same seed. It reads 183.0 on r760. Hold OMP_NUM_THREADS constant across
+any set of NEC runs meant to be compared; p13 used 8 and p16 uses 6.
+
+## Old note: XPU stability is driver-dependent
 
 | Intel driver | Level Zero | torch 2.13.0+xpu `topk` |
 |---|---|---|
