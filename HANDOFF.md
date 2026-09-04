@@ -24,12 +24,22 @@ baselines, ALE) is harvested. Its headline supersedes several claims in the
    not close. State this plainly; it does not erase the within-family results
    (NN-kNN critic > MLP critic on Acrobot; NN-kNN actor > MLP actor on
    LunarLander/MinAtar), which remain the defensible contribution.
-2. **Capacity: bigger is worse, and measurably slower** (`reports/capacity_ablation.md`).
-   cap 100 = 498.83 ± 2.62 ≈ cap 500 default 497.98 ± 4.52 > cap 2000
-   471.53 ± 14.35 (n=3, seeds 3-4 in flight as p14). Measured under matched
-   concurrent GPU contention: 4.4–4.7 steps/s at cap 100 vs 0.60 at cap 2000,
-   a **7.4x throughput penalty for a 20x memory that also scores worse**. This
-   converts the unmeasured wall-clock weakness into a reported trade-off.
+2. **Capacity: a bigger case base costs ~7.4x throughput and buys nothing.**
+   AMENDED 2026-09-03 by p17 — the cost half replicates, the return half does
+   not. A controlled sequential measurement on g234
+   (`reports/p18_throughput_controlled.csv`) gives a **7.38x** penalty from
+   cap 100 to cap 2000, against 7.4x measured on r760 under matched GPU
+   contention — independent methods, different CPU/OS/device, near-identical
+   answer. That trade-off is solid and is the manuscript claim.
+   **The "scores worse" half is device-dependent and must not be cited.** A
+   full 5-seed CPU replication (`results/rl_capacity_cpu_g234/`) puts cap 2000
+   at 499.88 ± 0.27 versus 471.53 ± 14.35 on CUDA, with no monotonic capacity
+   trend at all (weakest CPU arm is cap 500, not cap 2000) and the three
+   shared seeds moving 455.90→500.00, 484.10→500.00, 474.60→500.00. cap 1000
+   was added as the knee point: 498.48 ± 3.40, no deficit. The CUDA arm is
+   still n=3; p14 seeds 3-4 remain in flight on r760 and are the cleanest
+   test of whether the CUDA deficit survives its own full seed set.
+   See the 2026-09-03 p17 entry in `reports/experiment_log.md`.
 3. **TD3 is a continuous-control reference only.** TD3 dominates Pendulum
    (−119.78 ± 1.17 vs PPO −822.42 ± 53.27; PPO has no observation/reward
    normalization, the standard explanation); PPO is steadier on

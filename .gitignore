@@ -39,3 +39,10 @@ results/table1_kfold_20260418_213251/stdout.log
 /results/rl/**/*.pth
 /*.log
 /*pid*.txt
+
+# The p17 CPU capacity replication writes outside results/rl/, so the
+# /results/rl/**/*.pt rule above does not cover it. Same policy: keep the
+# structured record, never publish model weights.
+/results/rl_capacity_cpu_g234/**/*.pt
+/results/rl_capacity_cpu_g234/**/*.pth
+/*.err
