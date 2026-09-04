@@ -10,6 +10,8 @@ from typing import Any
 
 import numpy as np
 import torch
+
+from model.device_utils import adam_kwargs_for_device
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -638,7 +640,8 @@ def train_nec(
         cfg.embedding_dim,
         dnd_observation_dim,
     )
-    optimizer = optim.Adam(model.parameters(), lr=cfg.learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=cfg.learning_rate,
+                           **adam_kwargs_for_device(run_device))
     replay_buffer = NECReplayBuffer.create_for_observation(cfg.replay_size, obs_spec)
 
     run_dir = Path(output_dir) if output_dir is not None else make_nec_output_dir(spec.name)

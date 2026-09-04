@@ -63,6 +63,8 @@ from typing import Any
 
 import numpy as np
 import torch
+
+from model.device_utils import adam_kwargs_for_device
 import torch.nn as nn
 import torch.optim as optim
 
@@ -895,7 +897,8 @@ def train_ppo(
         hidden_sizes=cfg.hidden_sizes,
         log_std_init=cfg.log_std_init,
     ).to(run_device)
-    optimizer = optim.Adam(agent.parameters(), lr=cfg.learning_rate, eps=1e-5)
+    optimizer = optim.Adam(agent.parameters(), lr=cfg.learning_rate, eps=1e-5,
+                           **adam_kwargs_for_device(run_device))
 
     run_dir = Path(output_dir) if output_dir is not None else make_ppo_output_dir(spec.name)
     run_dir.mkdir(parents=True, exist_ok=True)
