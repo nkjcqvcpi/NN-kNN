@@ -111,7 +111,16 @@ for c in caps:
     else:
         print("| %d | -- (no CUDA arm; this is the new knee point) | %.2f +/- %.2f (%d) | -- |"
               % (c, got["mean"], got["sd"], got["n"]))
-print("\nNote: the CUDA arms ran with early stopping on a contended H100; the CPU")
-print("arms ran on an idle 16-core box, 4 jobs concurrent (one per capacity).")
-print("Returns are comparable; the steps/s columns are NOT comparable across hosts.")
+print("\nNotes:")
+print("- The CUDA arms ran on a contended H100. The CPU arms ran on g234, a")
+print("  10-core i5-13400F, at up to 12 concurrent jobs with OMP_NUM_THREADS=2.")
+print("  Returns are comparable across hosts; steps/s and wall seconds are NOT --")
+print("  use reports/p17_throughput_controlled.csv (timing_pass.ps1) for that.")
+print("- SURVIVORSHIP WARNING for any arm below n=5: runs that hit the target")
+print("  score stop early and therefore land in this table FIRST, biasing a")
+print("  partial arm upward. Do not read a partial mean as the arm's result.")
+incomplete = [c for c in caps if rows[c]["n"] < 5]
+if incomplete:
+    print("- INCOMPLETE ARMS (n<5), means are provisional and biased high: %s"
+          % ", ".join("cap%d n=%d" % (c, rows[c]["n"]) for c in incomplete))
 
