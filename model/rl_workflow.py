@@ -21,7 +21,7 @@ from datasets.rl_tasks import (
     list_supported_rl_tasks,
 )
 from model.cnn_encoders import NATURE_CNN_FEATURE_DIM, NatureCNNEncoder
-from model.device_utils import resolve_runtime_device
+from model.device_utils import adam_kwargs_for_device, resolve_runtime_device
 
 
 # Eval episodes on image (ALE) tasks are capped: a single Atari episode is
@@ -766,7 +766,8 @@ def train_dqn(
     q_network = build_q_network(obs_spec, action_dim, hidden_sizes=cfg.hidden_sizes).to(run_device)
     target_network = build_q_network(obs_spec, action_dim, hidden_sizes=cfg.hidden_sizes).to(run_device)
     target_network.load_state_dict(q_network.state_dict())
-    optimizer = optim.Adam(q_network.parameters(), lr=cfg.learning_rate)
+    optimizer = optim.Adam(q_network.parameters(), lr=cfg.learning_rate,
+                           **adam_kwargs_for_device(run_device))
     replay_buffer = ReplayBuffer.create_for_observation(cfg.buffer_size, obs_spec)
 
     run_dir = Path(output_dir) if output_dir is not None else make_dqn_output_dir(spec.name)
