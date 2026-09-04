@@ -1,5 +1,27 @@
 # Case-capacity ablation — CartPole hybrid NN-kNN-RL
 
+> **CORRECTION 2026-09-03 (p17).** The return half of this report does not
+> replicate. A full 5-seed CPU replication on g234
+> (`results/rl_capacity_cpu_g234/`, manifest
+> `reports/p17_capacity_cpu_manifest.json`) puts capacity 2000 at
+> **499.88 ± 0.27** against the **471.53 ± 14.35** below, with no monotonic
+> capacity trend at all — the weakest CPU arm is capacity 500, not 2000, and
+> the three seeds shared with this table moved 455.90→500.00, 484.10→500.00,
+> 474.60→500.00. **Do not cite "bigger is worse" as a property of the
+> method**; it is device-dependent.
+>
+> The cost half DOES replicate, and closely: a controlled sequential
+> measurement (`reports/p18_throughput_controlled.csv`) gives a **7.38x**
+> throughput penalty from capacity 100 to 2000, against the 7.4x reported
+> here — on different hardware, OS, device and float path.
+>
+> The supported claim is therefore: a larger case base buys **no return
+> improvement** while costing ~7.4x throughput. Capacity 1000 was added as
+> the knee point and shows no deficit (498.48 ± 3.40). The CUDA arm below is
+> still n=3; p14 seeds 3-4 remain in flight on r760. See the 2026-09-03 p17
+> entry in reports/experiment_log.md.
+
+
 Plan knob 5 / NEXT_STEPS_PLAN.md ask 1. Protocol identical across arms:
 `tools/run_rl_nnknn.py cartpole --profile fast --seed S --device cuda
 --critic-type nnknn --critic-mutable-value-labels --critic-trainable-value-labels
