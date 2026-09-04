@@ -56,3 +56,17 @@ def resolve_runtime_device(env_var: str = "NNKNN_DEVICE") -> torch.device:
         return torch.device("cpu")
 
     return torch.device("cuda")
+
+
+def adam_kwargs_for_device(device: torch.device) -> dict:
+    """Purpose: keep Adam off torch's foreach path on Intel XPU.
+
+    A DQN ALE run on an Arc A770 (torch 2.13.0+xpu) crashed at ~26k steps in
+    _multi_tensor_adam -> torch._foreach_div_ with
+    UR_RESULT_ERROR_UNKNOWN from the level_zero backend. The single-tensor
+    path does not use that op. CPU and CUDA are untouched, so their results
+    remain bit-identical.
+    """
+    if getattr(device, "type", None) == "xpu":
+        return {"foreach": False}
+    return {}
