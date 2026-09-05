@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 import torch
 
-from model.device_utils import adam_kwargs_for_device
+from model.device_utils import runtime_env_fingerprint, adam_kwargs_for_device
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -1012,6 +1012,7 @@ def train_nec(
             "device": str(run_device),
             "observation": obs_spec.to_dict(),
             "source_reference": cfg.source_reference,
+            "runtime": runtime_env_fingerprint(),
         },
     )
     _write_csv(run_dir / "training_metrics.csv", training_rows)
