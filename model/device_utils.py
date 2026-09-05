@@ -70,3 +70,24 @@ def adam_kwargs_for_device(device: torch.device) -> dict:
     if getattr(device, "type", None) == "xpu":
         return {"foreach": False}
     return {}
+
+
+def runtime_env_fingerprint() -> dict:
+    """Purpose: capture settings that change results but are not part of cfg.
+
+    Thread count is the motivating case: the nec smoke returns 155.0 at
+    default threads and 90.0 under OMP_NUM_THREADS=2, deterministic at each,
+    and a PPO ALE run flipped from +9.60 to -21.00 on the same seed purely by
+    moving from 3 threads to 2. Without this block, config.json cannot tell
+    those runs apart.
+    """
+    import platform as _platform
+
+    return {
+        "omp_num_threads": os.environ.get("OMP_NUM_THREADS"),
+        "mkl_num_threads": os.environ.get("MKL_NUM_THREADS"),
+        "torch_num_threads": torch.get_num_threads(),
+        "torch_version": torch.__version__,
+        "platform": _platform.platform(),
+        "python": _platform.python_version(),
+    }

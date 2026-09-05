@@ -21,7 +21,7 @@ from datasets.rl_tasks import (
     list_supported_rl_tasks,
 )
 from model.cnn_encoders import NATURE_CNN_FEATURE_DIM, NatureCNNEncoder
-from model.device_utils import adam_kwargs_for_device, resolve_runtime_device
+from model.device_utils import runtime_env_fingerprint, adam_kwargs_for_device, resolve_runtime_device
 
 
 # Eval episodes on image (ALE) tasks are capped: a single Atari episode is
@@ -993,6 +993,7 @@ def train_dqn(
             "device": str(run_device),
             "observation": obs_spec.to_dict(),
             "source_reference": cfg.source_reference,
+            "runtime": runtime_env_fingerprint(),
         },
     )
     _write_csv(run_dir / "training_metrics.csv", training_rows)
