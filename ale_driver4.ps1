@@ -14,13 +14,13 @@ $LOG='p20_driver4.log'
 function Say($m){ Add-Content -Path $LOG -Value ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'),$m) }
 $env:PYTHONUNBUFFERED='1'; $env:MPLBACKEND='Agg'; $env:NNKNN_DEVICE='cpu'
 $env:OMP_NUM_THREADS='2'; $env:MKL_NUM_THREADS='2'
-$OUT='results/rl_ale_g234'; $STEPS=500000; $MAXCONC=2
+$OUT='results/rl_ale_g234'; $STEPS=500000; $MAXCONC=8
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
 $DQN = @('--buffer-size','100000','--learning-rate','1e-4','--target-network-frequency','1000',
          '--train-frequency','4','--exploration-fraction','0.1','--learning-starts','20000')
 $plan=@()
-foreach ($s in 0,1,2) { $plan += [pscustomobject]@{Alg='ppo'; Seed=$s; Extra=@()} }
-foreach ($s in 0,1,2) { $plan += [pscustomobject]@{Alg='dqn'; Seed=$s; Extra=$DQN} }
+foreach ($s in 0,1,2,3,4) { $plan += [pscustomobject]@{Alg='ppo'; Seed=$s; Extra=@()} }
+foreach ($s in 0,1,2,3,4) { $plan += [pscustomobject]@{Alg='dqn'; Seed=$s; Extra=$DQN} }
 
 $have=@{}
 foreach ($d in Get-ChildItem $OUT -Directory -EA SilentlyContinue) {
