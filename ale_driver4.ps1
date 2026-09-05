@@ -27,7 +27,11 @@ foreach ($d in Get-ChildItem $OUT -Directory -EA SilentlyContinue) {
   if (Test-Path (Join-Path $d.FullName 'summary.json')) {
     try { $c = Get-Content (Join-Path $d.FullName 'config.json') -Raw | ConvertFrom-Json
           $have[("{0}_{1}" -f $c.algorithm,$c.config.seed)] = $true } catch {}
-  } else { Remove-Item -Recurse -Force $d.FullName -EA SilentlyContinue } }
+  }
+  # NEVER delete run dirs here. A running job's dir has no summary.json yet, so
+  # deleting on that test destroys live output -- it killed ppo seed 0 after a
+  # full 500k-step run. The harvest already skips dirs without a summary.json.
+}
 $busy=@{}
 foreach ($p in Get-CimInstance Win32_Process -Filter "Name='python.exe'") {
   if ($p.CommandLine -match 'run_rl_(dqn|ppo)\.py.*--seed (\d+)') { $busy[("{0}_{1}" -f $Matches[1],$Matches[2])] = $true } }
