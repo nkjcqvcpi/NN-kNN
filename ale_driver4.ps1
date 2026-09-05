@@ -26,7 +26,11 @@ $have=@{}
 foreach ($d in Get-ChildItem $OUT -Directory -EA SilentlyContinue) {
   if (Test-Path (Join-Path $d.FullName 'summary.json')) {
     try { $c = Get-Content (Join-Path $d.FullName 'config.json') -Raw | ConvertFrom-Json
-          $have[("{0}_{1}" -f $c.algorithm,$c.config.seed)] = $true } catch {}
+          # config.algorithm is e.g. 'ppo_clipped_surrogate_gae'; the plan uses
+          # 'ppo'. Normalise to the leading family or nothing ever matches and
+          # completed runs get re-run.
+          $fam = ($c.algorithm -split '_')[0]
+          $have[("{0}_{1}" -f $fam,$c.config.seed)] = $true } catch {}
   }
   # NEVER delete run dirs here. A running job's dir has no summary.json yet, so
   # deleting on that test destroys live output -- it killed ppo seed 0 after a
