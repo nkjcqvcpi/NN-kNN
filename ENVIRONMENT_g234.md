@@ -74,35 +74,48 @@ Measured on this host, all on ALE Pong except the last row:
 So "XPU is slower for this project" was too broad, and so was "XPU is faster
 for ALE". Only DQN gains. None of it matters while the driver faults.
 
-## Concurrency: the ceiling is memory bandwidth, not cores
+## Concurrency: use process priority, not fewer jobs
 
-The host looks idle at ~23% CPU, but that headroom is not usable by every
-workload. Pure-compute burners reach **12.66 of 16 logical cores** and scale
-cleanly (1810 -> 3543 -> 5428 matmul/s at 2 -> 4 -> 8 processes), so the cycles
-are genuinely free. Large-footprint RL jobs cannot take them.
+**A previous revision of this file was wrong.** It claimed a hard ~3.6-core
+ceiling caused by memory bandwidth and L3 contention, and advised running at
+most ~2 concurrent ALE jobs. That ceiling was an artefact of the Windows
+scheduler, not the hardware.
 
-Measured: p16 NEC's CPU share against the number of ALE jobs beside it.
+What actually happens: these RL jobs are latency-bound and none competes
+aggressively, so at equal priority the scheduler spreads them thin and the
+total plateaus near 3.6 cores no matter how many run. Adding jobs then starves
+whichever run you care about. The clue that this was not a hardware limit was
+available all along -- pure-compute burners reach 12.66 of 16 cores.
 
-| ALE jobs alongside | NEC cores | system CPU |
-|---|---|---|
-| 0 | 3.31 | ~21% |
-| 2 | 1.37-1.87 | ~23% |
-| 4 | 0.71 | 25% |
-| 6 | 0.44 | 23% |
+The fix is scheduling priority:
 
-Each doubling roughly halves NEC while system CPU barely moves. That is
-**memory bandwidth and L3 contention**, not scheduling: NEC holds a
-60,000-entry DND over 84x84x4 image embeddings, and every added ALE job
-evicts its working set.
+    # protect the run that must not be starved
+    (Get-Process -Id $necPid).PriorityClass = 'High'
+    # everything else yields to it
+    (Get-Process -Id $otherPid).PriorityClass = 'BelowNormal'
 
-**Footprint decides whether concurrency helps.** The p17 CartPole capacity
-runs scaled about 10x with concurrency (27.6 -> 266.8 steps/s aggregate at 1
--> 8 jobs) because their case bases are 100-2000 entries and stay in cache.
-ALE-sized jobs do not. Do not generalise a scaling result from the CartPole
-runs to the ALE runs -- that mistake cost a campaign restart here.
+Measured effect, same machine, same workloads:
 
-Practical ceiling for ALE work on this host: **about 2 concurrent ALE jobs
-plus NEC**. Beyond that everything finishes later, not sooner.
+| configuration | jobs | NEC cores | system CPU |
+|---|---|---|---|
+| NEC alone, equal priority | 1 | 3.31 | ~21% |
+| NEC + 2 ALE, equal priority | 3 | 1.37-2.10 | ~23% |
+| NEC + 6 ALE, equal priority | 7 | 0.44 | ~23% |
+| NEC + 4 CartPole, equal priority | 5 | 0.69 | 27% |
+| **NEC High + 11 others BelowNormal** | **12** | **5.97** | **63%** |
+
+So the host runs about twelve concurrent RL jobs at 63% CPU with the priority
+job faster than it was running alone. Do not throttle job count to protect a
+run; raise its priority instead.
+
+Footprint still matters for a different reason: p17's CartPole capacity runs
+(case bases 100-2000) scaled ~10x with concurrency, while ALE jobs
+(84x84x4 frames, 100k replay buffers) do not scale as well. But footprint was
+NOT the cause of the starvation described above.
+
+Note also that CPU% is a poor meter for these workloads. Aggregate steps/s
+roughly tripled when going from 3 jobs to 7 even while system CPU stayed near
+23%, because latency-bound jobs interleave.
 
 ## Thread count changes NEC's results
 
