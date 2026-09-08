@@ -71,6 +71,66 @@
       "stop": "target_score"
     },
     {
+      "best_step": 79443,
+      "capacity": 250,
+      "device": "cpu",
+      "final_eval": 500.0,
+      "last_eval": 500.0,
+      "run_dir": "results/rl_capacity_cpu_g234/nnknn_rl_cartpole_20260905_161354_159930",
+      "seconds": 2681.336608,
+      "seed": 0,
+      "steps": 79443,
+      "stop": "target_score"
+    },
+    {
+      "best_step": 12700,
+      "capacity": 250,
+      "device": "cpu",
+      "final_eval": 500.0,
+      "last_eval": 500.0,
+      "run_dir": "results/rl_capacity_cpu_g234/nnknn_rl_cartpole_20260905_161354_158924",
+      "seconds": 281.128514,
+      "seed": 1,
+      "steps": 12700,
+      "stop": "target_score"
+    },
+    {
+      "best_step": 81237,
+      "capacity": 250,
+      "device": "cpu",
+      "final_eval": 498.6000061035156,
+      "last_eval": 419.6000061035156,
+      "run_dir": "results/rl_capacity_cpu_g234/nnknn_rl_cartpole_20260905_161843_489134",
+      "seconds": 3842.933033,
+      "seed": 2,
+      "steps": 150000,
+      "stop": "budget_exhausted"
+    },
+    {
+      "best_step": 78372,
+      "capacity": 250,
+      "device": "cpu",
+      "final_eval": 500.0,
+      "last_eval": 500.0,
+      "run_dir": "results/rl_capacity_cpu_g234/nnknn_rl_cartpole_20260905_162133_955468",
+      "seconds": 2608.536713,
+      "seed": 3,
+      "steps": 78372,
+      "stop": "target_score"
+    },
+    {
+      "best_step": 123022,
+      "capacity": 250,
+      "device": "cpu",
+      "final_eval": 500.0,
+      "last_eval": 500.0,
+      "run_dir": "results/rl_capacity_cpu_g234/nnknn_rl_cartpole_20260905_162134_011719",
+      "seconds": 3584.088005,
+      "seed": 4,
+      "steps": 123022,
+      "stop": "target_score"
+    },
+    {
       "best_step": 56257,
       "capacity": 500,
       "device": "cpu",
@@ -191,6 +251,66 @@
       "stop": "target_score"
     },
     {
+      "best_step": 10047,
+      "capacity": 1500,
+      "device": "cpu",
+      "final_eval": 481.0,
+      "last_eval": 321.04998779296875,
+      "run_dir": "results/rl_capacity_cpu_g234/nnknn_rl_cartpole_20260905_161354_159427",
+      "seconds": 21635.57834,
+      "seed": 0,
+      "steps": 150000,
+      "stop": "budget_exhausted"
+    },
+    {
+      "best_step": 38039,
+      "capacity": 1500,
+      "device": "cpu",
+      "final_eval": 491.3500061035156,
+      "last_eval": 350.0,
+      "run_dir": "results/rl_capacity_cpu_g234/nnknn_rl_cartpole_20260905_161354_158421",
+      "seconds": 21928.693194,
+      "seed": 1,
+      "steps": 150000,
+      "stop": "budget_exhausted"
+    },
+    {
+      "best_step": 135386,
+      "capacity": 1500,
+      "device": "cpu",
+      "final_eval": 500.0,
+      "last_eval": 500.0,
+      "run_dir": "results/rl_capacity_cpu_g234/nnknn_rl_cartpole_20260905_162133_938497",
+      "seconds": 20169.949321,
+      "seed": 2,
+      "steps": 135386,
+      "stop": "target_score"
+    },
+    {
+      "best_step": 23576,
+      "capacity": 1500,
+      "device": "cpu",
+      "final_eval": 500.0,
+      "last_eval": 500.0,
+      "run_dir": "results/rl_capacity_cpu_g234/nnknn_rl_cartpole_20260905_162134_060506",
+      "seconds": 3366.38905,
+      "seed": 3,
+      "steps": 23576,
+      "stop": "target_score"
+    },
+    {
+      "best_step": 25861,
+      "capacity": 1500,
+      "device": "cpu",
+      "final_eval": 486.95001220703125,
+      "last_eval": 470.3999938964844,
+      "run_dir": "results/rl_capacity_cpu_g234/nnknn_rl_cartpole_20260905_162134_098498",
+      "seconds": 21228.136927,
+      "seed": 4,
+      "steps": 150000,
+      "stop": "budget_exhausted"
+    },
+    {
       "best_step": 148451,
       "capacity": 2000,
       "device": "cpu",
@@ -260,6 +380,14 @@
       "sd": 5.9922819469884265,
       "stops": 3
     },
+    "250": {
+      "mean": 499.7200012207031,
+      "median_steps_per_s": 34.324491984677145,
+      "median_wall_seconds": 2681.336608,
+      "n": 5,
+      "sd": 0.6260963041247732,
+      "stops": 4
+    },
     "500": {
       "mean": 493.22999877929686,
       "median_steps_per_s": 23.37963373704883,
@@ -275,6 +403,14 @@
       "n": 5,
       "sd": 3.3988260553748484,
       "stops": 3
+    },
+    "1500": {
+      "mean": 491.86000366210936,
+      "median_steps_per_s": 6.933024744833329,
+      "median_wall_seconds": 21228.136927,
+      "n": 5,
+      "sd": 8.288951590844984,
+      "stops": 2
     },
     "2000": {
       "mean": 499.8799987792969,
