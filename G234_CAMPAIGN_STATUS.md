@@ -53,9 +53,12 @@ pinned to the **live** environment, not the file. See `ENVIRONMENT_g234.md`.
    hyperparameter.
 
 3. **Capacity has no effect on return; the curve is flat.** Six capacities ×
-   5 seeds span 491.86–499.88, a spread smaller than within-arm seed
-   variance. There is no knee. The r760 "bigger is worse" result does not
-   replicate on CPU.
+   5 seeds span 491.86–499.88 on CPU, a spread smaller than within-arm seed
+   variance. There is no knee. And with r760's p14 finally complete, the CUDA
+   arm that produced the original claim is 480.12 ± 15.96 at n=5 rather than
+   471.53 at n=3 — its deficit is ~1.1 sd and its own two late seeds were the
+   best of the five. **"Bigger is worse" is not supportable from either
+   host.**
 
 4. **The capacity cost finding is robust.** 7.38× throughput penalty from
    capacity 100 → 2000, against r760's 7.4× — different CPU, OS, device and
@@ -101,10 +104,13 @@ pinned to the **live** environment, not the file. See `ENVIRONMENT_g234.md`.
 
 ## 3. What is left
 
-- **r760 p14** — cap2000 seeds 3–4 on CUDA, running two days at ~0.2 steps/s.
-  Would complete the CUDA arm to n=5 and is the cleanest test of whether the
-  CUDA capacity deficit survives its own full seed set. Untouched by this
-  work.
+- ~~r760 p14~~ — **DONE 2026-09-05.** Both seeds completed (`Exit status: 0`)
+  and were transferred to g234. The CUDA cap-2000 arm is now n=5 at
+  **480.12 ± 15.96**, not the published 471.53 ± 14.35: the two late seeds
+  (498.20, 487.80) are the two best in the arm, so the published mean was the
+  worst three of five. The deficit against capacity 100 falls from ~27 points
+  to ~18, about 1.1 sd. **r760 now has no running processes for this
+  project.**
 - **NEC at n>1.** p16 is seed 0 only. Given the seed variance p20 exposed, a
   single NEC seed cannot support "NEC does not learn".
 - **1M-budget ALE arms.** Everything on g234 ran 500k; p13/p15 ran 1M. The two
@@ -130,7 +136,8 @@ Ordered by value.
    near-saturated at ~500, so the flat curve partly reflects a task with no
    headroom. Acrobot or LunarLander would test it properly.
 5. **1M-budget DQN and PPO arms** to connect g234's numbers to p13/p15.
-6. **Fold r760 p14 into the capacity report** when it lands.
+6. ~~Fold r760 p14 into the capacity report~~ — **done**; see the
+   2026-09-05 p14-complete entry.
 7. Optional: add checkpointing to the RL workflows. Every crash and reboot
    this round cost a full run because artifacts are written only at
    completion.
