@@ -21,6 +21,20 @@
 > still n=3; p14 seeds 3-4 remain in flight on r760. See the 2026-09-03 p17
 > entry in reports/experiment_log.md.
 
+> **UPDATE 2026-09-05 (p14 complete).** The cap-2000 CUDA arm below is no
+> longer n=3. r760's p14 seeds 3-4 completed (`Exit status: 0`) at **498.20**
+> and **487.80**, both higher than any of the first three, taking the arm to
+> **480.12 ± 15.96 (n=5)** rather than the 471.53 ± 14.35 published here. The
+> originally reported mean was the worst three of five.
+>
+> That weakens the deficit on its own terms: against capacity 100's
+> 498.83 ± 2.62 the gap falls from ~27 points to ~18, which at sd 15.96 and
+> n=5 is roughly 1.1 sd. Taken with the CPU replication finding no capacity
+> effect at all across six capacities × five seeds, **"bigger is worse" is not
+> supportable from either host.**
+
+
+
 
 Plan knob 5 / NEXT_STEPS_PLAN.md ask 1. Protocol identical across arms:
 `tools/run_rl_nnknn.py cartpole --profile fast --seed S --device cuda
