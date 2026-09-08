@@ -288,3 +288,49 @@ Diagnostics: (1) **Correcting the hyperparameters does not make NEC learn Pong.*
 (2) The correction was NOT worthless: p13's untuned NEC sat at exactly -21.00 at every single evaluation, a hard floor. p16 never returns to it, and its per-eval max_return reaches -16.0. So the hyperparameters were suppressing something, but what they were suppressing is not learning. (3) This is the decisive contrast with DQN. Both are value-based, both were given standard Atari hyperparameters, and DQN went from a flat -21.00 to +13.40 (p15) while NEC moved from -21.00 to a noisy -18.40 that never improves. The p13 ADDENDUM's hypothesis -- that the whole cross-method result was a hyperparameter confound -- is therefore only half right: it fully explains DQN and does not explain NEC.
 Caveats, stated plainly: NEC ran 500k against DQN's 1M, so the budgets are not matched and NEC's flat curve cannot be read as 'would never learn'. Seed 0 only -- and the p20 PPO arm has just shown ALE results on this task can span -21.00 to +9.60 across seeds, so a single-seed claim about any method here is weak. p13's NEC also ran OMP_NUM_THREADS=8 against p16's 6, and thread count is now known to change results in this codebase (see commit 40b5c3e); this run predates the runtime-metadata patch so its thread count is recorded only here and in run_p16.cmd.
 Interpretation & next step: the supported statement is **"with standard Atari hyperparameters, DQN learns Pong and NEC does not, at 1M and 500k steps respectively, seed 0"**. That is a narrower and more interesting claim than p13's, which attributed the split to the value-based/policy-gradient boundary: the boundary is not value-based-vs-on-policy, since DQN is value-based and learns. Next: NEC seeds 1-2 at 500k would test whether -18.40 is representative, and a 1M NEC arm would make the DQN comparison budget-matched. Neither is cheap -- NEC measured ~2-6 steps/s on this host depending on contention.
+
+## 2026-09-05 — p20 harvest — ALE Pong at n=5: corrected DQN beats PPO, reversing the p13 reading; both arms have enormous seed variance
+Runs: 10 runs under results/rl_ale_g234/ (DQN and PPO, seeds 0-4, ale_pong, 500k budget, device cpu, OMP_NUM_THREADS=2 throughout). Host g234. NEC at the same budget is the separate p16 entry.
+Command(s): DQN — `tools/run_rl_dqn.py ale_pong --profile fast --seed S --device cpu --no-early-stopping --total-timesteps 500000 --eval-frequency 25000 --buffer-size 100000 --learning-rate 1e-4 --target-network-frequency 1000 --train-frequency 4 --exploration-fraction 0.1 --learning-starts 20000` (the corrected Atari hyperparameters from p15). PPO — same shape, no overrides, since PPO's defaults are already near-standard for Atari. Driver: ale_driver4.ps1.
+Key numbers (final_eval = selected checkpoint, mean over eval episodes; sample sd ddof=1 across seeds):
+| method | n | final_eval mean ± sd | per-seed | range | seeds reaching first_success |
+|---|---|---|---|---|---|
+| **DQN (corrected)** | 5 | **-0.24 ± 9.43** | -6.80, 1.00, -12.40, 10.80, 6.20 | -12.40 to 10.80 | 3/5 |
+| **PPO (defaults)** | 5 | **-10.60 ± 9.57** | -21.00, -5.20, -1.80, -21.00, -4.00 | -21.00 to -1.80 | 0/5 |
+| NEC (corrected, p16) | 1 | -18.40 ± 1.36 | -18.40 | — | 0/1 |
+
+Per-run detail:
+| method | seed | final_eval | last_eval | best step | first_success | stop |
+|---|---|---|---|---|---|---|
+| DQN | 0 | -6.80 ± 3.37 | -7.40 | 400,000 | never | budget_exhausted |
+| DQN | 1 | 1.00 ± 5.33 | 1.00 | 500,000 | 500,000 | budget_exhausted |
+| DQN | 2 | -12.40 ± 2.58 | -14.20 | 400,000 | never | budget_exhausted |
+| DQN | 3 | 10.80 ± 2.04 | 10.80 | 500,000 | 500,000 | budget_exhausted |
+| DQN | 4 | 6.20 ± 6.40 | 2.40 | 425,000 | 425,000 | budget_exhausted |
+| PPO | 0 | -21.00 ± 0.00 | -21.00 | 500,000 | never | budget_exhausted |
+| PPO | 1 | -5.20 ± 4.87 | -9.20 | 400,000 | never | budget_exhausted |
+| PPO | 2 | -1.80 ± 3.97 | -6.00 | 450,000 | never | budget_exhausted |
+| PPO | 3 | -21.00 ± 0.00 | -21.00 | 500,000 | never | budget_exhausted |
+| PPO | 4 | -4.00 ± 6.07 | -4.20 | 425,000 | never | budget_exhausted |
+
+Diagnostics: (1) **THE p13 READING IS REVERSED.** p13 reported PPO as the standout (+12.80) with DQN and NEC flat at -21.0, and read it as an on-policy versus value-based split. At matched 500k with corrected hyperparameters the ordering is DQN -0.24 > PPO -10.60 > NEC -18.40, and 3 of 5 DQN seeds reach first_success against 0 of 5 for PPO. The value-based family is not the weak one; p13's DQN was simply misconfigured. (2) **BOTH ARMS HAVE ENORMOUS SEED VARIANCE.** DQN spans -12.40 to 10.80 and PPO -21.00 to -1.80, with sd about 9.5 in each. PPO seeds 0 and 3 sit at exactly -21.00 across all twenty evaluations while seed 2 reaches -1.80. Any single-seed claim on this task is close to meaningless, which retroactively undermines p13's PPO +12.80 and p15's DQN +13.40 -- both seed 0 only. (3) The DQN-PPO gap of 10.36 points is roughly 1.1 pooled sd at n=5. It is suggestive, not decisive, and should be reported as such rather than as a ranking.
+Caveats: 500k budget throughout, against p13/p15's 1M, so these are not comparable to those numbers directly -- p15's DQN reached +13.40 only at 1M and was still improving. All runs are CPU on g234; the r760 numbers were CUDA, and p17 measured a 28-point device effect on a different task, so cross-host comparison is unsafe. Sticky actions (repeat_action_probability=0.25) apply, so none of this is comparable to published no-sticky Nature-DQN scores. Thread count is OMP_NUM_THREADS=2 for every run here; the four runs whose config.json lacks a `runtime` block predate that metadata patch but were launched by the same driver at the same setting.
+Thread sensitivity, measured twice on this arm and worth carrying: PPO seed 0 returned +9.60 at OMP_NUM_THREADS=3 and -21.00 at OMP=2; PPO seed 1 returned -21.00 at OMP=3 and -5.20 at OMP=2. Same seed, same code, same budget. The OMP=3 seed-1 run is preserved at results/rl_ale_g234_threadconfound/ rather than deleted. Runs from this commit forward record their thread count in config.json.
+Interpretation & next step: the defensible statement is **"at a matched 500k budget with appropriate hyperparameters, DQN and PPO both learn ALE Pong to a highly seed-dependent degree, DQN somewhat better, while NEC does not learn at all"**. The p13 entry's cross-method interpretation should be retired entirely rather than merely caveated. Next: NEC at n=5 to confirm its flat curve is not itself a seed artifact, and a 1M-budget arm for DQN and PPO to connect these numbers to p13/p15.
+
+## 2026-09-05 — p22 harvest — the capacity curve is flat across 6 capacities x 5 seeds; there is no knee
+Runs: 30 runs under results/rl_capacity_cpu_g234/ (capacity {100, 250, 500, 1000, 1500, 2000} x seeds {0..4}), manifest reports/p17_capacity_cpu_manifest.json. Extends p17 with capacity 250 and 1500 to fill the gaps either side of the supposed knee. Host g234, all --device cpu, profile fast, 150k budget, early stopping ON, OMP_NUM_THREADS=2.
+Command(s): `tools/run_rl_nnknn.py cartpole --profile fast --seed S --device cpu --critic-type nnknn --critic-mutable-value-labels --critic-trainable-value-labels --case-capacity C` (capext.ps1).
+Key numbers (final_eval over 20 eval episodes; sample sd, ddof=1):
+| capacity | n | final_eval mean ± sd | per-seed | target-score stops |
+|---|---|---|---|---|
+| 100 | 5 | **496.35 ± 5.99** | 500.00, 495.55, 486.20, 500.00, 500.00 | 3/5 |
+| 250 | 5 | **499.72 ± 0.63** | 500.00, 500.00, 498.60, 500.00, 500.00 | 4/5 |
+| 500 | 5 | **493.23 ± 11.06** | 500.00, 494.55, 497.75, 500.00, 473.85 | 2/5 |
+| 1000 | 5 | **498.48 ± 3.40** | 500.00, 500.00, 500.00, 492.40, 500.00 | 3/5 |
+| 1500 | 5 | **491.86 ± 8.29** | 481.00, 491.35, 500.00, 500.00, 486.95 | 2/5 |
+| 2000 | 5 | **499.88 ± 0.27** | 500.00, 500.00, 500.00, 499.40, 500.00 | 3/5 |
+
+Diagnostics: (1) **There is no capacity effect and no knee.** All six arms sit between 491.86 and 499.88, a spread of 8.02 points, with per-arm sd up to 11.06. The variation across capacities is smaller than the variation across seeds within an arm. Adding capacity 250 and 1500 was specifically intended to locate the knee p17 hinted at; there is none to locate. (2) This confirms and strengthens p17's finding that the r760 'bigger is worse' result does not replicate. With 30 runs rather than 20, and six capacities rather than four, the CPU picture is a flat line. (3) The cost side is unchanged and remains the whole story: reports/p18_throughput_controlled.csv measures 116.20 steps/s at capacity 100 falling to 15.75 at 2000, a 7.38x penalty, against r760's 7.4x.
+Caveats: CartPole is close to saturated for this method -- most arms sit within a few points of the 500 ceiling, so a flat curve partly reflects a task that is too easy to separate capacities. A harder task would test the trade-off more sharply. All runs are CPU on g234; the r760 arms were CUDA, and the device effect measured in p17 was 28 points on the cap-2000 arm, so the two hosts are not directly comparable.
+Interpretation & next step: the manuscript claim stands as p17 framed it and is now better supported — **a larger case base buys no return improvement while costing ~7.4x throughput**. The 'bigger is worse' half should not be cited at all. Next: if the trade-off matters to the argument, re-run the sweep on a task with headroom (Acrobot or LunarLander) where capacity could plausibly separate.
