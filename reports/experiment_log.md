@@ -334,3 +334,27 @@ Key numbers (final_eval over 20 eval episodes; sample sd, ddof=1):
 Diagnostics: (1) **There is no capacity effect and no knee.** All six arms sit between 491.86 and 499.88, a spread of 8.02 points, with per-arm sd up to 11.06. The variation across capacities is smaller than the variation across seeds within an arm. Adding capacity 250 and 1500 was specifically intended to locate the knee p17 hinted at; there is none to locate. (2) This confirms and strengthens p17's finding that the r760 'bigger is worse' result does not replicate. With 30 runs rather than 20, and six capacities rather than four, the CPU picture is a flat line. (3) The cost side is unchanged and remains the whole story: reports/p18_throughput_controlled.csv measures 116.20 steps/s at capacity 100 falling to 15.75 at 2000, a 7.38x penalty, against r760's 7.4x.
 Caveats: CartPole is close to saturated for this method -- most arms sit within a few points of the 500 ceiling, so a flat curve partly reflects a task that is too easy to separate capacities. A harder task would test the trade-off more sharply. All runs are CPU on g234; the r760 arms were CUDA, and the device effect measured in p17 was 28 points on the cap-2000 arm, so the two hosts are not directly comparable.
 Interpretation & next step: the manuscript claim stands as p17 framed it and is now better supported — **a larger case base buys no return improvement while costing ~7.4x throughput**. The 'bigger is worse' half should not be cited at all. Next: if the trade-off matters to the argument, re-run the sweep on a task with headroom (Acrobot or LunarLander) where capacity could plausibly separate.
+
+## 2026-09-05 — p14 complete — the CUDA cap-2000 arm reaches n=5 and its deficit shrinks
+Runs: results/rl/nnknn_rl_cartpole_20260901_213754_687202 (seed 3) and
+nnknn_rl_cartpole_20260901_213754_687194 (seed 4), both cuda, 150k, budget_exhausted, transferred
+from r760 where they had been running since 2026-09-01. Completes the arm first reported at n=3 in
+the 2026-09-01 p10/p14 harvest.
+Command(s): `tools/run_rl_nnknn.py cartpole --profile fast --seed S --device cuda --critic-type nnknn
+--critic-mutable-value-labels --critic-trainable-value-labels --case-capacity 2000`.
+Key numbers (final_eval over 20 eval episodes; sample sd, ddof=1):
+| arm | n | final_eval mean ± sd | per-seed |
+|---|---|---|---|
+| cap 2000 CUDA, as published | 3 | 471.53 ± 14.35 | 455.90, 484.10, 474.60 |
+| **cap 2000 CUDA, complete** | 5 | **480.12 ± 15.96** | 455.90, 484.10, 474.60, **498.20**, **487.80** |
+| cap 2000 CPU (p17/p22) | 5 | 499.88 ± 0.27 | 500.00, 500.00, 500.00, 499.40, 500.00 |
+Diagnostics: the two late seeds are the two best in the arm, so the published n=3 mean was the worst
+three of five — an ordering artifact of which runs finished first, the same hazard the p17 harvest
+warns about for partial arms. Against capacity 100's 498.83 ± 2.62 the deficit falls from ~27 points
+to ~18, roughly 1.1 sd at n=5. The CUDA arm also carries sd 15.96 against the CPU arm's 0.27, so
+whatever produces the deficit is itself highly seed-dependent on CUDA and absent on CPU.
+Interpretation & next step: **"bigger is worse at fixed budget" is not supportable from either host**
+and should not be cited. The cost finding is unaffected and remains the claim: a larger case base
+buys no return improvement while costing ~7.4x throughput, replicated at 7.38x on g234. No further
+capacity work is planned on CartPole, which sits too near its 500 ceiling to separate arms; a task
+with headroom would be needed to test the trade-off properly.

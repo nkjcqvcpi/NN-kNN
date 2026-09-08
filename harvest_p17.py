@@ -39,7 +39,10 @@ def run_seconds(dirpath, name):
 CUDA_REF = {
     100:  dict(n=5, mean=498.83, sd=2.62,  per=[500.00, 500.00, 494.15, 500.00, 500.00]),
     500:  dict(n=5, mean=497.98, sd=4.52,  per=[500.00, 500.00, 500.00, 500.00, 489.90]),
-    2000: dict(n=3, mean=471.53, sd=14.35, per=[455.90, 484.10, 474.60]),
+    # n=5 as of 2026-09-05: r760's p14 seeds 3-4 finally landed (498.20, 487.80),
+    # both higher than any of the first three. The published n=3 mean of
+    # 471.53 was the worst three of five.
+    2000: dict(n=5, mean=480.12, sd=15.96, per=[455.90, 484.10, 474.60, 498.20, 487.80]),
 }
 
 runs = []
