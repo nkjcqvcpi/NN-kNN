@@ -8,7 +8,7 @@ Set-Location 'C:\Users\Administrator\NN-KNN_RL\nnknn-work'
 $env:NNKNN_DEVICE='cpu'; $env:PYTHONUNBUFFERED='1'; $env:MPLBACKEND='Agg'
 $env:OMP_NUM_THREADS='2'; $env:MKL_NUM_THREADS='2'
 
-$OUT='results/rl_capacity_cpu_g234'
+$OUT='results/g234/capacity_cpu'
 $MAXCONC = 8
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
 

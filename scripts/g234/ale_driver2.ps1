@@ -7,10 +7,10 @@
 # device-split and must say so.
 $ErrorActionPreference='Continue'
 Set-Location 'C:\Users\Administrator\NN-KNN_RL\nnknn-work'
-$LOG='p20_driver2.log'
+$LOG='logs/g234/p20_driver2.log'
 function Say($m){ Add-Content -Path $LOG -Value ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'),$m) }
 $env:PYTHONUNBUFFERED='1'; $env:MPLBACKEND='Agg'
-$OUT='results/rl_ale_g234'
+$OUT='results/g234/ale'
 $STEPS=500000
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
 

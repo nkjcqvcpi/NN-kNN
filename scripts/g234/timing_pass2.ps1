@@ -2,7 +2,7 @@ $ErrorActionPreference='Continue'
 Set-Location 'C:\Users\Administrator\NN-KNN_RL\nnknn-work'
 $env:NNKNN_DEVICE='cpu'; $env:PYTHONUNBUFFERED='1'; $env:MPLBACKEND='Agg'
 $env:OMP_NUM_THREADS='2'; $env:MKL_NUM_THREADS='2'
-$LOG='p18_timing.log'
+$LOG='logs/g234/p18_timing.log'
 function Say($m){ Add-Content -Path $LOG -Value ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'),$m) }
 $STEPS=20000
 $out='reports/p18_throughput_controlled.csv'

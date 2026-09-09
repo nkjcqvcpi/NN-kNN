@@ -1,6 +1,6 @@
 $ErrorActionPreference='Continue'
 Set-Location 'C:\Users\Administrator\NN-KNN_RL\nnknn-work'
-$LOG='p19_necbench.log'
+$LOG='logs/g234/p19_necbench.log'
 function Say($m){ Add-Content -Path $LOG -Value ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'),$m) }
 $env:PYTHONUNBUFFERED='1'; $env:MPLBACKEND='Agg'
 $env:OMP_NUM_THREADS='3'; $env:MKL_NUM_THREADS='3'

@@ -31,7 +31,7 @@ def run_seconds(dirpath, name):
 
 
 # CUDA reference arms, quoted from reports/capacity_ablation.md (the r760
-# campaign). These are NOT recomputed by globbing results/rl: that directory
+# campaign). These are NOT recomputed by globbing results/r760: that directory
 # holds 63 runs at cap 500 alone -- smoke tests, MLP critics, other phases, and
 # duplicate runs at the same seed -- so a glob-and-average gives cap 100 =
 # 421.11 +/- 190.39 instead of the real arm's 498.83 +/- 2.62. The canonical
@@ -58,7 +58,7 @@ for name in sorted(os.listdir(OUT)):
     if cap is None or seed is None:
         print("  WARN: no capacity/seed in %s" % name); continue
     runs.append(dict(
-        run_dir="results/rl_capacity_cpu_g234/" + name,
+        run_dir="results/g234/capacity_cpu/" + name,
         capacity=int(cap), seed=int(seed), device=cfg.get("device"),
         final_eval=s["final_eval"]["mean_return"],
         last_eval=s["last_eval"]["mean_return"],

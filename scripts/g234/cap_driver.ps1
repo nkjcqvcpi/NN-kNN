@@ -5,7 +5,7 @@ $env:NNKNN_DEVICE='cpu'; $env:PYTHONUNBUFFERED='1'; $env:MPLBACKEND='Agg'
 # throughput column is confounded by thread count.
 $env:OMP_NUM_THREADS='2'; $env:MKL_NUM_THREADS='2'
 
-$OUT  = 'results/rl_capacity_cpu_g234'
+$OUT  = 'results/g234/capacity_cpu'
 $CAPS = @(100, 500, 1000, 2000)
 $SEEDS= @(0, 1, 2, 3, 4)
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null

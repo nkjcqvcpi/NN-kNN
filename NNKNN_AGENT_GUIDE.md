@@ -655,7 +655,7 @@ Legacy or specialized files:
   under timestamped folders in `results/`.
 - `MLKR` depends on `metric-learn` and `scikit-learn`.
 - RL/DQN depends on `gymnasium[classic_control]`.
-- RL outputs are timestamped under `results/rl/`.
+- RL outputs are timestamped under `results/<host>/` (`r760` or `g234`); see `results/README.md`.
 - `bike_sharing` depends on `ucimlrepo`; verify the active environment before
   launching a full Table 1 run that includes it.
 - Table 1 baseline defaults are encoded in `tools/table1_nnknn_kfold.py` to
@@ -672,7 +672,7 @@ Legacy or specialized files:
 
 - Check [HANDOFF.md](HANDOFF.md) first.
 - Then check the newest `results/table1_kfold_*` folder.
-- For RL work, also check the newest `results/rl/dqn_*` folder and read
+- For RL work, also check the newest `results/<host>/dqn_*` folder and read
   `summary.json` before trusting a checkpoint.
 - Tail:
   - `stdout.log`

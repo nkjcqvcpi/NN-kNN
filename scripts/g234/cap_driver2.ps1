@@ -9,7 +9,7 @@ Set-Location 'C:\Users\Administrator\NN-KNN_RL\nnknn-work'
 $env:NNKNN_DEVICE='cpu'; $env:PYTHONUNBUFFERED='1'; $env:MPLBACKEND='Agg'
 $env:OMP_NUM_THREADS='2'; $env:MKL_NUM_THREADS='2'
 
-$OUT='results/rl_capacity_cpu_g234'
+$OUT='results/g234/capacity_cpu'
 $MAXCONC = 8
 $queue = @()
 foreach ($seed in 1,2,3,4) { foreach ($cap in 2000,500,1000,100) {   # slowest first

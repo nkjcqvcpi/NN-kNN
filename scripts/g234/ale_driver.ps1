@@ -5,12 +5,12 @@
 # on CPU as p16. Cross-method claims therefore carry a device caveat.
 $ErrorActionPreference='Continue'
 Set-Location 'C:\Users\Administrator\NN-KNN_RL\nnknn-work'
-$LOG='p20_driver.log'
+$LOG='logs/g234/p20_driver.log'
 function Say($m){ Add-Content -Path $LOG -Value ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'),$m) }
 $env:NNKNN_DEVICE='xpu'; $env:PYTHONUNBUFFERED='1'; $env:MPLBACKEND='Agg'
 $env:OMP_NUM_THREADS='2'; $env:MKL_NUM_THREADS='2'   # leave the cores to p16 NEC
 
-$OUT='results/rl_ale_g234'
+$OUT='results/g234/ale'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
 $MAXCONC = 3
 $STEPS = 500000

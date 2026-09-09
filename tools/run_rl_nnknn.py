@@ -76,8 +76,39 @@ def parse_args() -> argparse.Namespace:
                         help="Critic NN-kNN case-base capacity; defaults to the actor capacity.")
     parser.add_argument("--min-case-entries", type=int, default=None)
     parser.add_argument("--min-cases-per-action", type=int, default=None)
-    parser.add_argument("--actor-type", choices=["nnknn", "mlp"], default=None)
-    parser.add_argument("--critic-type", choices=["mlp", "nnknn"], default=None)
+    parser.add_argument("--actor-type", choices=["nnknn", "mlp", "mcb_nnknn", "ema_nnknn"], default=None)
+    parser.add_argument("--critic-type", choices=["mlp", "nnknn", "mcb_nnknn", "ema_nnknn"], default=None)
+    parser.add_argument(
+        "--use-mcb",
+        action="store_true",
+        default=None,
+        help="Enable Momentum Case Base (MCB-R from AAAI 2027) representation learning.",
+    )
+    parser.add_argument(
+        "--mcb-momentum",
+        type=float,
+        default=None,
+        help="EMA momentum m for MCB representation encoder (default: 0.999).",
+    )
+    parser.add_argument(
+        "--mcb-proj-dim",
+        type=int,
+        default=None,
+        help="Projection dimension for MCB MLP projection head (default: 64).",
+    )
+    parser.add_argument(
+        "--mcb-hidden-dim",
+        type=int,
+        default=None,
+        help="Hidden dimension for MCB MLP projection head (default: 64).",
+    )
+    parser.add_argument(
+        "--mcb-no-normalize",
+        dest="mcb_normalize_embeddings",
+        action="store_false",
+        default=None,
+        help="Disable L2 normalization on MCB embeddings.",
+    )
     parser.add_argument("--critic-learning-rate", type=float, default=None)
     parser.add_argument("--critic-update-epochs", type=int, default=None)
     parser.add_argument("--critic-holdout-episode-frequency", type=int, default=None)
@@ -202,6 +233,16 @@ def _config_from_args(args: argparse.Namespace) -> NNKNNRLConfig:
         overrides["critic_target_sync_interval"] = args.critic_target_sync_interval
     if args.critic_target_ema_tau is not None:
         overrides["critic_target_ema_tau"] = args.critic_target_ema_tau
+    if args.use_mcb is not None:
+        overrides["use_mcb"] = args.use_mcb
+    if args.mcb_momentum is not None:
+        overrides["mcb_momentum"] = args.mcb_momentum
+    if args.mcb_proj_dim is not None:
+        overrides["mcb_proj_dim"] = args.mcb_proj_dim
+    if args.mcb_hidden_dim is not None:
+        overrides["mcb_hidden_dim"] = args.mcb_hidden_dim
+    if args.mcb_normalize_embeddings is not None:
+        overrides["mcb_normalize_embeddings"] = args.mcb_normalize_embeddings
     _apply_task_success_defaults(args, overrides)
     _apply_task_eval_defaults(args, overrides)
     return make_nnknn_rl_config(args.profile, **overrides)

@@ -52,6 +52,8 @@ default_args = {
     # "feature_extractor": None,  # e.g., a CNN for images or embedding for text
     "feature_dim": 128,  # Example placeholder, replace with actual value as needed
     "glocal_fw_set_num": 1,
+    "mcb_momentum": 0.999,
+    "mcb_normalize_embeddings": False,
     'training_epochs': 1000,
     "neg_weight_flag": False,
 
@@ -525,6 +527,7 @@ class NN_KNN_Model(nn.Module):
                  feature_distance_metric = None, 
                  glocal_weightor=None, 
                  nn_cdh = None,
+                 momentum_encoder = None,
                   **kwargs):
         """
         Initializes the NN_KNN_Model.
@@ -535,6 +538,7 @@ class NN_KNN_Model(nn.Module):
             feature_extractor: Optional feature extractor (e.g., CNN for images or embedding for text).
             feature_distance_metric: Optional custom distance metric function. If None, using euclidean distance.
             glocal_weightor: Optional glocal weightor for feature weighting.
+            momentum_encoder: Optional momentum encoder for MCB (AAAI 2027) reference case representation.
             **kwargs: Additional configuration parameters that includes:
                 - task_type: "classification" or "regression".
                 - normalize_over_cases: Whether to normalize case activations.
@@ -552,6 +556,8 @@ class NN_KNN_Model(nn.Module):
                 - bias_manual_value: (when bias_manual_set true) The manually set value for case default bias.
                 - ignore_identical_in_training: Whether to leave one out in training when sampling cases.
                 - top_k: (for explanation or for regression with locality regularization) K for Neighbor Agreement / nDCG in validation
+                - mcb_momentum: Momentum coefficient for EMA encoder updates (default: 0.999).
+                - mcb_normalize_embeddings: Whether to L2-normalize embeddings (default: False/True).
 
         """
 
@@ -564,6 +570,15 @@ class NN_KNN_Model(nn.Module):
 
         # self.labels = nn.Parameter(self.labels, requires_grad=False)  # Non-trainable
         self.feature_extractor = build_effective_feature_extractor(feature_extractor, kwargs)
+        self.momentum_encoder = momentum_encoder
+        if self.momentum_encoder is not None:
+            self.momentum_encoder.eval()
+            for p in self.momentum_encoder.parameters():
+                p.requires_grad = False
+        self.mcb_momentum = float(kwargs.get('mcb_momentum', default_args.get('mcb_momentum', 0.999)))
+        self.mcb_normalize_embeddings = bool(
+            kwargs.get('mcb_normalize_embeddings', default_args.get('mcb_normalize_embeddings', self.momentum_encoder is not None))
+        )
         self.feature_distance_metric = feature_distance_metric
         self.glocal_weightor = glocal_weightor
         self.nn_cdh = nn_cdh
@@ -829,10 +844,17 @@ class NN_KNN_Model(nn.Module):
         """
         selected_cases = self.cases[case_indices]  # Shape: [num_selected_cases, *case_shape]
 
-        if self.feature_extractor is not None:
+        if self.momentum_encoder is not None:
+            with torch.no_grad():
+                extracted_features = self.momentum_encoder(selected_cases)
+                if getattr(self, "mcb_normalize_embeddings", False):
+                    extracted_features = F.normalize(extracted_features, p=2, dim=-1)
+        elif self.feature_extractor is not None:
             if self.training:
                 # Always compute features during training
                 extracted_features = self.feature_extractor(selected_cases)  # Shape: [num_selected_cases, feature_dim]
+                if getattr(self, "mcb_normalize_embeddings", False):
+                    extracted_features = F.normalize(extracted_features, p=2, dim=-1)
                 #wipe cache because feature extractor will be updated
                 self.cached_features = None
             else:
@@ -848,6 +870,8 @@ class NN_KNN_Model(nn.Module):
                 if uncached_indices:
                     uncached_cases = self.cases[uncached_indices]
                     uncached_features = self.feature_extractor(uncached_cases)  # Extract features for uncached cases
+                    if getattr(self, "mcb_normalize_embeddings", False):
+                        uncached_features = F.normalize(uncached_features, p=2, dim=-1)
                     self.cached_features[uncached_indices] = uncached_features
 
                 # Retrieve features from the cache
@@ -857,6 +881,23 @@ class NN_KNN_Model(nn.Module):
             extracted_features = selected_cases
 
         return extracted_features
+
+    def update_momentum_encoder(self, momentum: float | None = None) -> None:
+        """Update momentum encoder parameters via EMA (AAAI 2027 Eq. 1)."""
+        if getattr(self, "momentum_encoder", None) is None or self.feature_extractor is None:
+            return
+        m = float(self.mcb_momentum if momentum is None else momentum)
+        with torch.no_grad():
+            for p_online, p_mom in zip(self.feature_extractor.parameters(), self.momentum_encoder.parameters()):
+                p_mom.data.lerp_(p_online.data, 1.0 - m)
+            for b_online, b_mom in zip(self.feature_extractor.buffers(), self.momentum_encoder.buffers()):
+                b_mom.data.copy_(b_online.data)
+
+    def train(self, mode: bool = True):
+        super().train(mode)
+        if getattr(self, "momentum_encoder", None) is not None:
+            self.momentum_encoder.eval()
+        return self
 
     # def _adapt_labels_for_regression(
     #     self,
@@ -939,7 +980,12 @@ class NN_KNN_Model(nn.Module):
           case_indices = torch.tensor(sampled_indices).to(query.device)
 
         # Extract features
-        query_features = self.feature_extractor(query) if self.feature_extractor is not None else query
+        if self.feature_extractor is not None:
+            query_features = self.feature_extractor(query)
+            if getattr(self, "mcb_normalize_embeddings", False):
+                query_features = F.normalize(query_features, p=2, dim=-1)
+        else:
+            query_features = query
         case_features = self._extract_features(case_indices)
 
         # Compute distances
