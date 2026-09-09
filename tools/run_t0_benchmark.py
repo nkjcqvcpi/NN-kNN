@@ -11,7 +11,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 import numpy as np
-from sklearn.datasets import load_iris, load_wine, make_classification
+from sklearn.datasets import load_breast_cancer, load_digits, load_iris, load_wine, make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import torch
@@ -29,10 +29,10 @@ from model.t0_workflow import (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="T0 Full-Cycle Neural CBR Benchmark Driver.")
-    parser.add_argument("--dataset", default="synthetic", choices=["synthetic", "iris", "wine"])
+    parser.add_argument("--dataset", default="synthetic", choices=["synthetic", "iris", "wine", "breast_cancer", "digits"])
     parser.add_argument("--policy", default="provenance_bias_coverage",
                         choices=["provenance_bias_coverage", "bias_only", "provenance_only", "trustworthiness_only", "stratified"])
-    parser.add_argument("--case-capacity", type=int, default=150)
+    parser.add_argument("--case-capacity", type=int, default=200)
     parser.add_argument("--target-capacity", type=int, default=50)
     parser.add_argument("--adapter", action="store_true", help="Enable classification NN-CDH reuse adapter.")
     parser.add_argument("--adapter-mode", default="nominal_residual_scores", choices=["nominal_residual_scores", "logit_residual"])
@@ -60,6 +60,12 @@ def load_data(dataset_name: str, seed: int) -> tuple[torch.Tensor, torch.Tensor,
         X, y = data.data, data.target
     elif dataset_name == "wine":
         data = load_wine()
+        X, y = data.data, data.target
+    elif dataset_name == "breast_cancer":
+        data = load_breast_cancer()
+        X, y = data.data, data.target
+    elif dataset_name == "digits":
+        data = load_digits()
         X, y = data.data, data.target
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
