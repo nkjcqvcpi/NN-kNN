@@ -1,3 +1,0 @@
-global_step,episode,episode_return,episode_length,loss,actor_type,case_entries,cases_pruned,cases_replaced,actor_cases_pruned,actor_cases_replaced,critic_cases_pruned,critic_cases_replaced,critic_label_updates,critic_label_update_samples,exploration_epsilon,behavior_epsilon,policy_ready,action_probs,behavior_action_probs,action_counts,bias_min,bias_mean,bias_max
-66,1,-189.96201019186577,66,2647.94873046875,nnknn,0,0,0,0,0,0,0,0,0,0.517578125,1.0,False,"[0.25, 0.25, 0.25, 0.25]","[0.25, 0.25, 0.25, 0.25]","[0, 0, 0, 0]",,,
-180,2,-291.5387046713623,114,1889.9974365234375,nnknn,0,0,0,0,0,0,0,0,0,0.05,1.0,False,"[0.25, 0.25, 0.25, 0.25]","[0.25, 0.25, 0.25, 0.25]","[0, 0, 0, 0]",,,

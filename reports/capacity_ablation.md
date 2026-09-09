@@ -2,7 +2,7 @@
 
 > **CORRECTION 2026-09-03 (p17).** The return half of this report does not
 > replicate. A full 5-seed CPU replication on g234
-> (`results/rl_capacity_cpu_g234/`, manifest
+> (`results/g234/capacity_cpu/`, manifest
 > `reports/p17_capacity_cpu_manifest.json`) puts capacity 2000 at
 > **499.88 ± 0.27** against the **471.53 ± 14.35** below, with no monotonic
 > capacity trend at all — the weakest CPU arm is capacity 500, not 2000, and

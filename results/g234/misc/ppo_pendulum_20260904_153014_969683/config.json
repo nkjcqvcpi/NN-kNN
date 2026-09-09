@@ -1,0 +1,107 @@
+{
+  "created_at_utc": "2026-09-04T15:30:14.971191+00:00",
+  "algorithm": "ppo_clipped_surrogate_gae",
+  "task": {
+    "name": "pendulum",
+    "env_id": "Pendulum-v1",
+    "family": "classic_control",
+    "observation_kind": "flat_box",
+    "action_kind": "continuous",
+    "max_episode_steps": 200,
+    "default_profile": "fast",
+    "literature_notes": [
+      "Classic torque-limited inverted-pendulum swing-up; 3-dim observation",
+      "(cos, sin, angular velocity) and a 1-dim continuous torque in [-2, 2].",
+      "Every episode runs the full 200-step cap (no termination), so returns are",
+      "a dense negative cost and higher (less negative) is better.",
+      "NON-CANONICAL MARKERS: gymnasium defines NO reward threshold for",
+      "Pendulum-v1 (its registration sets reward_threshold=None), so neither",
+      "number below is a canonical solve criterion. success_threshold=-200.0 is",
+      "a repo progress marker for 'swings up and holds'; target_mean_return=-140.0",
+      "sits above published tuned continuous-control results (SB3 rl-zoo reports",
+      "roughly -150 for TD3/SAC) so immediate early stopping stays out of reach",
+      "and patience-based stopping governs, matching the lunarlander convention."
+    ],
+    "success_threshold": -200.0,
+    "target_mean_return": -140.0,
+    "env_kwargs": {}
+  },
+  "config": {
+    "profile": "smoke",
+    "seed": 0,
+    "total_timesteps": 64,
+    "learning_rate": 0.0003,
+    "anneal_lr": false,
+    "rollout_length": 32,
+    "num_minibatches": 2,
+    "update_epochs": 2,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_coef": 0.2,
+    "clip_vloss": true,
+    "ent_coef": 0.01,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "target_kl": null,
+    "normalize_advantages": true,
+    "advantage_epsilon": 1e-08,
+    "hidden_sizes": [
+      64,
+      64
+    ],
+    "log_std_init": 0.0,
+    "continuous_action_handling": "clip",
+    "eval_frequency": 64,
+    "eval_episodes": 1,
+    "eval_seed": 10000,
+    "eval_deterministic": true,
+    "success_threshold": null,
+    "early_stopping": false,
+    "early_stopping_patience": 30,
+    "early_stopping_min_delta": 1.0,
+    "early_stopping_min_steps": 25000,
+    "early_stopping_target_score": null,
+    "source_reference": "PPO (Schulman et al. 2017); CleanRL ppo.py / ppo_continuous_action.py and Stable-Baselines3 MlpPolicy defaults as reference only"
+  },
+  "action_spec": {
+    "kind": "continuous",
+    "dim": 1,
+    "low": [
+      -2.0
+    ],
+    "high": [
+      2.0
+    ]
+  },
+  "device": "cpu",
+  "observation": {
+    "kind": "flat_box",
+    "shape": [
+      3
+    ],
+    "dim": 3,
+    "numpy_dtype": "float32"
+  },
+  "source_reference": "PPO (Schulman et al. 2017); CleanRL ppo.py / ppo_continuous_action.py and Stable-Baselines3 MlpPolicy defaults as reference only",
+  "gae": {
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "episode_boundary_aware": true,
+    "truncation_bootstrap": true
+  },
+  "ppo": {
+    "clip_coef": 0.2,
+    "clip_vloss": true,
+    "ent_coef": 0.01,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "rollout_length": 32,
+    "num_minibatches": 2,
+    "update_epochs": 2,
+    "normalize_advantages": true,
+    "anneal_lr": false,
+    "target_kl": null,
+    "policy_head": "diagonal_gaussian_clipped_to_action_bounds",
+    "trunk": "mlp_tanh_separate_actor_critic"
+  }
+}

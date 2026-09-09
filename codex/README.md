@@ -35,7 +35,8 @@ RL baseline commands:
 - `.venv/bin/python tools/run_rl_nnknn.py cartpole --profile fast --seed 0 --actor-type mlp --critic-type mlp`
 - `.venv/bin/python tools/run_rl_nnknn.py cartpole --profile fast --seed 0 --actor-type mlp --critic-type nnknn`
 
-RL runs write timestamped artifacts under `results/rl/`. Inspect
+RL runs write timestamped artifacts under `results/<host>/` (`r760` or `g234`);
+pass `--output-dir` explicitly. See `results/README.md`. Inspect
 `summary.json`, especially `training_efficiency`, before comparing DQN, NEC,
 or NN-kNN-RL results. Current NN-kNN-RL defaults to an NN-kNN actor, supports
 MLP-actor comparison baselines, supports selectable MLP or NN-kNN value

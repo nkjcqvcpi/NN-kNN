@@ -115,7 +115,7 @@ pinned to the **live** environment, not the file. See `ENVIRONMENT_g234.md`.
   single NEC seed cannot support "NEC does not learn".
 - **1M-budget ALE arms.** Everything on g234 ran 500k; p13/p15 ran 1M. The two
   sets are not directly comparable.
-- **`results/rl_ale_g234_threadconfound/`** holds the OMP=3 PPO seed-1 run,
+- **`results/g234/ale_threadconfound/`** holds the OMP=3 PPO seed-1 run,
   preserved deliberately as the evidence for thread sensitivity.
 
 ---

@@ -1,4 +1,0 @@
-global_step,episode,mean_return,std_return,min_return,max_return,mean_length,episodes,actor_type,case_entries
-48017,100,-500.0,0.0,-500.0,-500.0,500.0,20,nnknn,440
-89230,200,-500.0,0.0,-500.0,-500.0,500.0,20,nnknn,500
-138395,300,-500.0,0.0,-500.0,-500.0,500.0,20,nnknn,491

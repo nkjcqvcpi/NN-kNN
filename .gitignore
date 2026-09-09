@@ -35,18 +35,24 @@ results/table1_kfold_20260418_213251/stdout.log
 
 # Keep reproducible RL metrics and run metadata in Git, but never publish model
 # weights or local launch artifacts.
+#
+# Results are filed by the host that produced them (2026-09-08 reorganisation):
+#   results/r760/   Linux / H100 / CUDA
+#   results/g234/   Windows Server 2025 / i5-13400F / Intel Arc, CPU
+# One rule per host tree covers every battery underneath, so a new battery
+# directory needs no new ignore rule.
+/results/r760/**/*.pt
+/results/r760/**/*.pth
+/results/g234/**/*.pt
+/results/g234/**/*.pth
+# results/rl/ is the pre-reorganisation location and the runners' default
+# --output-dir; keep the same policy in case a run lands there unfiled.
 /results/rl/**/*.pt
 /results/rl/**/*.pth
+
+# Console logs and PID files: the structured files in each run directory are the
+# canonical record. Collected under logs/<host>/ by the same reorganisation.
+/logs/
 /*.log
-/*pid*.txt
-
-# The p17 CPU capacity replication writes outside results/rl/, so the
-# /results/rl/**/*.pt rule above does not cover it. Same policy: keep the
-# structured record, never publish model weights.
-/results/rl_capacity_cpu_g234/**/*.pt
-/results/rl_capacity_cpu_g234/**/*.pth
 /*.err
-
-# p20 ALE arms write outside results/rl/ too; same no-weights policy.
-/results/rl_ale_g234/**/*.pt
-/results/rl_ale_g234/**/*.pth
+/*pid*.txt

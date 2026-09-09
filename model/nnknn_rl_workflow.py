@@ -87,6 +87,60 @@ def _build_observation_feature_extractor(obs_spec: ObservationSpec) -> nn.Module
     return NatureCNNEncoder(obs_spec.shape, feature_dim=NATURE_CNN_FEATURE_DIM)
 
 
+class MCBProjectionHead(nn.Module):
+    """Two-layer projection head with LayerNorm and GELU from AAAI 2027 Eq. (3).
+
+    Maps backbone features (or flat states) to normalized embeddings:
+        z = MLP(v(x))
+        f(x) = z / ||z||_2
+    """
+
+    def __init__(
+        self,
+        in_dim: int,
+        hidden_dim: int = 64,
+        out_dim: int = 64,
+        normalize: bool = True,
+    ):
+        super().__init__()
+        self.in_dim = int(in_dim)
+        self.hidden_dim = int(hidden_dim)
+        self.out_dim = int(out_dim)
+        self.normalize = bool(normalize)
+        self.feature_dim = self.out_dim
+
+        self.net = nn.Sequential(
+            nn.Linear(self.in_dim, self.hidden_dim),
+            nn.LayerNorm(self.hidden_dim),
+            nn.GELU(),
+            nn.Linear(self.hidden_dim, self.out_dim),
+            nn.LayerNorm(self.out_dim),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if x.dim() > 2:
+            x = x.view(x.size(0), -1)
+        z = self.net(x.float())
+        if self.normalize:
+            z = F.normalize(z, p=2, dim=-1)
+        return z
+
+
+class MCBEncoder(nn.Module):
+    """Combines an optional base encoder (e.g. NatureCNN) with an MCB projection head."""
+
+    def __init__(self, base_extractor: nn.Module | None, proj_head: MCBProjectionHead):
+        super().__init__()
+        self.base_extractor = base_extractor
+        self.proj_head = proj_head
+        self.feature_dim = int(proj_head.feature_dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if self.base_extractor is not None:
+            x = self.base_extractor(x)
+        return self.proj_head(x)
+
+
 @dataclass(frozen=True)
 class NNKNNRLConfig:
     """Training configuration for the repo-native NN-kNN actor-critic workflow."""
@@ -152,6 +206,11 @@ class NNKNNRLConfig:
     critic_target_value_mode: str = "ema"
     critic_target_sync_interval: int = 4
     critic_target_ema_tau: float = 0.05
+    use_mcb: bool = False
+    mcb_momentum: float = 0.999
+    mcb_proj_dim: int = 64
+    mcb_hidden_dim: int = 64
+    mcb_normalize_embeddings: bool = True
     source_reference: str = "Separate-memory NN-kNN actor-critic with staged cases and GAE advantages"
 
     def to_dict(self) -> dict[str, Any]:
@@ -178,6 +237,11 @@ class NNKNNPolicyNetwork(nn.Module):
         nnknn_config: dict[str, Any] | None = None,
         use_glocal_weightor: bool = True,
         glocal_fw_set_num: int = 1,
+        use_mcb: bool = False,
+        mcb_momentum: float = 0.999,
+        mcb_proj_dim: int = 64,
+        mcb_hidden_dim: int = 64,
+        mcb_normalize_embeddings: bool = True,
     ):
         super().__init__()
         self.observation_spec = _resolve_observation(observation)
@@ -191,16 +255,36 @@ class NNKNNPolicyNetwork(nn.Module):
         self.case_default_bias = float(case_default_bias)
         self.use_glocal_weightor = bool(use_glocal_weightor)
         self.glocal_fw_set_num = int(glocal_fw_set_num)
+        self.use_mcb = bool(use_mcb)
+        self.mcb_momentum = float(mcb_momentum)
+        self.mcb_proj_dim = int(mcb_proj_dim)
+        self.mcb_hidden_dim = int(mcb_hidden_dim)
+        self.mcb_normalize_embeddings = bool(mcb_normalize_embeddings)
         self._prune_quantile = 0.0
         self._prune_bias_threshold: float | None = None
 
-        # Image tasks store RAW frames as cases and put a Nature CNN in front
-        # of the distance computation; flat tasks keep feature_extractor=None so
-        # the case store and the glocal weightor are built exactly as before.
-        feature_extractor = _build_observation_feature_extractor(self.observation_spec)
-        self.case_feature_dim = (
-            int(feature_extractor.feature_dim) if feature_extractor is not None else self.obs_dim
-        )
+        if self.use_mcb:
+            base_extractor = _build_observation_feature_extractor(self.observation_spec)
+            in_dim = (
+                int(base_extractor.feature_dim) if base_extractor is not None else self.obs_dim
+            )
+            proj_head = MCBProjectionHead(
+                in_dim=in_dim,
+                hidden_dim=self.mcb_hidden_dim,
+                out_dim=self.mcb_proj_dim,
+                normalize=self.mcb_normalize_embeddings,
+            )
+            feature_extractor = MCBEncoder(base_extractor, proj_head)
+            momentum_encoder = copy.deepcopy(feature_extractor)
+            momentum_encoder.requires_grad_(False)
+            momentum_encoder.eval()
+            self.case_feature_dim = self.mcb_proj_dim
+        else:
+            feature_extractor = _build_observation_feature_extractor(self.observation_spec)
+            momentum_encoder = None
+            self.case_feature_dim = (
+                int(feature_extractor.feature_dim) if feature_extractor is not None else self.obs_dim
+            )
         cases = torch.zeros(self.case_capacity, *self.obs_shape, dtype=torch.float32)
         labels = torch.zeros(self.case_capacity, self.action_dim, dtype=torch.float32)
         glocal_weightor = (
@@ -222,6 +306,8 @@ class NNKNNPolicyNetwork(nn.Module):
             "explanation_mode": True,
             "active_case_count": 0,
             "glocal_fw_set_num": self.glocal_fw_set_num,
+            "mcb_momentum": self.mcb_momentum,
+            "mcb_normalize_embeddings": self.mcb_normalize_embeddings,
         }
         model_config.update(nnknn_config or {})
         model_config["task_type"] = "classification"
@@ -243,9 +329,15 @@ class NNKNNPolicyNetwork(nn.Module):
             labels,
             feature_extractor=feature_extractor,
             glocal_weightor=glocal_weightor,
+            momentum_encoder=momentum_encoder,
             **model_config,
         )
         self.nnknn_model.to(self.nnknn_model.cases.device)
+
+    def update_momentum_encoder(self, momentum: float | None = None) -> None:
+        """Update momentum encoder parameters via EMA (AAAI 2027 Eq. 1)."""
+        if hasattr(self.nnknn_model, "update_momentum_encoder"):
+            self.nnknn_model.update_momentum_encoder(momentum)
 
     @property
     def case_entries(self) -> int:
@@ -524,6 +616,11 @@ class NNKNNValueNetwork(nn.Module):
         value_label_update_alpha: float = 0.25,
         value_label_activation_threshold: float | None = 0.0,
         value_label_append_on_no_match: bool = True,
+        use_mcb: bool = False,
+        mcb_momentum: float = 0.999,
+        mcb_proj_dim: int = 64,
+        mcb_hidden_dim: int = 64,
+        mcb_normalize_embeddings: bool = True,
     ):
         super().__init__()
         self.observation_spec = _resolve_observation(observation)
@@ -542,6 +639,11 @@ class NNKNNValueNetwork(nn.Module):
             None if value_label_activation_threshold is None else float(value_label_activation_threshold)
         )
         self.value_label_append_on_no_match = bool(value_label_append_on_no_match)
+        self.use_mcb = bool(use_mcb)
+        self.mcb_momentum = float(mcb_momentum)
+        self.mcb_proj_dim = int(mcb_proj_dim)
+        self.mcb_hidden_dim = int(mcb_hidden_dim)
+        self.mcb_normalize_embeddings = bool(mcb_normalize_embeddings)
         if not (0.0 < self.value_label_update_alpha <= 1.0):
             raise ValueError("value_label_update_alpha must be in (0, 1]")
         if self.value_label_activation_threshold is not None and not np.isfinite(
@@ -553,10 +655,28 @@ class NNKNNValueNetwork(nn.Module):
         self.register_buffer("case_ids", torch.full((self.case_capacity,), -1, dtype=torch.long))
         self.register_buffer("next_case_id", torch.zeros((), dtype=torch.long))
 
-        feature_extractor = _build_observation_feature_extractor(self.observation_spec)
-        self.case_feature_dim = (
-            int(feature_extractor.feature_dim) if feature_extractor is not None else self.obs_dim
-        )
+        if self.use_mcb:
+            base_extractor = _build_observation_feature_extractor(self.observation_spec)
+            in_dim = (
+                int(base_extractor.feature_dim) if base_extractor is not None else self.obs_dim
+            )
+            proj_head = MCBProjectionHead(
+                in_dim=in_dim,
+                hidden_dim=self.mcb_hidden_dim,
+                out_dim=self.mcb_proj_dim,
+                normalize=self.mcb_normalize_embeddings,
+            )
+            feature_extractor = MCBEncoder(base_extractor, proj_head)
+            momentum_encoder = copy.deepcopy(feature_extractor)
+            momentum_encoder.requires_grad_(False)
+            momentum_encoder.eval()
+            self.case_feature_dim = self.mcb_proj_dim
+        else:
+            feature_extractor = _build_observation_feature_extractor(self.observation_spec)
+            momentum_encoder = None
+            self.case_feature_dim = (
+                int(feature_extractor.feature_dim) if feature_extractor is not None else self.obs_dim
+            )
         cases = torch.zeros(self.case_capacity, *self.obs_shape, dtype=torch.float32)
         labels = torch.zeros(self.case_capacity, 1, dtype=torch.float32)
         glocal_weightor = (
@@ -578,6 +698,8 @@ class NNKNNValueNetwork(nn.Module):
             "explanation_mode": False,
             "active_case_count": 0,
             "glocal_fw_set_num": self.glocal_fw_set_num,
+            "mcb_momentum": self.mcb_momentum,
+            "mcb_normalize_embeddings": self.mcb_normalize_embeddings,
         }
         model_config.update(nnknn_config or {})
         model_config["task_type"] = "regression"
@@ -598,6 +720,7 @@ class NNKNNValueNetwork(nn.Module):
             labels,
             feature_extractor=feature_extractor,
             glocal_weightor=glocal_weightor,
+            momentum_encoder=momentum_encoder,
             **model_config,
         )
         if self.trainable_value_labels:
@@ -605,6 +728,11 @@ class NNKNNValueNetwork(nn.Module):
             del self.nnknn_model._buffers["labels"]
             self.nnknn_model.register_parameter("labels", labels_param)
         self.nnknn_model.to(self.nnknn_model.cases.device)
+
+    def update_momentum_encoder(self, momentum: float | None = None) -> None:
+        """Update momentum encoder parameters via EMA (AAAI 2027 Eq. 1)."""
+        if hasattr(self.nnknn_model, "update_momentum_encoder"):
+            self.nnknn_model.update_momentum_encoder(momentum)
 
     @property
     def case_entries(self) -> int:
@@ -657,12 +785,20 @@ class NNKNNValueNetwork(nn.Module):
         # Nature CNN first, both because pixel-space distance is meaningless
         # here and because the 3-D broadcast below has no valid image form.
         extractor = self.nnknn_model.feature_extractor
+        mom_extractor = getattr(self.nnknn_model, "momentum_encoder", None)
         if extractor is None:
             query_features = observations
             case_features = self.nnknn_model.cases[:active_count]
         else:
             query_features = extractor(observations)
-            case_features = extractor(self.nnknn_model.cases[:active_count])
+            if mom_extractor is not None:
+                with torch.no_grad():
+                    case_features = mom_extractor(self.nnknn_model.cases[:active_count])
+            else:
+                case_features = extractor(self.nnknn_model.cases[:active_count])
+        if getattr(self.nnknn_model, "mcb_normalize_embeddings", False):
+            query_features = F.normalize(query_features, p=2, dim=-1)
+            case_features = F.normalize(case_features, p=2, dim=-1)
         query_expanded = query_features.unsqueeze(1).expand(-1, active_count, -1)
         case_expanded = case_features.unsqueeze(0).expand(query_features.shape[0], -1, -1)
         elementwise_distance = (query_expanded - case_expanded) ** 2
@@ -1385,13 +1521,13 @@ def make_nnknn_rl_config(profile: str = "fast", **overrides: Any) -> NNKNNRLConf
     data = {**profiles[normalized], **overrides}
     _validate_early_stopping_config(data)
     actor_type = str(data.get("actor_type", "nnknn")).strip().lower()
-    if actor_type not in {"nnknn", "mlp"}:
-        raise ValueError("actor_type must be either 'nnknn' or 'mlp'")
+    if actor_type not in {"nnknn", "mcb_nnknn", "ema_nnknn", "mlp"}:
+        raise ValueError("actor_type must be either 'nnknn', 'mcb_nnknn', 'ema_nnknn', or 'mlp'")
     data["actor_type"] = actor_type
     data["actor_hidden_sizes"] = tuple(data.get("actor_hidden_sizes", (128, 128)))
     critic_type = str(data.get("critic_type", "mlp")).strip().lower()
-    if critic_type not in {"mlp", "nnknn"}:
-        raise ValueError("critic_type must be either 'mlp' or 'nnknn'")
+    if critic_type not in {"mlp", "nnknn", "mcb_nnknn", "ema_nnknn"}:
+        raise ValueError("critic_type must be either 'mlp', 'nnknn', 'mcb_nnknn', or 'ema_nnknn'")
     data["critic_type"] = critic_type
     data["critic_hidden_sizes"] = tuple(data.get("critic_hidden_sizes", (128, 128)))
     critic_holdout_episode_frequency = int(data.get("critic_holdout_episode_frequency", 100))
@@ -1466,9 +1602,26 @@ def make_nnknn_rl_config(profile: str = "fast", **overrides: Any) -> NNKNNRLConf
     if not (0.0 < critic_target_ema_tau <= 1.0):
         raise ValueError("critic_target_ema_tau must be in (0, 1]")
     data["critic_target_ema_tau"] = critic_target_ema_tau
+    data["use_mcb"] = _coerce_bool_field(
+        "use_mcb",
+        actor_type in {"mcb_nnknn", "ema_nnknn"} or critic_type in {"mcb_nnknn", "ema_nnknn"},
+    )
+    mcb_momentum = float(data.get("mcb_momentum", 0.999))
+    if not (0.0 <= mcb_momentum <= 1.0):
+        raise ValueError("mcb_momentum must be in [0, 1]")
+    data["mcb_momentum"] = mcb_momentum
+    mcb_proj_dim = int(data.get("mcb_proj_dim", 64))
+    if mcb_proj_dim <= 0:
+        raise ValueError("mcb_proj_dim must be positive")
+    data["mcb_proj_dim"] = mcb_proj_dim
+    mcb_hidden_dim = int(data.get("mcb_hidden_dim", 64))
+    if mcb_hidden_dim <= 0:
+        raise ValueError("mcb_hidden_dim must be positive")
+    data["mcb_hidden_dim"] = mcb_hidden_dim
+    data["mcb_normalize_embeddings"] = _coerce_bool_field("mcb_normalize_embeddings", True)
     if (
-        actor_type == "nnknn"
-        and critic_type == "nnknn"
+        actor_type in {"nnknn", "mcb_nnknn", "ema_nnknn"}
+        and critic_type in {"nnknn", "mcb_nnknn", "ema_nnknn"}
         and data["share_nnknn_representation"]
     ):
         if int(data.get("critic_update_epochs", 1)) != 1:
@@ -1551,7 +1704,8 @@ def _build_actor_model(
     actor_type = cfg.actor_type.strip().lower()
     if actor_type == "mlp":
         return MLPPolicyNetwork(obs_spec, action_dim, tuple(cfg.actor_hidden_sizes)).to(device)
-    if actor_type == "nnknn":
+    if actor_type in {"nnknn", "mcb_nnknn", "ema_nnknn"}:
+        use_mcb = cfg.use_mcb or actor_type in {"mcb_nnknn", "ema_nnknn"}
         model = NNKNNPolicyNetwork(
             obs_spec,
             action_dim,
@@ -1563,13 +1717,18 @@ def _build_actor_model(
             nnknn_config=cfg.nnknn_config,
             use_glocal_weightor=cfg.use_glocal_weightor,
             glocal_fw_set_num=cfg.glocal_fw_set_num,
+            use_mcb=use_mcb,
+            mcb_momentum=cfg.mcb_momentum,
+            mcb_proj_dim=cfg.mcb_proj_dim,
+            mcb_hidden_dim=cfg.mcb_hidden_dim,
+            mcb_normalize_embeddings=cfg.mcb_normalize_embeddings,
         ).to(device)
         model.configure_case_maintenance(
             prune_quantile=cfg.case_prune_quantile,
             prune_bias_threshold=cfg.case_prune_bias_threshold,
         )
         return model
-    raise ValueError("actor_type must be either 'nnknn' or 'mlp'")
+    raise ValueError("actor_type must be either 'nnknn', 'mcb_nnknn', 'ema_nnknn', or 'mlp'")
 
 
 def _build_value_model(
@@ -1580,7 +1739,8 @@ def _build_value_model(
     critic_type = cfg.critic_type.strip().lower()
     if critic_type == "mlp":
         return ValueNetwork(obs_spec, tuple(cfg.critic_hidden_sizes)).to(device)
-    if critic_type == "nnknn":
+    if critic_type in {"nnknn", "mcb_nnknn", "ema_nnknn"}:
+        use_mcb = cfg.use_mcb or critic_type in {"mcb_nnknn", "ema_nnknn"}
         model = NNKNNValueNetwork(
             obs_spec,
             case_capacity=cfg.critic_case_capacity or cfg.case_capacity,
@@ -1595,13 +1755,18 @@ def _build_value_model(
             value_label_update_alpha=cfg.critic_value_label_update_alpha,
             value_label_activation_threshold=cfg.critic_value_label_activation_threshold,
             value_label_append_on_no_match=cfg.critic_value_label_append_on_no_match,
+            use_mcb=use_mcb,
+            mcb_momentum=cfg.mcb_momentum,
+            mcb_proj_dim=cfg.mcb_proj_dim,
+            mcb_hidden_dim=cfg.mcb_hidden_dim,
+            mcb_normalize_embeddings=cfg.mcb_normalize_embeddings,
         ).to(device)
         model.configure_case_maintenance(
             prune_quantile=cfg.case_prune_quantile,
             prune_bias_threshold=cfg.case_prune_bias_threshold,
         )
         return model
-    raise ValueError("critic_type must be either 'mlp' or 'nnknn'")
+    raise ValueError("critic_type must be either 'mlp', 'nnknn', 'mcb_nnknn', or 'ema_nnknn'")
 
 
 def _build_actor_critic_models(
@@ -1625,6 +1790,8 @@ def _build_actor_critic_models(
         # consumption order byte-for-byte what it was.
         value_model.nnknn_model.feature_extractor = actor.nnknn_model.feature_extractor
         value_model.nnknn_model.glocal_weightor = actor.nnknn_model.glocal_weightor
+        if hasattr(actor.nnknn_model, "momentum_encoder") and actor.nnknn_model.momentum_encoder is not None:
+            value_model.nnknn_model.momentum_encoder = actor.nnknn_model.momentum_encoder
     return actor, value_model
 
 
@@ -2292,6 +2459,13 @@ def _train_actor_critic_batch(
                         unique_parameters.append(parameter)
             nn.utils.clip_grad_norm_(unique_parameters, cfg.max_grad_norm)
             joint_optimizer.step()
+            if hasattr(actor, "update_momentum_encoder"):
+                actor.update_momentum_encoder(cfg.mcb_momentum)
+            if hasattr(value_model, "update_momentum_encoder"):
+                actor_mom = getattr(getattr(actor, "nnknn_model", None), "momentum_encoder", None)
+                value_mom = getattr(getattr(value_model, "nnknn_model", None), "momentum_encoder", None)
+                if value_mom is not None and value_mom is not actor_mom:
+                    value_model.update_momentum_encoder(cfg.mcb_momentum)
     else:
         if critic_optimizer is None:
             raise ValueError("critic_optimizer is required when no joint optimizer is configured")
@@ -2304,11 +2478,15 @@ def _train_actor_critic_batch(
                 (float(cfg.value_loss_coef) * critic_loss).backward()
                 nn.utils.clip_grad_norm_(value_model.parameters(), cfg.max_grad_norm)
                 critic_optimizer.step()
+                if hasattr(value_model, "update_momentum_encoder"):
+                    value_model.update_momentum_encoder(cfg.mcb_momentum)
         if actor_loss.requires_grad:
             actor_optimizer.zero_grad()
             actor_loss.backward()
             nn.utils.clip_grad_norm_(actor.parameters(), cfg.max_grad_norm)
             actor_optimizer.step()
+            if hasattr(actor, "update_momentum_encoder"):
+                actor.update_momentum_encoder(cfg.mcb_momentum)
 
     critic_optimization_mse = critic_loss.detach()
 
@@ -3224,6 +3402,15 @@ def train_nnknn_rl(
             ),
             "critic_target_shared_case_store": target_value_model is not None,
             "actor_case_insertion": "raw_positive_advantage_only",
+            "use_mcb": bool(
+                cfg.use_mcb
+                or cfg.actor_type in {"mcb_nnknn", "ema_nnknn"}
+                or cfg.critic_type in {"mcb_nnknn", "ema_nnknn"}
+            ),
+            "mcb_momentum": float(cfg.mcb_momentum),
+            "mcb_proj_dim": int(cfg.mcb_proj_dim),
+            "mcb_hidden_dim": int(cfg.mcb_hidden_dim),
+            "mcb_normalize_embeddings": bool(cfg.mcb_normalize_embeddings),
         },
         "gae": {
             "gamma": cfg.gamma,

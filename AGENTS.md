@@ -50,6 +50,7 @@
 ## Notes
 
 - `checkpoints/` and transient artifacts are expected and are gitignored.
-- RL runs write timestamped artifacts under `results/rl/`.
+- RL runs write timestamped artifacts under `results/<host>/` (`r760` or `g234`);
+  pass `--output-dir` explicitly. See `results/README.md`.
 - `matplotlib` should run headlessly in cloud tasks with `MPLBACKEND=Agg`.
 - Avoid full multi-run benchmarks for routine verification; they are intentionally expensive.

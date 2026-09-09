@@ -1,0 +1,67 @@
+{
+  "created_at_utc": "2026-09-05T13:04:32.657265+00:00",
+  "task": {
+    "name": "cartpole",
+    "env_id": "CartPole-v1",
+    "family": "classic_control",
+    "observation_kind": "flat_box",
+    "action_kind": "discrete",
+    "max_episode_steps": 500,
+    "default_profile": "fast",
+    "literature_notes": [
+      "Fast DQN sanity task used by the official PyTorch DQN tutorial.",
+      "Engineering gate before moving to Atari/ALE, the DQN and NEC paper-aligned benchmark family."
+    ],
+    "success_threshold": 475.0,
+    "target_mean_return": 500.0,
+    "env_kwargs": {}
+  },
+  "config": {
+    "profile": "smoke",
+    "seed": 1,
+    "total_timesteps": 64,
+    "learning_rate": 0.00025,
+    "buffer_size": 1000,
+    "gamma": 0.99,
+    "target_network_frequency": 100,
+    "max_grad_norm": 0.5,
+    "batch_size": 32,
+    "start_e": 1.0,
+    "end_e": 0.05,
+    "exploration_fraction": 0.5,
+    "learning_starts": 32,
+    "train_frequency": 1,
+    "eval_frequency": 16,
+    "eval_episodes": 1,
+    "eval_seed": 10000,
+    "success_threshold": null,
+    "early_stopping": true,
+    "early_stopping_patience": 30,
+    "early_stopping_min_delta": 1.0,
+    "early_stopping_min_steps": 25000,
+    "early_stopping_target_score": 0.0,
+    "hidden_sizes": [
+      120,
+      84
+    ],
+    "source_reference": "CleanRL dqn.py"
+  },
+  "device": "cpu",
+  "observation": {
+    "kind": "flat_box",
+    "shape": [
+      4
+    ],
+    "dim": 4,
+    "numpy_dtype": "float32"
+  },
+  "source_reference": "CleanRL dqn.py",
+  "runtime": {
+    "omp_num_threads": null,
+    "mkl_num_threads": null,
+    "torch_num_threads": 10,
+    "torch_version": "2.13.0+xpu",
+    "platform": "Windows-2025Server-10.0.26100-SP0",
+    "python": "3.12.14"
+  }
+}

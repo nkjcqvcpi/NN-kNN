@@ -1,3 +1,0 @@
-global_step,mean_return,std_return,min_return,max_return,mean_length,episodes
-128,0.0,0.0,0.0,0.0,6.0,2
-256,0.0,0.0,0.0,0.0,6.0,2

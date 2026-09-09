@@ -1,4 +1,3 @@
-Traceback (most recent call last):
-  File "D:\NN-kNN\results\classification_nnknn_rerun_20260601_103353\run_benchmark.py", line 7, in <module>
-    from model.classification_workflow import (
-ModuleNotFoundError: No module named 'model'
+version https://git-lfs.github.com/spec/v1
+oid sha256:9c444b5de9f6404849233090a7da59e8689008b2ba7a70c983f8b0973aa92cc0
+size 236

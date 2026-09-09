@@ -1,2 +1,0 @@
-global_step,episode,eval_trigger,mean_return,std_return,min_return,max_return,mean_length,episodes,dictionary_entries
-5,0,step,9.0,0.0,9.0,9.0,9.0,1,0

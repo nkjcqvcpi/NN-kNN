@@ -1,0 +1,10 @@
+# Manage experiment results with Git LFS
+results/** filter=lfs diff=lfs merge=lfs -text
+results/**/*.json text !filter !diff !merge
+results/**/*.md text !filter !diff !merge
+results/**/*.py text !filter !diff !merge
+
+# Model checkpoints & large binary weights
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.pth filter=lfs diff=lfs merge=lfs -text
+*.ckpt filter=lfs diff=lfs merge=lfs -text

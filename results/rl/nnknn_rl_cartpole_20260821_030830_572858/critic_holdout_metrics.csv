@@ -1,9 +1,0 @@
-global_step,completed_episodes,diagnostic_index,critic_holdout_mse,critic_holdout_explained_variance,critic_holdout_value_mean,critic_holdout_target_mean,critic_holdout_samples,critic_holdout_episodes,critic_holdout_environment_steps,critic_holdout_mean_episode_return,critic_holdout_mean_episode_length,critic_holdout_behavior_epsilon,critic_holdout_truncated_bootstraps,critic_holdout_target_method,critic_holdout_bootstrap_source,critic_holdout_seed
-3337,100,1,44.268333435058594,0.5714797377586365,19.43310546875,17.844831466674805,190,5,190,38.0,38.0,0.0,0,discounted_monte_carlo_with_truncation_bootstrap,target_value_model,30000
-8609,200,2,204.89564514160156,0.11218464374542236,19.732500076293945,24.439178466796875,265,5,265,53.0,53.0,0.0,0,discounted_monte_carlo_with_truncation_bootstrap,target_value_model,30005
-19123,300,3,480.7760925292969,0.2900705337524414,28.624441146850586,41.43025588989258,532,5,532,106.4,106.4,0.0,0,discounted_monte_carlo_with_truncation_bootstrap,target_value_model,30010
-38494,400,4,1619.4007568359375,0.1399417519569397,36.444976806640625,67.96674346923828,1159,5,1159,231.8,231.8,0.0,1,discounted_monte_carlo_with_truncation_bootstrap,target_value_model,30015
-61248,500,5,666.69140625,0.3336859345436096,38.3906135559082,55.02543640136719,912,5,912,182.4,182.4,0.0,0,discounted_monte_carlo_with_truncation_bootstrap,target_value_model,30020
-81036,600,6,1586.4134521484375,0.16171717643737793,42.0036735534668,74.68855285644531,1666,5,1666,333.2,333.2,0.0,1,discounted_monte_carlo_with_truncation_bootstrap,target_value_model,30025
-112817,700,7,1201.898681640625,0.24472618103027344,42.64554977416992,69.15754699707031,1523,5,1523,304.6,304.6,0.0,0,discounted_monte_carlo_with_truncation_bootstrap,target_value_model,30030
-146334,800,8,1390.755126953125,0.31924980878829956,46.183956146240234,77.34198760986328,1851,5,1851,370.2,370.2,0.0,1,discounted_monte_carlo_with_truncation_bootstrap,target_value_model,30035
