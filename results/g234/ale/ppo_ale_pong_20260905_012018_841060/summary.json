@@ -1,0 +1,59 @@
+{
+  "task": "ale_pong",
+  "env_id": "ALE/Pong-v5",
+  "algorithm": "ppo_clipped_surrogate_gae",
+  "profile": "fast",
+  "seed": 2,
+  "total_timesteps": 500000,
+  "configured_total_timesteps": 500000,
+  "actual_timesteps": 500000,
+  "updates": 245,
+  "rollout_length": 2048,
+  "action_kind": "discrete",
+  "eval_episodes": 5,
+  "success_threshold": 0.0,
+  "passed": false,
+  "final_eval": {
+    "episodes": 5,
+    "seed": 10000,
+    "mean_return": -1.7999999523162842,
+    "std_return": 3.9698867797851562,
+    "min_return": -8.0,
+    "max_return": 2.0,
+    "mean_length": 3925.60009765625
+  },
+  "last_eval": {
+    "episodes": 5,
+    "seed": 10000,
+    "mean_return": -6.0,
+    "std_return": 3.847076892852783,
+    "min_return": -12.0,
+    "max_return": -1.0,
+    "mean_length": 3780.0
+  },
+  "selected_step": 450000,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 450000,
+    "best_model_training_fraction": 0.9,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 4.200000047683716,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 18.0,
+    "best_mean_return": -2.0,
+    "evaluations": 20,
+    "evaluations_without_improvement": 6,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 500000
+  },
+  "checkpoint_path": "results\\rl_ale_g234\\ppo_ale_pong_20260905_012018_841060\\checkpoint.pt",
+  "run_dir": "results\\rl_ale_g234\\ppo_ale_pong_20260905_012018_841060"
+}

@@ -32,7 +32,7 @@ baselines, ALE) is harvested. Its headline supersedes several claims in the
    contention — independent methods, different CPU/OS/device, near-identical
    answer. That trade-off is solid and is the manuscript claim.
    **The "scores worse" half is device-dependent and must not be cited.** A
-   full 5-seed CPU replication (`results/rl_capacity_cpu_g234/`) puts cap 2000
+   full 5-seed CPU replication (`results/g234/capacity_cpu/`) puts cap 2000
    at 499.88 ± 0.27 versus 471.53 ± 14.35 on CUDA, with no monotonic capacity
    trend at all (weakest CPU arm is cap 500, not cap 2000) and the three
    shared seeds moving 455.90→500.00, 484.10→500.00, 474.60→500.00. cap 1000
@@ -177,7 +177,7 @@ baselines, ALE) is harvested. Its headline supersedes several claims in the
   immediately (2 evals, 4,810 of 150,000 steps), while fixed/mutable/trainable
   each ran the full 150k and had 145k more steps in which to regress. The
   identical config run to 150k with `--no-early-stopping`
-  (`results/rl/nnknn_rl_cartpole_20260801_100617_252466`) also regresses
+  (`results/r760/nnknn_rl_cartpole_20260801_100617_252466`) also regresses
   (last_eval 490.9; 297–491 across seeds 0–4). The contrast with
   fixed/mutable/trainable (last 381.8 / 330.2 / 235.4) is a difference of
   degree at unmatched budgets. The
@@ -471,8 +471,8 @@ defend and most of them still rest on a single seed.
 
 ## Current Local Artifacts
 
-- `results/rl/` run artifacts (minus model checkpoints) are now tracked in
-  git — see `results/rl/README.md` for the conventions. `checkpoint.pt` /
+- `results/<host>/` run artifacts (minus model checkpoints) are now tracked in
+  git — see `results/README.md` for the conventions. `checkpoint.pt` /
   `*.pth` and root-level console logs / PID files are intentionally excluded;
   the structured files in each run directory are the canonical record.
   Folders ending in `_eval` hold `eval_summary.json` from checkpoint-reload

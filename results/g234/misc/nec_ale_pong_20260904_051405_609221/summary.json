@@ -1,0 +1,56 @@
+{
+  "task": "ale_pong",
+  "env_id": "ALE/Pong-v5",
+  "profile": "fast",
+  "seed": 0,
+  "total_timesteps": 500000,
+  "configured_total_timesteps": 500000,
+  "actual_timesteps": 500000,
+  "eval_episodes": 5,
+  "success_threshold": 0.0,
+  "passed": false,
+  "final_eval": {
+    "episodes": 5,
+    "seed": 10000,
+    "mean_return": -18.399999618530273,
+    "std_return": 1.3564659357070923,
+    "min_return": -20.0,
+    "max_return": -16.0,
+    "mean_length": 1174.0
+  },
+  "last_eval": {
+    "episodes": 5,
+    "seed": 10000,
+    "mean_return": -19.399999618530273,
+    "std_return": 1.0198038816452026,
+    "min_return": -21.0,
+    "max_return": -18.0,
+    "mean_length": 1305.5999755859375
+  },
+  "selected_step": 100000,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 100000,
+    "best_model_training_fraction": 0.2,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 1.0,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 18.0,
+    "best_mean_return": -18.399999618530273,
+    "evaluations": 24,
+    "evaluations_without_improvement": 20,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 500000
+  },
+  "dictionary_entries": 60000,
+  "checkpoint_path": "results\\rl\\nec_ale_pong_20260904_051405_609221\\checkpoint.pt",
+  "run_dir": "results\\rl\\nec_ale_pong_20260904_051405_609221"
+}

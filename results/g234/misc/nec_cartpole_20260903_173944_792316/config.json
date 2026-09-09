@@ -1,0 +1,64 @@
+{
+  "created_at_utc": "2026-09-03T17:39:44.793011+00:00",
+  "task": {
+    "name": "cartpole",
+    "env_id": "CartPole-v1",
+    "family": "classic_control",
+    "observation_kind": "flat_box",
+    "action_kind": "discrete",
+    "max_episode_steps": 500,
+    "default_profile": "fast",
+    "literature_notes": [
+      "Fast DQN sanity task used by the official PyTorch DQN tutorial.",
+      "Engineering gate before moving to Atari/ALE, the DQN and NEC paper-aligned benchmark family."
+    ],
+    "success_threshold": 475.0,
+    "target_mean_return": 500.0,
+    "env_kwargs": {}
+  },
+  "config": {
+    "profile": "smoke",
+    "seed": 0,
+    "total_timesteps": 256,
+    "learning_rate": 0.001,
+    "replay_size": 1000,
+    "dictionary_size": 1000,
+    "gamma": 0.99,
+    "n_step": 20,
+    "k_neighbors": 3,
+    "kernel_delta": 0.001,
+    "batch_size": 32,
+    "start_e": 1.0,
+    "end_e": 0.05,
+    "exploration_fraction": 0.5,
+    "learning_starts": 32,
+    "train_frequency": 1,
+    "eval_frequency": 0,
+    "eval_episode_frequency": 10,
+    "eval_episodes": 2,
+    "eval_seed": 10000,
+    "success_threshold": null,
+    "early_stopping": false,
+    "early_stopping_patience": 30,
+    "early_stopping_min_delta": 1.0,
+    "early_stopping_min_steps": 25000,
+    "early_stopping_target_score": null,
+    "embedding_dim": 32,
+    "hidden_sizes": [
+      128,
+      128
+    ],
+    "max_grad_norm": 10.0,
+    "source_reference": "Neural Episodic Control paper; EndingCredits/Neural-Episodic-Control as reference only"
+  },
+  "device": "cpu",
+  "observation": {
+    "kind": "flat_box",
+    "shape": [
+      4
+    ],
+    "dim": 4,
+    "numpy_dtype": "float32"
+  },
+  "source_reference": "Neural Episodic Control paper; EndingCredits/Neural-Episodic-Control as reference only"
+}

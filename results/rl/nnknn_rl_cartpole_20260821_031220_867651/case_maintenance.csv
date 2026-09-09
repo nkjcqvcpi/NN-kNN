@@ -1,5 +1,0 @@
-global_step,case_store,source,cases_pruned,cases_replaced,case_entries,action_counts,bias_min,bias_mean,bias_max
-49,critic,capacity_insert,5,12,32,,0.0,0.00018749998707789928,0.0010000000474974513
-62,critic,capacity_insert,6,8,31,,-0.0009999996982514858,0.0003548387612681836,0.001999999862164259
-80,critic,capacity_insert,8,9,32,,0.0,0.0005624999175779521,0.001999999862164259
-96,critic,capacity_insert,14,2,32,,0.0,0.0008124999003484845,0.0029999997932463884

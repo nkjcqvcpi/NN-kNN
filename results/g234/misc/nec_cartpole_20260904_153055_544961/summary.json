@@ -1,0 +1,56 @@
+{
+  "task": "cartpole",
+  "env_id": "CartPole-v1",
+  "profile": "smoke",
+  "seed": 1,
+  "total_timesteps": 5,
+  "configured_total_timesteps": 64,
+  "actual_timesteps": 5,
+  "eval_episodes": 1,
+  "success_threshold": null,
+  "passed": true,
+  "final_eval": {
+    "episodes": 1,
+    "seed": 10000,
+    "mean_return": 9.0,
+    "std_return": 0.0,
+    "min_return": 9.0,
+    "max_return": 9.0,
+    "mean_length": 9.0
+  },
+  "last_eval": {
+    "episodes": 1,
+    "seed": 10000,
+    "mean_return": 9.0,
+    "std_return": 0.0,
+    "min_return": 9.0,
+    "max_return": 9.0,
+    "mean_length": 9.0
+  },
+  "selected_step": 5,
+  "selected_source": "final",
+  "training_efficiency": {
+    "best_model_step": 5,
+    "best_model_training_fraction": 1.0,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 0.0,
+    "budget_interpretation": "final_is_best_check_for_underfit"
+  },
+  "early_stopping": {
+    "enabled": true,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 0.0,
+    "best_mean_return": 9.0,
+    "evaluations": 1,
+    "evaluations_without_improvement": 0,
+    "stopped_early": true,
+    "stopping_reason": "target_score",
+    "stopping_step": 5
+  },
+  "dictionary_entries": 5,
+  "checkpoint_path": "results\\rl\\nec_cartpole_20260904_153055_544961\\checkpoint.pt",
+  "run_dir": "results\\rl\\nec_cartpole_20260904_153055_544961"
+}

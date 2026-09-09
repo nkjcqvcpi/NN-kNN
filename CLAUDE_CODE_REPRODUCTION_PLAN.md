@@ -14,7 +14,7 @@
    ```
    All commands below run from the repo root (`nnknn-work/`). All progress reports go to `reports/experiment_log.md` and `reports/figures/` inside the clone; commit them to `rl-iclr2027` after each phase. Per rule 0, do not push this branch to `Heuzi/NN-kNN`: if a results remote (fork or separate repo) is configured, push there (`git remote add results <url> && git push -u results rl-iclr2027`); otherwise keep commits local and include the log/figure paths in your phase report.
 2. Never draw paper-style conclusions from `smoke` or `debug` profiles; they validate plumbing only.
-3. Every claim about a run must come from its `results/rl/<run>/summary.json`: report `final_eval.mean_return` (selected checkpoint), `last_eval.mean_return`, `actual_timesteps`, `stopping_reason`, and `training_efficiency.budget_interpretation`. If `budget_interpretation` is `unsolved_or_underfit`, or best==final with a rising curve, say so — do not present the run as solved.
+3. Every claim about a run must come from its `results/<host>/<run>/summary.json`: report `final_eval.mean_return` (selected checkpoint), `last_eval.mean_return`, `actual_timesteps`, `stopping_reason`, and `training_efficiency.budget_interpretation`. If `budget_interpretation` is `unsolved_or_underfit`, or best==final with a rising curve, say so — do not present the run as solved.
 4. Artifacts predating `algorithm="nnknn_actor_critic_separate_memory_gae"` (including the legacy 369.5 run `nnknn_rl_cartpole_20260626_150805_689987`) are outdated; retrain, never compare against them.
 5. Long runs: launch with `nohup ... > run.log 2>&1 &` and poll; each run also writes `stdout.log`/`stderr.log` in its timestamped results folder.
 
@@ -120,7 +120,7 @@ Stop and report back (do not keep burning compute) if: (a) Phase 1a DQN cannot b
 
 ```markdown
 ## <date> — <phase> — <one-line outcome>
-Runs: <results/rl/ folder names>
+Runs: <results/<host>/ folder names>
 Command(s): <exact CLI>
 Key numbers: final_eval X / last_eval Y / actual_timesteps Z / budget_interpretation W
 Diagnostics: <case counts, holdout EV, anomalies>

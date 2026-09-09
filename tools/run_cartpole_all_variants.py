@@ -190,8 +190,42 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
                 progress=False,
             ),
         },
+        {
+            "name": "mcb_nnknn_actor_mlp_critic",
+            "family": "actor_critic",
+            "description": "Momentum Case Base (MCB) NN-kNN actor with MLP V(s) critic (AAAI 2027 MCB-R variant).",
+            "train": lambda out: train_nnknn_rl(
+                "cartpole",
+                make_nnknn_rl_config(
+                    args.profile,
+                    **nnknn,
+                    actor_type="mcb_nnknn",
+                    critic_type="mlp",
+                ),
+                output_dir=out,
+                device=args.device,
+                progress=False,
+            ),
+        },
+        {
+            "name": "mcb_nnknn_actor_mcb_nnknn_critic",
+            "family": "actor_critic",
+            "description": "MCB NN-kNN actor with MCB NN-kNN critic (shared momentum representation).",
+            "train": lambda out: train_nnknn_rl(
+                "cartpole",
+                make_nnknn_rl_config(
+                    args.profile,
+                    **nnknn,
+                    actor_type="mcb_nnknn",
+                    critic_type="mcb_nnknn",
+                ),
+                output_dir=out,
+                device=args.device,
+                progress=False,
+            ),
+        },
     ]
-    for actor_type in ("mlp", "nnknn"):
+    for actor_type in ("mlp", "nnknn", "mcb_nnknn"):
         for label_mode in ("fixed", "mutable", "trainable", "hybrid"):
             name = f"{actor_type}_actor_nnknn_{label_mode}_critic"
             mode_overrides = _label_mode(label_mode)
