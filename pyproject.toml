@@ -1,0 +1,58 @@
+[project]
+name = "nnknn-work"
+version = "0.1.0"
+description = "NN-kNN CBR and reinforcement learning experiments"
+requires-python = "==3.12.*"
+
+# Updated to latest stable Intel Arc XPU stack (PyTorch 2.14.0+xpu, oneAPI 2026.1.0)
+dependencies = [
+    # --- core numerics / ML ---
+    "torch==2.14.0",
+    "torchvision==0.29.0",
+    "triton-xpu==3.8.0",
+    "numpy==2.5.2",
+    "scipy==1.18.0",
+    "pandas==3.0.5",
+    "scikit-learn==1.9.0",
+    "imbalanced-learn==0.14.2",
+    "metric-learn==0.7.0",
+    # --- RL environments ---
+    "gymnasium[classic_control]==1.3.0",
+    "ale-py==0.12.1",
+    "MinAtar==1.0.15",
+    "opencv-python==5.0.0.93",
+    "cloudpickle==3.1.2",
+    "Box2D==2.3.10",
+    # --- data sources / config / io ---
+    "ucimlrepo==0.0.7",
+    "PyYAML==6.0.3",
+    "requests==2.34.2",
+    # --- experiment tracking + progress ---
+    "wandb==0.28.1",
+    "tqdm==4.70.0",
+    # --- plotting ---
+    "matplotlib==3.11.1",
+    "seaborn==0.13.2",
+]
+
+[project.optional-dependencies]
+notebook = [
+    "ipykernel==7.3.0",
+    "ipywidgets==8.1.8",
+    "jupyter>=1.1",
+]
+reporting = ["python-pptx>=1.0"]
+
+[[tool.uv.index]]
+name = "pytorch-xpu"
+url = "https://download.pytorch.org/whl/xpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-xpu" }
+torchvision = { index = "pytorch-xpu" }
+triton-xpu = { index = "pytorch-xpu" }
+
+[tool.uv]
+package = false
+environments = ["sys_platform == 'win32' and platform_machine == 'AMD64'"]
