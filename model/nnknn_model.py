@@ -658,6 +658,16 @@ class NN_KNN_Model(nn.Module):
             self.feature_dim = cases.shape[-1]
         self.cached_features = None  # To cache features during evaluation mode
 
+        # Stable case IDs that survive compaction (T0 identity requirement)
+        self.register_buffer(
+            "case_ids",
+            torch.arange(len(cases), dtype=torch.long, device=self.cases.device),
+        )
+        self.register_buffer(
+            "next_case_id",
+            torch.tensor(len(cases), dtype=torch.long, device=self.cases.device),
+        )
+
         self.top_k_mode = False
         self.top_k = kwargs.get('top_k', default_args['top_k'])
 
@@ -729,8 +739,19 @@ class NN_KNN_Model(nn.Module):
                     dim=-1,
                 )
             )
+            if hasattr(self, "case_ids") and hasattr(self, "next_case_id"):
+                next_id = int(self.next_case_id.item())
+                self.case_ids[start:end] = torch.arange(
+                    next_id, next_id + count, dtype=torch.long, device=self.case_ids.device
+                )
+                self.next_case_id.fill_(next_id + count)
         self.set_active_case_count(end)
         return count
+
+    def active_case_ids(self) -> torch.Tensor:
+        if hasattr(self, "case_ids"):
+            return self.case_ids[: self.case_count()]
+        return torch.arange(self.case_count(), dtype=torch.long, device=self.cases.device)
 
     def compact_cases(self, keep_indices: torch.Tensor | list[int]) -> int:
         keep_t = torch.as_tensor(keep_indices, dtype=torch.long, device=self.cases.device).view(-1)
@@ -744,12 +765,15 @@ class NN_KNN_Model(nn.Module):
             kept_biases = self.biases[keep_t].clone()
             kept_negative_weights = self.negative_weights[keep_t].clone()
             kept_glocal_weights = self.glocal_weights[keep_t].clone()
+            kept_case_ids = self.case_ids[keep_t].clone() if hasattr(self, "case_ids") else None
             if new_count:
                 self.cases[:new_count].copy_(kept_cases)
                 self.labels[:new_count].copy_(kept_labels)
                 self.biases[:new_count].copy_(kept_biases)
                 self.negative_weights[:new_count].copy_(kept_negative_weights)
                 self.glocal_weights[:new_count].copy_(kept_glocal_weights)
+                if kept_case_ids is not None:
+                    self.case_ids[:new_count].copy_(kept_case_ids)
             if new_count < active_count:
                 self.cases[new_count:active_count].zero_()
                 self.labels[new_count:active_count].zero_()
@@ -765,6 +789,8 @@ class NN_KNN_Model(nn.Module):
                         dim=-1,
                     )
                 )
+                if hasattr(self, "case_ids"):
+                    self.case_ids[new_count:active_count].fill_(-1)
         removed = active_count - new_count
         self.set_active_case_count(new_count)
         return removed
@@ -1063,14 +1089,27 @@ class NN_KNN_Model(nn.Module):
         if self.task_type == "classification":
             # Retrieval is unchanged: only the final output aggregates case
             # attention into probability mass for each one-hot class label.
-            final_predictions = torch.matmul(
+            p0_q = torch.matmul(
                 weighted_activations, selected_labels.to(weighted_activations.dtype)
             )
-            final_predictions = final_predictions / final_predictions.sum(
+            p0_q = p0_q / p0_q.sum(
                 dim=1, keepdim=True
             ).clamp_min(1e-12)
-            predicted_solution = final_predictions.argmax(dim=1)  # [batch_size]
-            pre_adapted_solution = None
+            # Classification NN-CDH adaptation hook (T0 Reuse)
+            cls_adapter = getattr(self, "classification_adapter", None)
+            if cls_adapter is not None and getattr(self, "enable_classification_adapter", True):
+                pre_adapted_solution = p0_q.argmax(dim=1)
+                w = weighted_activations.unsqueeze(2)  # [B, N_sel, 1]
+                z_bar = torch.sum(w * case_features.unsqueeze(0), dim=1)  # [B, D]
+                Delta_z_q = query_features - z_bar
+                Delta_u_q = getattr(self, "_current_Delta_u_q", None)
+                r_hat_q, s_q = cls_adapter(Delta_z_q, p0_q, Delta_u_q)
+                final_predictions = s_q
+                predicted_solution = s_q.argmax(dim=1)
+            else:
+                pre_adapted_solution = None
+                final_predictions = p0_q
+                predicted_solution = p0_q.argmax(dim=1)
         else:  # regression
             # Ensure labels are [N_sel, 1]
             if selected_labels.dim() == 1:

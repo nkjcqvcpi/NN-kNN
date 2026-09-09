@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 # nn_cdh.py
+from typing import Any, Optional, Tuple
+
 import numpy as np
-from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -476,4 +479,220 @@ class NNCDHAdapter(nn.Module):
             print("[NN-CDH-AGG] Final val_loss:", val_hist[-1])
 
         return val_hist
+
+
+def compute_classification_adaptation_inputs(
+    query_features: torch.Tensor,       # [B, D]
+    retrieved_features: torch.Tensor,   # [B, K, D] or [K, D]
+    case_weights: torch.Tensor,         # [B, K]
+    retrieved_labels: torch.Tensor,     # [B, K, C] or [K, C]
+    nominal_query: Optional[torch.Tensor] = None,      # [B, nominal_dim]
+    nominal_retrieved: Optional[torch.Tensor] = None,  # [B, K, nominal_dim] or [K, nominal_dim]
+) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+    """Compute aggregate retrieval quantities for classification NN-CDH (T0 Reuse).
+
+    Returns:
+        Delta_z_q: query-to-neighborhood latent difference [B, D]
+        p0_q: retrieval-only class probability mass [B, C]
+        Delta_u_q: grouped nominal-attribute difference [B, nominal_dim] (or None)
+
+    Information-flow rule:
+        Neither z_i, z_bar_q, raw query, nor raw cases are passed to the adapter.
+    """
+    B = query_features.size(0)
+    w = case_weights.unsqueeze(2)  # [B, K, 1]
+
+    # Handle shape broadcasting for retrieved features
+    if retrieved_features.dim() == 2:
+        rf = retrieved_features.unsqueeze(0).expand(B, -1, -1)  # [B, K, D]
+    else:
+        rf = retrieved_features
+
+    # Handle shape broadcasting for retrieved labels
+    if retrieved_labels.dim() == 2:
+        rl = retrieved_labels.unsqueeze(0).expand(B, -1, -1)  # [B, K, C]
+    else:
+        rl = retrieved_labels
+
+    # Aggregate latent representation and class mass
+    z_bar = torch.sum(w * rf, dim=1)           # [B, D]
+    p0_q = torch.sum(w * rl.float(), dim=1)    # [B, C]
+    p0_q = p0_q / p0_q.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+    Delta_z_q = query_features - z_bar         # [B, D]
+
+    Delta_u_q = None
+    if nominal_query is not None and nominal_retrieved is not None:
+        if nominal_retrieved.dim() == 2:
+            nr = nominal_retrieved.unsqueeze(0).expand(B, -1, -1)
+        else:
+            nr = nominal_retrieved
+        u_bar = torch.sum(w * nr.float(), dim=1)  # [B, nominal_dim]
+        Delta_u_q = nominal_query.float() - u_bar  # [B, nominal_dim]
+
+    return Delta_z_q, p0_q, Delta_u_q
+
+
+class ClassificationNNCDHAdapter(nn.Module):
+    """Aggregate retrieved-label-conditioned classification NN-CDH adapter (T0 Reuse).
+
+    Synthesizes the nominal-difference representation (ICCBR 2022) with the
+    newer aggregate, retrieved-label-conditioned architecture.
+
+    Inputs:
+        Delta_z_q: latent difference [B, feature_dim] (z_q - z_bar_q)
+        Delta_u_q: grouped nominal-attribute difference [B, nominal_dim] (or None)
+        p0_q: retrieval-only class probability mass [B, num_classes]
+
+    Strict information-flow rule:
+        Adapter input = [Delta_z_q, Delta_u_q, p0_q]
+        Adapter input != [z_q, z_bar_q]
+        Neither raw queries, raw cases, z_i, nor z_bar_q are passed as adapter inputs.
+
+    Output modes:
+        - nominal_residual_scores (primary):
+            r_hat_q = tanh(g([Delta_z_q, Delta_u_q, p0_q]))
+            s_q = p0_q + r_hat_q
+            prediction = argmax(s_q)
+        - logit_residual (ablation):
+            delta_logits = g([Delta_z_q, Delta_u_q, p0_q])
+            p_final = softmax(log(clamp(p0_q, eps)) + delta_logits)
+    """
+
+    def __init__(
+        self,
+        feature_dim: int,
+        num_classes: int,
+        nominal_dim: int = 0,
+        hidden_dims: Tuple[int, int] = (64, 32),
+        output_mode: str = "nominal_residual_scores",
+        dropout: float = 0.0,
+    ):
+        super().__init__()
+        self.feature_dim = int(feature_dim)
+        self.num_classes = int(num_classes)
+        self.nominal_dim = int(nominal_dim)
+        self.output_mode = str(output_mode).strip().lower()
+        if self.output_mode not in {"nominal_residual_scores", "logit_residual"}:
+            raise ValueError(f"Unknown output_mode: {output_mode}. Use 'nominal_residual_scores' or 'logit_residual'.")
+
+        total_input_dim = self.feature_dim + self.nominal_dim + self.num_classes
+        h1, h2 = hidden_dims
+        layers = [
+            nn.Linear(total_input_dim, h1),
+            nn.LayerNorm(h1),
+            nn.ReLU(),
+        ]
+        if dropout > 0.0:
+            layers.append(nn.Dropout(dropout))
+        layers.extend([
+            nn.Linear(h1, h2),
+            nn.LayerNorm(h2),
+            nn.ReLU(),
+            nn.Linear(h2, self.num_classes),
+        ])
+        self.net = nn.Sequential(*layers)
+
+    def forward(
+        self,
+        Delta_z_q: torch.Tensor,
+        p0_q: torch.Tensor,
+        Delta_u_q: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Forward adaptation pass.
+
+        Returns:
+            r_hat_q: predicted residual / adjustment [B, num_classes]
+            scores: adapted class scores or calibrated probabilities [B, num_classes]
+        """
+        # Ensure correct inputs
+        parts = [Delta_z_q]
+        if self.nominal_dim > 0:
+            if Delta_u_q is None:
+                Delta_u_q = torch.zeros(
+                    (Delta_z_q.size(0), self.nominal_dim),
+                    dtype=Delta_z_q.dtype,
+                    device=Delta_z_q.device,
+                )
+            parts.append(Delta_u_q)
+        parts.append(p0_q)
+        adapter_input = torch.cat(parts, dim=-1)
+
+        raw_out = self.net(adapter_input)
+
+        if self.output_mode == "nominal_residual_scores":
+            r_hat_q = torch.tanh(raw_out)
+            s_q = p0_q + r_hat_q
+            return r_hat_q, s_q
+        else:  # logit_residual
+            delta_logits = raw_out
+            eps = 1e-7
+            log_p0 = torch.log(p0_q.clamp_min(eps))
+            p_final = F.softmax(log_p0 + delta_logits, dim=-1)
+            return delta_logits, p_final
+
+    def compute_loss(
+        self,
+        r_hat_q: torch.Tensor,
+        s_q: torch.Tensor,
+        p0_q: torch.Tensor,
+        targets: torch.Tensor,
+        lambda_diff: float = 1.0,
+        lambda_cls: float = 1.0,
+        lambda_mag: float = 0.01,
+    ) -> dict[str, torch.Tensor]:
+        """Compute training losses: L_diff (MSE on residual), L_cls (CE), L_mag (magnitude penalty)."""
+        if targets.dim() == 1:
+            y_one_hot = F.one_hot(targets, num_classes=self.num_classes).float()
+            y_idx = targets
+        else:
+            y_one_hot = targets.float()
+            y_idx = targets.argmax(dim=-1)
+
+        r_star = y_one_hot - p0_q  # Generalized one-hot/weighted-cold residual
+        l_diff = F.mse_loss(r_hat_q, r_star)
+        l_cls = F.cross_entropy(s_q, y_idx)
+        l_mag = torch.mean(r_hat_q ** 2)
+
+        total_loss = float(lambda_diff) * l_diff + float(lambda_cls) * l_cls + float(lambda_mag) * l_mag
+        return {
+            "loss": total_loss,
+            "loss_diff": l_diff,
+            "loss_cls": l_cls,
+            "loss_mag": l_mag,
+            "r_star": r_star,
+        }
+
+    @staticmethod
+    def analyze_flips(
+        p0_q: torch.Tensor,
+        adapted_scores: torch.Tensor,
+        targets: torch.Tensor,
+    ) -> dict[str, Any]:
+        """Detailed pre/post prediction flip diagnostics."""
+        y_idx = targets if targets.dim() == 1 else targets.argmax(dim=-1)
+        pred_pre = p0_q.argmax(dim=-1)
+        pred_post = adapted_scores.argmax(dim=-1)
+
+        pre_correct = (pred_pre == y_idx)
+        post_correct = (pred_post == y_idx)
+        flipped = (pred_pre != pred_post)
+
+        correct_flips = int((flipped & ~pre_correct & post_correct).sum().item())
+        harmful_flips = int((flipped & pre_correct & ~post_correct).sum().item())
+        neutral_flips = int((flipped & ~pre_correct & ~post_correct).sum().item())
+        total_flips = int(flipped.sum().item())
+
+        n = len(targets)
+        return {
+            "total_queries": n,
+            "pre_accuracy": float(pre_correct.float().mean().item()),
+            "post_accuracy": float(post_correct.float().mean().item()),
+            "accuracy_delta": float(post_correct.float().mean().item() - pre_correct.float().mean().item()),
+            "total_flips": total_flips,
+            "correct_flips": correct_flips,
+            "harmful_flips": harmful_flips,
+            "neutral_flips": neutral_flips,
+            "net_flip_benefit": correct_flips - harmful_flips,
+        }
+
 
