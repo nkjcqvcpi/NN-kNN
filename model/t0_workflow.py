@@ -371,6 +371,8 @@ def evaluate_t0_model(
         **flip_stats,
         "active_cases": active_count,
         "classification_adapter_enabled": cfg.classification_adapter_enabled,
+        "p0": p0_all,
+        "scores": scores_all,
     }
 
 

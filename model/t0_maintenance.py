@@ -261,14 +261,23 @@ def compute_trustworthiness(
     quality_score: float | np.ndarray,
     normalized_bias: float | np.ndarray,
     alpha: float = 0.5,
+    mode: str = "geometric",
     eps: float = 1e-8,
 ) -> float | np.ndarray:
-    """Compute primary combined trustworthiness score T_i = Q_i^alpha * B_i^(1-alpha) in log-space."""
+    """Compute primary combined trustworthiness score T_i in log-space or arithmetic space.
+
+    Modes:
+        - "geometric" (primary): T_i = Q_i^alpha * B_i^(1-alpha) via log-space.
+        - "arithmetic" (ablation): T_i = alpha * Q_i + (1 - alpha) * B_i.
+    """
     alpha_clamped = min(max(float(alpha), 0.0), 1.0)
     q = np.clip(np.asarray(quality_score, dtype=np.float32), eps, 1.0)
     b = np.clip(np.asarray(normalized_bias, dtype=np.float32), eps, 1.0)
-    log_t = alpha_clamped * np.log(q) + (1.0 - alpha_clamped) * np.log(b)
-    t = np.exp(log_t)
+    if str(mode).lower() == "arithmetic":
+        t = alpha_clamped * q + (1.0 - alpha_clamped) * b
+    else:
+        log_t = alpha_clamped * np.log(q) + (1.0 - alpha_clamped) * np.log(b)
+        t = np.exp(log_t)
     return float(t) if np.ndim(t) == 0 else t
 
 
@@ -300,6 +309,8 @@ class ProvenanceBiasCoveragePolicy(CaseMaintenancePolicy):
         min_per_cohort: int = 2,
         redundancy_weight: float = 0.2,
         utility_weight: float = 0.1,
+        trust_mode: str = "geometric",
+        protect_cohorts: bool = True,
     ) -> None:
         self.smoothing = float(smoothing)
         self.alpha = float(alpha)
@@ -308,6 +319,8 @@ class ProvenanceBiasCoveragePolicy(CaseMaintenancePolicy):
         self.min_per_cohort = int(min_per_cohort)
         self.redundancy_weight = float(redundancy_weight)
         self.utility_weight = float(utility_weight)
+        self.trust_mode = str(trust_mode).lower()
+        self.protect_cohorts = bool(protect_cohorts)
 
     def select_keep_case_ids(
         self,
@@ -354,7 +367,7 @@ class ProvenanceBiasCoveragePolicy(CaseMaintenancePolicy):
             st = stats_store.ensure(cid, initial_bias=float(biases[i].item()), cohort_id=cohorts[i])
             q_i = st.quality_score(self.smoothing)
             b_i = float(b_norm[i])
-            t_i = float(compute_trustworthiness(q_i, b_i, self.alpha))
+            t_i = float(compute_trustworthiness(q_i, b_i, self.alpha, mode=self.trust_mode))
 
             has_exposure = bool(
                 st.retrieval_count >= self.min_retrieval_count
@@ -391,7 +404,7 @@ class ProvenanceBiasCoveragePolicy(CaseMaintenancePolicy):
                 )
             )
 
-        # 5. Protected cases (ensure min_per_cohort)
+        # 5. Protected cases (ensure min_per_cohort if enabled)
         cohort_groups: dict[Any, list[CaseScoringResult]] = {}
         for res in scored:
             cohort_groups.setdefault(res.cohort_id, []).append(res)
@@ -399,28 +412,28 @@ class ProvenanceBiasCoveragePolicy(CaseMaintenancePolicy):
         keep_set: set[int] = set()
         actions: list[MaintenanceAction] = []
 
-        # First guarantee coverage per cohort
-        for cohort, group in cohort_groups.items():
-            # Sort cohort candidates by composite_score descending
-            sorted_group = sorted(group, key=lambda x: (x.protected, x.composite_score), reverse=True)
-            floor = min(self.min_per_cohort, len(sorted_group))
-            for item in sorted_group[:floor]:
-                keep_set.add(item.case_id)
-                actions.append(
-                    MaintenanceAction(
-                        case_id=item.case_id,
-                        action="protect",
-                        reason="cohort_coverage_floor",
-                        step=step,
-                        cohort_id=cohort,
-                        quality_score=item.quality_score,
-                        normalized_bias=item.normalized_bias,
-                        trustworthiness=item.trustworthiness,
-                        activation_mass=item.activation_mass,
-                        composite_score=item.composite_score,
-                        protected=True,
+        # First guarantee coverage per cohort if protection floor is enabled
+        if self.protect_cohorts:
+            for cohort, group in cohort_groups.items():
+                sorted_group = sorted(group, key=lambda x: (x.protected, x.composite_score), reverse=True)
+                floor = min(self.min_per_cohort, len(sorted_group))
+                for item in sorted_group[:floor]:
+                    keep_set.add(item.case_id)
+                    actions.append(
+                        MaintenanceAction(
+                            case_id=item.case_id,
+                            action="protect",
+                            reason="cohort_coverage_floor",
+                            step=step,
+                            cohort_id=cohort,
+                            quality_score=item.quality_score,
+                            normalized_bias=item.normalized_bias,
+                            trustworthiness=item.trustworthiness,
+                            activation_mass=item.activation_mass,
+                            composite_score=item.composite_score,
+                            protected=True,
+                        )
                     )
-                )
 
         # 6. Fill remaining capacity up to target_capacity
         remaining_slots = target_capacity - len(keep_set)
