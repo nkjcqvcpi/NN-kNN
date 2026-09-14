@@ -211,6 +211,9 @@ class NNKNNRLConfig:
     mcb_proj_dim: int = 64
     mcb_hidden_dim: int = 64
     mcb_normalize_embeddings: bool = True
+    case_replacement_mode: str = "compaction"
+    admission_diversity_threshold: float | None = None
+    case_grace_period_steps: int = 0
     source_reference: str = "Separate-memory NN-kNN actor-critic with staged cases and GAE advantages"
 
     def to_dict(self) -> dict[str, Any]:
@@ -242,6 +245,9 @@ class NNKNNPolicyNetwork(nn.Module):
         mcb_proj_dim: int = 64,
         mcb_hidden_dim: int = 64,
         mcb_normalize_embeddings: bool = True,
+        case_replacement_mode: str = "compaction",
+        admission_diversity_threshold: float | None = None,
+        case_grace_period_steps: int = 0,
     ):
         super().__init__()
         self.observation_spec = _resolve_observation(observation)
@@ -260,6 +266,12 @@ class NNKNNPolicyNetwork(nn.Module):
         self.mcb_proj_dim = int(mcb_proj_dim)
         self.mcb_hidden_dim = int(mcb_hidden_dim)
         self.mcb_normalize_embeddings = bool(mcb_normalize_embeddings)
+        self.case_replacement_mode = str(case_replacement_mode).strip().lower()
+        self.admission_diversity_threshold = (
+            float(admission_diversity_threshold) if admission_diversity_threshold is not None else None
+        )
+        self.case_grace_period_steps = int(case_grace_period_steps)
+        self.case_step_inserted: dict[int, int] = {}
         self._prune_quantile = 0.0
         self._prune_bias_threshold: float | None = None
 
@@ -386,7 +398,12 @@ class NNKNNPolicyNetwork(nn.Module):
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         return self.policy_probs(observations)
 
-    def add_cases(self, observations: torch.Tensor | np.ndarray, actions: torch.Tensor | np.ndarray) -> dict[str, int]:
+    def add_cases(
+        self,
+        observations: torch.Tensor | np.ndarray,
+        actions: torch.Tensor | np.ndarray,
+        current_step: int | None = None,
+    ) -> dict[str, int]:
         obs_t = torch.as_tensor(observations, dtype=torch.float32, device=self.nnknn_model.cases.device)
         actions_t = torch.as_tensor(actions, dtype=torch.long, device=self.nnknn_model.labels.device).view(-1)
         obs_t = _ensure_batched(obs_t, self.obs_shape)
@@ -395,41 +412,78 @@ class NNKNNPolicyNetwork(nn.Module):
         if torch.any(actions_t < 0) or torch.any(actions_t >= self.action_dim):
             raise ValueError(f"actions must be integer ids in [0, {self.action_dim})")
         available = self.case_capacity - self.case_entries
-        if obs_t.shape[0] <= available:
+        if obs_t.shape[0] <= available and (self.admission_diversity_threshold is None or self.admission_diversity_threshold <= 0.0):
             labels = F.one_hot(actions_t, num_classes=self.action_dim).to(dtype=torch.float32)
             start = self.case_entries
             added = self.nnknn_model.append_cases(obs_t, labels)
+            if current_step is not None:
+                for k in range(start, start + added):
+                    self.case_step_inserted[k] = current_step
             return {"added": added, "pruned": 0, "replaced": 0, "start": start, "end": start + added}
         added = 0
         replaced = 0
         pruned = 0
         first_added_index: int | None = None
         for idx in range(obs_t.shape[0]):
+            # Diversity Admission Filter
+            if self.admission_diversity_threshold is not None and self.admission_diversity_threshold > 0.0 and self.case_entries > 0:
+                act_val = int(actions_t[idx].item())
+                actions_all = self.action_tensor()
+                act_mask = (actions_all == act_val)
+                if act_mask.any():
+                    cases_subset = self.nnknn_model.cases[: self.case_entries][act_mask]
+                    diff = cases_subset - obs_t[idx].unsqueeze(0)
+                    dists = torch.norm(diff.view(diff.shape[0], -1), dim=1)
+                    if float(dists.min().item()) < self.admission_diversity_threshold:
+                        continue
+
             if self.case_entries >= self.case_capacity:
                 pruned += self.prune_cases(force=True)
             if self.case_entries >= self.case_capacity:
-                replace_idx = self._lowest_replaceable_case_index()
+                replace_idx = self._lowest_replaceable_case_index(current_step=current_step)
                 if replace_idx is None:
                     continue
-                keep_indices = [i for i in range(self.case_entries) if i != replace_idx]
-                self.nnknn_model.compact_cases(keep_indices)
-                replaced += 1
+                if self.case_replacement_mode == "inplace":
+                    label = F.one_hot(actions_t[idx], num_classes=self.action_dim).to(dtype=torch.float32)
+                    self.nnknn_model.overwrite_case_at(replace_idx, obs_t[idx], label)
+                    if current_step is not None:
+                        self.case_step_inserted[replace_idx] = current_step
+                    replaced += 1
+                    continue
+                else:
+                    keep_indices = [i for i in range(self.case_entries) if i != replace_idx]
+                    self.nnknn_model.compact_cases(keep_indices)
+                    replaced += 1
             label = F.one_hot(actions_t[idx], num_classes=self.action_dim).to(dtype=torch.float32).unsqueeze(0)
             start = self.case_entries
             self.nnknn_model.append_cases(obs_t[idx].unsqueeze(0), label)
+            if current_step is not None:
+                self.case_step_inserted[start] = current_step
             if first_added_index is None:
                 first_added_index = start
             added += 1
         start = self.case_entries - added if first_added_index is None else first_added_index
         return {"added": added, "pruned": pruned, "replaced": replaced, "start": start, "end": start + added}
 
-    def _lowest_replaceable_case_index(self) -> int | None:
+    def _lowest_replaceable_case_index(self, current_step: int | None = None) -> int | None:
         if self.case_entries <= 0:
             return None
         actions = self.action_tensor()
         counts = self.action_counts()
         biases = self.nnknn_model.biases[: self.case_entries].detach()
         sorted_indices = torch.argsort(biases)
+        # First pass: try candidates outside grace period
+        for idx_t in sorted_indices:
+            idx = int(idx_t.item())
+            action = int(actions[idx].item())
+            if int(counts[action].item()) <= self.min_cases_per_action:
+                continue
+            if current_step is not None and self.case_grace_period_steps > 0:
+                inserted_at = self.case_step_inserted.get(idx, 0)
+                if current_step - inserted_at < self.case_grace_period_steps:
+                    continue
+            return idx
+        # Fallback pass: any candidate satisfying minimum count
         for idx_t in sorted_indices:
             idx = int(idx_t.item())
             action = int(actions[idx].item())
@@ -1619,6 +1673,13 @@ def make_nnknn_rl_config(profile: str = "fast", **overrides: Any) -> NNKNNRLConf
         raise ValueError("mcb_hidden_dim must be positive")
     data["mcb_hidden_dim"] = mcb_hidden_dim
     data["mcb_normalize_embeddings"] = _coerce_bool_field("mcb_normalize_embeddings", True)
+    data["case_replacement_mode"] = str(data.get("case_replacement_mode", "compaction")).strip().lower()
+    data["admission_diversity_threshold"] = (
+        float(data["admission_diversity_threshold"])
+        if data.get("admission_diversity_threshold") is not None
+        else None
+    )
+    data["case_grace_period_steps"] = int(data.get("case_grace_period_steps", 0))
     if (
         actor_type in {"nnknn", "mcb_nnknn", "ema_nnknn"}
         and critic_type in {"nnknn", "mcb_nnknn", "ema_nnknn"}
@@ -1722,6 +1783,9 @@ def _build_actor_model(
             mcb_proj_dim=cfg.mcb_proj_dim,
             mcb_hidden_dim=cfg.mcb_hidden_dim,
             mcb_normalize_embeddings=cfg.mcb_normalize_embeddings,
+            case_replacement_mode=cfg.case_replacement_mode,
+            admission_diversity_threshold=cfg.admission_diversity_threshold,
+            case_grace_period_steps=cfg.case_grace_period_steps,
         ).to(device)
         model.configure_case_maintenance(
             prune_quantile=cfg.case_prune_quantile,
@@ -2524,7 +2588,9 @@ def _train_actor_critic_batch(
     positive_advantage_samples = int((raw_advantages > 0.0).sum().detach().cpu().item())
     if isinstance(actor, NNKNNPolicyNetwork) and positive_advantage_samples > 0:
         positive_mask = raw_advantages > 0.0
-        actor_add_stats = actor.add_cases(obs_t[positive_mask], actions_t[positive_mask])
+        actor_add_stats = actor.add_cases(
+            obs_t[positive_mask], actions_t[positive_mask], current_step=global_step
+        )
 
     actor.train()
     stats = _actor_case_bias_stats(actor)

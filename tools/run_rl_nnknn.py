@@ -109,6 +109,24 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Disable L2 normalization on MCB embeddings.",
     )
+    parser.add_argument(
+        "--case-replacement-mode",
+        choices=["compaction", "inplace"],
+        default=None,
+        help="Case replacement mode on capacity full: compaction (default) or inplace (O(1)).",
+    )
+    parser.add_argument(
+        "--admission-diversity-threshold",
+        type=float,
+        default=None,
+        help="Minimum feature/state Euclidean distance required to admit a new case.",
+    )
+    parser.add_argument(
+        "--case-grace-period-steps",
+        type=int,
+        default=None,
+        help="Number of steps during which newly inserted cases are protected from eviction.",
+    )
     parser.add_argument("--critic-learning-rate", type=float, default=None)
     parser.add_argument("--critic-update-epochs", type=int, default=None)
     parser.add_argument("--critic-holdout-episode-frequency", type=int, default=None)
@@ -243,6 +261,12 @@ def _config_from_args(args: argparse.Namespace) -> NNKNNRLConfig:
         overrides["mcb_hidden_dim"] = args.mcb_hidden_dim
     if args.mcb_normalize_embeddings is not None:
         overrides["mcb_normalize_embeddings"] = args.mcb_normalize_embeddings
+    if args.case_replacement_mode is not None:
+        overrides["case_replacement_mode"] = args.case_replacement_mode
+    if args.admission_diversity_threshold is not None:
+        overrides["admission_diversity_threshold"] = args.admission_diversity_threshold
+    if args.case_grace_period_steps is not None:
+        overrides["case_grace_period_steps"] = args.case_grace_period_steps
     _apply_task_success_defaults(args, overrides)
     _apply_task_eval_defaults(args, overrides)
     return make_nnknn_rl_config(args.profile, **overrides)
