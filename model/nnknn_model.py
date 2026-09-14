@@ -756,6 +756,38 @@ class NN_KNN_Model(nn.Module):
         self.set_active_case_count(end)
         return count
 
+    def overwrite_case_at(self, case_index: int, case: torch.Tensor, label: torch.Tensor) -> None:
+        """Overwrite an existing case slot in-place without $O(K)$ array reallocation."""
+        idx = int(case_index)
+        if not (0 <= idx < self.active_case_count):
+            raise IndexError(f"case_index {idx} out of active range [0, {self.active_case_count})")
+        case_t = torch.as_tensor(case, dtype=self.cases.dtype, device=self.cases.device)
+        label_t = torch.as_tensor(label, dtype=self.labels.dtype, device=self.labels.device)
+        if case_t.dim() > 0 and case_t.shape[0] == 1 and case_t.shape != self.cases[idx].shape:
+            case_t = case_t.squeeze(0)
+        if label_t.dim() > 0 and label_t.shape[0] == 1 and label_t.shape != self.labels[idx].shape:
+            label_t = label_t.squeeze(0)
+
+        old_class = int(torch.argmax(self.labels[idx]).item()) if self.task_type == "classification" and self.labels.shape[-1] > 1 else 0
+        new_class = int(torch.argmax(label_t).item()) if self.task_type == "classification" and label_t.shape[-1] > 1 else 0
+
+        with torch.no_grad():
+            self.cases[idx].copy_(case_t)
+            self.labels[idx].copy_(label_t)
+            self.biases[idx].fill_(self.case_default_bias)
+            self.negative_weights[idx].fill_(1.0)
+            self.glocal_weights[idx].copy_(
+                torch.softmax(
+                    torch.ones(self.glocal_weightor_set_num, device=self.glocal_weights.device),
+                    dim=-1,
+                )
+            )
+        if self.task_type == "classification" and old_class != new_class:
+            if old_class in self.class_to_cases and idx in self.class_to_cases[old_class]:
+                self.class_to_cases[old_class].remove(idx)
+            self.class_to_cases.setdefault(new_class, []).append(idx)
+        self._invalidate_case_cache()
+
     def compact_cases(self, keep_indices: torch.Tensor | list[int]) -> int:
         keep_t = torch.as_tensor(keep_indices, dtype=torch.long, device=self.cases.device).view(-1)
         active_count = self.case_count()
