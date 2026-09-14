@@ -24,6 +24,9 @@ from model.t0_maintenance import (
     CaseArchiveStore,
     CaseMaintenancePolicy,
     CaseStatisticsStore,
+    CoreSetGreedyPolicy,
+    DROP3Policy,
+    ICFPolicy,
     MaintenanceAction,
     ProvenanceBiasCoveragePolicy,
     ProvenanceOnlyPolicy,
@@ -31,6 +34,7 @@ from model.t0_maintenance import (
     TrustworthinessOnlyPolicy,
     write_maintenance_artifacts,
 )
+
 
 
 @dataclass
@@ -96,6 +100,12 @@ def make_t0_maintenance_policy(cfg: T0Config) -> CaseMaintenancePolicy:
         )
     elif mode in {"stratified", "random"}:
         return StratifiedRandomPolicy(seed=cfg.seed)
+    elif mode in {"drop3", "drop_3"}:
+        return DROP3Policy(k_neighbors=3)
+    elif mode in {"icf"}:
+        return ICFPolicy(k_neighbors=3)
+    elif mode in {"coreset", "coreset_greedy", "kcenter"}:
+        return CoreSetGreedyPolicy(seed=cfg.seed)
     elif mode in {"full_memory", "none"}:
         return BiasOnlyPolicy()  # target_capacity will equal full memory
     else:
