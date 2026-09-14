@@ -632,6 +632,242 @@ class StratifiedRandomPolicy(CaseMaintenancePolicy):
         return keep_ids, actions
 
 
+class DROP3Policy(CaseMaintenancePolicy):
+    """Classical CBM baseline: DROP3 (Wilson & Martinez, 2000).
+    
+    1. Pre-filters noisy instances via ENN (Edited Nearest Neighbor, k=3).
+    2. Sorts remaining instances by distance to nearest enemy (internal points first).
+    3. Iteratively evicts an instance if its removal does not reduce the accuracy
+       of its associates (instances that have it in their k-NN).
+    4. Truncates/backfills to meet target capacity K.
+    """
+
+    def __init__(self, k_neighbors: int = 3) -> None:
+        self.k_neighbors = int(k_neighbors)
+
+    def select_keep_case_ids(
+        self,
+        active_case_ids: Sequence[int],
+        cases: torch.Tensor,
+        labels: torch.Tensor,
+        biases: torch.Tensor,
+        stats_store: CaseStatisticsStore,
+        target_capacity: int,
+        step: int = 0,
+    ) -> tuple[list[int], list[MaintenanceAction]]:
+        active_ids = [int(cid) for cid in active_case_ids if int(cid) >= 0]
+        n_active = len(active_ids)
+        if n_active <= target_capacity:
+            return active_ids, [
+                MaintenanceAction(cid, "keep", "within_capacity", step) for cid in active_ids
+            ]
+
+        X = cases[:n_active].view(n_active, -1).detach().cpu().numpy()
+        labels_cpu = labels[:n_active].detach().cpu()
+        if labels_cpu.dim() > 1 and labels_cpu.shape[-1] > 1:
+            y = labels_cpu.argmax(dim=-1).numpy()
+        else:
+            y = labels_cpu.view(-1).long().numpy()
+
+        dist_matrix = np.linalg.norm(X[:, None, :] - X[None, :, :], axis=-1)
+        np.fill_diagonal(dist_matrix, np.inf)
+
+        k = min(self.k_neighbors, n_active - 1)
+        knn_indices = np.argsort(dist_matrix, axis=1)[:, :k]
+
+        # 1. ENN stage: drop noise if majority of k-NN disagree
+        keep_enn = np.ones(n_active, dtype=bool)
+        for i in range(n_active):
+            neighbor_classes = y[knn_indices[i]]
+            majority_class = np.bincount(neighbor_classes).argmax()
+            if majority_class != y[i]:
+                keep_enn[i] = False
+
+        # If ENN removed too many, keep all
+        if keep_enn.sum() < target_capacity:
+            keep_enn.fill(True)
+
+        # 2. Distance to nearest enemy
+        enemy_dists = np.full(n_active, np.inf)
+        for i in range(n_active):
+            enemy_mask = (y != y[i])
+            if enemy_mask.any():
+                enemy_dists[i] = dist_matrix[i, enemy_mask].min()
+
+        # Sort descending (farthest from enemy first -> internal points first)
+        sort_order = np.argsort(enemy_dists)[::-1]
+
+        # 3. Associate tracking and pruning
+        active_mask = keep_enn.copy()
+        for idx in sort_order:
+            if not active_mask[idx]:
+                continue
+            if active_mask.sum() <= target_capacity:
+                break
+            # Check associates (instances with idx in their k-NN)
+            associates = [j for j in range(n_active) if active_mask[j] and idx in knn_indices[j]]
+            harmful = False
+            for a in associates:
+                # Neighbors without idx
+                active_neighbors = [m for m in np.argsort(dist_matrix[a]) if active_mask[m] and m != idx][:k]
+                if len(active_neighbors) > 0:
+                    new_pred = np.bincount(y[active_neighbors]).argmax()
+                    if new_pred != y[a]:
+                        harmful = True
+                        break
+            if not harmful:
+                active_mask[idx] = False
+
+        # If still over target_capacity, take those closest to decision boundary (lowest enemy dist)
+        if active_mask.sum() > target_capacity:
+            remaining_indices = np.where(active_mask)[0]
+            sub_order = np.argsort(enemy_dists[remaining_indices])[:target_capacity]
+            selected_set = set(remaining_indices[sub_order].tolist())
+        elif active_mask.sum() < target_capacity:
+            # Backfill with highest enemy dist from dropped
+            remaining_indices = np.where(active_mask)[0]
+            dropped_indices = np.where(~active_mask)[0]
+            needed = target_capacity - len(remaining_indices)
+            backfill = np.argsort(enemy_dists[dropped_indices])[:needed]
+            selected_set = set(remaining_indices.tolist() + dropped_indices[backfill].tolist())
+        else:
+            selected_set = set(np.where(active_mask)[0].tolist())
+
+        keep_ids = [active_ids[i] for i in range(n_active) if i in selected_set]
+        actions = [
+            MaintenanceAction(cid, "keep" if i in selected_set else "archive", "drop3_cbm", step)
+            for i, cid in enumerate(active_ids)
+        ]
+        return keep_ids, actions
+
+
+class ICFPolicy(CaseMaintenancePolicy):
+    """Classical CBM baseline: Iterative Case Filtering (Brighton & Mellish, 2002).
+    
+    Computes Coverage(c) and Reachable(c) for each case.
+    Cases where |Coverage(c)| < |Reachable(c)| are considered redundant/harmful.
+    """
+
+    def __init__(self, k_neighbors: int = 3) -> None:
+        self.k_neighbors = int(k_neighbors)
+
+    def select_keep_case_ids(
+        self,
+        active_case_ids: Sequence[int],
+        cases: torch.Tensor,
+        labels: torch.Tensor,
+        biases: torch.Tensor,
+        stats_store: CaseStatisticsStore,
+        target_capacity: int,
+        step: int = 0,
+    ) -> tuple[list[int], list[MaintenanceAction]]:
+        active_ids = [int(cid) for cid in active_case_ids if int(cid) >= 0]
+        n_active = len(active_ids)
+        if n_active <= target_capacity:
+            return active_ids, [
+                MaintenanceAction(cid, "keep", "within_capacity", step) for cid in active_ids
+            ]
+
+        X = cases[:n_active].view(n_active, -1).detach().cpu().numpy()
+        labels_cpu = labels[:n_active].detach().cpu()
+        if labels_cpu.dim() > 1 and labels_cpu.shape[-1] > 1:
+            y = labels_cpu.argmax(dim=-1).numpy()
+        else:
+            y = labels_cpu.view(-1).long().numpy()
+
+        dist_matrix = np.linalg.norm(X[:, None, :] - X[None, :, :], axis=-1)
+        np.fill_diagonal(dist_matrix, np.inf)
+
+        # Coverage and Reachable sets
+        k = min(self.k_neighbors, n_active - 1)
+        knn_indices = np.argsort(dist_matrix, axis=1)[:, :k]
+
+        coverage_counts = np.zeros(n_active, dtype=np.int32)
+        reachable_counts = np.zeros(n_active, dtype=np.int32)
+
+        for i in range(n_active):
+            for neighbor in knn_indices[i]:
+                if y[neighbor] == y[i]:
+                    coverage_counts[neighbor] += 1
+                    reachable_counts[i] += 1
+
+        # ICF score: higher coverage - reachable is more valuable
+        icf_scores = coverage_counts.astype(np.float32) - reachable_counts.astype(np.float32)
+        order = np.argsort(icf_scores)[::-1]
+
+        keep_indices = set(order[:target_capacity].tolist())
+        keep_ids = [active_ids[i] for i in range(n_active) if i in keep_indices]
+        actions = [
+            MaintenanceAction(cid, "keep" if i in keep_indices else "archive", "icf_cbm", step)
+            for i, cid in enumerate(active_ids)
+        ]
+        return keep_ids, actions
+
+
+class CoreSetGreedyPolicy(CaseMaintenancePolicy):
+    """Modern geometric CBM baseline: k-Center Greedy Core-Set Selection (Sener & Savarese, 2018).
+    
+    Greedily selects the instance that maximizes the minimum distance to already
+    selected cases, ensuring maximal spatial coverage and prototype diversity.
+    """
+
+    def __init__(self, seed: int = 42) -> None:
+        self.seed = int(seed)
+
+    def select_keep_case_ids(
+        self,
+        active_case_ids: Sequence[int],
+        cases: torch.Tensor,
+        labels: torch.Tensor,
+        biases: torch.Tensor,
+        stats_store: CaseStatisticsStore,
+        target_capacity: int,
+        step: int = 0,
+    ) -> tuple[list[int], list[MaintenanceAction]]:
+        active_ids = [int(cid) for cid in active_case_ids if int(cid) >= 0]
+        n_active = len(active_ids)
+        if n_active <= target_capacity:
+            return active_ids, [
+                MaintenanceAction(cid, "keep", "within_capacity", step) for cid in active_ids
+            ]
+
+        X = cases[:n_active].view(n_active, -1).detach().cpu().numpy()
+        labels_cpu = labels[:n_active].detach().cpu()
+        if labels_cpu.dim() > 1 and labels_cpu.shape[-1] > 1:
+            y = labels_cpu.argmax(dim=-1).numpy()
+        else:
+            y = labels_cpu.view(-1).long().numpy()
+
+        classes = np.unique(y)
+        selected: list[int] = []
+
+        # Initialize with class medoids to ensure class representation
+        for c in classes:
+            c_indices = np.where(y == c)[0]
+            if len(c_indices) > 0:
+                c_dist = np.linalg.norm(X[c_indices, None, :] - X[None, c_indices, :], axis=-1).sum(axis=1)
+                medoid = c_indices[c_dist.argmin()]
+                selected.append(int(medoid))
+
+        # Greedily add instance maximizing min distance to selected set
+        min_dists = np.linalg.norm(X - X[selected, None, :], axis=-1).min(axis=0)
+
+        while len(selected) < target_capacity:
+            next_idx = int(np.argmax(min_dists))
+            selected.append(next_idx)
+            new_dists = np.linalg.norm(X - X[next_idx], axis=-1)
+            min_dists = np.minimum(min_dists, new_dists)
+
+        keep_indices = set(selected[:target_capacity])
+        keep_ids = [active_ids[i] for i in range(n_active) if i in keep_indices]
+        actions = [
+            MaintenanceAction(cid, "keep" if i in keep_indices else "archive", "coreset_greedy", step)
+            for i, cid in enumerate(active_ids)
+        ]
+        return keep_ids, actions
+
+
+
 def write_maintenance_artifacts(
     output_dir: str | Path,
     stats_store: CaseStatisticsStore,
