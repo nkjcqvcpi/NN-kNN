@@ -10,8 +10,11 @@
   - `model/t1_maintenance.py`: Common case-maintenance policy interface with stable case IDs, activation-weighted provenance ($Q_i$), geometric trustworthiness ($T_i$), coverage floors, reversible `CaseArchiveStore`, regression counterfactual auditing, and classical CBM baselines (DROP3, ICF, CoreSet).
   - `model/t1_revise.py`: Neural consensus-guided case reviser and authorized human intervention management with $M_0 \to M_1 \to M_2$ causal flip auditing.
   - `model/t1_workflow.py`: Unified `T1Config` workflow, model builder, evaluator, leave-one-out adapter trainer, and contract logger (`run_manifest.yaml`, `case_statistics.jsonl`, `case_maintenance.jsonl`, `retrieval_events.jsonl`).
-- **Test Suite:** `tests/test_t1_neural_cbr.py` passes all 13 unit/integration gates (100% pass rate).
-- **Benchmark Suite:** `tools/run_t1_benchmark.py` runs matched-condition matrix across policies, adapters, and MCB conditions.
+  - `model/t1_scheduler.py`: `FullPipelineTrainer` supporting 5 candidate end-to-end training schedules (`staged_sequential`, `alternating`, `joint_synchronized`, `warmup_alternating`, `warmup_joint`) with gradient-time provenance accumulation, MCB momentum tracking, case compaction, optimizer state isolation, and $\tau_{\text{task}}$ calibration.
+  - `tools/run_schedule_exploration.py`: Empirical exploration benchmark across datasets (`iris`, `wine`, `synthetic`), multi-seed trials, and all 5 schedules.
+- **Test Suite:** `tests/test_t1_neural_cbr.py` (13/13 passing) and `tests/test_t1_scheduler.py` (3/3 passing).
+- **Benchmark Suite:** `tools/run_t1_benchmark.py` (matched-condition matrix) and `tools/run_schedule_exploration.py` (schedule exploration).
+- **Optimal Training Schedule Finding:** Empirical evaluation demonstrates that `staged_sequential` (warm-up core + MCB $\to$ case compaction $\to$ free-correction calibration $\to$ frozen-representation reuse adaptation) achieves Pareto-optimal performance (mean Post-Accuracy 88.9% vs. 73.0%–76.7% for co-tuning schedules, zero representation drift $\Delta_{\text{rep}} = 0.0000$, and complete protection of retrieval metric geometry).
 
 ## Current Status
 
