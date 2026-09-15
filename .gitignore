@@ -33,3 +33,8 @@ checkpoints/regression_covid_lonely_reg.h5
 checkpoints/regression_covid_physical_reg.h5
 results/table1_kfold_20260418_213251/stdout.log
 /results/rl/
+/results/t0_battery/
+/results/t0_battery_xpu/
+/results/t0_benchmark/
+/results/t1_battery/
+/results/t1_benchmark/
