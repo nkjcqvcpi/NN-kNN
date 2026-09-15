@@ -1,5 +1,18 @@
 # Handoff
 
+## T1 Full-Cycle Neural CBR Status (2026-09-15)
+
+- **T0 formally merged into T1** per project roadmap; all 4 CBR stages (Retrieve, Reuse, Revise, Retain) plus Momentum Case Base (MCB) cross-cutting stabilization and component synchronization are unified in `model/t1_*.py`.
+- **Implementation Handoff Document:** Detailed report covering all 12 checklist deliverables is available at `docs/T1_IMPLEMENTATION_HANDOFF.md`.
+- **Key Modules:**
+  - `model/t1_mcb.py`: Momentum Case Base (MCB-R) projection head, two-timescale EMA encoder pair, and drift/churn stability metrics.
+  - `model/t1_synchronization.py`: Free-correction radius calibration from post-core-training frozen bias activation regions and multi-term synchronized losses ($L_R, L_A, L_{\text{small}}$).
+  - `model/t1_maintenance.py`: Common case-maintenance policy interface with stable case IDs, activation-weighted provenance ($Q_i$), geometric trustworthiness ($T_i$), coverage floors, reversible `CaseArchiveStore`, regression counterfactual auditing, and classical CBM baselines (DROP3, ICF, CoreSet).
+  - `model/t1_revise.py`: Neural consensus-guided case reviser and authorized human intervention management with $M_0 \to M_1 \to M_2$ causal flip auditing.
+  - `model/t1_workflow.py`: Unified `T1Config` workflow, model builder, evaluator, leave-one-out adapter trainer, and contract logger (`run_manifest.yaml`, `case_statistics.jsonl`, `case_maintenance.jsonl`, `retrieval_events.jsonl`).
+- **Test Suite:** `tests/test_t1_neural_cbr.py` passes all 13 unit/integration gates (100% pass rate).
+- **Benchmark Suite:** `tools/run_t1_benchmark.py` runs matched-condition matrix across policies, adapters, and MCB conditions.
+
 ## Current Status
 
 - The maintained NN-kNN core supports both regression and classification.
