@@ -6,6 +6,7 @@
 # Logs: logs\t1\<experiment>__<dataset>.log ; queue status: logs\t1\queue_status.txt
 param(
     [string[]]$Configs,
+    [string[]]$Datasets = @(),
     [int]$MaxParallel = 8
 )
 $ErrorActionPreference = 'Stop'
@@ -16,11 +17,12 @@ $py = Join-Path $repo '.venv\Scripts\python.exe'
 New-Item -ItemType Directory -Force logs\t1 | Out-Null
 # -File passes '-Configs a,b' as one string; split it ourselves
 $Configs = @($Configs | ForEach-Object { $_ -split ',' } | Where-Object { $_.Trim() } | ForEach-Object { $_.Trim() })
+$Datasets = @($Datasets | ForEach-Object { $_ -split ',' } | Where-Object { $_.Trim() } | ForEach-Object { $_.Trim() })
 $jobs = @()
 foreach ($c in $Configs) {
     $cfgPath = "configs\t1\$c.yaml"
     $names = & $py -c "import yaml,sys; c=yaml.safe_load(open(sys.argv[1])); print('\n'.join(d['name'] for d in c['datasets']))" $cfgPath
-    foreach ($n in $names) { if ($n.Trim()) { $jobs += [pscustomobject]@{ cfg = $cfgPath; ds = $n.Trim(); exp = $c } } }
+    foreach ($n in $names) { if ($n.Trim() -and ($Datasets.Count -eq 0 -or $Datasets -contains $n.Trim())) { $jobs += [pscustomobject]@{ cfg = $cfgPath; ds = $n.Trim(); exp = $c } } }
 }
 $running = @()
 $done = 0

@@ -220,7 +220,7 @@ class Runner:
         else:
             from model.regression_workflow import make_regression_cfg
 
-            lcfg = make_regression_cfg(self.cfg["legacy"].get("overrides", {}))
+            lcfg = make_regression_cfg({**self.cfg["legacy"].get("overrides", {}), **self.cfg["legacy"]["regression_overrides"]})
         run_dir = self.out / ds["name"] / "legacy" / f"s{seed}"
         run_dir.mkdir(parents=True, exist_ok=True)
         lcfg["checkpoint_path"] = str(run_dir / "legacy_best.pth")
