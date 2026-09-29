@@ -157,6 +157,20 @@ def make_optimizer(model: NN_KNN_Model, cfg: CoreConfig) -> torch.optim.Optimize
     return torch.optim.Adam(groups, weight_decay=cfg.weight_decay)
 
 
+def clone_optimizer(src: torch.optim.Optimizer, model: NN_KNN_Model, cfg: CoreConfig) -> torch.optim.Optimizer:
+    """Optimizer for a deep-copied model that continues ``src``'s Adam state.
+
+    Continuing training of a converged core with a *fresh* Adam is unstable: the
+    first bias-corrected steps are ~lr * sign(grad) for every case bias and feature
+    weight at once, which can collapse retrieval (observed: digits 0.98 -> 0.10 in a
+    few epochs). All post-core phases (fine-tune after maintenance, synchronization,
+    M2 retraining) therefore continue the core optimizer's state.
+    """
+    opt = make_optimizer(model, cfg)
+    opt.load_state_dict(src.state_dict())
+    return opt
+
+
 def task_loss(model: NN_KNN_Model, final_predictions: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     if model.task_type == "classification":
         return classification_class_mass_loss(final_predictions, y)

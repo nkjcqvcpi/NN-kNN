@@ -328,3 +328,16 @@ def test_compaction_never_mutates_caller_training_data():
     model, _ = _model(X, y)
     model.compact_cases(torch.tensor([5, 1, 30]))
     assert torch.equal(X, X0) and torch.equal(y, y0)
+
+
+def test_clone_optimizer_continues_state():
+    from model.t1.core import clone_optimizer
+
+    X, y = _toy()
+    model, cc = _model(X, y)
+    tr = train_retrieval(model, X, y, X, y, cc, epochs=2)
+    m2 = copy.deepcopy(model)
+    opt2 = clone_optimizer(tr.optimizer, m2, cc)
+    a = tr.optimizer.state[model.biases]["exp_avg_sq"]
+    b = opt2.state[m2.biases]["exp_avg_sq"]
+    assert torch.equal(a, b) and a.abs().sum() > 0

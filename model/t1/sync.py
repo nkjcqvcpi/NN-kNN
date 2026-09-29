@@ -84,6 +84,7 @@ def train_synchronized(
     maintenance_hook: Callable[[int, Any, torch.optim.Optimizer], dict[str, Any] | None] | None = None,
     maintenance_epochs: set[int] | None = None,
     recalibrate: Callable[[int], FreeRadius] | None = None,
+    core_optimizer: torch.optim.Optimizer | None = None,
 ) -> tuple[ClassificationNNCDHAdapter, dict[str, Any]]:
     torch.manual_seed(cfg.seed)
     device = model.cases.device
@@ -91,7 +92,7 @@ def train_synchronized(
     C = int(data.num_classes)
     feat_dim = model.retrieve(X[:1], exclude_identical=False)["query_features"].shape[1]
     adapter = ClassificationNNCDHAdapter(feat_dim, C, 0, cfg.hidden_dims, cfg.output_mode).to(device)
-    ropt = make_optimizer(model, core_cfg)
+    ropt = core_optimizer if core_optimizer is not None else make_optimizer(model, core_cfg)
     aopt = torch.optim.Adam(adapter.parameters(), lr=cfg.adapter_lr)
     g = torch.Generator().manual_seed(cfg.seed)
     hist: list[dict[str, Any]] = []

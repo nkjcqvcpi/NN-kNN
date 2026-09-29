@@ -1,0 +1,5 @@
+base: p4_sync.yaml
+experiment: smoke_sync_digits
+status: exploratory_smoke
+seeds: [0]
+datasets: [{name: digits, task_type: classification}]
