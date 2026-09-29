@@ -29,7 +29,8 @@ from typing import Any, Callable
 import numpy as np
 import torch
 
-from .core import CoreConfig, evaluate, train_retrieval
+from .core import CoreConfig, clone_optimizer, evaluate, train_retrieval
+from .maintenance import realign_optimizer_state
 
 _ids = itertools.count()
 
@@ -101,6 +102,7 @@ def evaluate_m0_m1_m2(
     retrain_epochs: int,
     influenced_mask: Callable[[Any, list[int]], torch.Tensor] | None = None,
     y_train: torch.Tensor | None = None,
+    core_optimizer: torch.optim.Optimizer | None = None,
 ) -> dict[str, Any]:
     """M0 = saved trained model; M1 = after ``edit`` without gradients; M2 = M1 + fixed retraining budget.
 
@@ -115,13 +117,19 @@ def evaluate_m0_m1_m2(
     mask = log.case_mask(m1)
     e1 = evaluate(m1, data.X_test, data.y_test, case_mask=mask)
     m2 = copy.deepcopy(m1)
+    opt2 = clone_optimizer(core_optimizer, m2, core_cfg) if core_optimizer is not None else None
     if mask is not None:
         # quarantined cases leave the active set before retraining (reversible via log/archive)
         keep = torch.nonzero(mask).view(-1)
+        n_old = m2.case_count()
         m2.compact_cases(keep)
+        if opt2 is not None:
+            realign_optimizer_state(opt2, m2, keep.cpu().numpy(), n_old)
     if retrain_epochs > 0:
-        # the corrected cases are also training queries: retrain on the corrected targets
-        train_retrieval(m2, data.X_train, data.y_train if y_train is None else y_train, data.X_val, data.y_val, core_cfg, epochs=retrain_epochs, select_best=False)
+        # fixed, reported budget; corrected cases are also training queries, so retrain on corrected targets
+        ft_cfg = copy.copy(core_cfg)
+        ft_cfg.patience = retrain_epochs + 1
+        train_retrieval(m2, data.X_train, data.y_train if y_train is None else y_train, data.X_val, data.y_val, ft_cfg, epochs=retrain_epochs, optimizer=opt2, select_best=False)
     e2 = evaluate(m2, data.X_test, data.y_test)
     y = data.y_test
     out: dict[str, Any] = {"edited_case_ids": edited, "retrain_epochs": retrain_epochs}
@@ -181,6 +189,7 @@ def flagging_ablation(
     retrain_epochs: int,
     run_id: str,
     seed: int,
+    core_optimizer: torch.optim.Optimizer | None = None,
 ) -> list[dict[str, Any]]:
     """Simulated review: the reviewer inspects the top-b flagged cases and repairs the corrupted ones."""
     rng = np.random.default_rng(seed)
@@ -206,6 +215,7 @@ def flagging_ablation(
             res = evaluate_m0_m1_m2(
                 model, data, core_cfg, edit, log, retrain_epochs=retrain_epochs,
                 influenced_mask=lambda m, e: influenced_by(m, data.X_test, e), y_train=y_fixed,
+                core_optimizer=core_optimizer,
             )
             n_bad = int(truth_corrupted.sum())
             rows.append(
