@@ -30,17 +30,6 @@ from model.rl_workflow import (
     _validate_early_stopping_config,
     seed_everything,
 )
-from model.t0_maintenance import (
-    BiasOnlyPolicy,
-    CaseArchiveStore,
-    CaseMaintenancePolicy,
-    CaseStatisticsStore,
-    ProvenanceBiasCoveragePolicy,
-    ProvenanceOnlyPolicy,
-    StratifiedRandomPolicy,
-    TrustworthinessOnlyPolicy,
-    audit_regression_provenance_counterfactual,
-)
 
 ALGORITHM_NAME = "nnknn_actor_critic_separate_memory_gae"
 
@@ -105,10 +94,6 @@ class NNKNNRLConfig:
     case_maintenance_frequency: int = 1_000
     case_prune_quantile: float = 0.05
     case_prune_bias_threshold: float | None = None
-    case_maintenance_policy: str = "bias_only"  # or 'provenance_bias_coverage', 'trustworthiness_only', 'provenance_only', 'stratified'
-    case_score_smoothing: float = 1.0
-    case_trust_alpha: float = 0.5
-    case_archive_evictions: bool = True
     min_cases_per_action: int = 8
     share_nnknn_representation: bool = True
     critic_target_value_mode: str = "ema"
@@ -118,27 +103,6 @@ class NNKNNRLConfig:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
-
-
-def _make_rl_maintenance_policy(cfg: NNKNNRLConfig, seed: int = 42) -> CaseMaintenancePolicy:
-    mode = str(getattr(cfg, "case_maintenance_policy", "bias_only")).strip().lower()
-    if mode in {"provenance_bias_coverage", "t0_primary", "default"}:
-        return ProvenanceBiasCoveragePolicy(
-            smoothing=getattr(cfg, "case_score_smoothing", 1.0),
-            alpha=getattr(cfg, "case_trust_alpha", 0.5),
-            min_per_cohort=max(1, getattr(cfg, "min_cases_per_action", 2)),
-        )
-    elif mode in {"provenance_only", "q_only"}:
-        return ProvenanceOnlyPolicy(smoothing=getattr(cfg, "case_score_smoothing", 1.0))
-    elif mode in {"trustworthiness_only", "t_only"}:
-        return TrustworthinessOnlyPolicy(
-            smoothing=getattr(cfg, "case_score_smoothing", 1.0),
-            alpha=getattr(cfg, "case_trust_alpha", 0.5),
-        )
-    elif mode in {"stratified", "random"}:
-        return StratifiedRandomPolicy(seed=seed)
-    else:
-        return BiasOnlyPolicy()
 
 
 class NNKNNPolicyNetwork(nn.Module):
@@ -174,8 +138,6 @@ class NNKNNPolicyNetwork(nn.Module):
         self.glocal_fw_set_num = int(glocal_fw_set_num)
         self._prune_quantile = 0.0
         self._prune_bias_threshold: float | None = None
-        self.register_buffer("case_ids", torch.full((self.case_capacity,), -1, dtype=torch.long))
-        self.register_buffer("next_case_id", torch.zeros((), dtype=torch.long))
 
         cases = torch.zeros(self.case_capacity, self.obs_dim, dtype=torch.float32)
         labels = torch.zeros(self.case_capacity, self.action_dim, dtype=torch.float32)
@@ -220,96 +182,10 @@ class NNKNNPolicyNetwork(nn.Module):
             **model_config,
         )
         self.nnknn_model.to(self.nnknn_model.cases.device)
-        self.stats_store = CaseStatisticsStore()
-        self.archive_store = CaseArchiveStore()
-        self.maintenance_policy: CaseMaintenancePolicy | None = None
-
-    def set_maintenance_policy(self, policy: CaseMaintenancePolicy, archive_store: CaseArchiveStore | None = None) -> None:
-        self.maintenance_policy = policy
-        if archive_store is not None:
-            self.archive_store = archive_store
-
-    def observe_actor_experience(
-        self,
-        observations: torch.Tensor,
-        actions: torch.Tensor,
-        advantages: torch.Tensor,
-        step: int = 0,
-    ) -> None:
-        active_count = self.case_entries
-        if active_count <= 0:
-            return
-        with torch.no_grad():
-            obs_dev = observations.to(self.nnknn_model.cases.device, dtype=torch.float32)
-            if obs_dev.dim() == 1:
-                obs_dev = obs_dev.unsqueeze(0)
-            c_feats = self.nnknn_model.cases[:active_count]
-            if getattr(self.nnknn_model, "feature_extractor", None) is not None:
-                c_feats = self.nnknn_model.feature_extractor(c_feats)
-                q_feats = self.nnknn_model.feature_extractor(obs_dev)
-            else:
-                q_feats = obs_dev
-            q_exp = q_feats.unsqueeze(1).expand(-1, active_count, -1)
-            c_exp = c_feats.unsqueeze(0).expand(obs_dev.size(0), -1, -1)
-            dists = torch.sqrt(torch.relu(((q_exp - c_exp) ** 2).sum(dim=-1)))
-            scores = self.nnknn_model.biases[:active_count].unsqueeze(0) - dists
-            k_eff = min(int(self.top_k), active_count)
-            top_scores, top_idx = torch.topk(scores, k=k_eff, dim=1)
-            weights = F.softmax(top_scores / max(self.tau, 1e-4), dim=1)
-
-            case_labels = self.nnknn_model.labels[:active_count].argmax(dim=-1)
-            act_np = actions.view(-1).cpu().numpy()
-            adv_np = advantages.view(-1).cpu().numpy()
-            weights_np = weights.cpu().numpy()
-            indices_np = top_idx.cpu().numpy()
-            active_ids = self.active_case_ids().cpu().numpy()
-            B, K = weights.shape
-            for b in range(B):
-                a_exec = int(act_np[b])
-                adv_val = float(adv_np[b])
-                for k in range(K):
-                    slot = int(indices_np[b, k])
-                    cid = int(active_ids[slot])
-                    act_mass = float(weights_np[b, k])
-                    case_action = int(case_labels[slot].item())
-                    self.stats_store.observe_rl_actor_advantage(
-                        retrieved_case_ids=[cid],
-                        activations=[act_mass],
-                        case_actions=[case_action],
-                        executed_action=a_exec,
-                        advantage=adv_val,
-                        step=step,
-                    )
 
     @property
     def case_entries(self) -> int:
         return self.nnknn_model.case_count()
-
-    def active_case_ids(self) -> torch.Tensor:
-        return self.case_ids[: self.case_entries]
-
-    def _assign_new_case_ids(self, start: int, count: int) -> None:
-        if count <= 0:
-            return
-        with torch.no_grad():
-            first_id = int(self.next_case_id.item())
-            self.case_ids[start : start + count].copy_(
-                torch.arange(first_id, first_id + count, device=self.case_ids.device, dtype=torch.long)
-            )
-            self.next_case_id.add_(count)
-
-    def _compact_cases(self, keep_indices: torch.Tensor | list[int]) -> int:
-        active_count = self.case_entries
-        keep_t = torch.as_tensor(keep_indices, dtype=torch.long, device=self.case_ids.device).view(-1)
-        kept_ids = self.case_ids[keep_t].clone()
-        removed = self.nnknn_model.compact_cases(keep_t)
-        new_count = int(keep_t.numel())
-        with torch.no_grad():
-            if new_count:
-                self.case_ids[:new_count].copy_(kept_ids)
-            if new_count < active_count:
-                self.case_ids[new_count:active_count].fill_(-1)
-        return removed
 
     def case_state(self) -> dict[str, Any]:
         return {
@@ -369,7 +245,6 @@ class NNKNNPolicyNetwork(nn.Module):
             labels = F.one_hot(actions_t, num_classes=self.action_dim).to(dtype=torch.float32)
             start = self.case_entries
             added = self.nnknn_model.append_cases(obs_t, labels)
-            self._assign_new_case_ids(start, added)
             return {"added": added, "pruned": 0, "replaced": 0, "start": start, "end": start + added}
         added = 0
         replaced = 0
@@ -383,12 +258,11 @@ class NNKNNPolicyNetwork(nn.Module):
                 if replace_idx is None:
                     continue
                 keep_indices = [i for i in range(self.case_entries) if i != replace_idx]
-                self._compact_cases(keep_indices)
+                self.nnknn_model.compact_cases(keep_indices)
                 replaced += 1
             label = F.one_hot(actions_t[idx], num_classes=self.action_dim).to(dtype=torch.float32).unsqueeze(0)
             start = self.case_entries
             self.nnknn_model.append_cases(obs_t[idx].unsqueeze(0), label)
-            self._assign_new_case_ids(start, 1)
             if first_added_index is None:
                 first_added_index = start
             added += 1
@@ -409,44 +283,10 @@ class NNKNNPolicyNetwork(nn.Module):
                 return idx
         return None
 
-    def prune_cases(self, *, force: bool = False, step: int = 0) -> int:
+    def prune_cases(self, *, force: bool = False) -> int:
         active_count = self.case_entries
         if active_count <= 0:
             return 0
-        if self.maintenance_policy is not None and not isinstance(self.maintenance_policy, BiasOnlyPolicy):
-            target = max(self.min_cases_per_action * self.action_dim, int(active_count * (1.0 - max(self._prune_quantile, 0.05))))
-            if force:
-                target = min(target, active_count - 1)
-            if target >= active_count:
-                return 0
-            active_ids = self.active_case_ids().cpu().tolist()
-            keep_ids, actions = self.maintenance_policy.select_keep_case_ids(
-                active_case_ids=active_ids,
-                cases=self.nnknn_model.cases,
-                labels=self.nnknn_model.labels,
-                biases=self.nnknn_model.biases,
-                stats_store=self.stats_store,
-                target_capacity=target,
-                step=step,
-            )
-            keep_set = set(keep_ids)
-            if self.archive_store is not None:
-                for idx, cid in enumerate(active_ids):
-                    if cid not in keep_set:
-                        st = self.stats_store.ensure(cid)
-                        self.archive_store.archive_case(
-                            case_id=cid,
-                            case_tensor=self.nnknn_model.cases[idx],
-                            label_tensor=self.nnknn_model.labels[idx],
-                            bias=float(self.nnknn_model.biases[idx].item()),
-                            stats=st,
-                            step=step,
-                            reason="policy_pruning",
-                        )
-            id_to_idx = {cid: idx for idx, cid in enumerate(active_ids)}
-            keep_indices = [id_to_idx[cid] for cid in keep_ids if cid in id_to_idx]
-            return self._compact_cases(keep_indices)
-
         biases = self.nnknn_model.biases[:active_count].detach()
         thresholds: list[torch.Tensor] = []
         if self._prune_quantile > 0.0:
@@ -457,8 +297,6 @@ class NNKNNPolicyNetwork(nn.Module):
         if thresholds:
             threshold = torch.stack(thresholds).max()
             remove_candidates = torch.nonzero(biases < threshold, as_tuple=False).view(-1)
-            if force and remove_candidates.numel() == 0:
-                remove_candidates = torch.argsort(biases)[:1]
         elif force:
             remove_candidates = torch.argsort(biases)[:1]
         else:
@@ -484,7 +322,7 @@ class NNKNNPolicyNetwork(nn.Module):
             return 0
         remove_set = set(remove)
         keep_indices = [idx for idx in range(active_count) if idx not in remove_set]
-        return self._compact_cases(keep_indices)
+        return self.nnknn_model.compact_cases(keep_indices)
 
     def configure_case_maintenance(self, *, prune_quantile: float, prune_bias_threshold: float | None) -> None:
         self._prune_quantile = float(prune_quantile)
@@ -679,31 +517,6 @@ class NNKNNValueNetwork(nn.Module):
             del self.nnknn_model._buffers["labels"]
             self.nnknn_model.register_parameter("labels", labels_param)
         self.nnknn_model.to(self.nnknn_model.cases.device)
-        self.stats_store = CaseStatisticsStore()
-        self.archive_store = CaseArchiveStore()
-        self.maintenance_policy: CaseMaintenancePolicy | None = None
-
-    def set_maintenance_policy(self, policy: CaseMaintenancePolicy, archive_store: CaseArchiveStore | None = None) -> None:
-        self.maintenance_policy = policy
-        if archive_store is not None:
-            self.archive_store = archive_store
-
-    def observe_critic_experience(
-        self,
-        observations: torch.Tensor,
-        target_returns: torch.Tensor,
-        step: int = 0,
-    ) -> None:
-        if self.case_entries <= 1:
-            return
-        with torch.no_grad():
-            audit_regression_provenance_counterfactual(
-                model=self.nnknn_model,
-                audit_queries=observations,
-                audit_targets=target_returns,
-                stats_store=self.stats_store,
-                step=step,
-            )
 
     @property
     def case_entries(self) -> int:
@@ -897,44 +710,10 @@ class NNKNNValueNetwork(nn.Module):
         biases = self.nnknn_model.biases[: self.case_entries].detach()
         return int(torch.argmin(biases).item())
 
-    def prune_cases(self, *, force: bool = False, step: int = 0) -> int:
+    def prune_cases(self, *, force: bool = False) -> int:
         active_count = self.case_entries
         if active_count <= 0:
             return 0
-        if self.maintenance_policy is not None and not isinstance(self.maintenance_policy, BiasOnlyPolicy):
-            target = max(4, int(active_count * (1.0 - max(self._prune_quantile, 0.05))))
-            if force:
-                target = min(target, active_count - 1)
-            if target >= active_count:
-                return 0
-            active_ids = self.active_case_ids().cpu().tolist()
-            keep_ids, actions = self.maintenance_policy.select_keep_case_ids(
-                active_case_ids=active_ids,
-                cases=self.nnknn_model.cases,
-                labels=self.nnknn_model.labels,
-                biases=self.nnknn_model.biases,
-                stats_store=self.stats_store,
-                target_capacity=target,
-                step=step,
-            )
-            keep_set = set(keep_ids)
-            if self.archive_store is not None:
-                for idx, cid in enumerate(active_ids):
-                    if cid not in keep_set:
-                        st = self.stats_store.ensure(cid)
-                        self.archive_store.archive_case(
-                            case_id=cid,
-                            case_tensor=self.nnknn_model.cases[idx],
-                            label_tensor=self.nnknn_model.labels[idx],
-                            bias=float(self.nnknn_model.biases[idx].item()),
-                            stats=st,
-                            step=step,
-                            reason="critic_policy_pruning",
-                        )
-            id_to_idx = {cid: idx for idx, cid in enumerate(active_ids)}
-            keep_indices = [id_to_idx[cid] for cid in keep_ids if cid in id_to_idx]
-            return self._compact_cases(keep_indices)
-
         biases = self.nnknn_model.biases[:active_count].detach()
         thresholds: list[torch.Tensor] = []
         if self._prune_quantile > 0.0:
@@ -944,8 +723,6 @@ class NNKNNValueNetwork(nn.Module):
         if thresholds:
             threshold = torch.stack(thresholds).max()
             remove_candidates = torch.nonzero(biases < threshold, as_tuple=False).view(-1)
-            if force and remove_candidates.numel() == 0:
-                remove_candidates = torch.argsort(biases)[:1]
         elif force:
             remove_candidates = torch.argsort(biases)[:1]
         else:
@@ -1739,10 +1516,6 @@ def _build_actor_critic_models(
         # all per-case parameters remain private to their policy/value roles.
         value_model.nnknn_model.feature_extractor = actor.nnknn_model.feature_extractor
         value_model.nnknn_model.glocal_weightor = actor.nnknn_model.glocal_weightor
-    if isinstance(actor, NNKNNPolicyNetwork):
-        actor.set_maintenance_policy(_make_rl_maintenance_policy(cfg, seed=cfg.seed))
-    if isinstance(value_model, NNKNNValueNetwork):
-        value_model.set_maintenance_policy(_make_rl_maintenance_policy(cfg, seed=cfg.seed + 1))
     return actor, value_model
 
 
@@ -2392,12 +2165,6 @@ def _train_actor_critic_batch(
     value_predictions = value_model(obs_t)
     critic_loss = F.mse_loss(value_predictions, value_targets.detach())
 
-    # T0 CBR Provenance tracking
-    if isinstance(actor, NNKNNPolicyNetwork):
-        actor.observe_actor_experience(obs_t, actions_t, normalized_advantages, step=global_step)
-    if isinstance(value_model, NNKNNValueNetwork):
-        value_model.observe_critic_experience(obs_t, value_targets, step=global_step)
-
     if joint_optimizer is not None:
         joint_optimizer.zero_grad()
         differentiable_terms: list[torch.Tensor] = []
@@ -2883,7 +2650,7 @@ def train_nnknn_rl(
                 ):
                     if not isinstance(model, (NNKNNPolicyNetwork, NNKNNValueNetwork)):
                         continue
-                    pruned = model.prune_cases(step=completed_step)
+                    pruned = model.prune_cases()
                     if case_store == "actor":
                         actor_cases_pruned += pruned
                     else:

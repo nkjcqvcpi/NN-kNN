@@ -1,0 +1,11 @@
+base: _base.yaml
+experiment: smoke_mcb
+type: mcb
+status: exploratory_smoke
+seeds: [0]
+datasets: [{name: synthetic_diag, task_type: classification}]
+core: {representation: mlp, mlp_dims: [32, 16], epochs: 6, mcb_momentum: 0.9}
+maintenance_epochs: [2, 4]
+conditions:
+  - {mcb: false, policy: trust_utility_coverage, K: 0.5}
+  - {mcb: true, policy: trust_utility_coverage, K: 0.5}

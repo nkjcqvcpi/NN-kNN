@@ -1,9 +1,0 @@
-{
-  "total_active_cases": 200,
-  "archived_cases": 150,
-  "maintenance_actions": {
-    "archive": 150,
-    "keep": 50
-  },
-  "total_maintenance_events": 200
-}
