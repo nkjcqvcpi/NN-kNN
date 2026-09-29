@@ -1,0 +1,21 @@
+# Phase 1 diagnostics: known corruption / redundancy / rare / shift (synthetic_diag).
+base: _base.yaml
+experiment: p1_retention_synthetic
+type: retention
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+datasets:
+  - {name: synthetic_diag, task_type: classification}
+protocol: {finetune_epochs: 30}
+K: [0.3, 0.5]
+conditions:
+  - {policy: full_memory}
+  - {policy: random}
+  - {policy: stratified}
+  - {policy: bias_current}
+  - {policy: provenance_only}
+  - {policy: bias_normalized}
+  - {policy: trust}
+  - {policy: utility_redundancy}
+  - {policy: trust_utility}
+  - {policy: trust_utility_coverage}
+  - {policy: kcenter}

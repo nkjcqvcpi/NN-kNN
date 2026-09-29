@@ -1,0 +1,169 @@
+"""Classification reuse: aggregate, retrieved-label-conditioned NN-CDH (plan section 5).
+
+Training protocol (section 5.5):
+  1. retrieval core and case memory are trained and frozen;
+  2. adapter examples come from leave-one-out neighborhoods of training cases;
+  3. the adapter never alters retrieval;
+  4. retrieval-only vs adapted decisions are compared on identical case sets.
+
+Adapter input follows the information-flow rule: ``[Delta_z_q, (Delta_u_q), p0_q]``.
+Raw z_q, individual z_i, z_bar_q and raw cases are never passed.
+"""
+
+from __future__ import annotations
+
+import copy
+from dataclasses import dataclass
+from typing import Any
+
+import numpy as np
+import torch
+import torch.nn.functional as F
+
+from model.nn_cdh import ClassificationNNCDHAdapter
+
+from .core import expected_calibration_error
+
+
+@dataclass
+class ReuseConfig:
+    output_mode: str  # nominal_residual_scores | logit_residual
+    loss: str  # combined | diff_only | cls_only
+    lambda_diff: float
+    lambda_cls: float
+    probability_mode: str  # softmax | clip_normalize : how s_q is turned into probabilities for ECE
+    hidden_dims: tuple[int, int] = (64, 32)
+    lr: float = 1e-3
+    epochs: int = 200
+    patience: int = 20
+    batch_size: int = 64
+    seed: int = 0
+    nominal_fields_covered_by_representation: bool = True  # declared, not inferred (section 5.2)
+
+    def validate(self) -> None:
+        if self.output_mode not in {"nominal_residual_scores", "logit_residual"}:
+            raise ValueError(self.output_mode)
+        if self.loss not in {"combined", "diff_only", "cls_only"}:
+            raise ValueError(self.loss)
+        if self.loss == "combined" and not (self.lambda_diff > 0 and self.lambda_cls > 0):
+            raise ValueError("combined loss requires lambda_diff > 0 and lambda_cls > 0 (plan 5.4)")
+
+
+@torch.no_grad()
+def neighborhood_inputs(model, X: torch.Tensor, *, exclude_identical: bool, X_nominal: torch.Tensor | None = None, nominal_case: torch.Tensor | None = None) -> dict[str, torch.Tensor]:
+    """Frozen-retrieval neighborhood quantities for queries X."""
+    model.eval()
+    r = model.retrieve(X.to(model.cases.device), exclude_identical=exclude_identical)
+    w = r["weights"]
+    labels = model.labels[r["case_indices"]].float()
+    p0 = w @ labels
+    p0 = p0 / p0.sum(1, keepdim=True).clamp_min(1e-12)
+    z_bar = w @ r["case_features"]
+    dz = r["query_features"] - z_bar
+    du = None
+    if X_nominal is not None and nominal_case is not None:
+        du = X_nominal.to(w.device).float() - w @ nominal_case[r["case_indices"]].float()
+    return {"dz": dz.detach(), "p0": p0.detach(), "du": du, "weights": w.detach()}
+
+
+def _probs_from_scores(s: torch.Tensor, mode: str) -> torch.Tensor:
+    if mode == "softmax":
+        return F.softmax(s, dim=1)
+    if mode == "clip_normalize":
+        c = s.clamp_min(0)
+        return c / c.sum(1, keepdim=True).clamp_min(1e-12)
+    raise ValueError(mode)
+
+
+def _adapter_losses(adapter, out_r, out_s, p0, y, cfg: ReuseConfig) -> dict[str, torch.Tensor]:
+    C = p0.size(1)
+    y1 = F.one_hot(y.long(), C).float()
+    r_star = y1 - p0
+    if cfg.output_mode == "nominal_residual_scores":
+        l_diff = F.mse_loss(out_r, r_star)
+        l_cls = F.cross_entropy(out_s, y.long())  # plan 5.4: cross_entropy(s_q, y_q)
+    else:
+        # logit mode: residual target is not a literal nominal difference; measure the
+        # implied probability change against r* for the diff term.
+        l_diff = F.mse_loss(out_s - p0, r_star)
+        l_cls = F.nll_loss(torch.log(out_s.clamp_min(1e-8)), y.long())
+    if cfg.loss == "diff_only":
+        total = l_diff
+    elif cfg.loss == "cls_only":
+        total = l_cls
+    else:
+        total = cfg.lambda_diff * l_diff + cfg.lambda_cls * l_cls
+    return {"loss": total, "l_diff": l_diff, "l_cls": l_cls}
+
+
+def train_classification_adapter(model, data, cfg: ReuseConfig) -> tuple[ClassificationNNCDHAdapter, dict[str, Any]]:
+    cfg.validate()
+    torch.manual_seed(cfg.seed)
+    C = int(data.num_classes)
+    tr = neighborhood_inputs(model, data.X_train, exclude_identical=True)  # LOO neighborhoods
+    va = neighborhood_inputs(model, data.X_val, exclude_identical=False)
+    adapter = ClassificationNNCDHAdapter(
+        feature_dim=tr["dz"].shape[1], num_classes=C, nominal_dim=0, hidden_dims=cfg.hidden_dims, output_mode=cfg.output_mode
+    ).to(tr["dz"].device)
+    opt = torch.optim.Adam(adapter.parameters(), lr=cfg.lr)
+    ytr = data.y_train.to(tr["dz"].device)
+    yva = data.y_val.to(tr["dz"].device)
+    g = torch.Generator().manual_seed(cfg.seed)
+    best = (float("inf"), None, -1)
+    bad = 0
+    hist = []
+    for ep in range(1, cfg.epochs + 1):
+        adapter.train()
+        perm = torch.randperm(ytr.numel(), generator=g)
+        for s in range(0, ytr.numel(), cfg.batch_size):
+            b = perm[s : s + cfg.batch_size]
+            r, sc = adapter(tr["dz"][b], tr["p0"][b], None)
+            L = _adapter_losses(adapter, r, sc, tr["p0"][b], ytr[b], cfg)
+            opt.zero_grad()
+            L["loss"].backward()
+            opt.step()
+        adapter.eval()
+        with torch.no_grad():
+            r, sc = adapter(va["dz"], va["p0"], None)
+            Lv = _adapter_losses(adapter, r, sc, va["p0"], yva, cfg)
+        hist.append({"epoch": ep, "val_loss": float(Lv["loss"]), "val_l_diff": float(Lv["l_diff"]), "val_l_cls": float(Lv["l_cls"])})
+        if float(Lv["loss"]) < best[0] - 1e-9:
+            best, bad = (float(Lv["loss"]), copy.deepcopy(adapter.state_dict()), ep), 0
+        else:
+            bad += 1
+            if bad > cfg.patience:
+                break
+    adapter.load_state_dict(best[1])
+    adapter.eval()
+    return adapter, {"history": hist, "best_epoch": best[2], "n_train_examples": int(ytr.numel()), "neighborhoods": "leave_one_out"}
+
+
+@torch.no_grad()
+def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseConfig) -> dict[str, Any]:
+    """Pre (retrieval-only) vs post (adapted) on the same case set; flip accounting."""
+    nb = neighborhood_inputs(model, X, exclude_identical=False)
+    p0 = nb["p0"]
+    y = y.to(p0.device).long()
+    r, s = adapter(nb["dz"], p0, None)
+    pre = p0.argmax(1)
+    post = s.argmax(1)
+    probs_post = s if cfg.output_mode == "logit_residual" else _probs_from_scores(s, cfg.probability_mode)
+    ok_pre, ok_post = pre == y, post == y
+    flips = {
+        "wrong_to_correct": int((~ok_pre & ok_post).sum()),
+        "correct_to_wrong": int((ok_pre & ~ok_post).sum()),
+        "wrong_to_other_wrong": int((~ok_pre & ~ok_post & (pre != post)).sum()),
+        "unchanged": int((pre == post).sum()),
+    }
+    mag = (s - p0).abs().sum(1) if cfg.output_mode == "nominal_residual_scores" else (probs_post - p0).abs().sum(1)
+    return {
+        "accuracy_pre": float(ok_pre.float().mean()),
+        "accuracy_post": float(ok_post.float().mean()),
+        "ece_pre": expected_calibration_error(p0.cpu(), y.cpu()),
+        "ece_post": expected_calibration_error(probs_post.cpu(), y.cpu()),
+        "probability_mode": cfg.probability_mode if cfg.output_mode == "nominal_residual_scores" else "softmax(log p0 + delta)",
+        "flips": flips,
+        "net_beneficial_flips": flips["wrong_to_correct"] - flips["correct_to_wrong"],
+        "correction_l1_mean": float(mag.mean()),
+        "n": int(y.numel()),
+    }

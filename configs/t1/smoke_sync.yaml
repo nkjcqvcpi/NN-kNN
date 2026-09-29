@@ -1,0 +1,12 @@
+base: _base.yaml
+experiment: smoke_sync
+type: sync
+status: exploratory_smoke
+seeds: [0]
+datasets: [{name: synthetic_diag, task_type: classification}]
+core: {epochs: 5}
+sync: {s_task: 0.5, w_pre: 1.0, w_post: 0.5, w_near: 0.1, v_post: 1.0, v_delta: 1.0, v_small: 0.1, epochs: 6, block_epochs: 2, patience: 5, K: 0.5, maintenance_epochs: [3], probability_mode: softmax}
+conditions:
+  - {schedule: independent}
+  - {schedule: alternating_rr}
+  - {schedule: alternating_rrr}

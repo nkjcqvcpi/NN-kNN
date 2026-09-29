@@ -1,0 +1,25 @@
+# Phase 1: regression retention with counterfactual provenance on pre-adaptation output.
+base: _base.yaml
+experiment: p1_retention_regression
+type: retention
+seeds: [0, 1, 2, 3, 4]
+datasets:
+  - {name: energy_efficiency, task_type: regression}
+  - {name: yacht, task_type: regression}
+  - {name: airfoil, task_type: regression}
+  - {name: student_performance, task_type: regression}
+  - {name: abalone, task_type: regression, max_train: 1500}
+protocol: {finetune_epochs: 30}
+K: [0.2, 0.5]
+conditions:
+  - {policy: full_memory}
+  - {policy: random}
+  - {policy: stratified}
+  - {policy: bias_current}
+  - {policy: provenance_only}
+  - {policy: bias_normalized}
+  - {policy: trust}
+  - {policy: utility_redundancy}
+  - {policy: trust_utility}
+  - {policy: trust_utility_coverage}
+  - {policy: kcenter}

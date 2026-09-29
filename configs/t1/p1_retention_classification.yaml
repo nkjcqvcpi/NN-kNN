@@ -1,0 +1,27 @@
+# Phase 1: fixed-K supervised retention on the IJCAI-25 classification testbeds.
+base: _base.yaml
+experiment: p1_retention_classification
+type: retention
+seeds: [0, 1, 2, 3, 4]
+datasets:
+  - {name: iris, task_type: classification}
+  - {name: wine, task_type: classification}
+  - {name: breast_cancer, task_type: classification}
+  - {name: balance, task_type: classification}
+  - {name: digits, task_type: classification}
+  - {name: zebra, task_type: classification}
+  - {name: zebra_special, task_type: classification}
+protocol: {finetune_epochs: 30}
+K: [0.2, 0.33, 0.5, 0.75]
+conditions:
+  - {policy: full_memory}
+  - {policy: random}
+  - {policy: stratified}
+  - {policy: bias_current}
+  - {policy: provenance_only}
+  - {policy: bias_normalized}
+  - {policy: trust}
+  - {policy: utility_redundancy}
+  - {policy: trust_utility}
+  - {policy: trust_utility_coverage}
+  - {policy: kcenter}
