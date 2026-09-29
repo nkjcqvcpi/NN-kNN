@@ -563,8 +563,11 @@ class NN_KNN_Model(nn.Module):
         """
 
         super(NN_KNN_Model, self).__init__()
-        self.register_buffer("cases", cases.to(device))  # Shape: [num_cases, *case_shape]
-        self.register_buffer("labels", labels.to(device))  # Shape: [num_cases, num_classes]
+        # Own copies: compact_cases/append_cases write into these buffers in place, and
+        # .to(device) on the same device aliases the caller's tensors (it would silently
+        # reorder/zero the caller's training data after compaction).
+        self.register_buffer("cases", cases.detach().clone().to(device))  # Shape: [num_cases, *case_shape]
+        self.register_buffer("labels", labels.detach().clone().to(device))  # Shape: [num_cases, num_classes]
         print("cases trainable:", self.cases.requires_grad)
         print("labels trainable:", self.labels.requires_grad)
 
@@ -962,19 +965,20 @@ class NN_KNN_Model(nn.Module):
 
 
 
-    def forward(self, query):
-        """
-        Perform forward pass and optionally provide explanations.
+    def retrieve(self, query, exclude_identical=None, case_mask=None):
+        """Run the NN-kNN retrieval step only (no label aggregation / reuse).
 
-        Args:
-            query (torch.Tensor): Query tensor of shape [batch_size, *query_shape].
+        Returns a dict with ``case_indices`` (active slots used), ``query_features``,
+        ``case_features``, ``distances`` [B, N_sel] and ``weights`` [B, N_sel]
+        (normalized activations a_i(x)).
 
-        Returns:
-            final_predictions (torch.Tensor): Predicted probabilities/logits for each class.
-            predicted_solution (torch.Tensor): Predicted class indices (classification) or values (regression).
-            most_activated_cases (list, optional): List of top-k most activated cases (if explanation_mode=True).
-            most_activated_case_labels (list, optional): Labels of the top-k most activated cases.
-            most_activated_activations (torch.Tensor, optional): Activations of the top-k most activated cases.
+        ``exclude_identical``: None keeps the training-time default
+        (``ignore_identical_in_training and self.training``); True forces
+        leave-one-out exclusion of zero-distance cases (used for audits on
+        training cases); False disables it.
+        ``case_mask``: optional bool tensor over active slots; False entries are
+        removed before normalization so remaining activations renormalize
+        (counterfactual case removal / quarantine).
         """
         batch_size = query.size(0)
         num_cases = self.case_count()
@@ -1020,11 +1024,18 @@ class NN_KNN_Model(nn.Module):
             elementwise_distance = self.glocal_weightor(elementwise_distance, glocal_weights)  # Weighted distances
 
         distances = torch.sqrt(torch.relu(torch.sum(elementwise_distance, dim=-1)))  # [batch_size, num_selected_cases]
-        if self.ignore_identical_in_training and self.training:
+        if exclude_identical is None:
+            exclude_identical = bool(self.ignore_identical_in_training and self.training)
+        if exclude_identical:
             eps = 1e-8
             identical_mask = (distances < eps)
         else:
             identical_mask = None
+        if case_mask is not None:
+            # Counterfactual/quarantine masking over *active* case slots: False = excluded.
+            cm = torch.as_tensor(case_mask, dtype=torch.bool, device=distances.device)[case_indices]
+            excluded = (~cm).unsqueeze(0).expand_as(distances)
+            identical_mask = excluded if identical_mask is None else (identical_mask | excluded)
 
         # Convert distances to activations
         # pre_activations = self.scaled_sigmoid(self.biases[case_indices] - distances)  # [batch_size, num_selected_cases]
@@ -1130,6 +1141,37 @@ class NN_KNN_Model(nn.Module):
                 weighted_activations = z
             if identical_mask is not None:
                 weighted_activations = weighted_activations.masked_fill(identical_mask, 0.0)
+        return {
+            "case_indices": case_indices,
+            "query_features": query_features,
+            "case_features": case_features,
+            "distances": distances,
+            "weights": weighted_activations,
+            "excluded": identical_mask,
+        }
+
+    def forward(self, query, exclude_identical=None, case_mask=None):
+        """
+        Perform forward pass and optionally provide explanations.
+
+        Args:
+            query (torch.Tensor): Query tensor of shape [batch_size, *query_shape].
+            exclude_identical / case_mask: see ``retrieve``.
+
+        Returns:
+            final_predictions (torch.Tensor): Predicted probabilities/logits for each class.
+            predicted_solution (torch.Tensor): Predicted class indices (classification) or values (regression).
+            most_activated_cases (list, optional): List of top-k most activated cases (if explanation_mode=True).
+            most_activated_case_labels (list, optional): Labels of the top-k most activated cases.
+            most_activated_activations (torch.Tensor, optional): Activations of the top-k most activated cases.
+        """
+        batch_size = query.size(0)
+        r = self.retrieve(query, exclude_identical=exclude_identical, case_mask=case_mask)
+        case_indices = r["case_indices"]
+        query_features = r["query_features"]
+        case_features = r["case_features"]
+        weighted_activations = r["weights"]
+
         # Multiply activations by labels
         selected_labels = self.labels[case_indices]  # [num_selected_cases, num_classes]
 
