@@ -18,5 +18,7 @@ datasets:
   - {name: abalone, task_type: regression, max_train: 1500}
 legacy:
   overrides: {}
-  # make_regression_cfg leaves batch_size unset (the notebooks set it); PILOT value
-  regression_overrides: {batch_size: 32}
+  # The maintained code has no canonical regression config (the notebooks set it):
+  # this is a *reconstruction* with maintained defaults, retrieval-only (no NN-CDH),
+  # not an exact IJCAI-26 protocol reproduction. PILOT values.
+  regression_overrides: {task_type: regression, batch_size: 32}
