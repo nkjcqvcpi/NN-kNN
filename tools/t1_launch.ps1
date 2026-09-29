@@ -14,6 +14,8 @@ Set-Location $repo
 $env:NNKNN_DEVICE = 'cpu'
 $py = Join-Path $repo '.venv\Scripts\python.exe'
 New-Item -ItemType Directory -Force logs\t1 | Out-Null
+# -File passes '-Configs a,b' as one string; split it ourselves
+$Configs = @($Configs | ForEach-Object { $_ -split ',' } | Where-Object { $_.Trim() } | ForEach-Object { $_.Trim() })
 $jobs = @()
 foreach ($c in $Configs) {
     $cfgPath = "configs\t1\$c.yaml"
