@@ -23,6 +23,7 @@ from model.t0_maintenance import (
     BiasOnlyPolicy,
     CaseArchiveStore,
     CaseMaintenancePolicy,
+    CaseStatistics,
     CaseStatisticsStore,
     CoreSetGreedyPolicy,
     DROP3Policy,
@@ -32,6 +33,7 @@ from model.t0_maintenance import (
     ProvenanceOnlyPolicy,
     StratifiedRandomPolicy,
     TrustworthinessOnlyPolicy,
+    audit_regression_provenance_counterfactual,
     write_maintenance_artifacts,
 )
 
@@ -58,9 +60,14 @@ class T0Config:
     classification_adapter_output_mode: str = "nominal_residual_scores"  # or 'logit_residual'
     classification_adapter_hidden_dims: tuple[int, int] = (64, 32)
     classification_adapter_freeze_retrieval_first: bool = True
+    classification_adapter_joint_finetune: bool = False
+    joint_retrieval_lr: float = 1e-4
     classification_adapter_lambda_diff: float = 1.0
     classification_adapter_lambda_cls: float = 1.0
     classification_adapter_lambda_mag: float = 0.01
+
+    # Regression counterfactual options
+    regression_counterfactual_method: str = "counterfactual"  # or 'directional'
 
     # Training parameters
     learning_rate: float = 1e-3
@@ -121,13 +128,29 @@ def build_t0_model(
 ) -> tuple[NN_KNN_Model, CaseStatisticsStore, CaseArchiveStore, CaseMaintenancePolicy]:
     """Construct an NN_KNN_Model equipped with T0 stable IDs, statistics, archive, and policy."""
     num_cases = X_train.size(0)
-    num_classes = y_train.size(1) if y_train.dim() > 1 else int(y_train.max().item() + 1)
+    is_regression = (cfg.task_type.lower() == "regression")
     
-    # Ensure one-hot targets for classification
-    if y_train.dim() == 1:
-        y_train_one_hot = F.one_hot(y_train.long(), num_classes=num_classes).float()
+    if is_regression:
+        num_classes = 1
+        if y_train.dim() == 1:
+            y_model_labels = y_train.view(-1, 1).float()
+        else:
+            y_model_labels = y_train.float()
+        y_np = y_model_labels.view(-1).detach().cpu().numpy()
+        # Quantile binning for cohort comparable bias and coverage
+        n_bins = min(5, len(np.unique(y_np)))
+        if n_bins > 1:
+            quantiles = np.quantile(y_np, np.linspace(0, 1, n_bins + 1))
+            cohort_assignments = np.digitize(y_np, quantiles[1:-1]).tolist()
+        else:
+            cohort_assignments = [0] * num_cases
     else:
-        y_train_one_hot = y_train.float()
+        num_classes = y_train.size(1) if y_train.dim() > 1 else int(y_train.max().item() + 1)
+        if y_train.dim() == 1:
+            y_model_labels = F.one_hot(y_train.long(), num_classes=num_classes).float()
+        else:
+            y_model_labels = y_train.float()
+        cohort_assignments = [int(y_model_labels[i].argmax().item()) for i in range(num_cases)]
 
     model_config = copy.deepcopy(default_args)
     model_config.update({
@@ -141,7 +164,7 @@ def build_t0_model(
 
     model = NN_KNN_Model(
         cases=X_train.clone(),
-        labels=y_train_one_hot.clone(),
+        labels=y_model_labels.clone(),
         feature_extractor=feature_extractor,
         **model_config,
     )
@@ -158,7 +181,7 @@ def build_t0_model(
 
     # Register initial case statistics
     for i in range(num_cases):
-        cohort = int(y_train_one_hot[i].argmax().item())
+        cohort = cohort_assignments[i]
         stats_store.register_case(
             case_id=i,
             initial_bias=float(model.biases[i].item()),
@@ -207,9 +230,16 @@ def train_leave_one_out_adapter(
     y_idx = y_train.long().to(device) if y_train.dim() == 1 else y_train.argmax(dim=-1).to(device)
     y_one_hot = F.one_hot(y_idx, num_classes=num_classes).float()
 
-    # Generate leave-one-out adaptation training pairs
-    # For query i, mask case i from retrieval
-    optimizer = torch.optim.Adam(adapter.parameters(), lr=cfg.adapter_learning_rate)
+    joint_finetune = bool(getattr(cfg, "classification_adapter_joint_finetune", False))
+    if joint_finetune:
+        model.train()
+        optimizer = torch.optim.Adam([
+            {"params": adapter.parameters(), "lr": cfg.adapter_learning_rate},
+            {"params": [model.biases], "lr": getattr(cfg, "joint_retrieval_lr", 1e-4)},
+        ])
+    else:
+        model.eval()
+        optimizer = torch.optim.Adam(adapter.parameters(), lr=cfg.adapter_learning_rate)
     batch_size = min(cfg.batch_size, num_samples)
 
     loss_history = []
@@ -307,9 +337,60 @@ def evaluate_t0_model(
     model.eval()
     model.to(device)
     num_samples = X_val.size(0)
-    y_idx = y_val.long().to(device) if y_val.dim() == 1 else y_val.argmax(dim=-1).to(device)
     active_count = model.case_count()
 
+    # Regression evaluation branch
+    if cfg.task_type.lower() == "regression":
+        y_targets = y_val.view(-1, 1).float().to(device)
+        audit_res = None
+        if stats_store is not None:
+            audit_res = audit_regression_provenance_counterfactual(
+                model=model,
+                audit_queries=X_val,
+                audit_targets=y_val,
+                stats_store=stats_store,
+                step=step,
+                method=getattr(cfg, "regression_counterfactual_method", "counterfactual"),
+                device=device,
+            )
+
+        with torch.no_grad():
+            fwd_out = model(X_val.to(device))
+            preds = fwd_out[0]
+            pre_adapt = fwd_out[2] if len(fwd_out) > 2 else None
+            if preds.dim() == 1:
+                preds = preds.view(-1, 1)
+            elif preds.dim() == 3:
+                preds = preds.sum(dim=1)
+            if pre_adapt is not None:
+                if pre_adapt.dim() == 3:
+                    pre_adapt = pre_adapt.sum(dim=1)
+                elif pre_adapt.dim() == 1:
+                    pre_adapt = pre_adapt.view(-1, 1)
+            y_pred_pre = pre_adapt if pre_adapt is not None else preds
+            pre_rmse = float(torch.sqrt(F.mse_loss(y_pred_pre, y_targets)).item())
+            pre_mae = float(F.l1_loss(y_pred_pre, y_targets).item())
+            post_rmse = float(torch.sqrt(F.mse_loss(preds, y_targets)).item())
+            post_mae = float(F.l1_loss(preds, y_targets).item())
+
+        return {
+            "pre_accuracy": -pre_rmse,  # Higher is better proxy
+            "post_accuracy": -post_rmse,
+            "pre_rmse": pre_rmse,
+            "post_rmse": post_rmse,
+            "pre_mae": pre_mae,
+            "post_mae": post_mae,
+            "rmse_delta": post_rmse - pre_rmse,
+            "active_cases": active_count,
+            "total_flips": 0,
+            "correct_flips": 0,
+            "harmful_flips": 0,
+            "net_flip_benefit": 0,
+            "audit_result": audit_res,
+        }
+
+    # Classification evaluation branch
+    y_idx = y_val.long().to(device) if y_val.dim() == 1 else y_val.argmax(dim=-1).to(device)
     batch_size = min(cfg.batch_size, num_samples)
     all_p0: list[torch.Tensor] = []
     all_scores: list[torch.Tensor] = []
@@ -359,7 +440,6 @@ def evaluate_t0_model(
 
             # Observe provenance if stats store is provided
             if stats_store is not None:
-                # Track top-1 or top-k retrieval contributions
                 top_case_ids = model.case_ids[top_idx].cpu().numpy()
                 weights_np = w.cpu().numpy()
                 pred_classes = top_labels.argmax(dim=-1).cpu().numpy()
@@ -431,3 +511,84 @@ def run_t0_maintenance_step(
     model.compact_cases(keep_indices)
 
     return model.case_count(), actions
+
+
+def save_t0_checkpoint(
+    path: str | Path,
+    model: NN_KNN_Model,
+    stats_store: CaseStatisticsStore,
+    archive_store: CaseArchiveStore,
+    cfg: T0Config,
+    extra_metadata: dict[str, Any] | None = None,
+) -> None:
+    """Serialize full T0 CBR state including weights, active case IDs, provenance, archive, and config."""
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    state = {
+        "model_state_dict": model.state_dict(),
+        "active_case_count": model.case_count(),
+        "case_ids": model.active_case_ids().cpu() if hasattr(model, "case_ids") else None,
+        "stats_snapshot": {k: asdict(v) for k, v in stats_store.snapshot().items()},
+        "archive_dict": {
+            k: {
+                "case_id": v["case_id"],
+                "case_tensor": v["case_tensor"].cpu(),
+                "label_tensor": v["label_tensor"].cpu(),
+                "bias": v["bias"],
+                "stats": asdict(v["stats"]),
+                "archived_at_step": v["archived_at_step"],
+                "eviction_reason": v["eviction_reason"],
+            }
+            for k, v in archive_store._archive.items()
+        },
+        "config": cfg.to_dict(),
+        "extra_metadata": extra_metadata or {},
+    }
+    torch.save(state, p)
+
+
+def load_t0_checkpoint(
+    path: str | Path,
+    X_sample: torch.Tensor,
+    y_sample: torch.Tensor,
+    device: torch.device = torch.device("cpu"),
+) -> tuple[NN_KNN_Model, CaseStatisticsStore, CaseArchiveStore, T0Config]:
+    """Restore complete T0 CBR model, active cases, stats store, archive, and policy config."""
+    p = Path(path)
+    state = torch.load(p, map_location=device, weights_only=False)
+    cfg_dict = state["config"]
+    cfg = T0Config(**{k: v for k, v in cfg_dict.items() if k in T0Config.__dataclass_fields__})
+    saved_cases = state["model_state_dict"].get("cases")
+    saved_labels = state["model_state_dict"].get("labels")
+    if saved_cases is not None and saved_labels is not None:
+        init_X = torch.zeros_like(saved_cases)
+        init_y = torch.zeros_like(saved_labels)
+    else:
+        init_X = X_sample
+        init_y = y_sample
+    model, stats_store, archive_store, _ = build_t0_model(init_X, init_y, cfg)
+    model.load_state_dict(state["model_state_dict"])
+    model.set_active_case_count(int(state["active_case_count"]))
+    if state.get("case_ids") is not None and hasattr(model, "case_ids"):
+        model.case_ids[: model.case_count()].copy_(state["case_ids"].to(model.case_ids.device))
+
+    # Restore stats
+    stats_store._stats.clear()
+    for cid_int, st_dict in state.get("stats_snapshot", {}).items():
+        st = CaseStatistics(**st_dict)
+        stats_store._stats[int(st.case_id)] = st
+
+    # Restore archive
+    archive_store.clear()
+    for cid_int, arc_data in state.get("archive_dict", {}).items():
+        st_obj = CaseStatistics(**arc_data["stats"])
+        archive_store.archive_case(
+            case_id=arc_data["case_id"],
+            case_tensor=arc_data["case_tensor"].to(device),
+            label_tensor=arc_data["label_tensor"].to(device),
+            bias=arc_data["bias"],
+            stats=st_obj,
+            step=arc_data["archived_at_step"],
+            reason=arc_data["eviction_reason"],
+        )
+    return model, stats_store, archive_store, cfg

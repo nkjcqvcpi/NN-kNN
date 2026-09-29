@@ -1,0 +1,5 @@
+task,policy,seed,timesteps,best_return,final_return,actor_cases,critic_cases,actor_cases_pruned,critic_cases_pruned,run_dir
+cartpole,provenance_bias_coverage,42,3000,0.0,158.39999389648438,0,0,0,0,results\t0_rl\cartpole_provenance_bias_coverage_s42
+cartpole,provenance_bias_coverage,123,3000,0.0,85.0999984741211,0,0,0,0,results\t0_rl\cartpole_provenance_bias_coverage_s123
+cartpole,bias_only,42,3000,0.0,71.30000305175781,0,0,0,0,results\t0_rl\cartpole_bias_only_s42
+cartpole,bias_only,123,3000,0.0,228.0,0,0,0,0,results\t0_rl\cartpole_bias_only_s123
