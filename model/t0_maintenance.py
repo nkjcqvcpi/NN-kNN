@@ -26,6 +26,7 @@ class CaseStatistics:
     last_retrieved_step: int = 0
     cohort_id: str | int | None = None
     protected: bool = False
+    case_role: str = "general"
 
     @property
     def total_evidence(self) -> float:
@@ -113,8 +114,17 @@ class CaseArchiveStore:
             "extra": extra_metadata,
         }
 
+    def __len__(self) -> int:
+        return len(self._archive)
+
+    def __contains__(self, case_id: int) -> bool:
+        return int(case_id) in self._archive
+
+    def has_case(self, case_id: int) -> bool:
+        return int(case_id) in self._archive
+
     def contains(self, case_id: int) -> bool:
-        return case_id in self._archive
+        return int(case_id) in self._archive
 
     def get(self, case_id: int) -> dict[str, Any] | None:
         return self._archive.get(case_id)
@@ -210,6 +220,73 @@ class CaseStatisticsStore:
                 stats.correct_support += float(act)
             else:
                 stats.incorrect_support += float(act)
+            stats.last_retrieved_step = max(stats.last_retrieved_step, int(step))
+
+    def observe_regression_counterfactual(
+        self,
+        case_id: int,
+        delta_loss: float,
+        activation: float = 0.0,
+        step: int = 0,
+    ) -> None:
+        """Accumulate continuous regression counterfactual loss change Delta_i(x).
+        
+        Positive delta means removing the case increases loss (case helped reduce error).
+        Negative delta means removing the case decreases loss (case harmed prediction).
+        """
+        stats = self.ensure(int(case_id))
+        stats.retrieval_count += 1
+        stats.activation_mass += float(activation)
+        d = float(delta_loss)
+        if d >= 0:
+            stats.correct_support += d
+        else:
+            stats.incorrect_support += (-d)
+        stats.last_retrieved_step = max(stats.last_retrieved_step, int(step))
+
+    def observe_rl_actor_advantage(
+        self,
+        retrieved_case_ids: Sequence[int] | torch.Tensor,
+        activations: Sequence[float] | torch.Tensor,
+        case_actions: Sequence[int] | torch.Tensor,
+        executed_action: int,
+        advantage: float,
+        step: int = 0,
+    ) -> None:
+        """Accumulate RL actor provenance driven by signed GAE advantage."""
+        ids_list = (
+            retrieved_case_ids.cpu().tolist()
+            if isinstance(retrieved_case_ids, torch.Tensor)
+            else list(retrieved_case_ids)
+        )
+        acts_list = (
+            activations.cpu().tolist()
+            if isinstance(activations, torch.Tensor)
+            else [float(a) for a in activations]
+        )
+        cacts_list = (
+            case_actions.cpu().tolist()
+            if isinstance(case_actions, torch.Tensor)
+            else [int(a) for a in case_actions]
+        )
+        adv = float(advantage)
+        for cid, act, cact in zip(ids_list, acts_list, cacts_list):
+            cid_int = int(cid)
+            if cid_int < 0:
+                continue
+            stats = self.ensure(cid_int)
+            stats.retrieval_count += 1
+            stats.activation_mass += float(act)
+            if cact == executed_action:
+                if adv >= 0:
+                    stats.correct_support += float(act) * (1.0 + min(adv, 5.0))
+                else:
+                    stats.incorrect_support += float(act) * (1.0 + min(-adv, 5.0))
+            else:
+                if adv < 0:
+                    stats.correct_support += float(act) * 0.5
+                else:
+                    stats.incorrect_support += float(act) * 0.5
             stats.last_retrieved_step = max(stats.last_retrieved_step, int(step))
 
     def prune_untracked(self, active_case_ids: Sequence[int]) -> None:
@@ -866,6 +943,112 @@ class CoreSetGreedyPolicy(CaseMaintenancePolicy):
         ]
         return keep_ids, actions
 
+
+
+def audit_regression_provenance_counterfactual(
+    model: nn.Module,
+    audit_queries: torch.Tensor,
+    audit_targets: torch.Tensor,
+    stats_store: CaseStatisticsStore,
+    step: int = 0,
+    method: str = "counterfactual",
+    device: torch.device | None = None,
+) -> dict[str, Any]:
+    """Execute regression counterfactual loss removal audit for T0 Case Retention.
+
+    Computes:
+        Delta_i(x) = Loss(f_without_i(x), y_x) - Loss(f_with_i(x), y_x)
+        C_i = sum_x max(Delta_i(x), 0)
+        H_i = sum_x max(-Delta_i(x), 0)
+
+    After masking case i, renormalize the remaining activation. Positive Delta_i means
+    the case lowered loss (helpful); negative Delta_i means it increased loss (harmful).
+
+    Also supports candidate directional approximation:
+        g_i(x) = a_i(x) * (y_i - y_hat_pre) * (y_x - y_hat_pre)
+    """
+    dev = device or next(model.parameters()).device
+    model.eval()
+    queries = audit_queries.to(dev)
+    targets = audit_targets.to(dev).view(-1, 1).float()
+    B = queries.size(0)
+
+    with torch.no_grad():
+        active_count = model.case_count()
+        if active_count <= 1:
+            return {"status": "too_few_cases", "active_count": active_count}
+
+        c_feats = (
+            model.feature_extractor(model.cases[:active_count])
+            if getattr(model, "feature_extractor", None) is not None
+            else model.cases[:active_count]
+        )
+        q_feats = (
+            model.feature_extractor(queries)
+            if getattr(model, "feature_extractor", None) is not None
+            else queries
+        )
+
+        q_exp = q_feats.unsqueeze(1).expand(-1, active_count, -1)
+        c_exp = c_feats.unsqueeze(0).expand(B, -1, -1)
+        dists = torch.sqrt(torch.relu(((q_exp - c_exp) ** 2).sum(dim=-1)))
+        scores = model.biases[:active_count].unsqueeze(0) - dists
+
+        top_k = min(int(getattr(model, "top_k", 10)), active_count)
+        top_scores, top_idx = torch.topk(scores, k=top_k, dim=1)
+        tau = float(getattr(model, "tau", 1.0))
+        weights = F.softmax(top_scores / tau, dim=1)  # [B, K]
+
+        case_labels = model.labels[:active_count]
+        if case_labels.dim() == 1:
+            case_labels = case_labels.unsqueeze(-1)
+        ret_labels = case_labels[top_idx].squeeze(-1)  # [B, K]
+        if ret_labels.dim() == 3:
+            ret_labels = ret_labels.squeeze(-1)
+
+        # Pre-adaptation retrieved prediction: y_hat = sum_k w_k * y_k
+        y_hat_pre = (weights * ret_labels).sum(dim=-1, keepdim=True)  # [B, 1]
+        loss_base = (y_hat_pre - targets) ** 2  # [B, 1]
+
+        active_ids = (
+            model.active_case_ids().cpu().tolist()
+            if hasattr(model, "active_case_ids")
+            else list(range(active_count))
+        )
+
+        total_delta = 0.0
+
+        for k_pos in range(top_k):
+            cids = [int(active_ids[idx.item()]) for idx in top_idx[:, k_pos]]
+            w_k = weights[:, k_pos : k_pos + 1]  # [B, 1]
+            y_k = ret_labels[:, k_pos : k_pos + 1]  # [B, 1]
+
+            if method == "counterfactual":
+                denom = (1.0 - w_k).clamp_min(1e-6)
+                y_hat_without = (y_hat_pre - w_k * y_k) / denom
+                loss_without = (y_hat_without - targets) ** 2
+                delta = (loss_without - loss_base).view(-1).cpu().numpy()
+            else:  # directional
+                delta = (w_k * (y_k - y_hat_pre) * (targets - y_hat_pre)).view(-1).cpu().numpy()
+
+            w_np = w_k.view(-1).cpu().numpy()
+            for b in range(B):
+                cid = cids[b]
+                stats_store.observe_regression_counterfactual(
+                    case_id=cid,
+                    delta_loss=float(delta[b]),
+                    activation=float(w_np[b]),
+                    step=step,
+                )
+                total_delta += float(delta[b])
+
+    return {
+        "status": "audited",
+        "mean_loss": float(loss_base.mean().item()),
+        "total_delta": total_delta,
+        "queries_audited": B,
+        "method": method,
+    }
 
 
 def write_maintenance_artifacts(

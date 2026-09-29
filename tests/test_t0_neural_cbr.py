@@ -24,6 +24,7 @@ from model.t0_maintenance import (
     CaseStatistics,
     CaseStatisticsStore,
     ProvenanceBiasCoveragePolicy,
+    audit_regression_provenance_counterfactual,
     compute_trustworthiness,
     compute_within_cohort_percentile_biases,
 )
@@ -31,7 +32,9 @@ from model.t0_workflow import (
     T0Config,
     build_t0_model,
     evaluate_t0_model,
+    load_t0_checkpoint,
     run_t0_maintenance_step,
+    save_t0_checkpoint,
     train_leave_one_out_adapter,
 )
 
@@ -345,6 +348,257 @@ def test_flip_analysis_accounting():
     assert flips["post_accuracy"] == 0.5
 
 
+def test_regression_counterfactual_auditing():
+    """Verify positive Delta_i for helpful cases and negative Delta_i for harmful cases in regression auditing."""
+    cases = torch.tensor([[0.0], [1.0], [0.2]])
+    labels = torch.tensor([[0.0], [1.0], [50.0]])
+    cfg = T0Config(task_type="regression", case_capacity=3, top_k=3, tau=1.0)
+    model, stats_store, _, _ = build_t0_model(cases, labels, cfg)
+
+    audit_queries = torch.tensor([[0.2]])
+    audit_targets = torch.tensor([[0.2]])
+
+    res = audit_regression_provenance_counterfactual(
+        model=model,
+        audit_queries=audit_queries,
+        audit_targets=audit_targets,
+        stats_store=stats_store,
+        step=1,
+    )
+    assert res["status"] == "audited"
+    st2 = stats_store.get(2)
+    assert st2.incorrect_support > st2.correct_support
+
+
+def test_statistics_only_mode_invariance():
+    """Forward/backward outputs and weights are completely unchanged when statistics are active vs disabled."""
+    torch.manual_seed(42)
+    cases = torch.randn(8, 4)
+    labels = F.one_hot(torch.randint(0, 2, (8,)), num_classes=2).float()
+    queries = torch.randn(4, 4)
+    targets = torch.tensor([0, 1, 0, 1])
+
+    cfg1 = T0Config(case_capacity=8)
+    m1, stats1, _, _ = build_t0_model(cases, labels, cfg1)
+
+    cfg2 = T0Config(case_capacity=8)
+    m2, _, _, _ = build_t0_model(cases, labels, cfg2)
+    m2.load_state_dict(m1.state_dict())
+
+    eval1 = evaluate_t0_model(m1, queries, targets, cfg1, stats_store=stats1)
+    eval2 = evaluate_t0_model(m2, queries, targets, cfg2, stats_store=None)
+
+    assert torch.allclose(eval1["scores"], eval2["scores"])
+    assert eval1["pre_accuracy"] == eval2["pre_accuracy"]
+    for p1, p2 in zip(m1.parameters(), m2.parameters()):
+        assert torch.allclose(p1, p2)
+
+
+def test_actor_critic_namespaces_and_statistics_isolation():
+    """Verify actor and critic stats stores never share IDs or cross-contaminate."""
+    from model.nnknn_rl_workflow import NNKNNRLConfig, _build_actor_critic_models
+    cfg = NNKNNRLConfig(
+        actor_type="nnknn",
+        critic_type="nnknn",
+        case_capacity=16,
+        critic_case_capacity=16,
+        case_maintenance_policy="provenance_bias_coverage",
+    )
+    actor, critic = _build_actor_critic_models(obs_dim=4, action_dim=2, cfg=cfg, device=torch.device("cpu"))
+
+    assert actor.stats_store is not critic.stats_store
+    assert actor.archive_store is not critic.archive_store
+
+    obs = torch.randn(4, 4)
+    actions = torch.tensor([0, 1, 0, 1])
+    actor.add_cases(obs, actions)
+
+    critic_obs = torch.randn(4, 4)
+    critic_vals = torch.tensor([1.0, 2.0, 3.0, 4.0])
+    critic.add_cases(critic_obs, critic_vals)
+
+    adv = torch.tensor([1.0, -1.0, 0.5, -0.5])
+    actor.observe_actor_experience(obs, actions, adv, step=1)
+
+    assert len(critic.stats_store._stats) == 0
+    assert len(actor.stats_store._stats) > 0
+
+    target_returns = torch.tensor([[1.5], [2.5], [3.0], [4.5]])
+    critic.observe_critic_experience(critic_obs, target_returns, step=1)
+
+    actor.stats_store.ensure(999).correct_support += 10.0
+    assert 999 not in critic.stats_store._stats
+
+
+def test_target_critic_alignment_after_maintenance():
+    """Verify target critic tensors match online critic after compaction."""
+    from model.nnknn_rl_workflow import (
+        NNKNNRLConfig,
+        _align_nnknn_target_case_store,
+        _build_actor_critic_models,
+        _build_nnknn_target_value_model,
+    )
+    cfg = NNKNNRLConfig(
+        critic_type="nnknn",
+        critic_case_capacity=10,
+        case_maintenance_policy="bias_only",
+        case_prune_quantile=0.5,
+    )
+    _, value_model = _build_actor_critic_models(obs_dim=4, action_dim=2, cfg=cfg, device=torch.device("cpu"))
+    target_value_model = _build_nnknn_target_value_model(value_model, device=torch.device("cpu"))
+
+    obs = torch.randn(6, 4)
+    vals = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    value_model.add_cases(obs, vals)
+    _align_nnknn_target_case_store(value_model, target_value_model)
+    assert target_value_model.case_entries == 6
+
+    pruned = value_model.prune_cases(force=True)
+    assert pruned > 0
+    new_online_count = value_model.case_entries
+    assert new_online_count < 6
+
+    _align_nnknn_target_case_store(value_model, target_value_model)
+    assert target_value_model.case_entries == new_online_count
+    assert torch.allclose(
+        target_value_model.nnknn_model.cases[:new_online_count],
+        value_model.nnknn_model.cases[:new_online_count],
+    )
+    assert torch.allclose(
+        target_value_model.nnknn_model.labels[:new_online_count],
+        value_model.nnknn_model.labels[:new_online_count],
+    )
+
+
+def test_evaluation_test_data_isolation():
+    """Verify evaluation on test data never modifies training provenance store."""
+    cases = torch.randn(10, 4)
+    labels = F.one_hot(torch.randint(0, 2, (10,)), num_classes=2).float()
+    cfg = T0Config(case_capacity=10)
+    model, train_stats, _, _ = build_t0_model(cases, labels, cfg)
+
+    train_queries = torch.randn(5, 4)
+    train_targets = torch.randint(0, 2, (5,))
+    evaluate_t0_model(model, train_queries, train_targets, cfg, stats_store=train_stats)
+
+    train_snapshot = copy.deepcopy(train_stats.snapshot())
+    assert len(train_snapshot) > 0
+
+    test_queries = torch.randn(20, 4)
+    test_targets = torch.randint(0, 2, (20,))
+    evaluate_t0_model(model, test_queries, test_targets, cfg, stats_store=None)
+
+    post_snapshot = train_stats.snapshot()
+    assert len(train_snapshot) == len(post_snapshot)
+    for cid, st_pre in train_snapshot.items():
+        st_post = post_snapshot[cid]
+        assert st_pre.retrieval_count == st_post.retrieval_count
+        assert math.isclose(st_pre.activation_mass, st_post.activation_mass, abs_tol=1e-6)
+        assert math.isclose(st_pre.correct_support, st_post.correct_support, abs_tol=1e-6)
+
+
+def test_checkpoint_save_and_reload_full_state():
+    """Verify save_t0_checkpoint and load_t0_checkpoint cleanly recover all weights, active counts, archives, and stats."""
+    import tempfile
+    cases = torch.randn(8, 4)
+    labels = F.one_hot(torch.tensor([0, 1, 0, 1, 0, 1, 0, 1]), num_classes=2).float()
+    cfg = T0Config(case_capacity=8, classification_adapter_enabled=True)
+    model, stats_store, archive_store, policy = build_t0_model(cases, labels, cfg)
+
+    model.biases.data[0] = 5.0
+    model.biases.data[1] = -2.0
+
+    stats_store.ensure(0).retrieval_count = 12.0
+    stats_store.ensure(0).correct_support = 10.0
+    stats_store.ensure(1).retrieval_count = 3.0
+    stats_store.ensure(1).incorrect_support = 2.5
+
+    evicted_stats = CaseStatistics(case_id=7, retrieval_count=1.0, incorrect_support=1.0)
+    archive_store.archive_case(
+        case_id=7,
+        case_tensor=torch.ones(4),
+        label_tensor=torch.tensor([1.0, 0.0]),
+        bias=-1.5,
+        stats=evicted_stats,
+        step=5,
+        reason="test_eviction",
+    )
+
+    with tempfile.TemporaryDirectory() as td:
+        ckpt_path = Path(td) / "t0_ckpt.pt"
+        save_t0_checkpoint(ckpt_path, model, stats_store, archive_store, cfg)
+
+        loaded_model, loaded_stats, loaded_archive, loaded_cfg = load_t0_checkpoint(
+            ckpt_path,
+            X_sample=cases[:2],
+            y_sample=labels[:2],
+        )
+
+        assert loaded_model.case_count() == model.case_count()
+        assert torch.allclose(loaded_model.cases[:8], model.cases[:8])
+        assert torch.allclose(loaded_model.biases[:8], model.biases[:8])
+        assert loaded_cfg.classification_adapter_enabled == cfg.classification_adapter_enabled
+        assert loaded_stats.get(0).retrieval_count == 12.0
+        assert loaded_stats.get(0).correct_support == 10.0
+        assert loaded_stats.get(1).incorrect_support == 2.5
+        assert len(loaded_archive) == 1
+        assert loaded_archive.has_case(7)
+        arc7 = loaded_archive.get(7)
+        assert arc7["bias"] == -1.5
+        assert arc7["eviction_reason"] == "test_eviction"
+
+
+def test_class_permutation_invariance():
+    """Class-index permutation produces corresponding permutation of adapter inputs and outputs."""
+    perm = [1, 2, 0]
+    q_feats = torch.randn(2, 4)
+    ret_feats = torch.randn(2, 3, 4)
+    weights = F.softmax(torch.randn(2, 3), dim=-1)
+    ret_labels = F.one_hot(torch.tensor([[0, 1, 2], [2, 1, 0]]), num_classes=3).float()
+
+    _, p0_orig, _ = compute_classification_adaptation_inputs(
+        query_features=q_feats,
+        retrieved_features=ret_feats,
+        case_weights=weights,
+        retrieved_labels=ret_labels,
+    )
+    ret_labels_perm = ret_labels[:, :, perm]
+    _, p0_permuted, _ = compute_classification_adaptation_inputs(
+        query_features=q_feats,
+        retrieved_features=ret_feats,
+        case_weights=weights,
+        retrieved_labels=ret_labels_perm,
+    )
+    assert torch.allclose(p0_orig[:, perm], p0_permuted, atol=1e-6)
+
+
+def test_frozen_retrieval_parameter_invariance():
+    """Frozen-retrieval training changes adapter parameters without changing retrieval parameters."""
+    torch.manual_seed(42)
+    cases = torch.randn(10, 4)
+    labels = F.one_hot(torch.randint(0, 2, (10,)), num_classes=2).float()
+    cfg = T0Config(
+        case_capacity=10,
+        classification_adapter_enabled=True,
+        classification_adapter_freeze_retrieval_first=True,
+        classification_adapter_joint_finetune=False,
+        adapter_epochs=5,
+    )
+    model, _, _, _ = build_t0_model(cases, labels, cfg)
+
+    orig_biases = model.biases.detach().clone()
+    orig_cases = model.cases.detach().clone()
+    adapter = getattr(model, "classification_adapter")
+    orig_adapter_params = [p.detach().clone() for p in adapter.parameters()]
+
+    train_leave_one_out_adapter(model, cases, labels, cfg)
+
+    assert torch.allclose(model.biases, orig_biases)
+    assert torch.allclose(model.cases, orig_cases)
+    changed = any(not torch.allclose(p, p_orig) for p, p_orig in zip(adapter.parameters(), orig_adapter_params))
+    assert changed
+
+
 if __name__ == "__main__":
     tests = [
         test_zero_exposure_quality_score,
@@ -363,6 +617,14 @@ if __name__ == "__main__":
         test_nominal_grouped_differences_sum_to_zero,
         test_pre_adaptation_statistics_invariance,
         test_flip_analysis_accounting,
+        test_regression_counterfactual_auditing,
+        test_statistics_only_mode_invariance,
+        test_actor_critic_namespaces_and_statistics_isolation,
+        test_target_critic_alignment_after_maintenance,
+        test_evaluation_test_data_isolation,
+        test_checkpoint_save_and_reload_full_state,
+        test_class_permutation_invariance,
+        test_frozen_retrieval_parameter_invariance,
     ]
     passed = 0
     for t in tests:
@@ -374,4 +636,5 @@ if __name__ == "__main__":
             print(f"[FAIL] {t.__name__}: {e}")
             raise
     print(f"\nAll {passed}/{len(tests)} T0 tests passed successfully!")
+
 

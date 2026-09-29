@@ -954,26 +954,61 @@ def audit_regression_provenance_counterfactual(
         if n_active <= 1:
             return
 
-        # Baseline predictions with full case set
-        pred_with = model(audit_queries)[0]  # [B, 1] or [B]
-        loss_with = loss_fn(pred_with.view(-1), audit_targets.view(-1)).item()
+        dev = next(model.parameters()).device
+        queries = audit_queries.to(dev)
+        targets = audit_targets.to(dev).view(-1, 1).float()
+        B = queries.size(0)
 
-        # Counterfactual leave-one-case-out
-        for i, cid in enumerate(active_ids):
-            mask = [idx for idx in range(n_active) if idx != i]
-            kept_cases = model.cases[mask]
-            kept_labels = model.labels[mask]
+        c_feats = (
+            model.feature_extractor(model.cases[:n_active])
+            if getattr(model, "feature_extractor", None) is not None
+            else model.cases[:n_active]
+        )
+        q_feats = (
+            model.feature_extractor(queries)
+            if getattr(model, "feature_extractor", None) is not None
+            else queries
+        )
 
-            # Temporary submodel prediction
-            # Compute distance without case i
-            # Delta_i = loss_without - loss_with
-            # If loss_without > loss_with, Delta_i > 0 => Case i helped reduce loss!
-            st = stats_store.get_or_create(cid, step=step, case_role="regression")
-            st.retrieval_count += 1
-            # Store delta loss in statistics
-            delta_i = 0.01  # audited contribution
-            st.correct_support += max(0.0, delta_i)
-            st.incorrect_support += max(0.0, -delta_i)
+        q_exp = q_feats.unsqueeze(1).expand(-1, n_active, -1)
+        c_exp = c_feats.unsqueeze(0).expand(B, -1, -1)
+        dists = torch.sqrt(torch.relu(((q_exp - c_exp) ** 2).sum(dim=-1)))
+        scores = model.biases[:n_active].unsqueeze(0) - dists
+
+        top_k = min(int(getattr(model, "top_k", 10)), n_active)
+        top_scores, top_idx = torch.topk(scores, k=top_k, dim=1)
+        tau = float(getattr(model, "tau", 1.0))
+        weights = F.softmax(top_scores / tau, dim=1)
+
+        case_labels = model.labels[:n_active]
+        if case_labels.dim() == 1:
+            case_labels = case_labels.unsqueeze(-1)
+        ret_labels = case_labels[top_idx].squeeze(-1)
+        if ret_labels.dim() == 3:
+            ret_labels = ret_labels.squeeze(-1)
+
+        y_hat_pre = (weights * ret_labels).sum(dim=-1, keepdim=True)
+        loss_base = (y_hat_pre - targets) ** 2
+
+        for k_pos in range(top_k):
+            cids = [int(active_ids[idx.item()]) for idx in top_idx[:, k_pos]]
+            w_k = weights[:, k_pos : k_pos + 1]
+            y_k = ret_labels[:, k_pos : k_pos + 1]
+
+            denom = (1.0 - w_k).clamp_min(1e-6)
+            y_hat_without = (y_hat_pre - w_k * y_k) / denom
+            loss_without = (y_hat_without - targets) ** 2
+            delta = (loss_without - loss_base).view(-1).cpu().numpy()
+            w_np = w_k.view(-1).cpu().numpy()
+
+            for b in range(B):
+                cid = cids[b]
+                st = stats_store.get_or_create(cid, step=step, case_role="regression")
+                st.retrieval_count += 1
+                st.activation_mass += float(w_np[b])
+                d_val = float(delta[b])
+                st.correct_support += max(0.0, d_val)
+                st.incorrect_support += max(0.0, -d_val)
 
 
 def write_maintenance_artifacts(
