@@ -200,6 +200,8 @@ def train_retrieval(
     checkpoint_hook: Callable[[int, NN_KNN_Model, torch.optim.Optimizer], dict[str, Any] | None] | None = None,
     checkpoint_epochs: set[int] | None = None,
     select_best: bool = True,
+    lr_scale: float = 1.0,
+    include_initial: bool = False,
 ) -> TrainResult:
     """Train retrieval (biases, glocal weights, optional encoder) with LOO on the training stream.
 
@@ -210,10 +212,19 @@ def train_retrieval(
     """
     device = model.cases.device
     opt = optimizer or make_optimizer(model, cfg)
+    if lr_scale != 1.0:
+        # fine-tuning phases of an already-trained core use a declared smaller step
+        base = {"case": cfg.lr_case, "glocal": cfg.lr_glocal, "feature": cfg.lr_feature}
+        for grp in opt.param_groups:
+            grp["lr"] = base.get(grp.get("name"), grp["lr"]) * lr_scale
     epochs = cfg.epochs if epochs is None else epochs
     g = torch.Generator().manual_seed(cfg.seed)
     Xtr, ytr = X_train.to(device), y_train.to(device)
     best = (math.inf, None, -1)
+    if include_initial and select_best:
+        # the starting state is a candidate: fine-tuning can only be kept if validation improves
+        v0 = evaluate(model, X_val, y_val)
+        best = (v0["loss_pre"], copy.deepcopy(model.state_dict()), 0)
     bad = 0
     res = TrainResult(model, opt)
     checkpoint_epochs = checkpoint_epochs or set()

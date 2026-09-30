@@ -7,6 +7,6 @@ datasets:
   - {name: synthetic_diag, task_type: classification}
   - {name: energy_efficiency, task_type: regression, max_train: 200}
 core: {epochs: 5}
-protocol: {finetune_epochs: 3}
+protocol: {finetune_epochs: 3, finetune_lr_scale: 0.1}
 K: [0.5]
 conditions: [{policy: random}, {policy: trust_utility_coverage}, {policy: full_memory}]

@@ -5,4 +5,4 @@ type: revise
 seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 datasets:
   - {name: synthetic_diag, task_type: classification}
-revise: {budgets: [10, 25, 50, 75], methods: [provenance_only, bias_only, combined_T, random, oracle], retrain_epochs: 30}
+revise: {budgets: [10, 25, 50, 75], methods: [provenance_only, bias_only, combined_T, random, oracle], retrain_epochs: 30, retrain_lr_scale: 0.1}

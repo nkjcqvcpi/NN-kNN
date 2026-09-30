@@ -5,7 +5,7 @@ type: retention
 seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 datasets:
   - {name: synthetic_diag, task_type: classification}
-protocol: {finetune_epochs: 30}
+protocol: {finetune_epochs: 30, finetune_lr_scale: 0.1}   # PILOT: smaller step for fine-tuning a trained core
 K: [0.3, 0.5]
 conditions:
   - {policy: full_memory}
