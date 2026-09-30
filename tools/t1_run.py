@@ -255,7 +255,7 @@ class Runner:
                 m = {"K": K, "n_before": n, "n_cases": model.case_count(), **base_metrics, **test_metrics(model, data, "test_nofinetune"), "audit_mean_loss_pre": ainfo["mean_loss_pre"]}
                 hist = []
                 if proto["finetune_epochs"] > 0:
-                    ft = train_retrieval(model, data.X_train, data.y_train, data.X_val, data.y_val, cc, epochs=proto["finetune_epochs"], optimizer=opt)
+                    ft = train_retrieval(model, data.X_train, data.y_train, data.X_val, data.y_val, cc, epochs=proto["finetune_epochs"], optimizer=opt, lr_scale=float(proto["finetune_lr_scale"]), include_initial=True)
                     hist = ft.history
                 m.update(test_metrics(model, data))
                 m.update(truth_retention(model, data))
@@ -313,7 +313,10 @@ class Runner:
 
             recal = lambda ep: calibrate_free_radius(model, s_task=float(self.cfg["sync"]["s_task"]), snapshot_step=ep)[0]  # noqa: E731
             m_epochs = set(self.cfg["sync"].get("maintenance_epochs", []))
-            adapter, info = train_synchronized(model, data, cc, sc, fr, near_scale=near_scale, maintenance_hook=hook, maintenance_epochs=m_epochs, recalibrate=recal, core_optimizer=clone_optimizer(tr.optimizer, model, cc))
+            ropt = clone_optimizer(tr.optimizer, model, cc)
+            for grp in ropt.param_groups:
+                grp["lr"] = grp["lr"] * float(self.cfg["sync"]["retrieval_lr_scale"])
+            adapter, info = train_synchronized(model, data, cc, sc, fr, near_scale=near_scale, maintenance_hook=hook, maintenance_epochs=m_epochs, recalibrate=recal, core_optimizer=ropt)
             rc = ReuseConfig(output_mode=sc.output_mode, loss="combined", lambda_diff=1.0, lambda_cls=1.0, probability_mode=self.cfg["sync"].get("probability_mode", "softmax"), seed=seed)
             ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc)
             m = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)}, **{f"test_flip_{k}": v for k, v in ev["flips"].items()}, "tau_task": fr.tau_task, "free_radius_status": fr.status, "n_cases": model.case_count()}
@@ -368,7 +371,7 @@ class Runner:
         if true_labels is None:
             raise ValueError("synthetic data must expose true labels for the simulated reviewer")
         rv = self.cfg["revise"]
-        rows = flagging_ablation(model, data, scores, cc, truth_corrupted=truth, true_labels=np.asarray(true_labels), budgets=rv["budgets"], methods=rv["methods"], retrain_epochs=rv["retrain_epochs"], run_id=f"{self.exp}-s{seed}", seed=seed, core_optimizer=tr.optimizer)
+        rows = flagging_ablation(model, data, scores, cc, truth_corrupted=truth, true_labels=np.asarray(true_labels), budgets=rv["budgets"], methods=rv["methods"], retrain_epochs=rv["retrain_epochs"], run_id=f"{self.exp}-s{seed}", seed=seed, core_optimizer=tr.optimizer, retrain_lr_scale=float(rv["retrain_lr_scale"]))
         for r in rows:
             label = f"{r['method']}_b{r['review_budget']}"
             m = {k: v for k, v in r.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
