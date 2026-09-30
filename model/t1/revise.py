@@ -103,6 +103,7 @@ def evaluate_m0_m1_m2(
     influenced_mask: Callable[[Any, list[int]], torch.Tensor] | None = None,
     y_train: torch.Tensor | None = None,
     core_optimizer: torch.optim.Optimizer | None = None,
+    retrain_lr_scale: float = 1.0,
 ) -> dict[str, Any]:
     """M0 = saved trained model; M1 = after ``edit`` without gradients; M2 = M1 + fixed retraining budget.
 
@@ -129,7 +130,7 @@ def evaluate_m0_m1_m2(
         # fixed, reported budget; corrected cases are also training queries, so retrain on corrected targets
         ft_cfg = copy.copy(core_cfg)
         ft_cfg.patience = retrain_epochs + 1
-        train_retrieval(m2, data.X_train, data.y_train if y_train is None else y_train, data.X_val, data.y_val, ft_cfg, epochs=retrain_epochs, optimizer=opt2, select_best=False)
+        train_retrieval(m2, data.X_train, data.y_train if y_train is None else y_train, data.X_val, data.y_val, ft_cfg, epochs=retrain_epochs, optimizer=opt2, select_best=False, lr_scale=retrain_lr_scale)
     e2 = evaluate(m2, data.X_test, data.y_test)
     y = data.y_test
     out: dict[str, Any] = {"edited_case_ids": edited, "retrain_epochs": retrain_epochs}
@@ -190,6 +191,7 @@ def flagging_ablation(
     run_id: str,
     seed: int,
     core_optimizer: torch.optim.Optimizer | None = None,
+    retrain_lr_scale: float = 1.0,
 ) -> list[dict[str, Any]]:
     """Simulated review: the reviewer inspects the top-b flagged cases and repairs the corrupted ones."""
     rng = np.random.default_rng(seed)
@@ -215,7 +217,7 @@ def flagging_ablation(
             res = evaluate_m0_m1_m2(
                 model, data, core_cfg, edit, log, retrain_epochs=retrain_epochs,
                 influenced_mask=lambda m, e: influenced_by(m, data.X_test, e), y_train=y_fixed,
-                core_optimizer=core_optimizer,
+                core_optimizer=core_optimizer, retrain_lr_scale=retrain_lr_scale,
             )
             n_bad = int(truth_corrupted.sum())
             rows.append(

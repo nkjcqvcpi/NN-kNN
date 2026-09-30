@@ -341,3 +341,17 @@ def test_clone_optimizer_continues_state():
     a = tr.optimizer.state[model.biases]["exp_avg_sq"]
     b = opt2.state[m2.biases]["exp_avg_sq"]
     assert torch.equal(a, b) and a.abs().sum() > 0
+
+
+def test_finetune_include_initial_never_worse_on_validation():
+    X, y = _toy()
+    model, cc = _model(X, y)
+    tr = train_retrieval(model, X, y, X, y, cc, epochs=3)
+    v0 = evaluate(model, X, y)["loss_pre"]
+    from model.t1.core import clone_optimizer
+
+    opt = clone_optimizer(tr.optimizer, model, cc)
+    with torch.no_grad():
+        opt.param_groups[0]["lr"] = 10.0  # absurd step: fine-tuning should be rejected
+    train_retrieval(model, X, y, X, y, cc, epochs=2, optimizer=opt, include_initial=True)
+    assert evaluate(model, X, y)["loss_pre"] <= v0 + 1e-9
