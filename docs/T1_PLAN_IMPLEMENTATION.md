@@ -1,4 +1,4 @@
-# T1 plan implementation (branch `t1-plan-impl`)
+# T1 plan implementation (branch `neural-cbr`)
 
 This implements the PI's T1 specification (`docs/t1_spec/`, authority order in
 `docs/t1_spec/T1_COMPLETE_HANDOFF_README.md`) on top of the maintained
@@ -6,10 +6,12 @@ This implements the PI's T1 specification (`docs/t1_spec/`, authority order in
 T0/T1 modules, runners, results and reports, which were deleted on 2026-09-29.
 Their reports had hard-coded conclusions that the data contradicted, and their
 benchmarks never trained the retriever. They remain in git history on
-`t0-neural-cbr` / `t1-neural-cbr`.
+the history of `neural-cbr` (commits before `17cbae6`; formerly branches `t0-neural-cbr` / `t1-neural-cbr`).
 
-- Starting point: `t1-neural-cbr` @ `f3ac443`. The PI-inspected snapshot is `main` @ `c097195`.
+- Starting point: `f3ac443` (formerly `t1-neural-cbr`). The PI-inspected snapshot is `main` @ `c097195`.
 - Host: g234 (Windows Server 2025, i5-13400F). Runs use the CPU; `NNKNN_DEVICE=cpu` and one torch thread per process.
+
+Repository branches: `neural-cbr` (this CBR line: former t0-neural-cbr, t1-neural-cbr, t1-plan-impl) and `rl` (former rl-iclr2027). Do not create other branches without the owner's permission.
 
 ## Module map
 
@@ -52,7 +54,7 @@ benchmarks never trained the retriever. They remain in git history on
 **aliases the caller's tensor**. `compact_cases` then reordered and zeroed the
 caller's training data in place, so later training queries no longer matched
 their labels. This showed up as a collapse to chance after maintenance. The
-constructor now clones. The bug exists on `main` and `rl-iclr2027` since
+constructor now clones. The bug exists on `main` and `rl` (formerly `rl-iclr2027`) since
 2026-06-19 (`compact_cases`, commit 3abe9f0), and RL runs that compact case
 memory may be affected. Regression test: `test_compaction_never_mutates_caller_training_data`.
 

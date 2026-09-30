@@ -48,7 +48,7 @@ Primary metrics per table: `test_accuracy_pre` (classification) or `test_rmse_pr
 5. The MCB momentum and whether to obtain the IU-Bloomington implementation for a reproduction.
 6. Seeds, uncertainty method and practical-equivalence / minimum-improvement margins per benchmark.
 7. The modern transfer family (TabArena subset) and contemporary baselines (boosted trees, MLP/TabM, TabPFN), plus which image/text legacy suites (CIFAR-10, SVHN, SST) to reconstruct.
-8. RL (Phase 3 / T2 Stage A): the actor helpful/harmful signal, the critic audit target, and which RL branch/configuration is the frozen reference. Note that the aliasing bug fixed here also exists on `rl-iclr2027`.
+8. RL (Phase 3 / T2 Stage A): the actor helpful/harmful signal, the critic audit target, and which RL branch/configuration is the frozen reference. Note that the aliasing bug fixed here also exists on `rl`.
 
 ## Not yet covered by the matrix (planned next)
 

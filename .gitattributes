@@ -9,3 +9,4 @@ results/**/*.csv text !filter !diff !merge
 *.pt filter=lfs diff=lfs merge=lfs -text
 *.pth filter=lfs diff=lfs merge=lfs -text
 *.ckpt filter=lfs diff=lfs merge=lfs -text
+results/**/*.jsonl text !filter !diff !merge
