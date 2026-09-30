@@ -38,3 +38,9 @@ results/table1_kfold_20260418_213251/stdout.log
 /results/t0_benchmark/
 /results/t1_battery/
 /results/t1_benchmark/
+
+# T1 per-run artifacts stay on the experiment host (1.7 GB); only runs__*.jsonl shards are versioned
+results/t1/*/*/
+results/t1_invalid_fresh_adam/
+results/t1_smoke/
+logs/t1/
