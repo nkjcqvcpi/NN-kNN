@@ -2,10 +2,11 @@
 
     .venv\\Scripts\\python.exe tools\\t1_run.py configs\\t1\\p1_retention_pilot.yaml [--only-dataset iris] [--seeds 0 1]
 
-Experiment types (``type:``): legacy_reference, retention, reuse, sync, mcb, revise.
+Experiment types (``type:``): legacy_reference, retention, reuse, reuse_retention,
+removal_retraining, sync, mcb, revise.
 Every run writes, under ``results/t1/<experiment>/<dataset>/<condition>/s<seed>/``:
 run_manifest.json, metrics.json, history.json, case_statistics.jsonl,
-case_maintenance.jsonl, retrieval_events.jsonl (test stream, pre-adaptation),
+case_maintenance.jsonl, retrieval_events.jsonl (test stream, pre/final predictions),
 and appends one row to ``results/t1/<experiment>/runs__<dataset>.jsonl``.
 
 Values required by the plan that remain unresolved PI decisions must be given
@@ -354,6 +355,86 @@ class Runner:
                             model_desc={"core": cc.__dict__, "adapter": rc.__dict__}, prediction_adapter=adapter,
                             extra_files={"maintenance_scoring_trace.json": res.get("scoring_trace", []),
                                          "maintenance_summary.json": res["summary"]})
+
+    def run_removal_retraining(self, ds, seed):
+        """Full-query retrained removal plus frozen and matched-training controls."""
+        from model.t1.retraining import continued_trial, reference_loss, run_retrained_removal
+
+        data = self.data_for(ds, seed)
+        base, cc, tr = self.trained_core(data, seed)
+        initial = self.out / ds["name"] / f"starting_checkpoint_s{seed}.pt"
+        initial.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({"model_state": base.state_dict(), "optimizer_state": tr.optimizer.state_dict(),
+                    "core": cc.__dict__}, initial)
+        budget = self.cfg["retraining"]
+        for kspec in self.cfg["K"]:
+            K = resolve_K(kspec, base.case_count())
+            store = CaseStatisticsStore(data.task_type)
+            audit(base, data, self.cfg, store, 0)
+            ref = maintenance_reference(data, self.cfg)
+            scfg = score_cfg_for(self.cfg)
+            rcfg = retention_cfg_for({"policy": "removal_influence"}, self.cfg, seed)
+            trained, _, trained_archive, trained_res = run_retrained_removal(
+                base, tr.optimizer, data, cc, ref, store, scfg, rcfg, K,
+                epochs=int(budget["epochs_per_candidate"]), lr_scale=float(budget["lr_scale"]),
+                run_id=f"retrained-K{kspec}-s{seed}")
+            matched_epochs = trained_res["summary"]["accepted_model_training_epochs"]
+            for treatment in self.cfg["treatments"]:
+                model = copy.deepcopy(base)
+                opt = clone_optimizer(tr.optimizer, model, cc)
+                local_store, archive = CaseStatisticsStore(data.task_type), CaseArchive()
+                audit(model, data, self.cfg, local_store, 0)
+                history = []
+                label = f"{treatment}_K{kspec}"
+                extra_seconds = 0.0
+                if treatment == "removal_retrained":
+                    model, archive, res = trained, trained_archive, trained_res
+                else:
+                    policies = {"full_frozen": "full_memory", "full_matched": "full_memory",
+                                "random_frozen": "random", "random_matched": "random",
+                                "removal_frozen": "removal_influence"}
+                    if treatment not in policies:
+                        raise ValueError(f"Unknown retraining treatment: {treatment}")
+                    t0 = time.perf_counter()
+                    res = run_maintenance(model, local_store, archive, K,
+                                          retention_cfg_for({"policy": policies[treatment]}, self.cfg, seed),
+                                          scfg, step=0, run_id=label, optimizer=opt,
+                                          reg_bins=data.reg_bins, reference=ref)
+                    res["summary"]["selection_seconds"] = time.perf_counter() - t0
+                    if treatment.endswith("matched") and matched_epochs:
+                        t0 = time.perf_counter()
+                        model, _, ft = continued_trial(model, opt, data, cc, epochs=matched_epochs,
+                                                       lr_scale=float(budget["lr_scale"]))
+                        history = ft.history
+                        extra_seconds = time.perf_counter() - t0
+                # Refresh final statistics: candidate selection never uses test labels.
+                ainfo = audit(model, data, self.cfg, local_store, 1)
+                extra_epochs = matched_epochs if treatment.endswith("matched") or treatment == "removal_retrained" else 0
+                m = {**test_metrics(model, data), "n_cases": model.case_count(), "requested_K": K,
+                     "extra_training_epochs": extra_epochs, "matched_training_epochs": matched_epochs,
+                     "reference_loss_final": reference_loss(model, ref),
+                     "reference_loss_initial": reference_loss(base, ref),
+                     "audit_mean_loss_final": ainfo["mean_loss_final"],
+                     "selection_seconds": res["summary"]["selection_seconds"],
+                     "extra_training_seconds": extra_seconds,
+                     "capacity_matched": model.case_count() == K,
+                     **truth_retention(model, data)}
+                self.finish(ds=ds, seed=seed, cond_label=label, cond={"treatment": treatment, "K": kspec},
+                            data=data, model=model, store=local_store, archive=archive, metrics=m,
+                            history={"core": tr.history, "extra_training": history}, events=res["events"],
+                            components={"retrieve": "NN-kNN retrieval-only core", "reuse_or_adapter": "off",
+                                        "revise": "off", "retain": treatment, "mcb": "on" if cc.mcb_enabled else "off",
+                                        "component_synchronization": "off"},
+                            budgets={"case_capacity": K, "epochs_per_candidate": budget["epochs_per_candidate"],
+                                     "accepted_extra_epochs": extra_epochs, "matched_control_epochs": matched_epochs,
+                                     "candidate_training_epochs_total": res["summary"].get("candidate_training_epochs_total", 0),
+                                     "core_epochs_run": tr.epochs_run},
+                            maintenance={"policy": treatment, "reference_stream": ref.stream,
+                                         "starting_checkpoint": str(initial), "parameters": budget,
+                                         "allowed_loss_increase": rcfg.allowed_loss_increase},
+                            model_desc={"core": cc.__dict__},
+                            extra_files={"maintenance_summary.json": res["summary"],
+                                         "maintenance_scoring_trace.json": res.get("scoring_trace", [])})
 
     def run_sync(self, ds, seed):
         data = self.data_for(ds, seed)

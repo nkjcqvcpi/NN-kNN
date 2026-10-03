@@ -23,6 +23,7 @@ not validate the revised pipeline.
 | `model/t1/candidates.py` | Coverage/reachability uses activation above an explicit threshold plus final query success. Self is excluded by ID. Zero reachability has an explicit policy. Frozen-parameter full-query and cached-query removal use the full reference-set denominator. |
 | `model/t1/retention.py` | Standalone Q, B, ratio and removal candidates, with random/stratified/current bias/full-memory/kcenter comparators. Q/B mixtures fail explicitly. Impossible capacity/protection combinations fail before compaction. |
 | `model/t1/maintenance.py` | Removal picks the lowest eligible influence, refreshes after each actual deletion and checks cumulative final-loss increase against the original memory. Archives and per-case optimizer rows move with stable IDs. |
+| `model/t1/retraining.py` | Retrieval-only removal plus fixed-budget training, independent copied model/Adam trials, refreshed candidates, original-loss budget, and an unmodified-memory extra-training control at each round. Logs both PI influence and the difference from matched training. |
 | `model/t1/reuse.py` | Classification aggregate label-conditioned adaptation with independent nominal/logit and combined/single-loss switches. Training examples use stable-ID LOO. |
 | `model/t1/sync.py` | Independent and alternating classification schedules. Maintenance receives the actual current adapter, so it scores final outcomes. |
 | `model/t1/core.py` | Core training, validation-only checkpoint selection, optional MCB and complete nonzero retrieval contributions with pre/final decisions. |
@@ -57,7 +58,7 @@ has been established.
 | Classification reuse and synchronization | Implemented; bounded smoke verification |
 | MCB mechanism | Reimplementation tested on/off; the IU-Bloomington source is not obtained |
 | Exact historical classification/regression paper reproduction | Not established; legacy runner checks current behavior on reconstructed splits |
-| Optional removal with retraining and matched further-training controls | Not implemented; efficient frozen-parameter branch is current |
+| Optional removal with retraining and matched further-training controls | Implemented for retrieval-only classification/regression; tiny-memory fresh-seed pilot. Trained-adapter extensions and larger sweeps remain pending. |
 | General score recovering prior methods | Open research task; distinguish score equality, ranking equivalence and full selector equivalence |
 | Broader synthetic reliability, rare/boundary/shift studies and confirmatory seeds | Pilot infrastructure exists; full revised sweeps are not complete |
 | Reviewer force-include and feature-weight interventions | Not implemented |

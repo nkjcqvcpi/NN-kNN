@@ -73,6 +73,19 @@ Primary metrics per table: `test_accuracy_pre` (classification) or `test_rmse_pr
   seeds 0/1, the declared 300-epoch core and 30-epoch fine-tune maximum.
 - Legacy/retention/reuse/sync/MCB/revision smoke configurations check engineering
   paths. All outputs are exploratory, including the legacy reconstructed split.
+- `alignment_retraining`: iris and energy_efficiency, 24 training cases, seeds
+  2/3/4, K=0.75, two fixed epochs per independent removal candidate. Compare
+  frozen full memory/random/removal, retrained removal, and full/random controls
+  with the accepted model's total extra epoch budget. Each selection round also
+  evaluates an unmodified memory with the same two epochs; scoring never selects
+  on test/validation labels. Record all discarded-candidate computation separately
+  from accepted-model training. This is a mechanism pilot, not a scalable method
+  or a trained-adapter result.
+
+The October 2 continuation fixes same-device Adam moment aliasing when forking
+optimizers. Earlier post-selection comparisons must not be used as evidence of
+independent candidate continuations; fresh runs and source snapshots identify the
+corrected implementation.
 
 The full revised P1/P2/P4/P5/T1.2 grids have not been rerun. Expanded theory,
 review interventions, human/UI and RL/T3 work remain separate pending gates.
