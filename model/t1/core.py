@@ -167,7 +167,9 @@ def clone_optimizer(src: torch.optim.Optimizer, model: NN_KNN_Model, cfg: CoreCo
     M2 retraining) therefore continue the core optimizer's state.
     """
     opt = make_optimizer(model, cfg)
-    opt.load_state_dict(src.state_dict())
+    # load_state_dict can retain same-device moment tensors by reference.
+    # Independent candidate continuations must not mutate the source Adam state.
+    opt.load_state_dict(copy.deepcopy(src.state_dict()))
     return opt
 
 

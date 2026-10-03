@@ -1,0 +1,14 @@
+base: _base.yaml
+experiment: alignment_retraining
+type: removal_retraining
+status: exploratory_pilot
+# Fresh seeds; tiny memories bound the intentionally costly per-candidate training.
+seeds: [2, 3, 4]
+datasets:
+  - {name: iris, task_type: classification, max_train: 24}
+  - {name: energy_efficiency, task_type: regression, max_train: 24}
+core: {epochs: 30, patience: 15, batch_size: 16}
+K: [0.75]
+retention: {min_per_cohort: 1, allowed_loss_increase: 0.05}
+retraining: {epochs_per_candidate: 2, lr_scale: 0.1}
+treatments: [full_frozen, full_matched, random_frozen, random_matched, removal_frozen, removal_retrained]

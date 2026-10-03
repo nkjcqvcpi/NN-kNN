@@ -48,13 +48,14 @@ plumbing, traceability and the tested behaviors. They do not rank the candidate
 families reliably or replace fresh-seed confirmatory studies.
 
 Remaining engineering/research gaps are listed in `T1_PLAN_IMPLEMENTATION.md`:
-optional retraining comparator, intervention extensions/UI, regression sync,
+adapted/larger retraining comparisons, intervention extensions/UI, regression sync,
 modern/legacy benchmark reconstruction, external MCB source, general-score
 derivations, RL Stage A integration and T3 host integration.
 
 Old `results/t1/` artifacts are not overwritten. New verified runs are under
-`results/t1_pi20260920/verification_20261002/`. All changes are local pending
-review; no commit or push was made.
+`results/t1_pi20260920/verification_20261002/`. The initial alignment changes are
+committed as `77ccd50`. Continuation work is committed by verified part; no push
+has been made.
 
 ## Completed local verification
 
@@ -77,3 +78,30 @@ review; no commit or push was made.
 
 The complete manifest and readable report are delivered with this chat. No full
 revised research sweep or confirmatory claim was made.
+
+## October 2 continuation
+
+The next stage adds retrieval-only removal plus independent fixed-budget
+retraining and matched extra-training controls. `clone_optimizer` now deep-copies
+Adam moment tensors; loading same-device state alone can share them, which would
+allow one candidate's training to change another candidate's initial optimizer.
+Tests check source state preservation, repeatability across intervening trials,
+fixed candidate/control budgets, and rejection of validation selection streams.
+The earlier artifact checks still establish integrity and tested mechanics, but
+post-selection comparisons predating the optimizer isolation fix need fresh runs.
+
+Pilot configuration: `alignment_retraining.yaml`, seeds 2/3/4, iris and
+energy_efficiency with 24 training cases, K=18, two epochs per candidate and
+learning-rate scale 0.1. The total discarded-candidate cost is reported separately
+from the accepted model's extra training. The adapted-retraining path remains
+unsupported and fails explicitly.
+
+The 36-run pilot passed artifact/source-bundle checks and all 36 checkpoint
+prediction replays (1e-6). All compressed treatments reached 18 cases; retrained
+removal accepted six rounds/twelve epochs and evaluated 258 candidate epochs per
+dataset/seed. It did not improve iris accuracy over frozen removal on seeds
+2/3/4; energy_efficiency RMSE changed inconsistently and was worse on average by
+0.002545. Retrained selection was substantially more costly than frozen removal
+in these tiny-memory runs. These are descriptive observations in standardized
+target units, not inferential or scalability claims.
+The suite now has 45 passing tests and the import smoke check passes.
