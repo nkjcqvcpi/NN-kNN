@@ -105,3 +105,12 @@ dataset/seed. It did not improve iris accuracy over frozen removal on seeds
 in these tiny-memory runs. These are descriptive observations in standardized
 target units, not inferential or scalability claims.
 The suite now has 45 passing tests and the import smoke check passes.
+
+After committing optimizer isolation, seeds 2/3/4 were also run on small
+retention (42 runs), adapted retention (18), and digits (12). All 72 checkpoints
+and 18 saved adapters replay at 1e-6; source bundles and manifests pass checks.
+Digits half-memory accuracy is 0.958333–0.986111 on this fresh batch; no near-chance
+collapse was observed. Q/B have the same mean accuracy 0.974074, with seed-dependent
+advantages over random. These results supersede older post-selection comparisons
+for independent-optimizer evidence. Full details, boundaries and a 108-run index
+are in `experiments/2026-10-02-pi-alignment-continuation.md` and its companion CSV.
