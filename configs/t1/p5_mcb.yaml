@@ -11,7 +11,7 @@ datasets:
 core: {representation: mlp, mlp_dims: [32, 16], mcb_momentum: 0.99, epochs: 200, patience: 40}   # PILOT momentum
 maintenance_epochs: [50, 100, 150]
 conditions:
-  - {mcb: false, policy: trust_utility_coverage, K: 0.5}
-  - {mcb: true, policy: trust_utility_coverage, K: 0.5}
+  - {mcb: false, policy: provenance_only, K: 0.5}
+  - {mcb: true, policy: provenance_only, K: 0.5}
   - {mcb: false, policy: random, K: 0.5}
   - {mcb: true, policy: random, K: 0.5}

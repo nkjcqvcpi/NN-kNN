@@ -5,4 +5,4 @@ status: exploratory_smoke
 seeds: [0]
 datasets: [{name: synthetic_diag, task_type: classification}]
 core: {epochs: 5}
-revise: {budgets: [10, 30], methods: [provenance_only, bias_only, combined_T, random, oracle], retrain_epochs: 3, retrain_lr_scale: 0.1}
+revise: {budgets: [10, 30], methods: [provenance_only, bias_only, random, oracle], retrain_epochs: 3, retrain_lr_scale: 0.1}

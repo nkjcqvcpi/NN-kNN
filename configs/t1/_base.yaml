@@ -2,6 +2,8 @@
 # Values marked PILOT are unresolved PI decisions (docs/t1_spec/OPEN_DECISIONS_AND_HANDOFF_CHECKLIST.md)
 # set explicitly for exploratory pilots. Freeze them before any confirmatory run.
 status: exploratory_pilot
+specification_commit: cd77277600841438d98ac5793867da28b8ec6dd0
+pipeline_revision: pi_20260920_v2
 torch_threads: 1
 splits: {test_frac: 0.2, val_frac: 0.2, maint_frac: 0.0, reg_cohort_bins: 5}
 core:
@@ -22,20 +24,19 @@ core:
 statistics:
   source: train_loo        # training cases audited leave-one-out (no test/val labels)
   accumulation: per_checkpoint
-  counterfactual: true
+  counterfactual: false    # explicit removal candidates perform their own final-loss audit
   smoothing: 1.0           # PILOT s
-  alpha: 0.5               # PILOT alpha
   min_retrieval_count: 2   # PILOT evidence rule
   min_activation_mass: 0.1 # PILOT evidence rule
   bias_normalization: within_cohort_percentile
   bias_source: current
-  trust_mode: geometric
+  regression_success_tolerance: 0.5  # PILOT absolute error in train-standardized target units
 retention:
-  policy: trust_utility_coverage
+  policy: provenance_only
   min_per_cohort: 2        # PILOT coverage floor
   protect_rare_cohort_below: 0
   boundary_protect_fraction: 0.0
-  w_trust: 1.0             # PILOT scalarization weights
-  w_utility: 0.5
-  w_redundancy: 0.5
-  w_coverage: 0.5
+  activation_threshold: 0.05    # PILOT: strict normalized-activation threshold
+  zero_reachability: zero        # PILOT: explicit ranking choice, not automatic protection
+  cache_activation_threshold: 0.05   # PILOT approximation checked against full queries
+  allowed_loss_increase: 0.05    # PILOT cumulative final-loss increase, original baseline

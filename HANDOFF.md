@@ -2,6 +2,15 @@
 
 ## T1 full-cycle NN-kNN (PI plan implementation)
 
+**2026-10-02 update:** The local `neural-cbr` worktree is being aligned to career-2027
+`cd772776` (September 20 PI maintenance decisions). Read
+`docs/T1_ALIGNMENT_STATUS.md` and `docs/T1_PLAN_IMPLEMENTATION.md` first. Q/B
+combination policies are retired; evidence uses final query outcomes; ratio and
+sequential full/cached removal candidates are available. Old `results/t1/` runs
+remain historical. Revised verification is isolated in
+`results/t1_pi20260920/verification_20261002/`. This is a supervised mechanism
+implementation, not completion of the T1-T3 research plan.
+
 See `docs/T1_PLAN_IMPLEMENTATION.md` for the module map, what is implemented per
 plan phase, how to run experiments, and the planned experiment matrix; the PI
 specification is in `docs/t1_spec/`. The September 9-17 T0/T1 code, results and

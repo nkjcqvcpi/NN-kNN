@@ -9,4 +9,4 @@ datasets:
 core: {epochs: 5}
 protocol: {finetune_epochs: 3, finetune_lr_scale: 0.1}
 K: [0.5]
-conditions: [{policy: random}, {policy: trust_utility_coverage}, {policy: full_memory}]
+conditions: [{policy: random}, {policy: provenance_only}, {policy: full_memory}]

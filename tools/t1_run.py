@@ -31,10 +31,11 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 import yaml  # noqa: E402
 
-from model.t1.artifacts import build_manifest, case_statistics_rows, config_id, write_json, write_jsonl  # noqa: E402
+from model.t1.artifacts import build_manifest, case_statistics_rows, config_id, source_fingerprint, write_json, write_jsonl  # noqa: E402
 from model.t1.calibration import calibrate_free_radius  # noqa: E402
 from model.t1.core import CoreConfig, build_model, clone_optimizer, evaluate, retrieval_events, train_retrieval  # noqa: E402
 from model.t1.data import make_splits  # noqa: E402
+from model.t1.candidates import MaintenanceReference
 from model.t1.maintenance import CaseArchive, run_maintenance  # noqa: E402
 from model.t1.mcb import StabilityTracker  # noqa: E402
 from model.t1.provenance import CaseStatisticsStore, ScoreConfig, active_cohorts, audit_provenance, score_cases  # noqa: E402
@@ -96,12 +97,10 @@ def score_cfg_for(cfg: dict[str, Any]) -> ScoreConfig:
     s = cfg["statistics"]
     return ScoreConfig(
         smoothing=float(s["smoothing"]),
-        alpha=float(s["alpha"]),
         min_retrieval_count=float(s["min_retrieval_count"]),
         min_activation_mass=float(s["min_activation_mass"]),
         bias_normalization=s.get("bias_normalization", "within_cohort_percentile"),
         bias_source=s.get("bias_source", "current"),
-        trust_mode=s.get("trust_mode", "geometric"),
     )
 
 
@@ -114,7 +113,17 @@ def resolve_K(k: Any, n: int) -> int:
 # --------------------------------------------------------------------------- helpers
 
 
-def audit(model, data, cfg, store, step):
+def maintenance_reference(data, cfg, adapter=None):
+    src = cfg["statistics"]["source"]
+    tolerance = cfg["statistics"].get("regression_success_tolerance")
+    if src == "train_loo":
+        return MaintenanceReference(data.X_train, data.y_train, torch.arange(len(data.y_train)), tolerance, adapter, src)
+    if src == "maintenance_split" and data.X_maint is not None:
+        return MaintenanceReference(data.X_maint, data.y_maint, None, tolerance, adapter, src)
+    raise ValueError("Maintenance reference must be train_loo or a separate maintenance split")
+
+
+def audit(model, data, cfg, store, step, adapter=None):
     src = cfg["statistics"]["source"]
     if src == "train_loo":
         X, y, excl = data.X_train, data.y_train, True
@@ -126,7 +135,11 @@ def audit(model, data, cfg, store, step):
         raise ValueError(src)
     if cfg["statistics"].get("accumulation", "per_checkpoint") == "per_checkpoint":
         store.reset_counts()
-    return audit_provenance(model, X, y, store, exclude_identical=excl, counterfactual=bool(cfg["statistics"]["counterfactual"]), step=step, reg_bins=data.reg_bins)
+    ref = maintenance_reference(data, cfg, adapter)
+    return audit_provenance(model, X, y, store, exclude_identical=excl,
+                            counterfactual=bool(cfg["statistics"]["counterfactual"]),
+                            step=step, reg_bins=data.reg_bins, query_case_ids=ref.query_case_ids,
+                            adapter=adapter, regression_success_tolerance=ref.regression_success_tolerance)
 
 
 def retention_cfg_for(cond: dict[str, Any], cfg: dict[str, Any], seed: int) -> RetentionConfig:
@@ -170,6 +183,14 @@ class Runner:
         self.exp = cfg["experiment"]
         self.out = out_root / self.exp
         self.out.mkdir(parents=True, exist_ok=True)
+        self.source_hash = source_fingerprint(REPO)
+        self.source_path = self.out / f"source_snapshot_{self.source_hash[:12]}_{os.getpid()}.zip"
+        import zipfile
+        with zipfile.ZipFile(self.source_path, "w", zipfile.ZIP_DEFLATED) as bundle:
+            for directory in ("model", "tools", "configs", "tests", "datasets"):
+                for path in sorted((REPO / directory).rglob("*")):
+                    if path.suffix in {".py", ".yaml", ".ps1"} and "__pycache__" not in path.parts:
+                        bundle.write(path, path.relative_to(REPO).as_posix())
         torch.set_num_threads(int(cfg.get("torch_threads", 1)))
 
     def data_for(self, ds: dict[str, Any], seed: int):
@@ -182,7 +203,7 @@ class Runner:
         tr = train_retrieval(model, data.X_train, data.y_train, data.X_val, data.y_val, cc)
         return model, cc, tr
 
-    def finish(self, *, ds, seed, cond_label, cond, data, model, store, archive, metrics, history, events, components, budgets, maintenance, model_desc, extra_files=None):
+    def finish(self, *, ds, seed, cond_label, cond, data, model, store, archive, metrics, history, events, components, budgets, maintenance, model_desc, extra_files=None, prediction_adapter=None):
         run_dir = self.out / ds["name"] / cond_label / f"s{seed}"
         run_cfg = {"experiment": self.exp, "dataset": ds, "seed": seed, "condition": cond, "config": self.cfg}
         run_id = f"{self.exp}-{ds['name']}-{cond_label}-s{seed}-{config_id(run_cfg)[:8]}"
@@ -190,13 +211,25 @@ class Runner:
             run_id=run_id, repo=REPO, cfg=run_cfg, data_desc=data.describe(), components=components, budgets=budgets,
             maintenance=maintenance, evaluation={"confirmatory_or_exploratory": self.cfg["status"], "number_of_seeds": len(self.cfg["seeds"]), "uncertainty_method": "per-seed runs; summarized by tools/t1_summarize.py"}, model_desc=model_desc,
         )
+        man["run"]["source_changed_during_run"] = man["run"]["source_fingerprint_sha256"] != self.source_hash
+        man["run"]["source_fingerprint_sha256"] = self.source_hash
+        man["run"]["source_snapshot"] = str(self.source_path)
         write_json(run_dir / "run_manifest.json", man)
         write_json(run_dir / "metrics.json", metrics)
         write_json(run_dir / "history.json", history)
-        if store is not None:
-            write_jsonl(run_dir / "case_statistics.jsonl", case_statistics_rows(model, store, archive or CaseArchive()))
+        write_jsonl(run_dir / "case_statistics.jsonl", [] if store is None else case_statistics_rows(model, store, archive or CaseArchive()))
         write_jsonl(run_dir / "case_maintenance.jsonl", events or [])
-        write_jsonl(run_dir / "retrieval_events.jsonl", retrieval_events(model, data.X_test, data.y_test, stream="test", run_id=run_id))
+        write_jsonl(run_dir / "retrieval_events.jsonl", retrieval_events(model, data.X_test, data.y_test, stream="test", run_id=run_id, adapter=prediction_adapter))
+        torch.save({"model_state": model.state_dict(), "active_case_count": model.case_count(),
+                    "case_statistics": None if store is None else store.state_dict(),
+                    "archive": None if archive is None else archive.state_dict(),
+                    "adapter_state": None if prediction_adapter is None else prediction_adapter.state_dict(),
+                    "model_description": model_desc}, run_dir / "checkpoint.pt")
+        data_path = self.out / ds["name"] / f"data_snapshot_s{seed}.pt"
+        if not data_path.exists():
+            torch.save({name: getattr(data, name) for name in
+                        ("X_train", "y_train", "X_val", "y_val", "X_test", "y_test",
+                         "X_maint", "y_maint", "y_scale")}, data_path)
         for name, obj in (extra_files or {}).items():
             write_json(run_dir / name, obj)
         row = {"run_id": run_id, "experiment": self.exp, "dataset": ds["name"], "task_type": data.task_type, "seed": seed, "condition": cond_label, **{k: v for k, v in cond.items() if not isinstance(v, (dict, list))}, **{k: v for k, v in metrics.items() if not isinstance(v, (dict, list))}}
@@ -251,8 +284,8 @@ class Runner:
                 scfg = score_cfg_for(self.cfg)
                 opt = clone_optimizer(tr.optimizer, model, cc)  # continue the core's Adam state (see clone_optimizer)
                 ainfo = audit(model, data, self.cfg, store, step=0)
-                res = run_maintenance(model, store, archive, K, rcfg, scfg, step=0, run_id=label, optimizer=opt, reg_bins=data.reg_bins)
-                m = {"K": K, "n_before": n, "n_cases": model.case_count(), **base_metrics, **test_metrics(model, data, "test_nofinetune"), "audit_mean_loss_pre": ainfo["mean_loss_pre"]}
+                res = run_maintenance(model, store, archive, K, rcfg, scfg, step=0, run_id=label, optimizer=opt, reg_bins=data.reg_bins, reference=maintenance_reference(data, self.cfg))
+                m = {"K": K, "n_before": n, "n_cases": model.case_count(), **base_metrics, **test_metrics(model, data, "test_nofinetune"), "audit_mean_loss_pre": ainfo["mean_loss_pre"], "audit_mean_loss_final": ainfo["mean_loss_final"]}
                 hist = []
                 if proto["finetune_epochs"] > 0:
                     ft = train_retrieval(model, data.X_train, data.y_train, data.X_val, data.y_val, cc, epochs=proto["finetune_epochs"], optimizer=opt, lr_scale=float(proto["finetune_lr_scale"]), include_initial=True)
@@ -264,7 +297,7 @@ class Runner:
                             components={"retrieve": "trained NN-kNN core", "reuse_or_adapter": "off", "revise": "off", "retain": cond["policy"], "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": "off"},
                             budgets={"case_capacity": K, "core_epochs_run": tr.epochs_run, "finetune_epochs": proto["finetune_epochs"]},
                             maintenance={"policy": cond["policy"], "frequency_or_safe_checkpoint": "after core training (post-hoc), then fixed finetune", "thresholds_and_smoothing": self.cfg["statistics"], "archive_and_restore": "CaseArchive (exact state)"},
-                            model_desc={"baseline_or_nnknn_variant": "t1 core", "core": cc.__dict__, "bias_init": getattr(base, "t1_bias_init", None)})
+                            model_desc={"baseline_or_nnknn_variant": "t1 core", "core": cc.__dict__, "bias_init": getattr(base, "t1_bias_init", None)}, extra_files={"maintenance_scoring_trace.json": res.get("scoring_trace", []), "maintenance_summary.json": res["summary"]})
 
     def run_reuse(self, ds, seed):
         data = self.data_for(ds, seed)
@@ -277,17 +310,50 @@ class Runner:
             rc = ReuseConfig(seed=seed, **{**self.cfg["reuse"], **cond})
             adapter, info = train_classification_adapter(model, data, rc)
             ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc)
-            # retention statistics must be pre-adaptation: re-audit with the adapter attached
-            model.classification_adapter = adapter
             store_b = CaseStatisticsStore()
-            audit(model, data, self.cfg, store_b, 0)
-            del model.classification_adapter
-            invariant = all(abs(store_a.get(c).positive_support - store_b.get(c).positive_support) < 1e-9 for c, _ in store_a.items())
+            ainfo = audit(model, data, self.cfg, store_b, 0, adapter=adapter)
             label = f"{cond['output_mode']}_{cond['loss']}"
-            m = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)}, **{f"test_flip_{k}": v for k, v in ev["flips"].items()}, "retention_stats_pre_adaptation_invariant": invariant}
-            self.finish(ds=ds, seed=seed, cond_label=label, cond=cond, data=data, model=model, store=store_a, archive=None, metrics=m, history={"core": tr.history, "adapter": info["history"]}, events=[],
+            m = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
+                 **{f"test_flip_{k}": v for k, v in ev["flips"].items()},
+                 "audit_mean_loss_final": ainfo["mean_loss_final"],
+                 "provenance_semantics": ainfo["provenance_semantics"]}
+            self.finish(ds=ds, seed=seed, cond_label=label, cond=cond, data=data, model=model, store=store_b, archive=None, metrics=m, history={"core": tr.history, "adapter": info["history"]}, events=[],
                         components={"retrieve": "trained NN-kNN core (frozen)", "reuse_or_adapter": f"aggregate label-conditioned NN-CDH ({cond['output_mode']}, {cond['loss']})", "revise": "off", "retain": "none", "mcb": "off", "component_synchronization": "off (retrieval frozen first)"},
-                        budgets={"case_capacity": model.case_count(), "adapter_epochs_max": rc.epochs}, maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "adapter": rc.__dict__})
+                        budgets={"case_capacity": model.case_count(), "adapter_epochs_max": rc.epochs}, maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "adapter": rc.__dict__}, prediction_adapter=adapter)
+
+    def run_reuse_retention(self, ds, seed):
+        """Matched maintenance with a trained frozen adapter and final-outcome evidence."""
+        data = self.data_for(ds, seed)
+        if data.task_type != "classification" or self.cfg["protocol"]["finetune_epochs"] != 0:
+            raise ValueError("reuse_retention requires classification and frozen parameters (no finetune)")
+        base, cc, tr = self.trained_core(data, seed)
+        rc = ReuseConfig(seed=seed, **self.cfg["reuse"])
+        adapter, info = train_classification_adapter(base, data, rc)
+        for cond in self.cfg["conditions"]:
+            for kspec in self.cfg["K"]:
+                model = copy.deepcopy(base)
+                store, archive = CaseStatisticsStore(), CaseArchive()
+                ainfo = audit(model, data, self.cfg, store, 0, adapter=adapter)
+                label = f"{cond['policy']}_K{kspec}"
+                res = run_maintenance(model, store, archive, resolve_K(kspec, model.case_count()),
+                                      retention_cfg_for(cond, self.cfg, seed), score_cfg_for(self.cfg),
+                                      step=0, run_id=label, reg_bins=data.reg_bins,
+                                      reference=maintenance_reference(data, self.cfg, adapter))
+                ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc)
+                metrics = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
+                           **{f"test_flip_{k}": v for k, v in ev["flips"].items()},
+                           "n_cases": model.case_count(), "audit_mean_loss_final": ainfo["mean_loss_final"]}
+                self.finish(ds=ds, seed=seed, cond_label=label, cond={**cond, "K": kspec},
+                            data=data, model=model, store=store, archive=archive, metrics=metrics,
+                            history={"core": tr.history, "adapter": info["history"]}, events=res["events"],
+                            components={"retrieve": "frozen NN-kNN core", "reuse_or_adapter": rc.output_mode,
+                                        "revise": "off", "retain": cond["policy"], "mcb": "off", "component_synchronization": "off"},
+                            budgets={"case_capacity": resolve_K(kspec, len(data.y_train)), "finetune_epochs": 0},
+                            maintenance={"policy": cond["policy"], "reference_stream": self.cfg["statistics"]["source"],
+                                         "thresholds_and_smoothing": self.cfg["statistics"]},
+                            model_desc={"core": cc.__dict__, "adapter": rc.__dict__}, prediction_adapter=adapter,
+                            extra_files={"maintenance_scoring_trace.json": res.get("scoring_trace", []),
+                                         "maintenance_summary.json": res["summary"]})
 
     def run_sync(self, ds, seed):
         data = self.data_for(ds, seed)
@@ -305,9 +371,9 @@ class Runner:
             store, archive, events = CaseStatisticsStore(), CaseArchive(), []
             K = resolve_K(self.cfg["sync"].get("K", 1.0), model.case_count()) if "rrr" in sc.schedule else None
 
-            def hook(ep, mdl, opt):
-                audit(mdl, data, self.cfg, store, ep)
-                res = run_maintenance(mdl, store, archive, K, retention_cfg_for({}, self.cfg, seed), score_cfg_for(self.cfg), step=ep, run_id=cond["schedule"], optimizer=opt, reg_bins=data.reg_bins)
+            def hook(ep, mdl, opt, adapter):
+                audit(mdl, data, self.cfg, store, ep, adapter=adapter)
+                res = run_maintenance(mdl, store, archive, K, retention_cfg_for({}, self.cfg, seed), score_cfg_for(self.cfg), step=ep, run_id=cond["schedule"], optimizer=opt, reg_bins=data.reg_bins, reference=maintenance_reference(data, self.cfg, adapter))
                 events.extend(res["events"])
                 return res["summary"]
 
@@ -323,7 +389,7 @@ class Runner:
             self.finish(ds=ds, seed=seed, cond_label=cond["schedule"], cond=cond, data=data, model=model, store=store if events else None, archive=archive, metrics=m, history={"core": tr.history, "sync": info["history"]}, events=events,
                         components={"retrieve": "NN-kNN core", "reuse_or_adapter": sc.output_mode, "revise": "off", "retain": "checkpoint maintenance" if events else "none", "mcb": "off", "component_synchronization": sc.schedule},
                         budgets={"case_capacity": model.case_count(), "sync_epochs_max": sc.epochs}, maintenance={"policy": self.cfg["retention"]["policy"] if events else "none"},
-                        model_desc={"core": cc.__dict__, "sync": sc.__dict__, "free_radius_at_t_star": fr.to_dict()})
+                        model_desc={"core": cc.__dict__, "sync": sc.__dict__, "free_radius_at_t_star": fr.to_dict()}, prediction_adapter=adapter)
 
     def run_mcb(self, ds, seed):
         data = self.data_for(ds, seed)
@@ -339,7 +405,7 @@ class Runner:
 
             def hook(ep, mdl, opt):
                 audit(mdl, data, self.cfg, store, ep)
-                res = run_maintenance(mdl, store, archive, K, rcfg, scfg, step=ep, run_id=f"mcb{cond['mcb']}", optimizer=opt, reg_bins=data.reg_bins)
+                res = run_maintenance(mdl, store, archive, K, rcfg, scfg, step=ep, run_id=f"mcb{cond['mcb']}", optimizer=opt, reg_bins=data.reg_bins, reference=maintenance_reference(data, self.cfg))
                 events.extend(res["events"])
                 return {**res["summary"], **tracker.snapshot(mdl, ep, res["kept_case_ids"])}
 
@@ -390,11 +456,13 @@ class Runner:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("config")
-    ap.add_argument("--out", default=str(REPO / "results" / "t1"))
+    ap.add_argument("--out", default=str(REPO / "results" / "t1_pi20260920"))
     ap.add_argument("--only-dataset", default=None)
     ap.add_argument("--seeds", type=int, nargs="*", default=None)
     args = ap.parse_args()
     cfg = load_config(Path(args.config))
+    if args.seeds is not None:
+        cfg["seeds"] = args.seeds
     runner = Runner(cfg, Path(args.out))
     fn = getattr(runner, f"run_{cfg['type']}")
     seeds = args.seeds if args.seeds else cfg["seeds"]

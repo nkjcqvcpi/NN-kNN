@@ -1,5 +1,11 @@
 # T1 experiment plan
 
+Updated 2026-10-02 for career-2027 `cd772776`. Current maintenance uses Q, B,
+coverage/reachability and final-loss removal separately. Thresholded cached
+removal is validated against full queries; optional retraining is not implemented.
+New runs use `results/t1_pi20260920/`; old `results/t1/` is historical.
+A removal run that stops above K is not eligible for a matched fixed-K claim.
+
 Everything here is **exploratory pilot** until the PI freezes the open values
 (`docs/t1_spec/OPEN_DECISIONS_AND_HANDOFF_CHECKLIST.md`). Pilot values are
 written explicitly in `configs/t1/_base.yaml` and marked `PILOT`. Pilots are for
@@ -24,13 +30,13 @@ on fresh seeds with the frozen values.
 | ID | Config | Question (plan gate) | Datasets | Conditions | Seeds | Reference for pairing |
 |---|---|---|---|---|---|---|
 | P0 | `p0_legacy_reference` | Reproduce current behaviour on T1 splits (Gate 1 context) | 7 classification (iris, wine, breast_cancer, balance, digits, zebra, zebra_special), 5 regression (energy_efficiency, yacht, airfoil, student_performance, abalone≤1500) | maintained `train_model` | 5 | - |
-| P1-S | `p1_retention_synthetic` | Does quality-aware retention keep clean/rare cases and drop corrupted/redundant ones? (Gate 2 mechanism) | synthetic_diag (15% label corruption, 60 duplicates, 12-case rare cluster, shifted test group) | 11 policies × K ∈ {0.3, 0.5} | 10 | `random_K*` and `bias_current_K*` |
-| P1-C | `p1_retention_classification` | Gate 2: at matched K, does any policy consistently beat random/downsampling and current bias pruning? How close to full memory? | 7 classification | 11 policies × K ∈ {0.2, 0.33, 0.5, 0.75} | 5 | `random_K*`, `bias_current_K*`, `full_memory` |
-| P1-R | `p1_retention_regression` | Gate 2 for regression with counterfactual provenance | 5 regression | 11 policies × K ∈ {0.2, 0.5} | 5 | same |
+| P1-S | `p1_retention_synthetic` | Does quality-aware retention keep clean/rare cases and drop corrupted/redundant ones? (Gate 2 mechanism) | synthetic_diag (15% label corruption, 60 duplicates, 12-case rare cluster, shifted test group) | 10 policies × K ∈ {0.3, 0.5} | 10 | `random_K*` and `bias_current_K*` |
+| P1-C | `p1_retention_classification` | Gate 2: at matched K, does any policy consistently beat random/downsampling and current bias pruning? How close to full memory? | 7 classification | 10 policies × K ∈ {0.2, 0.33, 0.5, 0.75} | 5 | `random_K*`, `bias_current_K*`, `full_memory` |
+| P1-R | `p1_retention_regression` | Gate 2 for regression with declared final-outcome success tolerance | 5 regression | 10 policies × K ∈ {0.2, 0.5} | 5 | same |
 | P2 | `p2_reuse` | Gate 3: does the adapter improve a prespecified pre/post outcome without calibration damage, harmful flips or leakage? | synthetic_diag + 7 classification | {nominal, logit} × {combined, diff_only, cls_only} | 5 | pre-adaptation of the same run |
 | P4 | `p4_sync` | Gate 5: does coordination help without degrading locality or exceeding the correction bound? | synthetic_diag + 7 classification | independent / alternating_rr / alternating_rrr (K=0.5) | 5 | `independent` |
-| P5 | `p5_mcb` | Gate 6: does MCB change representation/neighbourhood/selection stability, and at what task cost? | synthetic_diag, breast_cancer, digits, wine | MCB on/off × {trust_utility_coverage, random}, K=0.5, maintenance at epochs 50/100/150 | 5 | same policy, MCB off |
-| T1.2 | `t12_revise_synthetic` | Harness check for revise: which flagging signal finds corrupted cases at the lowest review burden? M1 vs M2 effect | synthetic_diag | {provenance, bias, T, random, oracle} × budget {10, 25, 50, 75} | 10 | `random_b*`; `oracle_b*` = upper bound |
+| P5 | `p5_mcb` | Gate 6: does MCB change representation/neighbourhood/selection stability, and at what task cost? | synthetic_diag, breast_cancer, digits, wine | MCB on/off × {provenance_only, random}, K=0.5, maintenance at epochs 50/100/150 | 5 | same policy, MCB off |
+| T1.2 | `t12_revise_synthetic` | Harness check for revise: which flagging signal finds corrupted cases at the lowest review burden? M1 vs M2 effect | synthetic_diag | {provenance, bias, random, oracle} × budget {10, 25, 50, 75} | 10 | `random_b*`; `oracle_b*` = upper bound |
 
 Primary metrics per table: `test_accuracy_pre` (classification) or `test_rmse_pre`
 (regression). For reuse and sync, `test_accuracy_post` alongside
@@ -42,7 +48,7 @@ Primary metrics per table: `test_accuracy_pre` (classification) or `test_rmse_pr
 ## Decisions needed from the PI before confirmatory runs
 
 1. K grid and maintenance frequency/checkpoints (pilot: post-hoc selection plus 30 fine-tune epochs; in-training checkpoints for P5/P4).
-2. s, α, the minimum evidence (R, A), the coverage floor, the rare/boundary protection rules, and the scalarization weights for combined policies (pilot values in `_base.yaml`).
+2. s, standalone B cohorts, activation/cache thresholds, zero-reachability handling, final-outcome regression tolerance, cumulative loss increase, minimum evidence (R, A), coverage floors and rare/boundary protection (pilot values in `_base.yaml`).
 3. λ_diff, λ_cls, and the probability protocol for nominal-residual scores (pilot: softmax, T=1).
 4. s_task, the choice of the t* snapshot (pilot: best validation epoch of core training), and the synchronization weights.
 5. The MCB momentum and whether to obtain the IU-Bloomington implementation for a reproduction.
@@ -56,3 +62,17 @@ Primary metrics per table: `test_accuracy_pre` (classification) or `test_rmse_pr
 - Image/text legacy suites with trained encoders; a TabArena transfer subset.
 - In-training maintenance (checkpoint protocol) for P1, after the post-hoc pilot identifies candidate policies.
 - Regression synchronization; RL Phase 3; T1.2 human UI study.
+
+## Bounded alignment verification
+
+- `alignment_candidates_small`: iris and energy_efficiency, 60 training cases,
+  seven conditions, K=0.75, seeds 0/1, 20 core epochs plus 3 fine-tune epochs.
+- `alignment_adapted_candidates`: iris, 60 cases, trained nominal-residual adapter,
+  six conditions, K=0.75, seeds 0/1, no post-selection training.
+- `alignment_digits`: full digits training split, full/random/Q/B, K=0.5,
+  seeds 0/1, the declared 300-epoch core and 30-epoch fine-tune maximum.
+- Legacy/retention/reuse/sync/MCB/revision smoke configurations check engineering
+  paths. All outputs are exploratory, including the legacy reconstructed split.
+
+The full revised P1/P2/P4/P5/T1.2 grids have not been rerun. Expanded theory,
+review interventions, human/UI and RL/T3 work remain separate pending gates.

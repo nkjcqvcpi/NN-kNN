@@ -10,18 +10,23 @@ Status: living register. Items below are intentionally unresolved unless marked 
 - [x] Implement a shared case-maintenance interface rather than separate incompatible policies for classification, regression, actor, and critic stores.
 - [x] Start T1 with revise disabled while retaining reversible logs and archive support.
 - [x] Evaluate case selection under a fixed capacity `K` before relying on adaptive growth.
-- [x] Use the activation-weighted provenance formulation and geometric provenance-bias trustworthiness score specified in the T1 plan.
+- [x] Set aside the earlier provenance/geometric formula during the case maintenance score redesign, following the 2026-09-17 decision.
+- [x] Following the 2026-09-20 brainstorming, compare Q or a C/H variant, B alone, coverage-to-reachability, and case-removal influence. Do not combine Q and B. See [the candidate definitions](../T1_CASE_MAINTENANCE_CANDIDATES.md).
+- [x] Define solve by activation above a threshold and the final adapted query outcome, consistent with C/H.
+- [x] Use final prediction loss only for removal scoring; report the adaptation penalty separately. Preserve previously trained parameters for the efficient comparison. Optional retraining is a separate higher-cost branch.
+- [x] Investigate cached queries for efficient removal scoring. Defer redundancy scoring from similarity between activation maps.
+- [x] When adaptation is enabled, update every participating case from the final adapted query outcome, in proportion to its normalized activation. Accumulate evidence over queries to assess retrieval and reuse together, following the 2026-09-20 decision.
 - [x] Distinguish trustworthiness from utility, redundancy, coverage, rarity, and source quality.
 - [x] Use the current aggregate, retrieved-label-conditioned NN-CDH architecture for the classification reuse extension; do not restore the old architecture wholesale.
 - [x] Use explicit nominal query-minus-neighborhood differences only when the shared representation difference does not already include those nominal fields.
 - [x] Train the initial classification adapter with residual MSE plus final-label cross-entropy and retain single-term ablations.
 - [x] Use `k=5` only as the initial case-bias warm start. Calibrate the later free-correction radius after core training from direct frozen trained-bias activation regions and the matching learned metric.
 - [x] Add MCB as an optional controlled factor after the retention mechanism can be tested independently.
-- [x] In T2, test NN-kNN policy-only, value-only, and both, with combined actor/critic a stretch objective.
+- [x] In T2, test full-cycle neural CBR configurations with their NN-kNN core in policy-only, value-only, and both roles. Treat combined actor/critic as a stretch objective.
 - [x] Require the T2 Stage A gate before expensive scaling.
 - [x] Treat continuous action as a later T2 progression, not the first test.
 - [x] Treat domain-shift response and CBR case adaptation as different mechanisms.
-- [x] In T3, use an existing host LLM/agent, a provider-neutral retrieval contract, typed retrieval, bounded iterative queries, and no NN-CDH memory adapter.
+- [x] In T3, implement full-cycle neural CBR with an existing host LLM/agent. Use a provider-neutral contract and different NN-kNN retrieval modules for different kinds of knowledge and information. Keep iterative queries bounded and omit an NN-CDH memory adapter.
 - [x] Keep host evidence and human audit as separate views of the same retrieval event.
 - [x] Learn usefulness from downstream outcomes and optional user feedback; use direct counterfactuals for audit where feasible.
 - [x] Separate temporary session, persistent user, authorized domain, and validated global memory.
@@ -40,12 +45,18 @@ Status: living register. Items below are intentionally unresolved unless marked 
 
 ### Before the first matched retention experiment
 
+- [ ] Define success and failure for each task, including an acceptable regression error or a continuous outcome measure. The rule for sharing the adapted query outcome among cases is settled.
+- [ ] Evaluate whether C/H guides maintenance more reliably as queries accumulate and retrieved case groups vary. Include cases repeatedly retrieved together when checking the PI's averaging hypothesis.
+- [ ] Identify the established maintenance methods the general formulation will recover. Derive the assumptions and parameter choices for each, distinguishing exact score recovery, ranking equivalence, and full selector recovery. Preserve the distinction between the established \(C_i=RC(i), H_i=0\) component connection and the still-unresolved general score.
+
 - [ ] Select initial case capacity `K` and maintenance frequency. The current repository's ordinary profile previously used capacity 500/frequency 1000, but those are historical code defaults, not approved experimental values.
-- [ ] Select smoothing `s`, trust weight `alpha`, minimum retrieval count, minimum activation mass, and evidence rule.
-- [ ] Choose cohort-aware bias normalization and define class/action/cohort groups.
-- [ ] Choose the learned representation/distance and threshold used for redundancy.
+- [ ] Compare the four candidate measures before selecting the final case maintenance score and evidence requirements. Choose a Q variant and smoothing; do not restore Q/B combination weights.
+- [ ] Specify B normalization and comparable groups for its standalone comparison.
+- [ ] Choose activation thresholds, the ratio's zero-reachability policy, and the maintenance reference queries. Defer activation-map similarity thresholds.
+- [ ] Choose task prediction losses, acceptable cumulative loss increase, cache refresh, and approximation-error checks. Keep the final test set separate from maintenance selection.
+- [ ] Specify optional retraining budgets, parameter scope, and matched further-training controls.
 - [ ] Define coverage floors and protection rules for class, action, subgroup, temporal, boundary, rare, and shifted cases.
-- [ ] Define the scalarization or constrained optimizer for trustworthiness, utility, redundancy, and coverage; retain separate outputs.
+- [ ] Define the combined coverage/redundancy criterion and its formula, then the scalarization or constrained optimizer combining it with trustworthiness and utility; retain inspectable component outputs. Redundancy and coverage are one selection criterion per the 2026-09-17 PI refinement.
 - [ ] Select feasible counterfactual/data-valuation baselines and document computational limits.
 
 ### Before classification reuse confirmation
@@ -85,14 +96,17 @@ Status: living register. Items below are intentionally unresolved unless marked 
 - [ ] Select the controlled nonstationarity intervention: dynamics, observation, reward, or a prespecified combination.
 - [ ] Define recovery, retained-competence, case-turnover, and catastrophic/meaningful-remembering metrics.
 - [ ] Select fair modern neural and episodic/retrieval-memory comparators for each action space.
-- [ ] If full substitution misses the gate, specify the approved hybrid/parallel neural policy while retaining matched NN-kNN contribution ablations.
+- [ ] If full substitution misses the gate, specify the approved hybrid/parallel neural policy while retaining matched ablations of the full-cycle system and its NN-kNN core.
 - [ ] Size cloud GPU workload from pilots rather than benchmark name alone.
 
 ## T3 choices to resolve
 
 ### Before the general RAG prototype
 
-- [ ] Select a frozen open-weight host model/checkpoint and project-controlled orchestration framework.
+- [ ] Select one open-weight host model/checkpoint for the prompt-augmentation and model-integrated comparisons.
+- [ ] Select and justify the internal NN-kNN connection: retrieval-conditioned attention, hidden-state fusion, output-level gating, or another declared interface.
+- [ ] Specify which host and NN-kNN parameters are trainable in the model-integrated condition.
+- [ ] Define matched prompt-only, internal-only, and combined comparison budgets.
 - [ ] Select the bounded single-hop integration benchmark/corpus snapshot.
 - [ ] Select HotpotQA or MuSiQue, or another justified equivalent, for the primary complementary multi-hop test after pilots.
 - [ ] Finalize the observable retrieval-request schema and how need/subtask representations are inspected.

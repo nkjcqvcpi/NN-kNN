@@ -199,7 +199,7 @@ L_R = w_pre  * L_pre  + w_post * L_post + w_near  * L_near
 L_A = v_post * L_post + v_delta * L_delta + v_small * L_small
 ```
 
-`L_R` asks retrieval to return cases that are already useful, remain useful after bounded adaptation, and are nearby under a declared explanation metric. `L_A` asks adaptation to solve the task, predict the intended correction, and avoid unnecessarily large changes. These pressures are complementary: `L_small` alone would reward doing nothing, while `L_post` alone could reward drastic corrections that conceal poor retrieval. `L_near` is a measurable locality criterion or explanation proxy; it is not by itself proof that a case is understandable to a person.
+`L_R` asks retrieval to return cases that are already useful, remain useful after neural adaptation, and are nearby under a declared explanation metric. `L_A` asks adaptation to solve the task, predict the intended correction, and avoid unnecessarily large changes. These pressures are complementary: `L_small` alone would reward doing nothing, while `L_post` alone could reward drastic corrections that conceal poor retrieval. `L_near` is a measurable locality criterion or explanation proxy; it is not by itself proof that a case is understandable to a person.
 
 #### PI-confirmed free-correction radius
 
@@ -237,7 +237,7 @@ Here `b_i^live(0)` is only the common starting value. The live per-case biases a
 
 The PI confirmed the direct frozen trained-bias snapshot `b_i^star` as the primary post-training calibration. This preserves each case's learned activation radius without introducing another transformation. Cohort normalization, clipping, shrinkage, or another value derived from trained bias is a fallback/ablation only if diagnostics show that raw learned biases are unstable, incomparable, or yield empty or excessively broad activation regions. Any derived form must be computed only from the trained core, frozen within the subsequent adapter-training phase, and logged reproducibly.
 
-`d_theta^star` selects local pairs and `d_y` measures their label/output difference; they need not be the same metric. `d_theta^star` must reuse the learned NN-kNN geometry—including the learned representation, feature-distance weights, and other learned distance components available in that model condition—rather than introduce an unrelated raw-input metric. The trained case bias is not used directly as a label-space correction threshold because bias/distance and output correction generally have different units. Instead, it defines the learned positive-activation region `b_i^star - d_theta^star >= 0`, and observed label variation inside that region supplies `tau_task`. `s_task` is a nonzero training-only output scale used to make the excess penalty comparable across tasks. A correction with `c_q <= tau_task` is permitted at zero adaptation-cost penalty. It is not rewarded regardless of correctness: `L_post` must still require the correction to improve the task.
+`d_theta^star` selects local pairs and `d_y` measures their label/output difference; they need not be the same metric. `d_theta^star` must reuse the learned NN-kNN geometry—including the learned representation, feature weights, and other learned distance components available in that model condition—rather than introduce an unrelated raw-input metric. The trained case bias is not used directly as a label-space correction threshold because bias/distance and output correction generally have different units. Instead, it defines the learned positive-activation region `b_i^star - d_theta^star >= 0`, and observed label variation inside that region supplies `tau_task`. `s_task` is a nonzero training-only output scale used to make the excess penalty comparable across tasks. A correction with `c_q <= tau_task` is permitted at zero adaptation-cost penalty. It is not rewarded regardless of correctness: `L_post` must still require the correction to improve the task.
 
 This threshold has an intuitive interpretation: NN-kNN's case bias defines the region in which a case is intended to activate before normalization. If labels ordinarily vary by roughly `tau_task` inside those activation regions, a correction within that amount is normal local adaptation; a larger correction suggests that adaptation may be overriding rather than reusing the retrieved knowledge.
 
@@ -318,7 +318,7 @@ For every evaluated query, make available:
 - pre- versus post-adaptation loss, accuracy, and calibration; and
 - residual magnitude and the fraction of performance attributable to adaptation rather than retrieval.
 
-All trustworthiness and retain statistics must use the retrieval-only `p0_q` or explicit per-case counterfactuals. Do not use the adapted output to judge whether cases were good, because the adapter could conceal poor retrieval.
+When adaptation is enabled, use the adapted query outcome for `C_i/H_i`, following the PI's 2026-09-20 rule. For each participating case, add its normalized activation to `C_i` on success or to `H_i` on failure. Record the outcome criterion and the activations used in prediction. These updates sum to one per fully evaluated query. Keep retrieval-only and adapted outputs for diagnosis. The adaptation loss penalizes unnecessarily large corrections. Separately measured changes in loss after case removal remain optional comparisons.
 
 ### Classification-adapter baselines and ablations
 
@@ -346,7 +346,7 @@ A direct neural classification head may be included as a capacity reference, but
 - Nominal coverage metadata and, when applicable, category order and unknown/missing handling remain identical after checkpoint reload.
 - Leave-one-out training prevents self-retrieval.
 - Class-index permutation produces the corresponding permutation of inputs, residuals, and outputs.
-- Pre-adaptation trustworthiness statistics are unchanged when the adapter is enabled.
+- Retrieval-only baseline statistics remain reproducible. With adaptation enabled, test that each participating case receives its normalized activation in `C_i` on query success or in `H_i` on query failure. Verify one-case and multiple-case examples and a total update of one per evaluated query.
 - Frozen-retrieval training changes adapter parameters without changing retrieval parameters.
 - Checkpoint save/reload preserves adapter mode, class ordering, dimensionality, and calibration configuration.
 
@@ -396,9 +396,13 @@ class CaseMaintenancePolicy:
 
 Names are suggestions, not required API. The requirements are stable identity, a single policy contract, deterministic decisions under a fixed seed/tie rule, and complete logging.
 
-## PI-approved trustworthiness formulation
+## Case maintenance candidates
+
+**Current direction, 2026-09-20:** Compare Q or a C/H variant, B alone, the coverage-to-reachability ratio, and case-removal influence. The ratio uses activation above a threshold and final query success. Removal influence uses final prediction loss only; report the adaptation penalty separately. The [candidate note](T1_CASE_MAINTENANCE_CANDIDATES.md) defines the frozen-parameter, cached-query, and optional retraining comparisons. Activation-map similarity is deferred.
 
 ### Classification provenance components
+
+**PI refinement, 2026-09-20:** When adaptation is enabled, use the final adapted outcome to update every case used for that query, weighted by its normalized activation. A successful outcome adds the activation to `C_i`; an unsuccessful outcome adds it to `H_i`. One retrieved case receives the whole update. Several cases share the update according to their activations. Accumulate this evidence over queries so maintenance considers retrieval and reuse together. The task-specific success criterion, including the regression error tolerance, remains to be defined. Test whether the accumulated evidence reliably guides maintenance; repeated retrieval of the same case groups can preserve mistaken assignments. Keep pre/post diagnostics and the penalty on unnecessarily large corrections. The stored-label equations below remain a retrieval-only baseline. The comprehensive case maintenance score remains open.
 
 On a labeled training-audit or maintenance set `D`, for case `i` with normalized activation `a_i(x)`, stored class `c_i`, and reference class `y_x`, accumulate:
 
@@ -442,42 +446,28 @@ Convert final bias `b_i`, and optionally its change from initialization, to a co
 
 Do not normalize all raw biases together without checking class/action/cohort effects. Bias scale depends on initialization, temperature, regularization, score mode, training duration, and frequency.
 
-### Combined trustworthiness score
+### Compare scores separately
 
-The PI-approved primary combination is the weighted geometric mean:
-
-```text
-T_i = Q_i^alpha * B_i^(1 - alpha), with 0 < alpha < 1
-```
-
-For numerical stability:
-
-```text
-log(T_i) = alpha * log(clip(Q_i, eps, 1))
-         + (1 - alpha) * log(clip(B_i, eps, 1))
-```
-
-Keep `Q_i`, `B_i`, `R_i`, `A_i`, `C_i`, and `H_i` in outputs. Do not expose only `T_i`.
+Do not combine Q and B. The earlier geometric and arithmetic combinations are superseded. Keep `Q_i`, `B_i`, `R_i`, `A_i`, `C_i`, and `H_i` in outputs even when only one candidate determines ranking. Record the candidate measure, model checkpoint, case-base state, reference queries, and task outcome/loss definition.
 
 ### Important naming rule
 
-`T_i` is a **trustworthiness score**, not the complete retain score. Selecting the best active case set also requires:
+Use **case maintenance score** for the broad measure. Earlier references to `T_i` describe the superseded combined score. Selecting the active case set also requires:
 
 - observed utility/exposure from `R_i` and `A_i`;
-- redundancy relative to other retained cases;
-- class, action, subgroup, temporal, or domain coverage;
+- combined coverage/redundancy relative to the remaining cases, including class, action, subgroup, temporal, and domain coverage;
 - protection of rare, boundary, or designated cases; and
 - the fixed capacity `K`.
 
-A low `T_i` with insufficient exposure is uncertainty, not proof that the case is bad. A low-use case may still provide unique coverage.
+A low Q or B with insufficient exposure is uncertainty, not proof that the case is bad. A low-use case may still provide unique coverage.
 
 ## Contribution semantics beyond classification
 
-The PI-approved `C_i/H_i` formula is exact for class-labeled audit data. Regression and RL do not provide the same correct-class event, so they require role-specific contribution adapters. Do not silently reuse `1[c_i = y_x]` for continuous labels or value cases.
+The stored-label `C_i/H_i` formula above describes the retrieval-only classification baseline. Regression and RL do not provide the same correct-class event, so they require role-specific contribution adapters. Do not silently reuse `1[c_i = y_x]` for continuous labels or value cases.
 
 ### Regression and NN-kNN critic candidate
 
-Use the pre-adaptation retrieved prediction when evaluating retrieval/retention so NN-CDH or another downstream network cannot hide poor cases. The most faithful but more expensive audit is counterfactual removal:
+When adaptation is enabled, contribution auditing may use the final adapted prediction. The existing counterfactual audit compares predictions with and without a case through the same fixed adapter, recomputing retrieval, normalized activations, and adapted outputs in each condition. Without adaptation, use the retrieval-only predictions. Pre-adaptation outputs remain available for retrieval-quality diagnosis:
 
 ```text
 Delta_i(x) = Loss(f_without_i(x), y_x) - Loss(f_with_i(x), y_x)
@@ -530,30 +520,33 @@ All automatic removal in v0 should mean reversible eviction from active memory. 
 
 ### Stage 3 - constrained selection under `K`
 
-Preserve the protected set first, then fill remaining capacity using trustworthiness, utility, diversity/redundancy, and coverage. The exact scalarization is intentionally not fixed here. Implement the policy so these alternatives can be compared:
+Preserve the protected set first, then select cases with the declared candidate measure and combined coverage/redundancy checks. Compare:
 
-1. bias-only, matching the current pruning concept;
-2. provenance quality only;
-3. geometric trustworthiness `T_i` only after evidence filtering;
-4. utility plus redundancy;
-5. trustworthiness plus utility;
-6. trustworthiness plus utility plus coverage/diversity; and
-7. uniform/random or stratified selection.
+1. current bias-only pruning and normalized B alone;
+2. Q or a C/H variant alone;
+3. the coverage-to-reachability ratio;
+4. case-removal influence, with full-query and cached-query evaluation;
+5. optional removal followed by retraining, with its additional cost reported; and
+6. full memory, uniform/random, or stratified selection as baselines.
 
 Use the same `K`, insertion stream, seeds, and training budget across variants. Tie-breaking must be deterministic and logged.
 
 ## Suggested configuration surface
 
 ```text
-case_maintenance_policy = "provenance_bias_coverage"
+case_maintenance_policy = ...  # Q, B, coverage/reachability, or removal influence
 case_capacity = K
 case_maintenance_frequency = ...
 case_score_smoothing = s
-case_trust_alpha = alpha
+case_activation_threshold = ...
+case_removal_loss = "final_prediction_only"
+case_removal_retraining = false  # optional higher-cost comparison
+case_removal_cache_refresh = ...
+case_removal_allowed_loss_increase = ...
 case_min_retrieval_count = ...
 case_min_activation_mass = ...
 case_bias_normalization = "within_cohort_percentile"
-case_redundancy_metric = ...
+case_coverage_redundancy_policy = ...  # activation-map similarity deferred
 case_min_per_class_or_action = ...
 case_archive_evictions = true
 case_revision_enabled = false
@@ -647,7 +640,7 @@ Do not log private or domain-sensitive raw case content by default. Use stable I
 - Build adapter examples from leave-one-out NN-kNN neighborhoods and train with retrieval frozen first.
 - Use positive, configurable `lambda_diff` and `lambda_cls`; compare `L_diff`-only, `L_cls`-only, and the PI-confirmed combined loss.
 - Compare retrieval-only, historical/per-case where feasible, aggregate nominal-residual, and logit-residual variants.
-- Report decision flips and pre/post metrics; verify that retain statistics remain pre-adaptation.
+- Report decision flips and pre/post metrics; verify that adapted query success or failure updates all participating cases according to their normalized activations.
 - Keep this phase separately switchable so retain experiments can run without the adapter and adapter experiments can use identical retained case sets.
 
 ### Phase 3 - RL integration
@@ -697,9 +690,9 @@ Do not claim that a benchmark exactly reproduces a published result unless the i
 
 RL comparisons should distinguish:
 
-- NN-kNN actor with MLP critic;
-- MLP actor with NN-kNN critic;
-- NN-kNN actor with NN-kNN critic and separate memories;
+- full-cycle neural CBR actor, built around an NN-kNN core, with MLP critic;
+- MLP actor with full-cycle neural CBR critic, built around an NN-kNN core;
+- full-cycle neural CBR actor with full-cycle neural CBR critic and separate memories;
 - MLP/MLP baseline;
 - NEC and DQN where their current implementations are valid comparison points; and
 - maintenance policy ablations at matched `K` and environment-step budgets.
@@ -727,16 +720,16 @@ At minimum:
 - current bias-only quantile/threshold pruning;
 - provenance-only `Q_i`;
 - bias-only normalized `B_i`;
-- geometric `T_i`;
-- utility/redundancy selection;
-- combined trustworthiness, utility, and coverage policy; and
+- coverage-to-reachability ratio;
+- case-removal influence, full-query versus cached-query scoring;
+- optional removal with retraining and matched further-training control; and
 - no-MCB versus MCB where available.
 
 For classification reuse, also include retrieval-only, historical/per-case where feasible, the representation-appropriate aggregate nominal-residual, and aggregate logit-residual conditions. Where `Delta_z_q` excludes nominal fields, compare the aggregate nominal-residual with and without `Delta_u_q`. Do not require a redundant `Delta_u_q` condition when nominal fields are already jointly extracted. Keep case base, `K`, retrieval model, split, and training budget matched.
 
 For component synchronization, compare independent component training, retrieval-adaptation alternating optimization, and the proposed retrieval-adaptation-maintenance schedule. Ablate `L_pre`, `L_near`, `L_delta`, and `L_small` individually; never report only the weighted total. For `L_small`, compare no magnitude penalty, penalty from zero, and the PI-confirmed trained-case-bias-region free-correction radius. Use the direct frozen trained-bias snapshot as primary. Add normalized, clipped, or shrunk trained-bias transformations only as fallback/ablation conditions if direct-snapshot diagnostics show instability, incomparability, empty regions, or excessively broad regions. Retain the superseded initial-bias-region and exact-kth label-pair thresholds and robust versus arithmetic label-distance aggregation as comparisons. Start the bias initializer at `k=5`; treat `k` as a warm-start sensitivity parameter rather than a central contribution, expanding its sweep only if conclusions materially depend on it.
 
-Use arithmetic combination of `Q_i` and `B_i` as an ablation, not the primary score.
+Do not combine `Q_i` and `B_i` in the current comparison. For removal scoring, report final prediction loss and adaptation penalty separately. Refresh scores after removal; check cumulative loss against the original baseline.
 
 ## Unit and integration tests
 
@@ -744,7 +737,9 @@ Required small tests include:
 
 - zero exposure yields `Q_i = 0.5` under symmetric smoothing;
 - increasing correct activation raises `Q_i` and increasing incorrect activation lowers it;
-- geometric-score computation matches direct and log-space forms;
+- the solve relation uses the activation threshold and final query outcome;
+- removal recomputes retrieval, normalization, and reuse without changing frozen parameters;
+- cached removal differences use the full reference-set denominator; omitted nonzero activations are treated as an approximation;
 - compaction preserves statistics, labels, biases, glocal weights, optimizer alignment, and stable IDs;
 - protected cases and minimum class/action coverage cannot be violated;
 - archive then restore reproduces the case state;
@@ -754,7 +749,7 @@ Required small tests include:
 - target-critic alignment remains valid after critic-memory maintenance;
 - evaluation/test data never influence training-time retain decisions; and
 - checkpoint save/reload preserves active cases, archived cases, statistics, and policy configuration.
-- classification nominal-residual targets, aggregate inputs, disabled-path identity, class permutation, and pre-adaptation-statistic invariance pass the tests specified above.
+- classification nominal-residual targets, aggregate inputs, disabled-path identity, class permutation, and contribution-measurement consistency with the declared adaptation path pass the tests specified above.
 - free-correction calibration excludes self-pairs and validation/test examples, reconstructs the positive case-bias activation region from the saved bias and learned-distance snapshot, reproduces the logged `tau_task`, assigns zero `L_small` at and below the threshold, and assigns positive increasing cost above it.
 - a degenerate zero or near-zero threshold remains numerically stable because penalty scaling uses nonzero `s_task`, not division by `tau_task`.
 
@@ -790,7 +785,7 @@ These should be answered one at a time rather than assumed:
 1. What signal defines helpful versus harmful contribution for NN-kNN actor cases?
 2. Should the RL critic's provenance use GAE targets, discounted Monte Carlo audit returns, or both for distinct purposes?
 3. Is maintenance computed continuously, at rollout/batch boundaries, at fixed evaluation checkpoints, or in a two-timescale combination?
-4. What are the initial `K`, maintenance frequency, smoothing `s`, trust weight `alpha`, evidence minimums, and coverage floors?
+4. What are the initial `K`, maintenance frequency, Q smoothing, activation thresholds, loss-increase limit, evidence minimums, and coverage floors?
 5. Which representation and threshold define redundancy?
 6. What exact completed-paper datasets form the first fast and full suites?
 7. Which current RL environments beyond `CartPole-v1` must be included?

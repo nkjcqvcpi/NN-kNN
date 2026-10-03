@@ -51,8 +51,8 @@ class SyncConfig:
     seed: int = 0
 
 
-def _forward_terms(model, adapter, X, y, fr: FreeRadius | None, *, output_mode: str, near_scale: float) -> dict[str, torch.Tensor]:
-    r = model.retrieve(X, exclude_identical=True)  # LOO for training-case queries
+def _forward_terms(model, adapter, X, y, fr: FreeRadius | None, *, output_mode: str, near_scale: float, query_case_ids=None) -> dict[str, torch.Tensor]:
+    r = model.retrieve(X, exclude_identical=query_case_ids is None, query_case_ids=query_case_ids)
     w = r["weights"]
     labels = model.labels[r["case_indices"]].float()
     p0 = (w @ labels) / (w @ labels).sum(1, keepdim=True).clamp_min(1e-12)
@@ -81,7 +81,7 @@ def train_synchronized(
     fr: FreeRadius | None,
     *,
     near_scale: float,
-    maintenance_hook: Callable[[int, Any, torch.optim.Optimizer], dict[str, Any] | None] | None = None,
+    maintenance_hook: Callable[[int, Any, torch.optim.Optimizer, Any], dict[str, Any] | None] | None = None,
     maintenance_epochs: set[int] | None = None,
     recalibrate: Callable[[int], FreeRadius] | None = None,
     core_optimizer: torch.optim.Optimizer | None = None,
@@ -115,7 +115,7 @@ def train_synchronized(
         for s in range(0, y.numel(), core_cfg.batch_size):
             b = perm[s : s + core_cfg.batch_size].to(device)
             if ph == "retrieval":
-                T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale)
+                T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b)
                 if cfg.schedule == "independent":
                     L = T["L_pre"]
                 else:
@@ -131,7 +131,7 @@ def train_synchronized(
                 model.eval()  # frozen retrieval, LOO still enforced explicitly
                 for p in model.parameters():
                     p.requires_grad_(False)
-                T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale)
+                T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b)
                 for p in model.parameters():
                     p.requires_grad_(True)
                 if model.momentum_encoder is not None:
@@ -150,7 +150,7 @@ def train_synchronized(
             nb += 1
         rec = {"epoch": ep, "phase": ph, **{k: v / max(nb, 1) for k, v in agg.items()}}
         if ep in maintenance_epochs and maintenance_hook is not None and cfg.schedule == "alternating_rrr":
-            rec["maintenance"] = maintenance_hook(ep, model, ropt)
+            rec["maintenance"] = maintenance_hook(ep, model, ropt, adapter)
             if recalibrate is not None:
                 fr = recalibrate(ep)
                 rec["free_radius"] = fr.to_dict()

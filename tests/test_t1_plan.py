@@ -24,7 +24,6 @@ from model.t1.provenance import (
     audit_provenance,
     score_cases,
     smoothed_quality,
-    trustworthiness,
     within_cohort_percentile,
 )
 from model.t1.retention import RetentionConfig, select_active_set
@@ -43,7 +42,7 @@ def _model(X, y, **over):
     return build_model(X, y, cc, 2), cc
 
 
-SCFG = ScoreConfig(smoothing=1.0, alpha=0.5, min_retrieval_count=1, min_activation_mass=0.1)
+SCFG = ScoreConfig(smoothing=1.0, min_retrieval_count=1, min_activation_mass=0.1)
 
 
 # ------------------------------------------------------------------ provenance / trust
@@ -57,10 +56,9 @@ def test_quality_moves_with_support():
     assert smoothed_quality(5.0, 0.0, 1.0) > 0.5 > smoothed_quality(0.0, 5.0, 1.0)
 
 
-def test_geometric_direct_and_log_space_match():
-    Q, B, a = 0.8, 0.3, 0.4
-    direct = Q ** a * B ** (1 - a)
-    assert trustworthiness(Q, B, a) == pytest.approx(direct, rel=1e-9)
+def test_superseded_combination_is_rejected():
+    with pytest.raises(ValueError, match="supersedes"):
+        RetentionConfig(policy="trust", min_per_cohort=0).validate()
 
 
 def test_percentile_ties_are_neutral():
@@ -141,7 +139,7 @@ def test_deterministic_selection():
     ids = model.active_case_ids().numpy()
     sc = score_cases(ids, active_cohorts(model), model.biases[:40].detach().numpy(), store, SCFG)
     D = np.random.default_rng(0).random((40, 40))
-    cfg = RetentionConfig(policy="trust_utility_coverage", min_per_cohort=2, w_trust=1, w_utility=1, w_redundancy=1, w_coverage=1, seed=3)
+    cfg = RetentionConfig(policy="kcenter", min_per_cohort=2, seed=3)
     a = select_active_set(sc, 15, cfg, D).keep_slots
     b = select_active_set(sc, 15, copy.deepcopy(cfg), D).keep_slots
     assert np.array_equal(a, b)
@@ -262,12 +260,13 @@ def test_class_permutation_equivariance_of_retrieval():
     assert torch.allclose(p1, p2.flip(1), atol=1e-6)
 
 
-def test_pre_adaptation_statistics_invariant_to_adapter():
+def test_disabled_adapter_does_not_change_statistics():
     X, y = _toy()
     model, _ = _model(X, y)
     s1, s2 = CaseStatisticsStore(), CaseStatisticsStore()
     audit_provenance(model, X, y, s1, exclude_identical=True)
     model.classification_adapter = ClassificationNNCDHAdapter(3, 2, 0, (8, 4))
+    model.enable_classification_adapter = False
     audit_provenance(model, X, y, s2, exclude_identical=True)
     for cid, st in s1.items():
         assert st.positive_support == pytest.approx(s2.get(cid).positive_support)
@@ -317,7 +316,7 @@ def test_regression_counterfactual_audit_runs():
     cc = CoreConfig(task_type="regression", epochs=1, seed=0)
     model = build_model(data.X_train[:60], data.y_train[:60], cc, None)
     store = CaseStatisticsStore("regression")
-    audit_provenance(model, data.X_train[:60], data.y_train[:60], store, exclude_identical=True, reg_bins=data.reg_bins)
+    audit_provenance(model, data.X_train[:60], data.y_train[:60], store, exclude_identical=True, reg_bins=data.reg_bins, regression_success_tolerance=0.5)
     tot = sum(st.positive_support + st.harmful_support for _, st in store.items())
     assert tot > 0
 

@@ -23,6 +23,9 @@ Minimum identifiers:
 - `configuration_id` — complete resolved configuration hash or equivalent;
 - `model_snapshot_id` — host/core/actor/critic checkpoint as applicable;
 - `retrieval_snapshot_id` — representation, learned metric, feature weights, and case-bias state used for retrieval;
+- `integration_mode` — none, prompt/context, internal, or combined;
+- `internal_interface_id` — exact attention, hidden-state, output-gating, or other interface configuration when applicable;
+- `trainable_parameter_scope` — declared NN-kNN and host parameter groups updated in the run;
 - `case_id` — stable across compaction, archive, restore, and scope changes;
 - `case_version_id` — immutable content/metadata revision;
 - `retrieval_event_id` — one query-to-case-layer computation;
@@ -89,6 +92,8 @@ Each retrieval event records:
 - downstream adapted prediction, answer, action, value, or outcome;
 - latency, memory, context/tokens, compute, and monetary cost where applicable; and
 - continuation/stopping decision and declared reason for iterative retrieval.
+
+For model-integrated T3 runs, also record where each retrieved case entered the host, its case activation or contribution at that interface, the host checkpoint before and after training, and whether the same case also entered the prompt. These fields distinguish prompt-only, internal-only, and combined treatments.
 
 For T3, derive the host-LLM evidence channel and human-audit channel from this same event. Do not create a separate explanation event that can drift from the evidence actually supplied.
 
@@ -182,6 +187,7 @@ Comparisons should hold constant, as applicable:
 - retrieval/context/round budget;
 - hardware accounting or a transparent normalization;
 - prompt, decoding, tool schema, and available tools for T3; and
+- T3 integration mode, internal interface, trainable parameter scope, and starting host checkpoint;
 - early stopping and checkpoint selection.
 
 Report both configured and actual budgets. If a legacy paper protocol cannot be exactly recovered, document every known difference and label the result a reconstruction, not an exact reproduction.
@@ -192,12 +198,12 @@ Use multiple seeds and uncertainty estimates for confirmatory comparisons. Exact
 
 Every T1/T2 implementation exposes and logs separable switches for:
 
-- retrieval-only versus bounded neural reuse;
+- retrieval-only versus neural adaptation of retrieved solutions;
 - MCB off/on;
 - current/no learned maintenance versus proposed quality-aware retention;
 - revise off/on;
 - independent component training versus synchronized/alternating training; and
-- conventional neural versus NN-kNN policy/value roles in T2.
+- conventional neural versus full-cycle neural CBR policy/value configurations in T2, with the NN-kNN core's role recorded explicitly.
 
 Run broad main-effect and important-interaction coverage on inexpensive tasks. Use prespecified evidence-selected combinations on expensive tasks; do not attempt every combination everywhere. The classification adapter must remain separately switchable so retention can use the same case set with and without reuse.
 
