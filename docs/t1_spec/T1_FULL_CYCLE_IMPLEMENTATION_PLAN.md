@@ -2,7 +2,11 @@
 
 Status: PI-confirmed architecture with staged implementation details. Numerical hyperparameters and several task-specific definitions remain unresolved and are listed explicitly.
 
+**Maintenance status, 2026-09-20:** Following [the survey](../../05-evidence-and-citations/CBR_CASE_MAINTENANCE_SURVEY_2026-09-17.md), compare Q or a C/H variant, B alone, the coverage-to-reachability ratio, and case-removal influence. Do not combine Q and B. The broad measure is named **case maintenance score**. Coverage and redundancy are one consideration. No final formula is selected. Read [the candidate definitions and protocols](../T1_CASE_MAINTENANCE_CANDIDATES.md) before further scoring implementation.
+
 ## 1. Objective and scientific boundary
+
+**Maintenance generalization objective, 2026-09-20:** Derive a general case maintenance score and method that recover established maintenance approaches under explicit special-case assumptions. For each claimed reduction, specify the reference set, success relation, case weighting, adaptation setting, score, and selection procedure. Distinguish exact score equality, ranking equivalence, and full algorithm equivalence. The \(C_i=RC(i), H_i=0\) connection is a first component-level derivation, not an already selected general maintenance formula.
 
 T1 asks whether NN-kNN can become a coordinated full-cycle neural case-based reasoning system that preserves competitive predictive performance while making its decisions case-grounded, inspectable, correctable, and maintainable under bounded memory.
 
@@ -12,14 +16,14 @@ The new T1 work is:
 
 - quality-, utility-, redundancy-, and coverage-aware case maintenance;
 - cross-benchmark integration and evaluation of Momentum Case Base (MCB);
-- bounded neural reuse that cannot silently hide poor retrieval;
+- neural adaptation of retrieved solutions that is discouraged from hiding poor retrieval through unnecessarily large changes;
 - synchronization among retrieval, reuse, and retention;
 - human revision with causal post-intervention evaluation; and
 - bounded-memory and modern-competitiveness studies across legacy and selected modern tasks.
 
 T1 has two sequenced aims:
 
-- **T1.1 Technical core:** retrieve, bounded reuse, MCB stabilization, retain, and bounded-memory integration. Revise is initially disabled.
+- **T1.1 Technical core:** retrieval, neural adaptation of retrieved solutions, MCB stabilization, retention, and bounded-memory integration. Revision is initially disabled.
 - **T1.2 Human revision:** add authorized case/weight intervention, controlled retraining where appropriate, and a bounded UI study.
 
 Packaging is an enabling deliverable, not a separate scientific aim.
@@ -47,7 +51,7 @@ z_i(x) = b_i - d_i(x)
 - Expose the cases, distances, activations, biases, feature/case weights, and retrieval state actually used for prediction.
 - Assign stable case identities independent of tensor slot or compaction.
 
-### 3.2 Reuse — bounded neural adaptation
+### 3.2 Reuse — neural adaptation of retrieved solutions
 
 - For regression, preserve the current aggregate NN-CDH-style adapter as the foundation.
 - For classification, add the aggregate nominal-residual extension specified below.
@@ -74,7 +78,7 @@ Every change must be logged, versioned, reversible where possible, and linked to
 ### 3.4 Retain — bounded case-base maintenance
 
 - Accumulate usage and outcome provenance for each stable case.
-- Combine provenance quality with the trained case bias for a trustworthiness signal.
+- Compare outcome quality Q and normalized trained case bias B as separate maintenance candidates.
 - Keep utility/exposure, redundancy, diversity, coverage, rarity, and protection separate.
 - Select an active set under fixed capacity `K` first; compare adaptive growth only later.
 - Perform maintenance at declared safe checkpoints, rebuild any affected neighborhood/index state, and preserve archives/restoration paths.
@@ -210,9 +214,9 @@ Recommended first pass:
 3. Train the adapter without letting it alter retrieval.
 4. Compare retrieval-only versus adapted decisions on identical case sets.
 5. Log `p0_q`, `r*_q`, `r_hat_q`, `s_q`, losses, correction magnitude, selected cases, decision flips, and calibration.
-6. Verify that retention statistics use the pre-adaptation contribution, so the adapter cannot hide poor cases.
+6. With adaptation enabled, verify that query success adds each participating case's normalized activation to `C_i` and query failure adds it to `H_i`. Check single-case and multiple-case examples and a total update of one per evaluated query. The adaptation loss penalizes unnecessarily large corrections; pre-adaptation results remain available for diagnosis.
 
-Required tests include zero-correction identity, class permutation, output dimensionality, nominal-field coverage, unknown/missing categories, disabled-path equivalence, no raw-query/retrieved-embedding leakage, checkpoint reload, and invariance of pre-adaptation retention statistics.
+Required tests include zero-correction identity, class permutation, output dimensionality, nominal-field coverage, unknown/missing categories, disabled-path equivalence, no raw-query/retrieved-embedding leakage, checkpoint reload, and consistency of contribution measurements with the declared adaptation path.
 
 ## 6. Later component synchronization
 
@@ -287,6 +291,8 @@ Safeguards:
 
 ### 8.1 Classification provenance
 
+**PI refinement, 2026-09-20:** When adaptation is enabled, use the final adapted outcome to update every case used for that query, weighted by its normalized activation. A successful outcome adds the activation to `C_i`; an unsuccessful outcome adds it to `H_i`. One retrieved case receives the whole update. Several cases share the update according to their activations. Accumulate this evidence over queries so maintenance considers retrieval and reuse together. The task-specific success criterion, including the regression error tolerance, remains to be defined. Test whether the accumulated evidence reliably guides maintenance; repeated retrieval of the same case groups can preserve mistaken assignments. Keep pre/post diagnostics and the penalty on unnecessarily large corrections. The stored-label equations below remain a retrieval-only baseline. The comprehensive case maintenance score remains open.
+
 For case `i`, normalized activation `a_i(x)`, stored class `c_i`, and reference class `y_x` on a designated training-audit/maintenance set `D`:
 
 ```text
@@ -315,20 +321,11 @@ Q_i = (C_i + s) / (C_i + H_i + 2s),  s > 0
 
 Map trained bias `b_i`, optionally with its change from initialization, to cohort-comparable `B_i in [0,1]`, where lower values indicate learned disutility. Start with within-class or otherwise matched percentiles; median/MAD is an ablation. Do not pool raw biases across incompatible class/action/cohort conditions without checking their scale.
 
-### 8.4 Combined trustworthiness
+### 8.4 Alternative maintenance scores
 
-Use the PI-approved weighted geometric mean:
+Use Q or its C/H variant and B as separate candidates. The earlier geometric and arithmetic combinations are superseded. Always retain and report `Q_i`, `B_i`, `R_i`, `A_i`, `C_i`, and `H_i` separately.
 
-```text
-T_i = Q_i^alpha * B_i^(1-alpha),  0 < alpha < 1
-
-log(T_i) = alpha * log(clip(Q_i, eps, 1))
-         + (1-alpha) * log(clip(B_i, eps, 1))
-```
-
-The geometric form prevents one excellent component from fully compensating for a nearly zero component. Arithmetic combination, provenance-only, and bias-only are ablations. Always retain and report `Q_i`, `B_i`, `T_i`, `R_i`, `A_i`, `C_i`, and `H_i` separately.
-
-`T_i` is a **trustworthiness score**, not the complete retention score.
+The other candidates are the coverage-to-reachability ratio and case-removal influence. Define solve by activation above a threshold and success of the final query outcome, after adaptation when enabled. Removal influence is final prediction loss after removal minus loss before removal. Report the adaptation penalty separately. Recompute retrieval, normalization, and reuse while preserving model parameters in the efficient comparison. The candidate note specifies cached-query scoring, its full-reference-set denominator, cache refresh, and approximation checks. Retraining is an optional higher-cost comparison. Defer activation-map similarity as a redundancy score.
 
 ### 8.5 Harm, low utility, and uncertainty
 
@@ -344,7 +341,7 @@ Do not reuse class equality for continuous or sequential targets.
 
 ### 9.1 Regression and value prediction
 
-Use the pre-adaptation retrieval output. The reference audit is counterfactual removal with activation renormalization:
+When adaptation is enabled, the reference audit may compare final adapted outputs with and without the case. Keep the adapter parameters fixed across this comparison, and recompute retrieval, normalized activations, and the adapted prediction for each condition. Without adaptation, use retrieval-only outputs. The counterfactual audit is:
 
 ```text
 Delta_i(x) = Loss(f_without_i(x), y_x) - Loss(f_with_i(x), y_x)
@@ -371,6 +368,8 @@ Treat the critic as regression against a declared target. Candidate uses are GAE
 
 ## 10. Constrained retention under fixed `K`
 
+**PI refinement (2026-09-17):** Redundancy and coverage form one combined selection criterion, assessing coverage added or preserved relative to the selected set. This supersedes separate redundancy and coverage terms in the earlier lists below. The coverage measure and formula remain open; protected-case requirements remain in force.
+
 ### Stage 1 — protection and evidence
 
 1. Protect cases required for minimum class/action/cohort/subgroup/temporal/domain coverage.
@@ -391,7 +390,7 @@ In consequential settings, suspected harmful or poisoned cases are review-only u
 
 ### Stage 3 — fill capacity
 
-Preserve protected cases first, then fill remaining capacity using a declared combination or constrained selection of trustworthiness, utility, diversity/redundancy, and coverage. Compare:
+Preserve protected cases first, then select cases with the declared candidate measure and combined coverage/redundancy checks. Compare:
 
 1. full memory where feasible;
 2. ordinary downsampling/random selection;
@@ -399,10 +398,10 @@ Preserve protected cases first, then fill remaining capacity using a declared co
 4. current bias-only pruning;
 5. provenance-only `Q_i`;
 6. normalized bias-only `B_i`;
-7. geometric trustworthiness `T_i` after evidence filtering;
-8. utility plus redundancy;
-9. trustworthiness plus utility; and
-10. trustworthiness plus utility plus coverage/diversity.
+7. coverage-to-reachability ratio;
+8. case-removal influence using the full reference set;
+9. cached-query approximation to removal influence; and
+10. optional removal with retraining and a matched further-training control.
 
 Use identical `K`, insertion stream, seeds, and training/tuning budgets. Tie-breaking must be deterministic and logged.
 
@@ -435,15 +434,19 @@ Use both direct technical intervention experiments and a bounded UI study. The r
 Suggested names may change, but all scientific factors must be explicit:
 
 ```text
-case_maintenance_policy = "provenance_bias_coverage"
+case_maintenance_policy = ...  # Q, B, coverage/reachability, or removal influence
 case_capacity = K
 case_maintenance_frequency = ...
 case_score_smoothing = s
-case_trust_alpha = alpha
+case_activation_threshold = ...
+case_removal_loss = "final_prediction_only"
+case_removal_retraining = false  # optional higher-cost comparison
+case_removal_cache_refresh = ...
+case_removal_allowed_loss_increase = ...
 case_min_retrieval_count = ...
 case_min_activation_mass = ...
 case_bias_normalization = "within_cohort_percentile"
-case_redundancy_metric = ...
+case_coverage_redundancy_policy = ...  # activation-map similarity deferred
 case_min_per_class_or_action = ...
 case_archive_evictions = true
 case_revision_enabled = false
@@ -499,7 +502,7 @@ Ellipses are unresolved. The classification adapter, MCB, revision, and synchron
 
 - Implement classification provenance, bias normalization, trustworthiness, protection, redundancy, reversible selection, and event logs.
 - Test synthetic corruptions, redundancy, rare cases, boundary cases, and shifted subdomains.
-- Add regression counterfactual auditing on a tractable subset using pre-adaptation output.
+- Add regression counterfactual auditing on a tractable subset, allowing adapted outputs when adaptation is enabled and retaining pre-adaptation results for diagnosis.
 
 ### Phase 2 — classification reuse
 
@@ -580,7 +583,9 @@ Use benchmark-specific non-inferiority/practical-equivalence margins and minimum
 
 - zero exposure yields `Q_i = 0.5` under symmetric smoothing;
 - correct activation increases `Q_i`; harmful activation decreases it;
-- geometric direct/log-space scores match;
+- the solve relation uses the activation threshold and final query outcome;
+- removal recomputes retrieval, normalization, and reuse with frozen parameters;
+- cached removal differences retain the full reference-set denominator and are checked against full-query scoring;
 - compaction preserves IDs, statistics, labels/solutions, biases, glocal weights, optimizer alignment, and target-critic alignment;
 - protected coverage cannot be violated;
 - archive/restore reproduces case state;

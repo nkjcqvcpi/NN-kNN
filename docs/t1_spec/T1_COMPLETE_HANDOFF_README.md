@@ -53,14 +53,14 @@ If a lower-level instruction appears to conflict with the current consolidated p
 
 ## Essential current design decisions
 
-- T1 implements a full neural CBR cycle around NN-kNN: retrieve, bounded reuse, revise, and retain.
+- T1 implements a full neural CBR cycle around NN-kNN: retrieval, neural adaptation of retrieved solutions, human revision, and retention.
 - Revise is disabled during the first technical implementation, but stable IDs, archives, and logs must support it later.
 - MCB is a cross-cutting representation-stability mechanism, not a fifth CBR stage.
 - The immediate bottleneck hypothesis is poor case selection/use; it remains a hypothesis requiring causal testing.
 - Classification reuse preserves the new aggregate, retrieved-label-conditioned NN-CDH architecture and uses explicit nominal input differences only when the shared representation does not already include them.
 - The initial classification loss combines residual MSE and final-label cross-entropy.
-- Case trustworthiness combines activation-weighted provenance quality `Q_i` and normalized trained case-bias score `B_i` through `T_i = Q_i^alpha B_i^(1-alpha)`.
-- Trustworthiness is not the full retain score; utility, redundancy, coverage, rarity, exposure, and protection remain separate.
+- Maintenance now compares Q or a C/H variant, B alone, coverage-to-reachability, and case-removal influence. Do not combine Q and B. Read the [2026-09-20 candidate note](../T1_CASE_MAINTENANCE_CANDIDATES.md); older exported handoff archives may retain the superseded combination.
+- Selecting the active set also needs combined coverage/redundancy, exposure, and protected-case checks. No final comprehensive score is selected.
 - `k=5` initializes the default case bias only. The later free-correction radius is calibrated after core training from a direct frozen snapshot of trained per-case biases and the matching learned distance.
 - Human correction uses M0 before correction, M1 immediately after correction without retraining, and M2 after controlled retraining.
 - Completed classification/regression results are pre-MCB. Reproduce/reconstruct them first, then compare matched MCB and full-cycle variants.

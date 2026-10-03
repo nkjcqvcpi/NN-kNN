@@ -6,7 +6,7 @@ The PI requested the full-cycle foundation on 2026-09-08 after a collaborator me
 
 T1 has two sequenced scientific aims:
 
-1. **T1.1 - Coordinate the technical core:** improve and coordinate NN-kNN retrieval, bounded neural reuse, MCB-style representation stability, quality-aware retention, and bounded-memory case selection. Human revision remains disabled during the first implementation so core case-selection failures can be isolated.
+1. **T1.1 - Coordinate the technical core:** improve and coordinate NN-kNN retrieval, neural adaptation of retrieved solutions, MCB-style representation stability, quality-aware retention, and bounded-memory case selection. Human revision remains disabled during the first implementation so core case-selection failures can be isolated.
 2. **T1.2 - Complete and validate the cycle:** add human-guided revision, causal correction evaluation, and the bounded human-grounded UI study after the technical core is established.
 
 The aims share one scientific question: whether an NN-kNN system can preserve task performance while making learned behavior stable, inspectable, correctable, and maintainable under limited memory. A reusable module and bounded portability tests are enabling deliverables, not a third scientific aim. The intellectual contribution is the coordination and evaluation of the full cycle and its failure boundaries.
@@ -19,7 +19,7 @@ The PI reports that the current collaboration with Sen He began in T2 and now pr
 
 T1 therefore asks a foundational question before expanding to reinforcement learning:
 
-> Can NN-kNN become the trainable core of a complete case-based reasoning cycle whose retrieval, bounded reuse, MCB-supported representation stability, human revision, and quality-aware retention improve one another while preserving inspectable links between cases and behavior?
+> Can NN-kNN become the trainable core of a complete case-based reasoning cycle whose retrieval, neural adaptation of retrieved solutions, MCB-supported representation stability, human revision, and quality-aware retention improve one another while preserving inspectable links between cases and behavior?
 
 The completed classification and regression comparisons cited as preliminary evidence use the older NN-kNN architecture and **do not include MCB**. They establish a legacy feasibility and performance baseline only. T1 must separately determine whether MCB and the integrated full-cycle mechanisms preserve or improve task performance, stability, case quality, bounded-memory efficiency, and human correctability.
 
@@ -40,7 +40,7 @@ The suspected case-selection bottleneck remains a hypothesis. The evaluation mus
 
 ### 1. Retrieve - NN-kNN case activation
 
-NN-kNN retrieves cases using learned representations, feature-distance weights, per-case bias, and normalized case activation. The retrieved cases and their activation/contribution weights form both the prediction substrate and the observable trace passed to later stages.
+NN-kNN retrieves cases using learned representations, feature weights, per-case bias, and normalized case activation. The retrieved cases and their activation/contribution weights form both the prediction substrate and the observable trace passed to later stages.
 
 Existing foundation: maintained classification and regression implementations already calculate case distances, bias-minus-distance scores, and normalized activation. Proposed T1 work must improve retrieval quality and stability where current behavior is inadequate, rather than merely restating that NN-kNN retrieves cases.
 
@@ -67,7 +67,7 @@ r_hat_q = tanh(g_psi(h_q))
 s_q = p0_q + r_hat_q
 ```
 
-For one retrieved case, `r*_q` is an all-zero or one-hot/one-cold class-change vector; for a neighborhood, it is a generalized one-hot/weighted-cold residual. The explicit grouped nominal-attribute difference preserves the old paper's idea only when the shared representation difference does not already include the nominal fields. If nominal features are extracted together with the other features, that explicit channel is omitted as redundant. The adapter predicts from differences and retrieved label mass, not from the raw query, raw cases, or retrieved embedding. Retain/trustworthiness diagnostics use the pre-adaptation `p0_q` so a downstream adapter cannot conceal poor cases.
+For one retrieved case, `r*_q` is an all-zero or one-hot/one-cold class-change vector; for a neighborhood, it is a generalized one-hot/weighted-cold residual. The explicit grouped nominal-attribute difference preserves the old paper's idea only when the shared representation difference does not already include the nominal fields. If nominal features are extracted together with the other features, that explicit channel is omitted as redundant. The adapter predicts from differences and retrieved label mass, not from the raw query, raw cases, or retrieved embedding. When adaptation is enabled, `C_i/H_i` may assess contributions after adaptation. The adaptation loss penalizes unnecessarily large corrections; pre-adaptation `p0_q` remains available for diagnosis.
 
 Existing foundation: NN-CDH reuse is implemented for regression, and the older paper demonstrates a nominal-difference classification architecture, but the proposed aggregate classification adapter above is not yet implemented or validated. T1 will use a common reuse contract with task-specific adapter semantics. RL actions or values and later LLM/agent memories remain separate future adapter designs rather than being inferred from supervised classification.
 
@@ -81,9 +81,11 @@ Existing foundation: the regression paper provides a controlled synthetic featur
 
 ### 4. Retain - quality- and coverage-aware case-base maintenance
 
-The retain stage decides which new experiences become cases and which existing cases remain active under the fixed budget `K`. The working design combines exposure, activation-weighted correct and incorrect support, learned case bias, redundancy, diversity, and rare/domain coverage. Routine eviction of clearly redundant or low-utility cases is automatic, logged, safeguarded, and reversible; suspected harmful, poisoned, rare, domain-critical, ambiguous, or otherwise consequential cases require qualified human review.
+The retain stage decides which new experiences become cases and which existing cases remain active under the fixed budget `K`. The current design compares four candidate measures: Q or a C/H variant, B alone, the coverage-to-reachability ratio, and case-removal influence. Exposure and combined coverage/redundancy inform selection and protection. Routine eviction of clearly redundant or low-utility cases is automatic, logged, safeguarded, and reversible; suspected harmful, poisoned, rare, domain-critical, ambiguous, or otherwise consequential cases require qualified human review.
 
-For class-labeled audit data, the PI-approved provenance components are:
+**PI refinement, 2026-09-20:** When adaptation is enabled, use the final adapted outcome to update every case used for that query, weighted by its normalized activation. A successful outcome adds the activation to `C_i`; an unsuccessful outcome adds it to `H_i`. One retrieved case receives the whole update. Several cases share the update according to their activations. Accumulate this evidence over queries so maintenance considers retrieval and reuse together. The task-specific success criterion, including the regression error tolerance, remains to be defined. Test whether the accumulated evidence reliably guides maintenance; repeated retrieval of the same case groups can preserve mistaken assignments. Keep pre/post diagnostics and the penalty on unnecessarily large corrections. The stored-label equations below remain a retrieval-only baseline. The comprehensive case maintenance score remains open.
+
+The retrieval-only classification baseline is:
 
 ```text
 R_i = sum_x 1[i is retrieved for x]
@@ -92,21 +94,17 @@ C_i = sum_x a_i(x) * 1[c_i = y_x]
 H_i = sum_x a_i(x) * 1[c_i != y_x]
 ```
 
-The smoothed provenance-quality score is:
+The smoothed outcome-quality candidate is:
 
 ```text
 Q_i = (C_i + s) / (C_i + H_i + 2s), with s > 0
 ```
 
-After mapping learned case bias to a cohort-comparable value `B_i` in `[0,1]`, the primary combined trustworthiness score is:
+Map learned case bias to a cohort-comparable value `B_i` in `[0,1]` and compare it as an alternative to Q. The PI rejected combining Q and B in the current comparison. Define the ratio's solve relation by activation above a threshold and a successful final query outcome. Define removal influence as final prediction loss after removing a case minus loss before removal. Keep model parameters fixed in the efficient version; optional retraining is a separate higher-cost comparison. Report the adaptation penalty separately. See [T1_CASE_MAINTENANCE_CANDIDATES.md](T1_CASE_MAINTENANCE_CANDIDATES.md) for the equations and cached-query approximation.
 
-```text
-T_i = Q_i^alpha * B_i^(1 - alpha), with 0 < alpha < 1
-```
+The selection policy must also consider exposure from `R_i` and `A_i`, combined coverage/redundancy, protected cases, and budget `K`. Low exposure means insufficient evidence, not proof of a bad case. Regression, actor, critic, and LLM/agent cases require task-specific success definitions. In T3, success concerns downstream usefulness; see [T3_NEED_CONDITIONED_RETRIEVAL.md](T3_NEED_CONDITIONED_RETRIEVAL.md). Similarity between activation maps remains deferred.
 
-`T_i` is not the complete retain score. The selection policy must also consider exposure/utility from `R_i` and `A_i`, redundancy, protected coverage, and budget `K`. Low exposure means insufficient evidence, not proof of a bad case. Continuous regression labels, RL actor cases, RL critic value cases, and later LLM/agent memories require task-specific helpful/harmful contribution definitions rather than silently applying the classification indicator. In T3, same-label support is replaced by need-conditioned downstream utility; see [T3_NEED_CONDITIONED_RETRIEVAL.md](T3_NEED_CONDITIONED_RETRIEVAL.md).
-
-Existing foundation: the current RL code includes bounded actor/critic case memories and bias-based pruning with protected case IDs and minimum action coverage. The proposed provenance score, competence/coverage-aware selection, cross-task retention policy, reversible archive, and human-reviewed consequential intervention remain new work.
+Existing foundation: the current RL code includes bounded actor/critic case memories and bias-based pruning with protected case IDs and minimum action coverage. The proposed case maintenance score, competence/coverage-aware selection, cross-task retention policy, reversible archive, and human-reviewed consequential intervention remain new work.
 
 ## Cross-cutting role of Momentum Case Base
 
@@ -145,7 +143,7 @@ L_small = mean_q [
 ]
 ```
 
-`d_theta^star` includes the trained representation, feature-distance weights, and other learned geometric components whenever available. The trained bias and metric snapshots are frozen within the subsequent calibration/adapter phase, and only training pairs are used. Bias is not numerically substituted for label-space correction because the units differ; it selects the learned local region whose observed label variation defines the threshold. Corrections at or below `tau_task` receive no magnitude penalty but must still improve `L_post`.
+`d_theta^star` includes the trained representation, feature weights, and other learned geometric components whenever available. The trained bias and metric snapshots are frozen within the subsequent calibration/adapter phase, and only training pairs are used. Bias is not numerically substituted for label-space correction because the units differ; it selects the learned local region whose observed label variation defines the threshold. Corrections at or below `tau_task` receive no magnitude penalty but must still improve `L_post`.
 
 For classification, one-hot Euclidean `d_y` remains primary: `tau_task` is `sqrt(2)` times the class-disagreement rate inside the trained-bias activation regions, with probability-vector distance as an ablation. The superseded exact-kth label-pair estimator remains a comparison condition. The initial common case bias still starts from NN-kNN's data-derived mean kth-neighbor-distance policy with `k=5`, but that value is only a warm start for training the live per-case biases. It is not the primary free-adaptation calibration source. The PI selected the direct frozen trained per-case biases as primary because they preserve the learned case-specific activation geometry without another transformation. Normalized, clipped, or shrunk trained-bias values are fallback/ablation conditions if the direct snapshot produces unstable, incomparable, empty, or excessively broad activation regions.
 
@@ -155,7 +153,7 @@ The PI's ICCBR-2021 paper provides direct preliminary evidence for the two-compo
 
 ## Working hypotheses and questions
 
-**H1 - PI-confirmed central T1 hypothesis:** Explicit coordination of NN-kNN retrieval, bounded neural adaptation, MCB-style case-representation stabilization, and quality-aware retention will outperform independently trained or heuristically connected components on a joint trade-off among task quality, retrieval locality and faithfulness, adaptation magnitude, neighborhood and representation stability, memory efficiency, and robustness to changing or corrupted cases; later human revision will test correctability. Matched no-MCB and component-wise ablations will test whether MCB improves that balance or over-stabilizes the memory and suppresses necessary adaptation.
+**H1 - PI-confirmed central T1 hypothesis:** Explicit coordination of NN-kNN retrieval, neural adaptation with a penalty on unnecessarily large changes, MCB-style case-representation stabilization, and quality-aware retention will outperform independently trained or heuristically connected components on a joint trade-off among task quality, retrieval locality and faithfulness, adaptation magnitude, neighborhood and representation stability, memory efficiency, and robustness to changing or corrupted cases; later human revision will test correctability. Matched no-MCB and component-wise ablations will test whether MCB improves that balance or over-stabilizes the memory and suppresses necessary adaptation.
 
 **Immediate H0a - PI-confirmed direction:** Quality-, utility-, redundancy-, and coverage-aware retention will improve NN-kNN retrieval and task learning over current bias-only pruning and task-agnostic downsampling/random selection at matched case budgets; it will approach full-case-base performance while retaining substantially fewer, higher-quality cases; and the resulting NN-kNN system will be tested for competitive task performance against strong contemporary methods on the same benchmarks and protocols. Improved selection will also improve or stabilize the active RL training if case quality is the actual bottleneck. Exact quantitative thresholds remain to be set before confirmatory experiments.
 
@@ -188,7 +186,7 @@ Rerun the classification and regression benchmarks from the completed pre-MCB pa
 - classification retrieval-only versus aggregate nominal-residual adaptation, with a logit-residual engineering ablation;
 - retrieve plus retain;
 - current versus proposed retain policies at matched `K`;
-- configurable combinations with bounded reuse, MCB, quality-aware retention, and—after T1.2 begins—human revision enabled or disabled, including the main effects and scientifically important interactions;
+- configurable combinations with neural adaptation, MCB, quality-aware retention, and—after T1.2 begins—human revision enabled or disabled, including the main effects and scientifically important interactions;
 - each MCB condition paired with a matched no-MCB condition where feasible, always retaining the corresponding pre-MCB legacy result or rerun as a clearly labeled baseline; and
 - matched neural, nearest-neighbor, case-based, and task-specific baselines, including strong contemporary benchmark methods selected through a documented, date-stamped review before confirmatory runs.
 
@@ -210,7 +208,7 @@ The human-grounded study introduces a human-subjects dependency. It will proceed
 
 ## Main risks and useful fallbacks
 
-- **Adaptation hides bad retrieval:** exclude raw query and retrieved embeddings from the adapter, train on actual leave-one-out retrieval neighborhoods, use staged training and constrained capacity, calculate retain statistics pre-adaptation, and report pre/post behavior and decision flips.
+- **Adaptation hides bad retrieval:** exclude raw query and retrieved embeddings from the adapter, train on actual leave-one-out retrieval neighborhoods, use staged training and constrained capacity, allow post-adaptation contribution statistics, penalize unnecessarily large corrections through the adaptation loss, and report pre/post behavior and decision flips.
 - **Human edits are ignored or undone:** deferred from the first implementation; when revise is enabled, separate immediate edit effects from post-edit adaptation and test parameter freezing, constraints, or regularization that preserves authorized changes.
 - **The interface looks transparent but does not help people intervene:** retain the reproducible functional tests as the core mechanism evidence, then use the bounded human-grounded study to measure error identification, correction success, collateral effects, efficiency, and trust calibration rather than relying on participant preference alone.
 - **Retention removes rare competence:** enforce protection and coverage checks, retain reversible archives, and report subgroup/domain regressions.

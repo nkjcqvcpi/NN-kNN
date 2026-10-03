@@ -50,10 +50,10 @@ class ReuseConfig:
 
 
 @torch.no_grad()
-def neighborhood_inputs(model, X: torch.Tensor, *, exclude_identical: bool, X_nominal: torch.Tensor | None = None, nominal_case: torch.Tensor | None = None) -> dict[str, torch.Tensor]:
+def neighborhood_inputs(model, X: torch.Tensor, *, exclude_identical: bool, X_nominal: torch.Tensor | None = None, nominal_case: torch.Tensor | None = None, query_case_ids=None) -> dict[str, torch.Tensor]:
     """Frozen-retrieval neighborhood quantities for queries X."""
     model.eval()
-    r = model.retrieve(X.to(model.cases.device), exclude_identical=exclude_identical)
+    r = model.retrieve(X.to(model.cases.device), exclude_identical=exclude_identical if query_case_ids is None else False, query_case_ids=query_case_ids)
     w = r["weights"]
     labels = model.labels[r["case_indices"]].float()
     p0 = w @ labels
@@ -100,7 +100,7 @@ def train_classification_adapter(model, data, cfg: ReuseConfig) -> tuple[Classif
     cfg.validate()
     torch.manual_seed(cfg.seed)
     C = int(data.num_classes)
-    tr = neighborhood_inputs(model, data.X_train, exclude_identical=True)  # LOO neighborhoods
+    tr = neighborhood_inputs(model, data.X_train, exclude_identical=True, query_case_ids=torch.arange(len(data.y_train)))
     va = neighborhood_inputs(model, data.X_val, exclude_identical=False)
     adapter = ClassificationNNCDHAdapter(
         feature_dim=tr["dz"].shape[1], num_classes=C, nominal_dim=0, hidden_dims=cfg.hidden_dims, output_mode=cfg.output_mode

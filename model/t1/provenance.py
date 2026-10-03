@@ -1,31 +1,11 @@
-"""Case provenance statistics and trustworthiness (T1 plan sections 8-9).
+"""Stable-ID outcome evidence (PI September 20 design).
 
-Everything here is keyed by the stable ``case_id`` stored on ``NN_KNN_Model``,
-never by tensor slot, so statistics survive compaction, archive and restore.
-
-Definitions (plan section 8):
-
-    R_i = sum_x 1[i is retrieved for x]
-    A_i = sum_x a_i(x)
-    C_i = sum_x a_i(x) * 1[c_i = y_x]          (classification)
-    H_i = sum_x a_i(x) * 1[c_i != y_x]         (classification)
-    Q_i = (C_i + s) / (C_i + H_i + 2 s)
-    B_i = within-cohort percentile of the trained case bias, in [0, 1]
-    T_i = Q_i^alpha * B_i^(1 - alpha)          (computed in log space)
-
-For regression/value cases (section 9.1), C_i / H_i come from counterfactual
-removal of case i with activation renormalization on the pre-adaptation output:
-
-    Delta_i(x) = Loss(f_without_i(x), y_x) - Loss(f_with_i(x), y_x)
-    C_i = sum_x max(Delta_i(x), 0);  H_i = sum_x max(-Delta_i(x), 0)
-
-The counterfactual delta is also available for classification (NLL of the
-retrieval-only class mass) and stored separately (``cf_pos`` / ``cf_neg``).
+C/H share each final query outcome by normalized activation; stored-label
+agreement and retrieval-only removal remain historical diagnostic baselines.
 """
 
 from __future__ import annotations
 
-import math
 from dataclasses import asdict, dataclass, field
 from typing import Any, Iterable
 
@@ -44,9 +24,10 @@ class CaseStats:
     activation_mass: float = 0.0  # A_i
     positive_support: float = 0.0  # C_i
     harmful_support: float = 0.0  # H_i
-    cf_pos: float = 0.0  # classification-only counterfactual support (optional)
+    cf_pos: float = 0.0  # positive mean final-loss influence (optional)
     cf_neg: float = 0.0
-    error_support: float = 0.0  # activation on queries the model gets wrong while backing the wrong class
+    error_support: float = 0.0  # activation on unsuccessful final query outcomes
+    provenance_semantics: str = "final_query_outcome_activation_weighted/v2"
     audits: int = 0
     protected: bool = False
     protected_reason: str | None = None
@@ -61,19 +42,6 @@ def smoothed_quality(C: float, H: float, s: float) -> float:
     if s <= 0:
         raise ValueError("Smoothing s must be > 0 (plan section 8.2).")
     return (C + s) / (C + H + 2.0 * s)
-
-
-def trustworthiness(Q: float, B: float, alpha: float, mode: str = "geometric", eps: float = 1e-6) -> float:
-    """T_i. Geometric (primary) is computed in log space; arithmetic is an ablation."""
-    if not (0.0 <= alpha <= 1.0):
-        raise ValueError("alpha must be in [0, 1]")
-    if mode == "geometric":
-        q = min(max(Q, eps), 1.0)
-        b = min(max(B, eps), 1.0)
-        return float(math.exp(alpha * math.log(q) + (1.0 - alpha) * math.log(b)))
-    if mode == "arithmetic":
-        return float(alpha * Q + (1.0 - alpha) * B)
-    raise ValueError(f"Unknown trust mode {mode!r}")
 
 
 def within_cohort_percentile(values: np.ndarray, cohorts: list[Any]) -> np.ndarray:
@@ -167,19 +135,17 @@ class CaseStatisticsStore:
 
 
 # ---------------------------------------------------------------------------
-# Scoring snapshot: Q, B, T and evidence for the active case set
+# Standalone Q and B snapshots and exposure evidence
 # ---------------------------------------------------------------------------
 
 
 @dataclass
 class ScoreConfig:
     smoothing: float  # s
-    alpha: float  # trust weight
     min_retrieval_count: float
     min_activation_mass: float
     bias_normalization: str = "within_cohort_percentile"  # | "median_mad"
     bias_source: str = "current"  # | "delta_from_init"
-    trust_mode: str = "geometric"  # | "arithmetic"
     eps: float = 1e-6
 
 
@@ -193,7 +159,6 @@ class CaseScores:
     H: np.ndarray
     Q: np.ndarray
     B: np.ndarray
-    T: np.ndarray
     evidenced: np.ndarray
     bias: np.ndarray
     extra: dict[str, np.ndarray] = field(default_factory=dict)
@@ -208,7 +173,6 @@ class CaseScores:
             "H": float(self.H[i]),
             "Q": float(self.Q[i]),
             "B": float(self.B[i]),
-            "T": float(self.T[i]),
             "evidenced": bool(self.evidenced[i]),
             "bias": float(self.bias[i]),
         }
@@ -224,6 +188,8 @@ def score_cases(
     store: CaseStatisticsStore,
     cfg: ScoreConfig,
 ) -> CaseScores:
+    if cfg.smoothing <= 0:
+        raise ValueError("Smoothing must be positive")
     n = len(case_ids)
     R = np.zeros(n)
     A = np.zeros(n)
@@ -243,13 +209,12 @@ def score_cases(
         B = median_mad_score(b_src, cohorts)
     else:
         raise ValueError(cfg.bias_normalization)
-    T = np.array([trustworthiness(Q[j], B[j], cfg.alpha, cfg.trust_mode, cfg.eps) for j in range(n)])
     evidenced = (R >= cfg.min_retrieval_count) & (A >= cfg.min_activation_mass)
-    return CaseScores(np.asarray(case_ids), list(cohorts), R, A, C, H, Q, B, T, evidenced, np.asarray(biases, dtype=float))
+    return CaseScores(np.asarray(case_ids), list(cohorts), R, A, C, H, Q, B, evidenced, np.asarray(biases, dtype=float))
 
 
 # ---------------------------------------------------------------------------
-# Audits: accumulate statistics from pre-adaptation retrieval
+# Audits: accumulate activation-weighted final query outcomes
 # ---------------------------------------------------------------------------
 
 
@@ -269,101 +234,88 @@ def active_cohorts(model, reg_bins: np.ndarray | None = None) -> list[str]:
 
 @torch.no_grad()
 def audit_provenance(
-    model,
-    X_audit: torch.Tensor,
-    y_audit: torch.Tensor,
-    store: CaseStatisticsStore,
-    *,
-    exclude_identical: bool,
-    retrieval_eps: float = 1e-6,
-    counterfactual: bool = True,
-    batch_size: int = 256,
-    step: int = 0,
-    reg_bins: np.ndarray | None = None,
-) -> dict[str, Any]:
-    """One audit pass over a designated audit set with the *pre-adaptation* retrieval.
+    model, X_audit, y_audit, store, *, exclude_identical,
+    retrieval_eps=1e-6, counterfactual=True, batch_size=256, step=0,
+    reg_bins=None, query_case_ids=None, adapter=None,
+    regression_success_tolerance=None,
+):
+    """Evidence from final outcomes, with pre-adaptation loss kept for diagnosis.
 
-    ``exclude_identical`` must be True when the audit queries are the training
-    cases themselves (leave-one-out); otherwise every case retrieves itself at
-    distance zero and C_i is inflated.
-
-    Counterfactual deltas use the closed form for softmax/top-k normalization:
-    removing case i and renormalizing the remaining activations. With a
-    pre-normalization top-k mask the (k+1)-th case enters; this is handled
-    exactly by recomputing the normalizer over the shifted top-k.
+    Identity-aware LOO should be supplied for case queries. A regression
+    success criterion is required explicitly; counterfactual influence stays
+    separate from C/H. No model parameters, gradient flags, or RNG are changed.
     """
-    was_training = model.training
-    model.eval()
-    device = model.cases.device
-    task = model.task_type
+    from .outcomes import final_prediction, frozen_evaluation, prediction_loss, query_success
+    from .candidates import MaintenanceReference, removal_influence
+
+    device, task = model.cases.device, model.task_type
     n_active = model.case_count()
     ids = model.active_case_ids().detach().cpu().numpy()
     cohorts = active_cohorts(model, reg_bins)
     biases = model.biases[:n_active].detach().cpu().numpy()
-    for j, cid in enumerate(ids):
-        st = store.ensure(int(cid), cohort=cohorts[j], initial_bias=float(biases[j]), current_bias=float(biases[j]))
-        st.cohort = cohorts[j]
-        st.current_bias = float(biases[j])
-
-    labels = model.labels[:n_active].float()
-    if task == "classification":
-        case_cls = labels.argmax(dim=1)
-    n_queries = 0
-    loss_sum = 0.0
-    for start in range(0, X_audit.size(0), batch_size):
-        xb = X_audit[start : start + batch_size].to(device)
-        yb = y_audit[start : start + batch_size].to(device)
-        r = model.retrieve(xb, exclude_identical=exclude_identical)
-        w = r["weights"]  # [B, N_sel]
-        idx = r["case_indices"]
-        if idx.numel() != n_active or not torch.equal(idx, torch.arange(n_active, device=idx.device)):
-            raise RuntimeError("Provenance audit requires full retrieval over active cases (disable case sampling).")
-        retrieved = (w > retrieval_eps).float()
-        R_add = retrieved.sum(0)
-        A_add = w.sum(0)
-        if task == "classification":
-            y_idx = yb.long().view(-1)
-            match = (case_cls.unsqueeze(0) == y_idx.unsqueeze(1)).float()  # [B, N]
-            C_add = (w * match).sum(0)
-            H_add = (w * (1.0 - match)).sum(0)
-            p0 = w @ labels
-            pred = p0.argmax(1)
-            wrong = (pred != y_idx).float().unsqueeze(1)
-            backs_pred = (case_cls.unsqueeze(0) == pred.unsqueeze(1)).float()
-            err_add = (w * wrong * backs_pred).sum(0)
-            loss_sum += float(-torch.log(p0.gather(1, y_idx.view(-1, 1)).clamp_min(1e-8)).sum().item())
-        else:
-            err_add = torch.zeros(n_active, device=device)
-            y_case = labels.view(n_active, -1)[:, 0]
-            f = w @ y_case
-            loss_sum += float(((f - yb.float().view(-1)) ** 2).sum().item())
-        cf_pos = torch.zeros(n_active, device=device)
-        cf_neg = torch.zeros(n_active, device=device)
-        if counterfactual or task != "classification":
-            delta = _counterfactual_delta(model, r, yb, labels)  # [B, N] loss_without - loss_with
-            cf_pos = delta.clamp_min(0).sum(0)
-            cf_neg = (-delta).clamp_min(0).sum(0)
-        if task != "classification":
-            C_add, H_add = cf_pos, cf_neg
-        R_add, A_add, C_add, H_add = (t.cpu().numpy() for t in (R_add, A_add, C_add, H_add))
-        cf_pos_np, cf_neg_np, err_np = cf_pos.cpu().numpy(), cf_neg.cpu().numpy(), err_add.cpu().numpy()
+    if len(y_audit) == 0:
+        raise ValueError("Audit reference must be nonempty")
+    loss_pre = loss_final = 0.0
+    with frozen_evaluation(model, adapter):
         for j, cid in enumerate(ids):
-            st = store.get(int(cid))
-            st.retrieval_count += float(R_add[j])
-            st.activation_mass += float(A_add[j])
-            st.positive_support += float(C_add[j])
-            st.harmful_support += float(H_add[j])
-            st.cf_pos += float(cf_pos_np[j])
-            st.cf_neg += float(cf_neg_np[j])
-            st.error_support += float(err_np[j])
-            if R_add[j] > 0:
-                st.last_retrieved_step = step
-        n_queries += int(xb.size(0))
-    for cid in ids:
-        store.get(int(cid)).audits += 1
-    if was_training:
-        model.train()
-    return {"n_queries": n_queries, "mean_loss_pre": loss_sum / max(n_queries, 1), "n_active": n_active}
+            st = store.ensure(int(cid), cohort=cohorts[j], initial_bias=float(biases[j]), current_bias=float(biases[j]))
+            st.cohort, st.current_bias = cohorts[j], float(biases[j])
+        for start in range(0, len(y_audit), batch_size):
+            xb = X_audit[start:start + batch_size].to(device)
+            yb = y_audit[start:start + batch_size].to(device)
+            qids = None if query_case_ids is None else query_case_ids[start:start + batch_size].to(device)
+            excl = exclude_identical if qids is None else False
+            r = model.retrieve(xb, exclude_identical=excl, query_case_ids=qids)
+            w = r["weights"]
+            if not torch.equal(r["case_indices"], torch.arange(n_active, device=device)):
+                raise ValueError("Audit requires full active-case retrieval, without case sampling")
+            pre, final, kind = final_prediction(model, xb, r, adapter=adapter, query_case_ids=qids, exclude_identical=excl)
+            success = query_success(final, yb, task, regression_success_tolerance)
+            C = (w * success[:, None]).sum(0)
+            H = (w * (~success)[:, None]).sum(0)
+            R, A = (w > retrieval_eps).sum(0), w.sum(0)
+            loss_pre += float(prediction_loss(pre, yb, "nll" if task == "classification" else "squared_error").sum())
+            loss_final += float(prediction_loss(final, yb, kind).sum())
+            for j, cid in enumerate(ids):
+                st = store.get(int(cid))
+                st.retrieval_count += float(R[j])
+                st.activation_mass += float(A[j])
+                st.positive_support += float(C[j])
+                st.harmful_support += float(H[j])
+                st.error_support += float(H[j])
+                if R[j] > 0:
+                    st.last_retrieved_step = step
+        if counterfactual:
+            if query_case_ids is not None or not exclude_identical:
+                ref = MaintenanceReference(X_audit, y_audit, query_case_ids, regression_success_tolerance, adapter,
+                                           "train_loo" if query_case_ids is not None else "maintenance_split")
+                cf = removal_influence(model, ref, batch_size=batch_size)
+                # Signed mean final-loss influence, not C/H outcome credit.
+                for j, cid in enumerate(ids):
+                    st = store.get(int(cid))
+                    st.cf_pos += max(float(cf["full"][j]), 0.0)
+                    st.cf_neg += max(-float(cf["full"][j]), 0.0)
+            else:
+                # Compatibility for older direct callers without IDs. Retrieve-only
+                # closed form cannot audit adapted paths safely.
+                from .outcomes import active_adapter
+                if active_adapter(model, adapter) is not None or model.nn_cdh is not None:
+                    raise ValueError("Adapted counterfactual audit requires stable query IDs")
+                for start in range(0, len(y_audit), batch_size):
+                    xb = X_audit[start:start + batch_size].to(device)
+                    yb = y_audit[start:start + batch_size].to(device)
+                    r = model.retrieve(xb, exclude_identical=True)
+                    delta = _counterfactual_delta(model, r, yb, model.labels[:n_active].float())
+                    for j, cid in enumerate(ids):
+                        st = store.get(int(cid))
+                        st.cf_pos += float(delta[:, j].clamp_min(0).sum()) / len(y_audit)
+                        st.cf_neg += float((-delta[:, j]).clamp_min(0).sum()) / len(y_audit)
+        for cid in ids:
+            store.get(int(cid)).audits += 1
+    return {"n_queries": len(y_audit), "mean_loss_pre": loss_pre / len(y_audit),
+            "mean_loss_final": loss_final / len(y_audit), "n_active": n_active,
+            "provenance_semantics": "final_query_outcome_activation_weighted/v2",
+            "regression_success_tolerance": regression_success_tolerance}
 
 
 def _counterfactual_delta(model, r: dict[str, torch.Tensor], yb: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:

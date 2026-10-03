@@ -44,3 +44,6 @@ results/t1/*/*/
 results/t1_invalid_fresh_adam/
 results/t1_smoke/
 logs/t1/
+
+# Revised PI verification artifacts: snapshots, checkpoints and event streams remain local.
+/results/t1_pi20260920/

@@ -9,7 +9,7 @@ Use a compact, two-track design:
 1. **Legacy rerun track:** reproduce the pre-MCB classification and regression configurations as faithfully as the preserved artifacts permit, then compare matched MCB and full-cycle variants.
 2. **Modern tabular track:** use a preregistered TabArena subset for contemporary predictive comparison and controlled case-layer stress tests.
 
-This keeps T1 centered on one scientific question: whether coordinated retrieval, bounded reuse, MCB-style stabilization, quality-aware retention, and later human revision can produce a general-purpose NN-kNN module that remains predictively competitive while adding measurable case-level control.
+This keeps T1 centered on one scientific question: whether coordinated retrieval, neural adaptation of retrieved solutions, MCB-style stabilization, quality-aware retention, and later human revision can produce a general-purpose NN-kNN module that remains predictively competitive while adding measurable case-level control.
 
 ## Proposed compact matrix
 
@@ -49,7 +49,7 @@ Avoid selecting tasks merely because NN-kNN performs well in exploratory runs. F
 ## Experimental contract
 
 - Preserve the PI-confirmed two-phase legacy rerun: first reproduce the pre-MCB architecture, then add MCB/full-cycle components under matched recoverable conditions.
-- Expose and log component switches for bounded reuse/adaptation, MCB, quality-aware retention, and later human revision.
+- Expose and log component switches for neural adaptation, MCB, quality-aware retention, and later human revision.
 - Use broader component combinations on inexpensive diagnostics and prespecified, hypothesis-driven combinations on larger tasks.
 - Match data splits, metrics, case budgets, tuning opportunities, stopping rules, and compute accounting as closely as the method families allow.
 - Report predictive quality alongside case-layer measures. T1 succeeds only if a configuration meets a prespecified task-appropriate competitiveness margin and the required inspectability, correctability, and bounded-memory criteria.
@@ -70,4 +70,3 @@ Avoid selecting tasks merely because NN-kNN performs well in exploratory runs. F
 TabArena was introduced in the NeurIPS 2025 Datasets and Benchmarks Track as a continuously maintained tabular benchmark with curated datasets, model implementations, reproducible code, and a public leaderboard. Its results also show why the comparator set must be plural: gradient-boosted trees remain strong, deep models become competitive with sufficient time and ensembling, and tabular foundation models are especially strong on smaller datasets. This supports using a fixed representative subset with multiple comparator roles rather than claiming generality from one dataset or one baseline.
 
 See `../05-evidence-and-citations/PROPOSAL_LITERATURE_AND_BENCHMARK_REVIEW_2026-09-12.md` for the full literature positioning and T1-T3 benchmark shortlist.
-

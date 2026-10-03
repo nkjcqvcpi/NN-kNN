@@ -29,7 +29,7 @@ Basic classification/regression substitution, the four-stage mechanisms themselv
 5. **Intervention contract:** expose authorized T1 revise operations and report immediate and post-adaptation behavioral effects.
 6. **Memory contract:** expose the T1 retain policy, fixed budget `K`, protection rules, maintenance logs, and reversible inactive storage through a consistent interface.
 7. **Compatibility and fallback contract:** identify unsupported configurations and permit conventional neural or retrieval components when NN-kNN is unsuitable.
-8. **Ablation contract:** expose bounded reuse, MCB, quality-aware retention, and enabled T1.2 revision behavior through explicit configuration switches, and store the active combination in experiment metadata.
+8. **Ablation contract:** expose neural adaptation, MCB, quality-aware retention, and enabled T1.2 revision behavior through explicit configuration switches, and store the active combination in experiment metadata.
 
 ## Artifact requirements and bounded validation questions
 
@@ -90,7 +90,7 @@ Use the same benchmark split and primary metric for NN-kNN and contemporary comp
 
 ## Dependency into later thrusts
 
-T2 will use the T1 contract to test NN-kNN in policy and value roles after the relevant T1 core criteria are met. T3 will use the same contract for retrieval and memory roles in LLM and agent systems. Success in T1 is not sufficient evidence for RL, LLM, agent, or healthcare performance; each later thrust requires its own task-specific validation.
+T2 will use the T1 contract to test the full-cycle neural CBR system in policy and value roles after the relevant T1 core criteria are met. Its NN-kNN core will supply the learned case-based mechanism in those roles. T3 will extend the full-cycle system to LLM and agent settings. NN-kNN will retrieve, the host will reuse, human intervention will revise, and case-base maintenance will retain. Success in T1 is not sufficient evidence for RL, LLM, agent, or healthcare performance; each later thrust requires its own task-specific validation.
 
 ## Consequential details still needed
 

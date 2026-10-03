@@ -1,0 +1,20 @@
+# Bounded mechanism pilot. Scientific margins remain unresolved.
+base: _base.yaml
+experiment: alignment_candidates_small
+type: retention
+status: exploratory_smoke
+seeds: [0, 1]
+datasets:
+  - {name: iris, task_type: classification, max_train: 60}
+  - {name: energy_efficiency, task_type: regression, max_train: 60}
+core: {epochs: 20, patience: 10}
+protocol: {finetune_epochs: 3, finetune_lr_scale: 0.1}
+K: [0.75]
+conditions:
+  - {policy: full_memory}
+  - {policy: random}
+  - {policy: provenance_only}
+  - {policy: bias_normalized}
+  - {policy: coverage_reachability}
+  - {policy: removal_influence}
+  - {policy: removal_cached}

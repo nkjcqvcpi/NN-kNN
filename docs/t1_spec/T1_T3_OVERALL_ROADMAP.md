@@ -1,4 +1,4 @@
-# NN-kNN CAREER research and implementation roadmap: T1-T3
+# Full-cycle neural CBR CAREER research and implementation roadmap: T1-T3
 
 Status: collaborator-facing roadmap compiled 2026-09-12 from PI-confirmed decisions. It distinguishes completed foundations, active preliminary work, proposed research, and intentionally unresolved choices.
 
@@ -10,7 +10,7 @@ The project does not assume that NN-kNN should replace every neural component. I
 
 ## 2. Central thesis
 
-Learning to retrieve, reuse/adapt, revise, and retain useful cases as one coordinated NN-kNN system—supported by MCB-style representation stabilization—can preserve the practical learning advantages of neural methods while making decisions more inspectable, correctable, and maintainable under bounded memory.
+Coordinating retrieval, reuse, revision, and retention in one NN-kNN-based neural CBR system—supported by MCB-style representation stabilization—can preserve the practical learning advantages of neural methods while making decisions more inspectable, correctable, and maintainable under bounded memory. In T1, a neural adaptation network implements reuse. Its loss permits small task-specific corrections and penalizes unnecessarily large changes.
 
 The three thrusts form a dependency path with feedback:
 
@@ -19,12 +19,12 @@ T1 — Full-cycle, general-purpose NN-kNN
   Build and validate the shared case-grounded foundation.
               |
               v
-T2 — NN-kNN for reinforcement learning
-  Test policy/value use, sequential learning, and domain shift.
+T2 — Full-cycle neural CBR for reinforcement learning
+  Test the complete system in policy/value roles, sequential learning, and domain shift.
               |
               v
-T3 — NN-kNN retrieval and memory for existing LLMs and agents
-  Scale to need-conditioned knowledge and experience memory.
+T3 — Full-cycle neural CBR for existing LLMs and agents
+  Scale the complete cycle to need-conditioned knowledge and experience memory.
 
 T2/T3 failures -> diagnose the shared mechanism -> bounded T1 refinement
                -> revalidate the affected downstream setting
@@ -36,9 +36,9 @@ This is not a rigid waterfall. T1 and T2 are already active at the same time: cu
 
 | Thrust | Main research question | Primary contribution | Minimum success | Main fallback |
 |---|---|---|---|---|
-| **T1: Full-cycle, general-purpose NN-kNN** | Can NN-kNN coordinate retrieve, bounded neural reuse, human revise, and retain with MCB stabilization while preserving competitive performance and competence under bounded memory? | A better NN-kNN core with quality-aware case selection, bounded reuse, stabilization, causal correction, and a reusable interface | At matched budgets, improve over random/downsampled and current pruning; approach full-memory NN-kNN with fewer cases; remain within a prespecified margin of matched modern baselines; improve causal traceability/correction | Characterize which components and domains benefit; preserve retrieval-only or conventional neural alternatives where preferable |
-| **T2: NN-kNN for reinforcement learning** | When can improved NN-kNN serve as policy, value model, or both while keeping decisions case-inspectable and editable? | Case-grounded RL with explicit policy/value cases, T1 maintenance, sequential utility, and domain-shift response | At least one T1-enhanced configuration improves over the frozen current NN-kNN RL reference and reaches a prespecified neural-competitiveness margin in one major role, with faithful causal case traces | Use role-specific or hybrid neural/NN-kNN configurations and report the suitability boundary |
-| **T3: NN-kNN retrieval and memory for LLMs/agents** | Can an existing host LLM/agent use NN-kNN to retrieve original knowledge and experiences by current need and downstream usefulness, even without shared labels? | Typed, iterative, inspectable, feedback-trainable external memory with local/global scopes and human correction | Competitive answer/task quality relative to standard retrieval plus material gains in causal traceability, correction, and harmful-memory containment/recovery | Retain one-shot retrieval, narrower artifact types, or the RAG result if the agent integration is too confounded |
+| **T1: Full-cycle, general-purpose NN-kNN** | Can NN-kNN coordinate retrieval, neural adaptation of retrieved solutions, human revision, and retention with MCB stabilization while preserving competitive performance and competence under bounded memory? | A better NN-kNN core with quality-aware case selection, controlled adaptation magnitude, stabilization, causal correction, and a reusable interface | At matched budgets, improve over random/downsampled and current pruning; approach full-memory NN-kNN with fewer cases; remain within a prespecified margin of matched modern baselines; improve causal traceability/correction | Characterize which components and domains benefit; preserve retrieval-only or conventional neural alternatives where preferable |
+| **T2: Full-cycle neural CBR for reinforcement learning** | When can the T1 full-cycle neural CBR system serve as a policy model, value model, or both while keeping decisions case-inspectable and editable? | A coordinated 4R system for RL, with NN-kNN as its learned case core, T1 maintenance, sequential utility, and domain-shift response | At least one T1-enhanced configuration improves over the frozen current NN-kNN RL reference and reaches a prespecified neural-competitiveness margin in one major role, with faithful causal case traces | Use role-specific or hybrid neural/full-cycle configurations and report the suitability boundary |
+| **T3: Full-cycle neural CBR for LLMs/agents** | Can an existing host LLM/agent participate in a full CBR cycle that retrieves original knowledge and experiences by current need and downstream usefulness, through prompt augmentation, internal model integration, or both? | NN-kNN modules retrieve different kinds of knowledge. The host reuses them, human intervention revises them, and case-base maintenance retains them. The system supports iterative retrieval, inspectable and feedback-trainable memory, and local/global scopes. | Competitive answer/task quality relative to standard retrieval plus material gains in causal traceability, correction, and harmful-memory containment/recovery | Retain prompt augmentation, one-shot retrieval, narrower artifact types, or the RAG result if internal or agent integration is too confounded |
 
 Exact numerical margins and minimum improvements will be selected after pilots and frozen before confirmatory runs.
 
@@ -55,7 +55,7 @@ Completed pre-MCB classification and regression work demonstrates that NN-kNN ca
    - per-case retrieval count, activation, contribution, bias, and provenance;
    - common logs and maintenance interface across task roles.
 2. **Implement quality-aware bounded retention**
-   - combine activation-weighted outcome provenance with trained case bias for trustworthiness;
+   - compare Q or a C/H variant, B alone, coverage-to-reachability, and case-removal influence, following the 2026-09-20 candidate note; do not combine Q and B;
    - keep utility, redundancy, coverage, rarity, and protection separate;
    - select the best active case set under fixed capacity `K`;
    - archive all removals reversibly.
@@ -96,16 +96,16 @@ Use a no-correction retraining comparator only when retraining itself is part of
 
 The detailed formulas, configurations, tests, gates, risks, and deliverables are in `T1_FULL_CYCLE_IMPLEMENTATION_PLAN.md`.
 
-## 5. T2 roadmap — case-grounded reinforcement learning
+## 5. T2 roadmap — full-cycle neural CBR for reinforcement learning
 
 ### Role matrix
 
 Evaluate:
 
 - neural actor + neural critic;
-- NN-kNN actor + neural critic;
-- neural actor + NN-kNN critic;
-- NN-kNN actor + NN-kNN critic with distinct memories; and
+- full-cycle neural CBR actor, built around an NN-kNN core, + neural critic;
+- neural actor + full-cycle neural CBR critic, built around an NN-kNN core;
+- full-cycle neural CBR actor + full-cycle neural CBR critic with distinct memories; and
 - a clearly ablated hybrid/parallel neural contingency if needed.
 
 Begin with decision-level cases: state/context plus action recommendation for the actor, and state/context plus declared value target for the critic. Consider trajectory fragments later when individual decisions lack sufficient reusable context.
@@ -138,13 +138,13 @@ Measure return, sample efficiency, stability, case traces, intervention effects,
 
 T2 helps T3 by developing sequential usefulness and delayed-credit methods. It does not imply that an LLM is merely an RL policy.
 
-## 6. T3 roadmap — need-conditioned memory for LLMs and agents
+## 6. T3 roadmap — full-cycle neural CBR for LLMs and agents
 
 ### Architecture boundary
 
-Use an existing frozen open-weight LLM for primary controlled studies and optionally a strong API model for external validity. A project-controlled orchestrator passes the LLM's explicit information need to NN-kNN. The host LLM performs reuse; no NN-CDH adaptation network rewrites retrieved T3 artifacts.
+Use an existing open-weight LLM for both T3 integration modes. In prompt augmentation, freeze the host and let a project-controlled orchestrator pass the LLM's explicit information need to NN-kNN. In model integration, connect NN-kNN case activations or retrieved representations to a declared internal interface. Compare prompt-only, internal-only, and combined conditions under matched budgets where feasible. A strong API model may support only the prompt-augmentation external-validity condition unless it exposes the required internal interface. The host LLM performs reuse; no NN-CDH adaptation network rewrites retrieved T3 artifacts.
 
-### Typed retrieval and usefulness
+### NN-kNN retrieval for different kinds of knowledge and information
 
 Candidate artifact families include:
 
@@ -189,13 +189,13 @@ The required biomedical experiment uses objective public benchmark ground truth 
 
 ### Agent-specific payoff
 
-If successful, NN-kNN would give an existing agent an external experience memory that can learn which evidence, tools, skills, procedures, and successful or failed actions are useful; add or correct memories without retraining the base LLM for each lesson; expose which memories influenced actions; and permit targeted quarantine/removal of harmful memories. These are hypotheses requiring comparison with the same host using no retrieval and standard memory.
+If successful, NN-kNN would give an existing agent an experience memory that can learn which evidence, tools, skills, procedures, and successful or failed actions are useful; supply them through prompt context or internal model computation; add or correct memories without retraining the entire base LLM for each lesson; expose which memories influenced actions; and permit targeted quarantine/removal of harmful memories. These are hypotheses requiring comparison with the same starting host using no retrieval, standard memory, prompt-augmented NN-kNN, and model-integrated NN-kNN.
 
 ## 7. Five-year implementation path
 
 | Project year | Primary work | Gate or transition |
 |---|---|---|
-| **Year 1** | T1.1 instrumentation, retrieval, bounded reuse, MCB, retention, and fixed-`K` maintenance; revise disabled initially | Use active RL failures to refine requirements; pass behavior-neutral instrumentation and supervised mechanism gates |
+| **Year 1** | T1.1 instrumentation, retrieval, neural adaptation, MCB, retention, and fixed-`K` maintenance; revise disabled initially | Use active RL failures to refine requirements; pass behavior-neutral instrumentation and supervised mechanism gates |
 | **Year 2** | T1.2 human revision, causal correction, bounded UI study, packaging, legacy reruns, and modern transfer | Expand T2 only as inherited T1 mechanisms pass readiness criteria |
 | **Year 3** | T2 discrete-role evaluation, shift, continuous-action progression, and selected scaling | Begin T3 frozen-host single-hop and multi-hop RAG work; feed shared limitations back to T1 |
 | **Year 4** | T3 public biomedical evidence retrieval and answer-level grounding | Begin bounded existing-agent memory integration after general retrieval mechanisms work |

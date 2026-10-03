@@ -235,7 +235,7 @@ def train_retrieval(
         for s in range(0, Xtr.size(0), cfg.batch_size):
             b = perm[s : s + cfg.batch_size].to(device)
             # queries are training cases: the model's LOO mask drops their own case
-            out = model(Xtr[b])
+            out = model(Xtr[b], exclude_identical=False, query_case_ids=b)
             loss = task_loss(model, out[0], ytr[b])
             if cfg.lambda_case_bias:
                 loss = loss + cfg.lambda_case_bias * (model.biases[: model.case_count()] ** 2).mean()
@@ -316,33 +316,30 @@ def evaluate(model: NN_KNN_Model, X: torch.Tensor, y: torch.Tensor, *, batch_siz
 
 
 @torch.no_grad()
-def retrieval_events(model: NN_KNN_Model, X: torch.Tensor, y: torch.Tensor, *, stream: str, run_id: str, top: int = 5) -> list[dict[str, Any]]:
-    """One record per query with the case IDs and activations actually used (contract section 4)."""
-    model.eval()
+def retrieval_events(model, X, y, *, stream, run_id, top=5, adapter=None):
+    """Complete active contributions and final decisions from one retrieval event."""
+    from .outcomes import final_prediction, frozen_evaluation
     device = model.cases.device
     out = []
     ids = model.active_case_ids()
-    for s in range(0, X.size(0), 256):
-        xb = X[s : s + 256].to(device)
-        r = model.retrieve(xb, exclude_identical=False)
-        w = r["weights"]
-        labels = model.labels[r["case_indices"]].float()
-        f = w @ labels
-        k = min(top, w.size(1))
-        tv, ti = torch.topk(w, k, dim=1)
-        for b in range(xb.size(0)):
-            sel = ti[b]
-            out.append(
-                {
-                    "retrieval_event_id": f"{run_id}-{stream}-{s + b}",
-                    "stream": stream,
-                    "query_index": int(s + b),
+    with frozen_evaluation(model, adapter):
+        for start in range(0, len(X), 256):
+            xb = X[start:start + 256].to(device)
+            r = model.retrieve(xb, exclude_identical=False)
+            w = r["weights"]
+            pre, final, loss_kind = final_prediction(model, xb, r, adapter=adapter)
+            for b in range(len(xb)):
+                sel = torch.nonzero(w[b] > 0).view(-1)
+                out.append({
+                    "retrieval_event_id": f"{run_id}-{stream}-{start + b}",
+                    "stream": stream, "query_index": start + b,
                     "case_ids": ids[r["case_indices"][sel]].tolist(),
-                    "activations": [round(float(v), 6) for v in tv[b]],
-                    "distances": [round(float(v), 6) for v in r["distances"][b, sel]],
-                    "case_biases": [round(float(v), 6) for v in model.biases[r["case_indices"][sel]]],
-                    "pre_adaptation_prediction": (int(f[b].argmax()) if model.task_type == "classification" else float(f[b, 0])),
-                    "target": (int(y[s + b]) if model.task_type == "classification" else float(y[s + b])),
-                }
-            )
+                    "activations": w[b, sel].cpu().tolist(),
+                    "distances": r["distances"][b, sel].cpu().tolist(),
+                    "case_biases": model.biases[r["case_indices"][sel]].detach().cpu().tolist(),
+                    "pre_adaptation_prediction": int(pre[b].argmax()) if model.task_type == "classification" else float(pre[b, 0]),
+                    "final_prediction": int(final[b].argmax()) if model.task_type == "classification" else float(final[b].view(-1)[0]),
+                    "final_prediction_loss_kind": loss_kind,
+                    "target": int(y[start + b]) if model.task_type == "classification" else float(y[start + b]),
+                })
     return out

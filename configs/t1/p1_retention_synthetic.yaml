@@ -14,8 +14,7 @@ conditions:
   - {policy: bias_current}
   - {policy: provenance_only}
   - {policy: bias_normalized}
-  - {policy: trust}
-  - {policy: utility_redundancy}
-  - {policy: trust_utility}
-  - {policy: trust_utility_coverage}
   - {policy: kcenter}
+  - {policy: coverage_reachability}
+  - {policy: removal_influence}
+  - {policy: removal_cached}

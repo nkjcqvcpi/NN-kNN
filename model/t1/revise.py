@@ -11,7 +11,7 @@ provides the mechanism and evaluation harness for T1.2:
   M2 edit + controlled retraining under a fixed, reported budget; flip matrix,
   targeted and collateral effects.
 * ``flagging_ablation`` - the initial ablation matrix of T1_REVISE_RETAIN.md:
-  provenance-only, bias-only, combined T, random (matched budget) and oracle
+  provenance-only, bias-only, random (matched budget) and oracle
   flagging, with a simulated reviewer that corrects only truly corrupted cases
   it inspects (a controlled stand-in for the later human study).
 
@@ -165,7 +165,7 @@ def flag_ranking(method: str, scores, rng: np.random.Generator, truth: np.ndarra
     elif method == "bias_only":
         key = scores.B
     elif method == "combined_T":
-        key = scores.T
+        raise ValueError("combined_T was superseded by the PI September 20 Q/B alternatives")
     elif method == "random":
         key = rng.random(n)
     elif method == "oracle":

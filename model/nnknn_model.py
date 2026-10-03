@@ -965,7 +965,7 @@ class NN_KNN_Model(nn.Module):
 
 
 
-    def retrieve(self, query, exclude_identical=None, case_mask=None):
+    def retrieve(self, query, exclude_identical=None, case_mask=None, query_case_ids=None):
         """Run the NN-kNN retrieval step only (no label aggregation / reuse).
 
         Returns a dict with ``case_indices`` (active slots used), ``query_features``,
@@ -979,6 +979,10 @@ class NN_KNN_Model(nn.Module):
         ``case_mask``: optional bool tensor over active slots; False entries are
         removed before normalization so remaining activations renormalize
         (counterfactual case removal / quarantine).
+        ``query_case_ids``: optional stable case ID per query. With
+        ``exclude_identical=False``, exclude only that case identity; equal
+        inputs from distinct cases remain available. Absent IDs keep the
+        maintained legacy behavior.
         """
         batch_size = query.size(0)
         num_cases = self.case_count()
@@ -1031,6 +1035,13 @@ class NN_KNN_Model(nn.Module):
             identical_mask = (distances < eps)
         else:
             identical_mask = None
+        if query_case_ids is not None:
+            # Stable identity also works with MCB, duplicate inputs, and compaction.
+            qids = torch.as_tensor(query_case_ids, device=distances.device).view(-1)
+            if qids.numel() != batch_size:
+                raise ValueError("query_case_ids must have one ID per query")
+            self_mask = qids[:, None] == self.case_ids[case_indices][None, :]
+            identical_mask = self_mask if identical_mask is None else (identical_mask | self_mask)
         if case_mask is not None:
             # Counterfactual/quarantine masking over *active* case slots: False = excluded.
             cm = torch.as_tensor(case_mask, dtype=torch.bool, device=distances.device)[case_indices]
@@ -1150,7 +1161,7 @@ class NN_KNN_Model(nn.Module):
             "excluded": identical_mask,
         }
 
-    def forward(self, query, exclude_identical=None, case_mask=None):
+    def forward(self, query, exclude_identical=None, case_mask=None, query_case_ids=None):
         """
         Perform forward pass and optionally provide explanations.
 
@@ -1166,7 +1177,7 @@ class NN_KNN_Model(nn.Module):
             most_activated_activations (torch.Tensor, optional): Activations of the top-k most activated cases.
         """
         batch_size = query.size(0)
-        r = self.retrieve(query, exclude_identical=exclude_identical, case_mask=case_mask)
+        r = self.retrieve(query, exclude_identical=exclude_identical, case_mask=case_mask, query_case_ids=query_case_ids)
         case_indices = r["case_indices"]
         query_features = r["query_features"]
         case_features = r["case_features"]

@@ -62,6 +62,18 @@ def environment_info() -> dict[str, Any]:
     }
 
 
+def source_fingerprint(repo: Path) -> str:
+    """Identify dirty local implementations as well as committed versions."""
+    digest = hashlib.sha256()
+    for directory in ("model", "tools", "configs", "tests", "datasets"):
+        for path in sorted((repo / directory).rglob("*")):
+            if path.suffix not in {".py", ".yaml", ".ps1"} or "__pycache__" in path.parts:
+                continue
+            digest.update(path.relative_to(repo).as_posix().encode())
+            digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
 def write_json(path: Path, obj: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(_jsonable(obj), indent=2, sort_keys=False), encoding="utf-8")
@@ -81,6 +93,9 @@ def build_manifest(*, run_id: str, repo: Path, cfg: dict[str, Any], data_desc: d
             "timestamp": _dt.datetime.now(_dt.timezone.utc).isoformat(),
             "code_repository": str(repo),
             **git_state(repo),
+            "source_fingerprint_sha256": source_fingerprint(repo),
+            "specification_commit": cfg.get("config", {}).get("specification_commit"),
+            "pipeline_revision": cfg.get("config", {}).get("pipeline_revision"),
             "environment": environment_info(),
             "seed": cfg.get("seed"),
             "configuration_id": config_id(cfg),
