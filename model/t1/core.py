@@ -336,7 +336,7 @@ def evaluate(model: NN_KNN_Model, X: torch.Tensor, y: torch.Tensor, *, batch_siz
 
 
 @torch.no_grad()
-def retrieval_events(model, X, y, *, stream, run_id, top=5, adapter=None):
+def retrieval_events(model, X, y, *, stream, run_id, top=5, adapter=None, query_nominal=None):
     """Complete active contributions and final decisions from one retrieval event."""
     from .outcomes import final_prediction, frozen_evaluation
     device = model.cases.device
@@ -347,10 +347,12 @@ def retrieval_events(model, X, y, *, stream, run_id, top=5, adapter=None):
             xb = X[start:start + 256].to(device)
             r = model.retrieve(xb, exclude_identical=False)
             w = r["weights"]
-            pre, final, loss_kind = final_prediction(model, xb, r, adapter=adapter)
+            nominal = None if query_nominal is None else query_nominal[start:start + 256]
+            diagnostics = {}
+            pre, final, loss_kind = final_prediction(model, xb, r, adapter=adapter, query_nominal=nominal, diagnostics=diagnostics)
             for b in range(len(xb)):
                 sel = torch.nonzero(w[b] > 0).view(-1)
-                out.append({
+                event = {
                     "retrieval_event_id": f"{run_id}-{stream}-{start + b}",
                     "stream": stream, "query_index": start + b,
                     "case_ids": ids[r["case_indices"][sel]].tolist(),
@@ -361,5 +363,15 @@ def retrieval_events(model, X, y, *, stream, run_id, top=5, adapter=None):
                     "final_prediction": int(final[b].argmax()) if model.task_type == "classification" else float(final[b].view(-1)[0]),
                     "final_prediction_loss_kind": loss_kind,
                     "target": int(y[start + b]) if model.task_type == "classification" else float(y[start + b]),
-                })
+                }
+                if model.task_type == "classification":
+                    target = torch.nn.functional.one_hot(y[start + b].long(), pre.shape[1]).to(pre)
+                    event.update(p0=pre[b].cpu().tolist(), residual_target=(target - pre[b]).cpu().tolist(),
+                                 final_values=final[b].cpu().tolist())
+                    if "residual" in diagnostics:
+                        event.update(adapter_output_mode=diagnostics["output_mode"],
+                                     delta_z=diagnostics["delta_z"][b].cpu().tolist(),
+                                     delta_u=None if diagnostics["delta_u"] is None else diagnostics["delta_u"][b].cpu().tolist(),
+                                     predicted_residual=diagnostics["residual"][b].cpu().tolist())
+                out.append(event)
     return out

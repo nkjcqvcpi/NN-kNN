@@ -1206,7 +1206,7 @@ class NN_KNN_Model(nn.Module):
         }
 
     def forward(self, query, exclude_identical=None, case_mask=None, query_case_ids=None,
-                force_case_ids=None, forced_weight_floor=None):
+                force_case_ids=None, forced_weight_floor=None, query_nominal=None):
         """
         Perform forward pass and optionally provide explanations.
 
@@ -1248,7 +1248,8 @@ class NN_KNN_Model(nn.Module):
                 w = weighted_activations.unsqueeze(2)  # [B, N_sel, 1]
                 z_bar = torch.sum(w * case_features.unsqueeze(0), dim=1)  # [B, D]
                 Delta_z_q = query_features - z_bar
-                Delta_u_q = getattr(self, "_current_Delta_u_q", None)
+                from model.t1.nominal import nominal_difference
+                Delta_u_q = nominal_difference(cls_adapter, self, r, query_nominal)
                 r_hat_q, s_q = cls_adapter(Delta_z_q, p0_q, Delta_u_q)
                 final_predictions = s_q
                 predicted_solution = s_q.argmax(dim=1)

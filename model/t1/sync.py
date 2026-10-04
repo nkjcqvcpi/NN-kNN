@@ -32,6 +32,7 @@ from model.nn_cdh import ClassificationNNCDHAdapter, NNCDHAdapter
 
 from .calibration import FreeRadius, l_small
 from .core import CoreConfig, make_optimizer
+from .nominal import NominalSchema, NominalClassificationAdapter, nominal_difference, fit_nominal_schema
 
 
 @dataclass
@@ -50,6 +51,7 @@ class SyncConfig:
     adapter_lr: float = 1e-3
     hidden_dims: tuple[int, int] = (64, 32)
     seed: int = 0
+    nominal_fields: tuple[dict[str, Any], ...] = ()
 
     def validate(self, task_type):
         if self.schedule not in {"independent", "alternating_rr", "alternating_rrr"}:
@@ -63,6 +65,10 @@ class SyncConfig:
         expected = {"nominal_residual_scores", "logit_residual"} if task_type == "classification" else {"aggregate_regression"}
         if self.output_mode not in expected:
             raise ValueError(f"Output mode {self.output_mode!r} is invalid for {task_type}")
+        if self.nominal_fields:
+            if task_type != "classification":
+                raise ValueError("nominal classification synchronization cannot be used for regression")
+            NominalSchema(self.nominal_fields)
 
 
 @contextmanager
@@ -78,7 +84,7 @@ def frozen_parameters(module):
             p.requires_grad_(state)
 
 
-def _forward_terms(model, adapter, X, y, fr: FreeRadius | None, *, output_mode: str, near_scale: float, query_case_ids=None) -> dict[str, torch.Tensor]:
+def _forward_terms(model, adapter, X, y, fr: FreeRadius | None, *, output_mode: str, near_scale: float, query_case_ids=None, query_nominal=None) -> dict[str, torch.Tensor]:
     r = model.retrieve(X, exclude_identical=False, query_case_ids=query_case_ids)
     w = r["weights"]
     labels = model.labels[r["case_indices"]].float()
@@ -94,7 +100,8 @@ def _forward_terms(model, adapter, X, y, fr: FreeRadius | None, *, output_mode: 
         p0 = (w @ labels) / (w @ labels).sum(1, keepdim=True).clamp_min(1e-12)
         L_pre = F.nll_loss(torch.log(p0.clamp_min(1e-8)), y.long())
         dz = r["query_features"] - w @ r["case_features"]
-        rh, s = adapter(dz, p0, None)
+        du = nominal_difference(adapter, model, r, query_nominal)
+        rh, s = adapter(dz, p0, du)
         y1 = F.one_hot(y.long(), p0.size(1)).float()
         if output_mode == "nominal_residual_scores":
             L_post = F.cross_entropy(s, y.long())
@@ -125,8 +132,19 @@ def train_synchronized(
     device = model.cases.device
     X, y = data.X_train.to(device), data.y_train.to(device)
     feat_dim = model.retrieve(X[:1], exclude_identical=False)["query_features"].shape[1]
+    nominal_train = nominal_val = None
     if model.task_type == "classification":
-        adapter = ClassificationNNCDHAdapter(feat_dim, int(data.num_classes), 0, cfg.hidden_dims, cfg.output_mode).to(device)
+        if cfg.nominal_fields:
+            schema = fit_nominal_schema(data, cfg.nominal_fields)
+            nominal_train = schema.encode(data.nominal_train, rows=len(data.y_train)).to(device)
+            nominal_val = schema.encode(data.nominal_val, rows=len(data.y_val)).to(device)
+            adapter = NominalClassificationAdapter(schema=schema, case_ids=torch.arange(len(data.y_train)),
+                case_values=nominal_train, feature_dim=feat_dim, num_classes=int(data.num_classes),
+                hidden_dims=cfg.hidden_dims, output_mode=cfg.output_mode).to(device)
+        else:
+            if getattr(data, "nominal_train", None):
+                raise ValueError("nominal synchronization requires explicit per-field coverage declarations")
+            adapter = ClassificationNNCDHAdapter(feat_dim, int(data.num_classes), 0, cfg.hidden_dims, cfg.output_mode).to(device)
     else:
         adapter = NNCDHAdapter(feat_dim, 1, cfg.hidden_dims).to(device)
         # The preserved foundation contains a historical pair network; the T1
@@ -157,7 +175,7 @@ def train_synchronized(
             b = perm[s : s + core_cfg.batch_size].to(device)
             if ph == "retrieval":
                 with frozen_parameters(adapter):
-                    T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b)
+                    T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b, query_nominal=None if nominal_train is None else nominal_train[b])
                 if cfg.schedule == "independent":
                     L = T["L_pre"]
                 else:
@@ -172,7 +190,7 @@ def train_synchronized(
             else:
                 model.eval()  # frozen retrieval, LOO still enforced explicitly
                 with frozen_parameters(model):
-                    T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b)
+                    T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b, query_nominal=None if nominal_train is None else nominal_train[b])
                 if cfg.schedule == "independent":
                     L = cfg.v_post * T["L_post"] + cfg.v_delta * T["L_delta"]  # v0 adapter losses, no L_small
                 else:
@@ -205,7 +223,7 @@ def train_synchronized(
         adapter.eval()
         with torch.no_grad():
             V = _forward_terms(model, adapter, data.X_val.to(device), data.y_val.to(device),
-                               fr, output_mode=cfg.output_mode, near_scale=near_scale)
+                               fr, output_mode=cfg.output_mode, near_scale=near_scale, query_nominal=nominal_val)
             v_post, v_pre = float(V["L_post"]), float(V["L_pre"])
         rec.update({"val_L_post": v_post, "val_L_pre": v_pre, "n_cases": model.case_count()})
         hist.append(rec)

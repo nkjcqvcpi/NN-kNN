@@ -30,8 +30,9 @@ def reference_loss(model, reference):
             X = reference.X[start:start + 128].to(device)
             y = reference.y[start:start + 128].to(device)
             ids = None if reference.query_case_ids is None else reference.query_case_ids[start:start + 128].to(device)
+            nominal = None if reference.query_nominal is None else reference.query_nominal[start:start + 128]
             r = model.retrieve(X, exclude_identical=False, query_case_ids=ids)
-            _, p, kind = final_prediction(model, X, r, adapter=reference.adapter, query_case_ids=ids)
+            _, p, kind = final_prediction(model, X, r, adapter=reference.adapter, query_case_ids=ids, query_nominal=nominal)
             total += float(prediction_loss(p, y, kind).sum())
     return total / len(reference.y)
 

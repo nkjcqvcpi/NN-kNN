@@ -239,7 +239,7 @@ def audit_provenance(
     model, X_audit, y_audit, store, *, exclude_identical,
     retrieval_eps=1e-6, counterfactual=True, batch_size=256, step=0,
     reg_bins=None, query_case_ids=None, adapter=None,
-    regression_success_tolerance=None,
+    regression_success_tolerance=None, query_nominal=None,
 ):
     """Evidence from final outcomes, with pre-adaptation loss kept for diagnosis.
 
@@ -267,11 +267,12 @@ def audit_provenance(
             yb = y_audit[start:start + batch_size].to(device)
             qids = None if query_case_ids is None else query_case_ids[start:start + batch_size].to(device)
             excl = exclude_identical if qids is None else False
+            nominal = None if query_nominal is None else query_nominal[start:start + batch_size]
             r = model.retrieve(xb, exclude_identical=excl, query_case_ids=qids)
             w = r["weights"]
             if not torch.equal(r["case_indices"], torch.arange(n_active, device=device)):
                 raise ValueError("Audit requires full active-case retrieval, without case sampling")
-            pre, final, kind = final_prediction(model, xb, r, adapter=adapter, query_case_ids=qids, exclude_identical=excl)
+            pre, final, kind = final_prediction(model, xb, r, adapter=adapter, query_case_ids=qids, exclude_identical=excl, query_nominal=nominal)
             success = query_success(final, yb, task, regression_success_tolerance)
             C = (w * success[:, None]).sum(0)
             H = (w * (~success)[:, None]).sum(0)
@@ -290,7 +291,7 @@ def audit_provenance(
         if counterfactual:
             if query_case_ids is not None or not exclude_identical:
                 ref = MaintenanceReference(X_audit, y_audit, query_case_ids, regression_success_tolerance, adapter,
-                                           "train_loo" if query_case_ids is not None else "maintenance_split")
+                                           "train_loo" if query_case_ids is not None else "maintenance_split", query_nominal)
                 cf = removal_influence(model, ref, batch_size=batch_size)
                 # Signed mean final-loss influence, not C/H outcome credit.
                 for j, cid in enumerate(ids):

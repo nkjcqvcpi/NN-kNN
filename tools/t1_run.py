@@ -44,6 +44,7 @@ from model.t1.retention import RetentionConfig  # noqa: E402
 from model.t1.reuse import ReuseConfig, evaluate_reuse, evaluate_regression_reuse, train_classification_adapter  # noqa: E402
 from model.t1.revise import flagging_ablation  # noqa: E402
 from model.t1.sync import SyncConfig, train_synchronized  # noqa: E402
+from model.t1.nominal import encoded_queries  # noqa: E402
 
 
 # --------------------------------------------------------------------------- config
@@ -118,9 +119,9 @@ def maintenance_reference(data, cfg, adapter=None):
     src = cfg["statistics"]["source"]
     tolerance = cfg["statistics"].get("regression_success_tolerance")
     if src == "train_loo":
-        return MaintenanceReference(data.X_train, data.y_train, torch.arange(len(data.y_train)), tolerance, adapter, src)
+        return MaintenanceReference(data.X_train, data.y_train, torch.arange(len(data.y_train)), tolerance, adapter, src, encoded_queries(adapter, data, "train"))
     if src == "maintenance_split" and data.X_maint is not None:
-        return MaintenanceReference(data.X_maint, data.y_maint, None, tolerance, adapter, src)
+        return MaintenanceReference(data.X_maint, data.y_maint, None, tolerance, adapter, src, encoded_queries(adapter, data, "maint"))
     raise ValueError("Maintenance reference must be train_loo or a separate maintenance split")
 
 
@@ -140,7 +141,7 @@ def audit(model, data, cfg, store, step, adapter=None):
     return audit_provenance(model, X, y, store, exclude_identical=excl,
                             counterfactual=bool(cfg["statistics"]["counterfactual"]),
                             step=step, reg_bins=data.reg_bins, query_case_ids=ref.query_case_ids,
-                            adapter=adapter, regression_success_tolerance=ref.regression_success_tolerance)
+                            adapter=adapter, regression_success_tolerance=ref.regression_success_tolerance, query_nominal=ref.query_nominal)
 
 
 def retention_cfg_for(cond: dict[str, Any], cfg: dict[str, Any], seed: int) -> RetentionConfig:
@@ -221,7 +222,7 @@ class Runner:
         write_json(run_dir / "history.json", history)
         write_jsonl(run_dir / "case_statistics.jsonl", [] if store is None else case_statistics_rows(model, store, archive or CaseArchive()))
         write_jsonl(run_dir / "case_maintenance.jsonl", events or [])
-        write_jsonl(run_dir / "retrieval_events.jsonl", retrieval_events(model, data.X_test, data.y_test, stream="test", run_id=run_id, adapter=prediction_adapter))
+        write_jsonl(run_dir / "retrieval_events.jsonl", retrieval_events(model, data.X_test, data.y_test, stream="test", run_id=run_id, adapter=prediction_adapter, query_nominal=encoded_queries(prediction_adapter, data, "test")))
         torch.save({"model_state": model.state_dict(), "active_case_count": model.case_count(),
                     "case_statistics": None if store is None else store.state_dict(),
                     "archive": None if archive is None else archive.state_dict(),
@@ -233,12 +234,14 @@ class Runner:
         if not data_path.exists():
             snapshot = {name: getattr(data, name) for name in
                         ("X_train", "y_train", "X_val", "y_val", "X_test", "y_test",
-                         "X_maint", "y_maint", "y_scale", "meta")}
+                         "X_maint", "y_maint", "y_scale", "meta", "nominal_train", "nominal_val", "nominal_test", "nominal_maint")}
             snapshot.update({name: {k: torch.as_tensor(v) for k, v in getattr(data, name).items()}
                              for name in ("case_truth", "test_groups")})
             torch.save(snapshot, data_path)
         for name, obj in (extra_files or {}).items():
             write_json(run_dir / name, obj)
+        if getattr(prediction_adapter, "nominal_schema", None) is not None:
+            write_json(run_dir / "adapter_nominal_schema.json", prediction_adapter.nominal_schema.state_dict())
         for name, obj in (binary_files or {}).items():
             torch.save(obj, run_dir / name)
         row = {"run_id": run_id, "experiment": self.exp, "dataset": ds["name"], "task_type": data.task_type, "seed": seed, "condition": cond_label, **{k: v for k, v in cond.items() if not isinstance(v, (dict, list))}, **{k: v for k, v in metrics.items() if not isinstance(v, (dict, list))}}
@@ -318,7 +321,7 @@ class Runner:
         for cond in self.cfg["conditions"]:
             rc = ReuseConfig(seed=seed, **{**self.cfg["reuse"], **cond})
             adapter, info = train_classification_adapter(model, data, rc)
-            ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc)
+            ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc, query_nominal=encoded_queries(adapter, data, "test"), test_groups=data.test_groups)
             store_b = CaseStatisticsStore()
             ainfo = audit(model, data, self.cfg, store_b, 0, adapter=adapter)
             label = f"{cond['output_mode']}_{cond['loss']}"
@@ -348,7 +351,7 @@ class Runner:
                                       retention_cfg_for(cond, self.cfg, seed), score_cfg_for(self.cfg),
                                       step=0, run_id=label, reg_bins=data.reg_bins,
                                       reference=maintenance_reference(data, self.cfg, adapter))
-                ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc)
+                ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc, query_nominal=encoded_queries(adapter, data, "test"), test_groups=data.test_groups)
                 metrics = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
                            **{f"test_flip_{k}": v for k, v in ev["flips"].items()},
                            "n_cases": model.case_count(), "audit_mean_loss_final": ainfo["mean_loss_final"]}
@@ -476,7 +479,7 @@ class Runner:
             adapter, info = train_synchronized(model, data, cc, sc, fr, near_scale=near_scale, maintenance_hook=hook, maintenance_epochs=m_epochs, recalibrate=recal, core_optimizer=ropt)
             if data.task_type == "classification":
                 rc = ReuseConfig(output_mode=sc.output_mode, loss="combined", lambda_diff=1.0, lambda_cls=1.0, probability_mode=self.cfg["sync"].get("probability_mode", "softmax"), seed=seed)
-                ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc)
+                ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc, query_nominal=encoded_queries(adapter, data, "test"), test_groups=data.test_groups)
             else:
                 ev = evaluate_regression_reuse(model, adapter, data.X_test, data.y_test,
                                                success_tolerance=self.cfg["statistics"]["regression_success_tolerance"])

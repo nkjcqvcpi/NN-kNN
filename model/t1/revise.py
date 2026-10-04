@@ -190,7 +190,7 @@ class InterventionLog:
             self.quarantined.add(int(case_id))
         return self._record("restore", case_id, before, "active_quarantined" if int(case_id) in self.quarantined else "active", actor, reason)
 
-    def controlled_decision(self, model, X, case_ids, *, query_ids, activation_floor, actor, reason, adapter=None, query_case_ids=None):
+    def controlled_decision(self, model, X, case_ids, *, query_ids, activation_floor, actor, reason, adapter=None, query_case_ids=None, query_nominal=None):
         if len(query_ids) != len(X):
             raise ValueError("query_ids must identify every controlled query")
         if model.task_type == "regression" and model.nn_cdh is not None and adapter is None:
@@ -200,7 +200,7 @@ class InterventionLog:
             r = model.retrieve(xb, exclude_identical=False, case_mask=self.case_mask(model),
                                query_case_ids=query_case_ids, force_case_ids=case_ids,
                                forced_weight_floor=activation_floor)
-            pre, final, kind = final_prediction(model, xb, r, adapter=adapter)
+            pre, final, kind = final_prediction(model, xb, r, adapter=adapter, query_nominal=query_nominal)
             iid = self._record("force_eligible_cases", None, None, r["override"], actor, reason)
             for b, qid in enumerate(query_ids):
                 slots = r["case_indices"][r["weights"][b] > 0]
