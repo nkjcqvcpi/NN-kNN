@@ -15,7 +15,7 @@ equations where marked; open scientific choices are explicitly exploratory.
 | Common maintenance definitions, stable IDs, archives, Q/B, ratio, removal | Implemented; prior bounded pilots and behavior tests | Broader reliability and policy comparisons |
 | Independent retraining and matched controls | Retrieval-only implemented; tiny-memory pilot | Adapted continuation and budget/scale studies |
 | Classification reuse | Implemented; bounded nominal/logit tests and pilots | Full loss/mode grid, nominal category contract tests |
-| Supervised component synchronization | Classification/regression implemented; 36-run three-schedule pilot and checkpoint replay passed (`5055eee`) | Broader matched capacity/compute grids; energy compression losses remain unresolved |
+| Supervised component synchronization | Classification/regression implemented; original and repaired 36-run pilots replay; no-op maintenance checkpoint selection fixed, 78 tests pass | Broader matched capacity/compute grids; energy compression losses persist after the selection repair |
 | Reviewer interventions | Actual stage checkpoints, force/weights/protection/restore and matched training implemented; 75 tests, 24 matched runs/96 checkpoints and 30 trained probes/120 states/60 forced events pass | Functional UI, broader reliability and constrained adaptation |
 | Human study | Simulated reviewer harness and draft common-knowledge protocol | Build functional local UI; freeze participant protocol and obtain genuine participant evidence separately |
 | Synthetic reliability and full supervised matrices | Pilot configs exist | Corruption/redundancy/rare/boundary/shift, subgroup tradeoffs, broader seeds and frozen exploratory protocol |

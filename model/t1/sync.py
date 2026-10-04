@@ -186,11 +186,20 @@ def train_synchronized(
             nb += 1
         rec = {"epoch": ep, "phase": ph, **{k: v / max(nb, 1) for k, v in agg.items()}}
         if ep in maintenance_epochs and maintenance_hook is not None and cfg.schedule == "alternating_rrr":
+            before_count = model.case_count()
+            before_state = copy.deepcopy(model.state_dict())
             rec["maintenance"] = maintenance_hook(ep, model, ropt, adapter)
+            after_state = model.state_dict()
+            changed = (before_count != model.case_count() or before_state.keys() != after_state.keys() or
+                       any(not torch.equal(v, after_state[k]) for k, v in before_state.items()))
+            rec["maintenance_state_changed"] = changed
             if recalibrate is not None:
                 fr = recalibrate(ep)
                 rec["free_radius"] = fr.to_dict()
-            best, bad = (float("inf"), None, None, -1, None, None, None), 0
+            # Earlier predictions are invalid after a real case/parameter edit;
+            # an audit or no-op selection does not invalidate a better state.
+            if changed:
+                best, bad = (float("inf"), None, None, -1, None, None, None), 0
         # validation: post-adaptation task loss on the untouched validation stream
         model.eval()
         adapter.eval()
@@ -206,7 +215,9 @@ def train_synchronized(
                          copy.deepcopy(ropt.state_dict()), copy.deepcopy(aopt.state_dict()), copy.deepcopy(fr)), 0
         elif any(h["phase"] == "adapter" for h in hist):
             bad += 1
-            if bad > cfg.patience and not any(e > ep for e in maintenance_epochs):
+            pending_maintenance = (cfg.schedule == "alternating_rrr" and maintenance_hook is not None and
+                                   any(ep < e <= cfg.epochs for e in maintenance_epochs))
+            if bad > cfg.patience and not pending_maintenance:
                 break
     if best[1] is not None:
         model.load_state_dict(best[1])
