@@ -210,7 +210,9 @@ def score_cases(
     else:
         raise ValueError(cfg.bias_normalization)
     evidenced = (R >= cfg.min_retrieval_count) & (A >= cfg.min_activation_mass)
-    return CaseScores(np.asarray(case_ids), list(cohorts), R, A, C, H, Q, B, evidenced, np.asarray(biases, dtype=float))
+    scores = CaseScores(np.asarray(case_ids), list(cohorts), R, A, C, H, Q, B, evidenced, np.asarray(biases, dtype=float))
+    scores.extra["human_protected"] = np.array([store.get(int(cid)).protected for cid in case_ids], dtype=bool)
+    return scores
 
 
 # ---------------------------------------------------------------------------

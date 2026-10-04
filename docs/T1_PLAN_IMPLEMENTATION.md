@@ -17,7 +17,7 @@ not validate the revised pipeline.
 
 | Module | Behavior |
 |---|---|
-| `model/nnknn_model.py` | Optional stable query-case IDs exclude only the query's own case, even with MCB, duplicates and compaction. The default maintained interface remains unchanged. |
+| `model/nnknn_model.py` | Optional stable query-case IDs exclude only the query's own case, even with MCB, duplicates and compaction. Transient forced-case overrides preserve eligibility and top-k and declare an explicit activation floor. Default retrieval remains unchanged. |
 | `model/t1/outcomes.py` | One final prediction/loss path for provenance and candidates. Nominal residual uses final-label CE; logit residual uses NLL; regression uses squared error. Adaptation penalties are excluded from removal scores. |
 | `model/t1/provenance.py` | Every participating case receives normalized activation times final query success/failure. Q and standalone normalized B are logged separately. Regression success requires a declared absolute-error tolerance. Pre-adaptation loss remains diagnostic. |
 | `model/t1/candidates.py` | Coverage/reachability uses activation above an explicit threshold plus final query success. Self is excluded by ID. Zero reachability has an explicit policy. Frozen-parameter full-query and cached-query removal use the full reference-set denominator. |
@@ -27,7 +27,7 @@ not validate the revised pipeline.
 | `model/t1/reuse.py` | Classification aggregate label-conditioned adaptation with independent nominal/logit and combined/single-loss switches. Training examples use stable-ID LOO. |
 | `model/t1/sync.py` | Independent and alternating classification/regression schedules, preserving parameter freeze flags. Regression preserves the existing aggregate NN-CDH information path. Best checkpoints restore corresponding optimizer/radius states. Maintenance receives the actual adapter and scores final outcomes. |
 | `model/t1/core.py` | Core training, validation-only checkpoint selection, optional MCB and complete nonzero retrieval contributions with pre/final decisions. |
-| `model/t1/revise.py` | Simulated reviewer M0/M1/M2 evaluation can export the actual stage models, masks, corrected targets, optimizer states and training flags. Original model/data stay isolated; invalid classification relabels fail before mutation. |
+| `model/t1/revise.py` | Simulated reviewer M0/M1/M2 and optional matched no-edit training control export actual stage models/targets/optimizers. Versioned force, feature/case-weight, bias, protect, quarantine, archive/restore and parameter rollback APIs preserve logs; protection enters maintenance through stable-ID statistics. |
 | `model/t1/artifacts.py`, `tools/t1_run.py` | Specification commit, pipeline version, dirty flag, actual source hash/bundle, data snapshots and model/adapter/archive checkpoints. Retention, reuse, frozen reuse+retention, sync, MCB, revision and legacy-reference runners. |
 
 The final maintained core baseline can still be run with `legacy_reference`.
@@ -62,9 +62,9 @@ has been established.
 | Optional removal with retraining and matched further-training controls | Implemented for retrieval-only classification/regression; tiny-memory fresh-seed pilot. Trained-adapter extensions and larger sweeps remain pending. |
 | General score recovering prior methods | Open research task; distinguish score equality, ranking equivalence and full selector equivalence |
 | Broader synthetic reliability, rare/boundary/shift studies and confirmatory seeds | Pilot infrastructure exists; full revised sweeps are not complete |
-| Reviewer force-include and feature-weight interventions | Not implemented |
+| Reviewer force-include and feature-weight interventions | Implemented for unsampled softmax/pre-top-k cores; 75 tests and 30 trained probes pass, including 120 stage reloads/60 forced-event replays. Controlled regression supports retrieval-only or external aggregate adapters. Unsupported paths fail explicitly. |
 | Causal revision checkpoint artifacts | Actual M0/M1/M2 saving implemented; 24-run/72-stage simulated review replay passed. Older revision checkpoints saved the untouched baseline and cannot validate M1/M2 predictions. |
-| Human UI study | Not implemented |
+| Human UI study | Draft common-knowledge protocol and technical revision harness; functional UI and real participant evidence pending |
 | Regression synchronization | Implemented; 36-run classification/regression three-schedule pilot and checkpoint replay pass. Residual and final MSE are algebraically equivalent, explicitly reported; full grids remain pending. |
 | Image/text legacy, TabArena and contemporary comparators | Not wired to T1 runner |
 | RL actor/critic T1 integration | Not implemented; role outcome and reference decisions remain open |

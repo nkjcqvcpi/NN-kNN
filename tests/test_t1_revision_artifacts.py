@@ -68,3 +68,35 @@ def test_invalid_relabel_is_atomic():
             log.relabel(model, 0, label, actor="test", reason="invalid")
         assert torch.equal(model.labels, original)
         assert not log.records
+
+
+def test_matched_control_no_edit_is_identical_with_dropout_and_common_rng():
+    X = torch.tensor([[0.], [.1], [.2], [.8], [.9], [1.]])
+    y = torch.tensor([0, 0, 0, 1, 1, 1])
+    cc = CoreConfig(task_type="classification", representation="mlp", mlp_dims=(4,),
+                    mlp_dropout=.25, top_k=2, epochs=2, batch_size=3)
+    model = build_model(X, y, cc, 2)
+    tr = train_retrieval(model, X, y, X + .01, y, cc)
+    data = SimpleNamespace(X_train=X, y_train=y, X_val=X + .01, y_val=y,
+                           X_test=X + .02, y_test=y)
+    rng = torch.random.get_rng_state().clone()
+    result = evaluate_m0_m1_m2(model, data, cc, lambda m, lg: [], InterventionLog("matched"),
+                              retrain_epochs=2, core_optimizer=tr.optimizer,
+                              capture_artifacts=True, matched_training_control=True)
+    assert torch.equal(rng, torch.random.get_rng_state())
+    stages = result["_artifacts"]["stages"]
+    assert result["MC"] == result["M2"]
+    assert result["M2_minus_MC_loss"] == 0
+    assert all(torch.equal(v, stages["MC"]["model_state"][k]) for k, v in stages["M2"]["model_state"].items())
+    assert len(result["_artifacts"]["control_history"]) == 2
+
+
+def test_no_training_omits_conditional_control():
+    X = torch.tensor([[0.], [1.]])
+    y = torch.tensor([0, 1])
+    cc = CoreConfig(task_type="classification")
+    model = build_model(X, y, cc, 2)
+    data = SimpleNamespace(X_train=X, y_train=y, X_val=X, y_val=y, X_test=X, y_test=y)
+    result = evaluate_m0_m1_m2(model, data, cc, lambda m, lg: [], InterventionLog("none"),
+                              retrain_epochs=0, matched_training_control=True)
+    assert "MC" not in result

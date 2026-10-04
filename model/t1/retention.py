@@ -57,6 +57,12 @@ def protection_requirements(scores, cfg, dist=None):
     n = len(cohorts)
     protected = np.zeros(n, dtype=bool)
     reasons = [[] for _ in range(n)]
+    human = np.asarray(scores.extra.get("human_protected", np.zeros(n, dtype=bool)), dtype=bool)
+    if human.shape != (n,):
+        raise ValueError("Human protection must align with stable case IDs")
+    protected |= human
+    for j in np.flatnonzero(human):
+        reasons[j].append("human_protect")
     floors = {}
     for c in sorted(set(cohorts.tolist())):
         members = np.flatnonzero(cohorts == c)
