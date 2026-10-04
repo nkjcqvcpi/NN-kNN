@@ -1,0 +1,28 @@
+base: alignment_revision_matched.yaml
+experiment: alignment_synthetic_reliability
+status: exploratory_synthetic_factor_grid
+seeds: [8, 9, 10]
+# Each treatment changes one generator factor relative to the independent_v1
+# reference. Combined stress is explicitly multi-factor. No test-based tuning.
+datasets:
+  - name: synthetic_reference
+    task_type: classification
+    synthetic: {generator_version: independent_v1}
+  - name: synthetic_overlap
+    task_type: classification
+    synthetic: {generator_version: independent_v1, center_scale: 0.9}
+  - name: synthetic_noise
+    task_type: classification
+    synthetic: {generator_version: independent_v1, corruption_rate: 0.4}
+  - name: synthetic_redundant
+    task_type: classification
+    synthetic: {generator_version: independent_v1, duplicate_count: 180}
+  - name: synthetic_uncovered_rare
+    task_type: classification
+    synthetic: {generator_version: independent_v1, rare_count: 0}
+  - name: synthetic_shift
+    task_type: classification
+    synthetic: {generator_version: independent_v1, shift: 4.5}
+  - name: synthetic_combined
+    task_type: classification
+    synthetic: {generator_version: independent_v1, center_scale: 0.9, corruption_rate: 0.4, shift: 4.5}

@@ -96,9 +96,14 @@ def make_splits(
     maint_frac: float = 0.0,
     reg_cohort_bins: int = 5,
     max_train: int | None = None,
+    synthetic: dict[str, Any] | None = None,
 ) -> T1Data:
     if name.startswith("synthetic"):
-        return make_synthetic(name, seed)
+        if task_type != "classification":
+            raise ValueError("synthetic diagnostics support classification only")
+        return make_synthetic(name, seed, **(synthetic or {}))
+    if synthetic is not None:
+        raise ValueError("synthetic parameters cannot be applied to real datasets")
     X, y, meta = _load_raw(name, task_type, seed)
     idx = np.arange(len(y))
     strat = y if task_type == "classification" else None
@@ -147,7 +152,10 @@ def make_splits(
     return data
 
 
-def make_synthetic(name: str, seed: int) -> T1Data:
+def make_synthetic(name: str, seed: int, *, generator_version="legacy",
+                   center_scale=3.0, within_std=1.0, corruption_rate=0.15,
+                   duplicate_count=60, rare_count=12, shift=1.5,
+                   boundary_margin=1.0) -> T1Data:
     """``synthetic_diag``: 3-class Gaussian task with known corruption, redundancy, rare and shift.
 
     Ground truth per training row:
@@ -157,44 +165,69 @@ def make_synthetic(name: str, seed: int) -> T1Data:
     Test rows carry ``shifted`` for a sub-domain whose inputs are displaced.
     Relevant features: first 4 of 8 (the rest are noise).
     """
+    if generator_version not in {"legacy", "independent_v1"}:
+        raise ValueError("unknown synthetic generator_version")
+    for key, value in {"center_scale": center_scale, "within_std": within_std,
+                       "corruption_rate": corruption_rate, "shift": shift,
+                       "boundary_margin": boundary_margin}.items():
+        if isinstance(value, bool) or not np.isfinite(value):
+            raise ValueError(f"{key} must be finite")
+    if center_scale <= 0 or within_std <= 0 or not 0 <= corruption_rate <= 1 or boundary_margin < 0:
+        raise ValueError("invalid synthetic scale, corruption rate or boundary margin")
+    for key, value in {"duplicate_count": duplicate_count, "rare_count": rare_count}.items():
+        if isinstance(value, bool) or not isinstance(value, (int, np.integer)) or value < 0:
+            raise ValueError(f"{key} must be a nonnegative integer")
+    n_base = 360
+    clean_count = n_base - int(corruption_rate * n_base)
+    available = clean_count if generator_version == "legacy" else n_base
+    if duplicate_count > available:
+        raise ValueError("duplicate_count exceeds distinct available source rows")
     rng = np.random.default_rng(seed)
+    # Separate streams make noise/duplicates/rare interventions comparable on
+    # the same base, validation and test observations. Legacy preserves old bytes.
+    if generator_version == "independent_v1":
+        streams = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(7)]
+        center_rng, base_rng, label_rng, dup_rng, rare_rng, val_rng, test_rng = streams
+    else:
+        center_rng = base_rng = label_rng = dup_rng = rare_rng = val_rng = test_rng = rng
     d, d_rel, C = 8, 4, 3
-    centers = rng.normal(0, 3.0, size=(C, d_rel))
+    centers = center_rng.normal(0, center_scale, size=(C, d_rel))
 
-    def draw(n_per, shift=0.0):
+    def draw(n_per, shift=0.0, stream=rng):
         Xs, ys = [], []
         for c in range(C):
-            rel = centers[c] + rng.normal(0, 1.0, size=(n_per, d_rel)) + shift
-            noise = rng.normal(0, 1.0, size=(n_per, d - d_rel))
+            rel = centers[c] + stream.normal(0, within_std, size=(n_per, d_rel)) + shift
+            noise = stream.normal(0, 1.0, size=(n_per, d - d_rel))
             Xs.append(np.hstack([rel, noise]))
             ys.append(np.full(n_per, c))
         return np.vstack(Xs).astype(np.float32), np.concatenate(ys).astype(np.int64)
 
-    Xb, yb = draw(120)
+    Xb, yb = draw(120, stream=base_rng)
     n_base = len(yb)
     corrupted = np.zeros(n_base, dtype=bool)
-    flip = rng.choice(n_base, size=int(0.15 * n_base), replace=False)
+    flip = label_rng.choice(n_base, size=int(corruption_rate * n_base), replace=False)
     corrupted[flip] = True
     y_obs = yb.copy()
     for i in flip:
-        y_obs[i] = rng.choice([c for c in range(C) if c != yb[i]])
-    dup_src = rng.choice(np.nonzero(~corrupted)[0], size=60, replace=False)
-    Xd = Xb[dup_src] + rng.normal(0, 0.02, size=(60, d)).astype(np.float32)
+        y_obs[i] = label_rng.choice([c for c in range(C) if c != yb[i]])
+    pool = np.nonzero(~corrupted)[0] if generator_version == "legacy" else np.arange(n_base)
+    dup_src = dup_rng.choice(pool, size=duplicate_count, replace=False)
+    Xd = Xb[dup_src] + dup_rng.normal(0, 0.02, size=(duplicate_count, d)).astype(np.float32)
     yd = y_obs[dup_src]
     rare_center = centers[2] + 9.0
-    Xr = np.hstack([rare_center + rng.normal(0, 0.5, size=(12, d_rel)), rng.normal(0, 1, size=(12, d - d_rel))]).astype(np.float32)
-    yr = np.full(12, 2, dtype=np.int64)
+    Xr = np.hstack([rare_center + rare_rng.normal(0, 0.5, size=(rare_count, d_rel)), rare_rng.normal(0, 1, size=(rare_count, d - d_rel))]).astype(np.float32)
+    yr = np.full(rare_count, 2, dtype=np.int64)
     X_train = np.vstack([Xb, Xd, Xr])
     y_train = np.concatenate([y_obs, yd, yr])
     truth = {
-        "corrupted": np.concatenate([corrupted, np.zeros(60 + 12, dtype=bool)]),
-        "duplicate": np.concatenate([np.zeros(n_base, dtype=bool), np.ones(60, dtype=bool), np.zeros(12, dtype=bool)]),
-        "rare": np.concatenate([np.zeros(n_base + 60, dtype=bool), np.ones(12, dtype=bool)]),
+        "corrupted": np.concatenate([corrupted, corrupted[dup_src], np.zeros(rare_count, dtype=bool)]),
+        "duplicate": np.concatenate([np.zeros(n_base, dtype=bool), np.ones(duplicate_count, dtype=bool), np.zeros(rare_count, dtype=bool)]),
+        "rare": np.concatenate([np.zeros(n_base + duplicate_count, dtype=bool), np.ones(rare_count, dtype=bool)]),
     }
-    Xv, yv = draw(30)
-    Xt, yt_ = draw(60)
-    Xs, ys_ = draw(20, shift=1.5)
-    Xrt = np.hstack([rare_center + rng.normal(0, 0.5, size=(20, d_rel)), rng.normal(0, 1, size=(20, d - d_rel))]).astype(np.float32)
+    Xv, yv = draw(30, stream=val_rng)
+    Xt, yt_ = draw(60, stream=test_rng)
+    Xs, ys_ = draw(20, shift=shift, stream=test_rng)
+    Xrt = np.hstack([rare_center + test_rng.normal(0, 0.5, size=(20, d_rel)), test_rng.normal(0, 1, size=(20, d - d_rel))]).astype(np.float32)
     X_test = np.vstack([Xt, Xs, Xrt])
     y_test = np.concatenate([yt_, ys_, np.full(20, 2)])
     groups = {
@@ -202,6 +235,12 @@ def make_synthetic(name: str, seed: int) -> T1Data:
         "shifted": np.concatenate([np.zeros(len(yt_), bool), np.ones(len(ys_), bool), np.zeros(20, bool)]),
         "rare": np.concatenate([np.zeros(len(yt_) + len(ys_), bool), np.ones(20, bool)]),
     }
+    def boundary(X):
+        distances = np.linalg.norm(X[:, None, :d_rel] - centers[None, :, :], axis=2)
+        nearest = np.sort(distances, axis=1)[:, :2]
+        return nearest[:, 1] - nearest[:, 0] <= boundary_margin
+    truth["boundary"] = boundary(X_train) & ~truth["rare"]
+    groups["boundary"] = boundary(X_test) & ~groups["rare"]
     scaler = StandardScaler().fit(X_train)
     f = lambda a: torch.tensor(scaler.transform(a), dtype=torch.float32)  # noqa: E731
     return T1Data(
@@ -220,6 +259,14 @@ def make_synthetic(name: str, seed: int) -> T1Data:
             "source": "synthetic_diag",
             "relevant_features": list(range(d_rel)),
             "split_seed": seed,
-            "true_labels": np.concatenate([yb, yd, yr]).tolist(),
+            "true_labels": np.concatenate([yb, yb[dup_src], yr]).tolist(),
+            "synthetic_parameters": {"generator_version": generator_version,
+                "center_scale": center_scale, "within_std": within_std,
+                "corruption_rate": corruption_rate, "duplicate_count": duplicate_count,
+                "rare_count": rare_count, "shift": shift, "boundary_margin": boundary_margin},
+            "corrupted_count": int(truth["corrupted"].sum()),
+            "duplicate_source_ids": dup_src.tolist(),
+            "boundary_definition": "two nearest raw relevant-space center distances differ <= boundary_margin; rare excluded",
+            "synthetic_split_policy": "fixed 360 base training, 90 validation, 180 in-domain/60 shifted/20 rare test; splits fractions and max_train do not apply",
         },
     )
