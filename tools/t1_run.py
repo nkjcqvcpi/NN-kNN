@@ -204,7 +204,7 @@ class Runner:
         tr = train_retrieval(model, data.X_train, data.y_train, data.X_val, data.y_val, cc)
         return model, cc, tr
 
-    def finish(self, *, ds, seed, cond_label, cond, data, model, store, archive, metrics, history, events, components, budgets, maintenance, model_desc, extra_files=None, prediction_adapter=None):
+    def finish(self, *, ds, seed, cond_label, cond, data, model, store, archive, metrics, history, events, components, budgets, maintenance, model_desc, extra_files=None, prediction_adapter=None, binary_files=None, optimizer=None):
         run_dir = self.out / ds["name"] / cond_label / f"s{seed}"
         run_cfg = {"experiment": self.exp, "dataset": ds, "seed": seed, "condition": cond, "config": self.cfg}
         run_id = f"{self.exp}-{ds['name']}-{cond_label}-s{seed}-{config_id(run_cfg)[:8]}"
@@ -225,6 +225,8 @@ class Runner:
                     "case_statistics": None if store is None else store.state_dict(),
                     "archive": None if archive is None else archive.state_dict(),
                     "adapter_state": None if prediction_adapter is None else prediction_adapter.state_dict(),
+                    "optimizer_state": None if optimizer is None else optimizer.state_dict(),
+                    "requires_grad": {n: p.requires_grad for n, p in model.named_parameters()},
                     "model_description": model_desc}, run_dir / "checkpoint.pt")
         data_path = self.out / ds["name"] / f"data_snapshot_s{seed}.pt"
         if not data_path.exists():
@@ -233,6 +235,8 @@ class Runner:
                          "X_maint", "y_maint", "y_scale")}, data_path)
         for name, obj in (extra_files or {}).items():
             write_json(run_dir / name, obj)
+        for name, obj in (binary_files or {}).items():
+            torch.save(obj, run_dir / name)
         row = {"run_id": run_id, "experiment": self.exp, "dataset": ds["name"], "task_type": data.task_type, "seed": seed, "condition": cond_label, **{k: v for k, v in cond.items() if not isinstance(v, (dict, list))}, **{k: v for k, v in metrics.items() if not isinstance(v, (dict, list))}}
         # one shard per dataset: parallel jobs (one per dataset) never share a file
         with (self.out / f"runs__{ds['name']}.jsonl").open("a", encoding="utf-8") as fh:
@@ -528,8 +532,19 @@ class Runner:
         if true_labels is None:
             raise ValueError("synthetic data must expose true labels for the simulated reviewer")
         rv = self.cfg["revise"]
-        rows = flagging_ablation(model, data, scores, cc, truth_corrupted=truth, true_labels=np.asarray(true_labels), budgets=rv["budgets"], methods=rv["methods"], retrain_epochs=rv["retrain_epochs"], run_id=f"{self.exp}-s{seed}", seed=seed, core_optimizer=tr.optimizer, retrain_lr_scale=float(rv["retrain_lr_scale"]))
+        rows = flagging_ablation(model, data, scores, cc, truth_corrupted=truth, true_labels=np.asarray(true_labels), budgets=rv["budgets"], methods=rv["methods"], retrain_epochs=rv["retrain_epochs"], run_id=f"{self.exp}-s{seed}", seed=seed, core_optimizer=tr.optimizer, retrain_lr_scale=float(rv["retrain_lr_scale"]), capture_artifacts=True)
         for r in rows:
+            artifacts = r.pop("_artifacts")
+            final_model = artifacts["final_model"]
+            revised_data = copy.copy(data)
+            revised_data.y_train = artifacts["y_train_corrected"]
+            final_store = CaseStatisticsStore()
+            audit(final_model, revised_data, self.cfg, final_store, rv["retrain_epochs"])
+            stages = artifacts["stages"]
+            for stage, checkpoint in stages.items():
+                checkpoint["model_description"] = {"core": cc.__dict__, "stage": stage}
+                checkpoint["evaluation_metrics"] = r[stage]
+                checkpoint["training_targets"] = data.y_train if stage == "M0" else artifacts["y_train_corrected"]
             label = f"{r['method']}_b{r['review_budget']}"
             m = {k: v for k, v in r.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
             for ck in ("M0", "M1", "M2"):
@@ -539,9 +554,9 @@ class Runner:
                 if fk in r:
                     for k, v in r[fk].items():
                         m[f"{fk}_{k}"] = v
-            self.finish(ds=ds, seed=seed, cond_label=label, cond={"method": r["method"], "review_budget": r["review_budget"]}, data=data, model=model, store=store, archive=None, metrics=m, history={"core": tr.history}, events=[],
+            self.finish(ds=ds, seed=seed, cond_label=label, cond={"method": r["method"], "review_budget": r["review_budget"]}, data=data, model=final_model, store=final_store, archive=None, metrics=m, history={"core": tr.history, "retrain": artifacts["history"]}, events=[],
                         components={"retrieve": "NN-kNN core", "reuse_or_adapter": "off", "revise": "simulated oracle review (T1.2 harness)", "retain": "none", "mcb": "off", "component_synchronization": "off"},
-                        budgets={"review_budget": r["review_budget"], "retrain_epochs": rv["retrain_epochs"]}, maintenance={"policy": "none"}, model_desc={"core": cc.__dict__}, extra_files={"interventions.json": r["interventions"]})
+                        budgets={"review_budget": r["review_budget"], "retrain_epochs": rv["retrain_epochs"]}, maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "stage": "M2", "statistics_training_targets": "M2.pt:training_targets"}, extra_files={"interventions.json": r["interventions"]}, binary_files={f"{stage}.pt": checkpoint for stage, checkpoint in stages.items()}, optimizer=artifacts["final_optimizer"])
 
 
 def main() -> None:

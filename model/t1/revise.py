@@ -53,6 +53,8 @@ class InterventionLog:
     @torch.no_grad()
     def relabel(self, model, case_id: int, new_label: int, *, actor: str, reason: str) -> str:
         s = self._slot(model, case_id)
+        if model.task_type != "classification" or not 0 <= int(new_label) < model.labels.shape[1] or int(new_label) != new_label:
+            raise ValueError("relabel requires a valid classification label")
         before = int(model.labels[s].argmax())
         model.labels[s].zero_()
         model.labels[s, int(new_label)] = 1.0
@@ -104,6 +106,7 @@ def evaluate_m0_m1_m2(
     y_train: torch.Tensor | None = None,
     core_optimizer: torch.optim.Optimizer | None = None,
     retrain_lr_scale: float = 1.0,
+    capture_artifacts: bool = False,
 ) -> dict[str, Any]:
     """M0 = saved trained model; M1 = after ``edit`` without gradients; M2 = M1 + fixed retraining budget.
 
@@ -111,6 +114,8 @@ def evaluate_m0_m1_m2(
     Targeted/collateral effects use the test queries whose top-k retrieval included
     an edited case at M0 (``influenced``) versus the rest.
     """
+    if retrain_epochs < 0:
+        raise ValueError("retrain_epochs must be nonnegative")
     m0 = copy.deepcopy(model)
     e0 = evaluate(m0, data.X_test, data.y_test)
     m1 = copy.deepcopy(model)
@@ -126,14 +131,31 @@ def evaluate_m0_m1_m2(
         m2.compact_cases(keep)
         if opt2 is not None:
             realign_optimizer_state(opt2, m2, keep.cpu().numpy(), n_old)
+    retrain_history = []
     if retrain_epochs > 0:
         # fixed, reported budget; corrected cases are also training queries, so retrain on corrected targets
         ft_cfg = copy.copy(core_cfg)
         ft_cfg.patience = retrain_epochs + 1
-        train_retrieval(m2, data.X_train, data.y_train if y_train is None else y_train, data.X_val, data.y_val, ft_cfg, epochs=retrain_epochs, optimizer=opt2, select_best=False, lr_scale=retrain_lr_scale)
+        tr2 = train_retrieval(m2, data.X_train, data.y_train if y_train is None else y_train, data.X_val, data.y_val, ft_cfg, epochs=retrain_epochs, optimizer=opt2, select_best=False, lr_scale=retrain_lr_scale)
+        opt2, retrain_history = tr2.optimizer, tr2.history
     e2 = evaluate(m2, data.X_test, data.y_test)
     y = data.y_test
     out: dict[str, Any] = {"edited_case_ids": edited, "retrain_epochs": retrain_epochs}
+    if capture_artifacts:
+        # Keep tensors/models outside the public metrics JSON. Each saved stage
+        # represents exactly the predictor used for that stage's evaluation.
+        def snapshot(m, opt, stage_mask=None):
+            return {"model_state": copy.deepcopy(m.state_dict()),
+                    "active_case_count": m.case_count(),
+                    "optimizer_state": None if opt is None else copy.deepcopy(opt.state_dict()),
+                    "requires_grad": {n: p.requires_grad for n, p in m.named_parameters()},
+                    "case_mask": None if stage_mask is None else stage_mask.detach().cpu().clone()}
+        out["_artifacts"] = {"final_model": m2, "final_optimizer": opt2,
+                             "history": retrain_history,
+                             "stages": {"M0": snapshot(m0, core_optimizer),
+                                        "M1": snapshot(m1, core_optimizer, mask),
+                                        "M2": snapshot(m2, opt2)},
+                             "y_train_corrected": (data.y_train if y_train is None else y_train).detach().cpu().clone()}
     for name, e in (("M0", e0), ("M1", e1), ("M2", e2)):
         out[name] = {k: v for k, v in e.items() if not k.startswith(("pred", "prob"))}
     if model.task_type == "classification":
@@ -192,6 +214,7 @@ def flagging_ablation(
     seed: int,
     core_optimizer: torch.optim.Optimizer | None = None,
     retrain_lr_scale: float = 1.0,
+    capture_artifacts: bool = False,
 ) -> list[dict[str, Any]]:
     """Simulated review: the reviewer inspects the top-b flagged cases and repairs the corrupted ones."""
     rng = np.random.default_rng(seed)
@@ -218,6 +241,7 @@ def flagging_ablation(
                 model, data, core_cfg, edit, log, retrain_epochs=retrain_epochs,
                 influenced_mask=lambda m, e: influenced_by(m, data.X_test, e), y_train=y_fixed,
                 core_optimizer=core_optimizer, retrain_lr_scale=retrain_lr_scale,
+                capture_artifacts=capture_artifacts,
             )
             n_bad = int(truth_corrupted.sum())
             rows.append(

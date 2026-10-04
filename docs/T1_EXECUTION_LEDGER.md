@@ -15,8 +15,8 @@ equations where marked; open scientific choices are explicitly exploratory.
 | Common maintenance definitions, stable IDs, archives, Q/B, ratio, removal | Implemented; prior bounded pilots and behavior tests | Broader reliability and policy comparisons |
 | Independent retraining and matched controls | Retrieval-only implemented; tiny-memory pilot | Adapted continuation and budget/scale studies |
 | Classification reuse | Implemented; bounded nominal/logit tests and pilots | Full loss/mode grid, nominal category contract tests |
-| Supervised component synchronization | Classification implemented; regression implementation under verification | Three schedules, component isolation, actual post outcomes, checkpoint/optimizer alignment |
-| Reviewer interventions | Relabel/bias/quarantine implemented | Forced eligible-case retrieval, feature weights, protect/archive/restore and causal M0/M1/M2 checkpoint artifacts |
+| Supervised component synchronization | Classification/regression implemented; 36-run three-schedule pilot and checkpoint replay passed (`5055eee`) | Broader matched capacity/compute grids; energy compression losses remain unresolved |
+| Reviewer interventions | Relabel/bias/quarantine and actual M0/M1/M2 artifact saving implemented; 24-run/72-stage replay passed | Forced eligible-case retrieval, feature weights, protect/archive/restore, conditional matched training and UI |
 | Human study | Simulated reviewer harness only | Build common-knowledge UI/protocol; genuine participants and measured burden must be recorded separately |
 | Synthetic reliability and full supervised matrices | Pilot configs exist | Corruption/redundancy/rare/boundary/shift, subgroup tradeoffs, broader seeds and frozen exploratory protocol |
 | Historical and modern benchmarks | Legacy runner reconstructed; current maintained workflows available | Exact source/split/metric reconstruction, contemporary comparators, image/text encoders, TabArena protocol |
