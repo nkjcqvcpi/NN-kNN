@@ -135,7 +135,7 @@ def train_classification_adapter(model, data, cfg: ReuseConfig) -> tuple[Classif
     ytr = data.y_train.to(tr["dz"].device)
     yva = data.y_val.to(tr["dz"].device)
     g = torch.Generator().manual_seed(cfg.seed)
-    best = (float("inf"), None, -1)
+    best = (float("inf"), None, -1, None)
     bad = 0
     hist = []
     for ep in range(1, cfg.epochs + 1):
@@ -154,14 +154,17 @@ def train_classification_adapter(model, data, cfg: ReuseConfig) -> tuple[Classif
             Lv = _adapter_losses(adapter, r, sc, va["p0"], yva, cfg)
         hist.append({"epoch": ep, "val_loss": float(Lv["loss"]), "val_l_diff": float(Lv["l_diff"]), "val_l_cls": float(Lv["l_cls"])})
         if float(Lv["loss"]) < best[0] - 1e-9:
-            best, bad = (float(Lv["loss"]), copy.deepcopy(adapter.state_dict()), ep), 0
+            best, bad = (float(Lv["loss"]), copy.deepcopy(adapter.state_dict()), ep,
+                         copy.deepcopy(opt.state_dict())), 0
         else:
             bad += 1
             if bad > cfg.patience:
                 break
     adapter.load_state_dict(best[1])
     adapter.eval()
-    info = {"history": hist, "best_epoch": best[2], "n_train_examples": int(ytr.numel()), "neighborhoods": "leave_one_out"}
+    info = {"history": hist, "best_epoch": best[2], "epochs_run": len(hist),
+            "optimizer_state": best[3], "optimizer_checkpoint_epoch": best[2],
+            "n_train_examples": int(ytr.numel()), "neighborhoods": "leave_one_out"}
     if schema is not None:
         info["nominal_manifest"] = schema.state_dict()
     return adapter, info

@@ -245,4 +245,8 @@ def train_synchronized(
         aopt.load_state_dict(best[5])
         fr = best[6]
     adapter.eval()
-    return adapter, {"history": hist, "best_epoch": best[3], "free_radius": None if fr is None else fr.to_dict()}
+    return adapter, {"history": hist, "best_epoch": best[3],
+                     "retrieval_optimizer_state": copy.deepcopy(ropt.state_dict()),
+                     "adapter_optimizer_state": copy.deepcopy(aopt.state_dict()),
+                     "optimizer_checkpoint_epoch": best[3],
+                     "free_radius": None if fr is None else fr.to_dict()}
