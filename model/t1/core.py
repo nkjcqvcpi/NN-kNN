@@ -220,13 +220,17 @@ def train_retrieval(
         for grp in opt.param_groups:
             grp["lr"] = base.get(grp.get("name"), grp["lr"]) * lr_scale
     epochs = cfg.epochs if epochs is None else epochs
+    if epochs < 1:
+        raise ValueError("Training epochs must be positive")
     g = torch.Generator().manual_seed(cfg.seed)
     Xtr, ytr = X_train.to(device), y_train.to(device)
     best = (math.inf, None, -1)
+    best_optimizer = None
     if include_initial and select_best:
         # the starting state is a candidate: fine-tuning can only be kept if validation improves
         v0 = evaluate(model, X_val, y_val)
         best = (v0["loss_pre"], copy.deepcopy(model.state_dict()), 0)
+        best_optimizer = copy.deepcopy(opt.state_dict())
     bad = 0
     res = TrainResult(model, opt)
     checkpoint_epochs = checkpoint_epochs or set()
@@ -255,11 +259,13 @@ def train_retrieval(
             info = checkpoint_hook(ep, model, opt)
             rec["checkpoint"] = info
             best, bad = (math.inf, None, -1), 0  # new case base: restart selection
+            best_optimizer = None
             val = evaluate(model, X_val, y_val)
             rec["val_loss_after_checkpoint"] = val["loss_pre"]
         res.history.append(rec)
         if val["loss_pre"] < best[0] - 1e-9:
             best = (val["loss_pre"], copy.deepcopy(model.state_dict()), ep)
+            best_optimizer = copy.deepcopy(opt.state_dict()) if select_best else None
             bad = 0
         else:
             bad += 1
@@ -269,6 +275,7 @@ def train_retrieval(
     if select_best and best[1] is not None:
         model.load_state_dict(best[1])
         model._invalidate_case_cache()
+        opt.load_state_dict(best_optimizer)
     res.best_epoch, res.best_val = best[2], best[0]
     return res
 

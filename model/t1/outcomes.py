@@ -45,7 +45,9 @@ def final_prediction(model, X, retrieval, *, adapter=None, case_mask=None, query
         dz = retrieval["query_features"] - w @ retrieval["case_features"]
         _, final = ad(dz, pre, None)
         return pre, final, "cross_entropy" if ad.output_mode == "nominal_residual_scores" else "nll"
-    if model.nn_cdh is not None and getattr(model, "adapt_enabled", True):
+    if adapter is not None:
+        final = adapter.forward_aggregate(retrieval["query_features"], retrieval["case_features"], labels, w)
+    elif model.nn_cdh is not None and getattr(model, "adapt_enabled", True):
         final = model(X, exclude_identical=exclude_identical, case_mask=case_mask, query_case_ids=query_case_ids)[0]
     else:
         final = pre

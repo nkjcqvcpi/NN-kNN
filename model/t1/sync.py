@@ -1,4 +1,4 @@
-"""Component synchronization for classification (plan section 6, Phase 4).
+"""Component synchronization for classification/regression (plan section 6).
 
     L_pre   = NLL of the retrieval-only class mass p0
     L_post  = task loss after adaptation
@@ -21,13 +21,14 @@ with leave-one-out retrieval. Early stopping uses the validation stream only.
 from __future__ import annotations
 
 import copy
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Callable
 
 import torch
 import torch.nn.functional as F
 
-from model.nn_cdh import ClassificationNNCDHAdapter
+from model.nn_cdh import ClassificationNNCDHAdapter, NNCDHAdapter
 
 from .calibration import FreeRadius, l_small
 from .core import CoreConfig, make_optimizer
@@ -50,24 +51,57 @@ class SyncConfig:
     hidden_dims: tuple[int, int] = (64, 32)
     seed: int = 0
 
+    def validate(self, task_type):
+        if self.schedule not in {"independent", "alternating_rr", "alternating_rrr"}:
+            raise ValueError("Unknown synchronization schedule")
+        if self.epochs < 2 or self.block_epochs < 1 or (self.schedule != "independent" and self.block_epochs >= self.epochs) or self.patience < 0:
+            raise ValueError("Synchronization must include retrieval and adapter updates")
+        if min(self.w_pre, self.w_post, self.w_near, self.v_post, self.v_delta, self.v_small) < 0:
+            raise ValueError("Synchronization loss weights must be nonnegative")
+        if self.v_post + self.v_delta <= 0 or self.w_pre + self.w_post + self.w_near <= 0:
+            raise ValueError("Each component needs a learning objective")
+        expected = {"nominal_residual_scores", "logit_residual"} if task_type == "classification" else {"aggregate_regression"}
+        if self.output_mode not in expected:
+            raise ValueError(f"Output mode {self.output_mode!r} is invalid for {task_type}")
+
+
+@contextmanager
+def frozen_parameters(module):
+    """Preserve intentionally frozen cases, labels, target encoders and features."""
+    states = [(p, p.requires_grad) for p in module.parameters()]
+    try:
+        for p, _ in states:
+            p.requires_grad_(False)
+        yield
+    finally:
+        for p, state in states:
+            p.requires_grad_(state)
+
 
 def _forward_terms(model, adapter, X, y, fr: FreeRadius | None, *, output_mode: str, near_scale: float, query_case_ids=None) -> dict[str, torch.Tensor]:
-    r = model.retrieve(X, exclude_identical=query_case_ids is None, query_case_ids=query_case_ids)
+    r = model.retrieve(X, exclude_identical=False, query_case_ids=query_case_ids)
     w = r["weights"]
     labels = model.labels[r["case_indices"]].float()
-    p0 = (w @ labels) / (w @ labels).sum(1, keepdim=True).clamp_min(1e-12)
-    L_pre = F.nll_loss(torch.log(p0.clamp_min(1e-8)), y.long())
     L_near = (w * r["distances"]).sum(1).mean() / max(near_scale, 1e-8)
-    dz = r["query_features"] - w @ r["case_features"]
-    rh, s = adapter(dz, p0, None)
-    y1 = F.one_hot(y.long(), p0.size(1)).float()
-    if output_mode == "nominal_residual_scores":
-        L_post = F.cross_entropy(s, y.long())
-        L_delta = F.mse_loss(rh, y1 - p0)
+    if model.task_type == "regression":
+        p0 = w @ labels.view(w.shape[1], -1)
+        s = adapter.forward_aggregate(r["query_features"], r["case_features"], labels, w)
+        target = y.float().view_as(p0)
+        L_pre, L_post = F.mse_loss(p0, target), F.mse_loss(s, target)
+        L_delta = F.mse_loss(s - p0, target - p0)
         c_q = torch.linalg.vector_norm(s - p0, dim=1)
     else:
-        L_post = F.nll_loss(torch.log(s.clamp_min(1e-8)), y.long())
-        L_delta = F.mse_loss(s - p0, y1 - p0)
+        p0 = (w @ labels) / (w @ labels).sum(1, keepdim=True).clamp_min(1e-12)
+        L_pre = F.nll_loss(torch.log(p0.clamp_min(1e-8)), y.long())
+        dz = r["query_features"] - w @ r["case_features"]
+        rh, s = adapter(dz, p0, None)
+        y1 = F.one_hot(y.long(), p0.size(1)).float()
+        if output_mode == "nominal_residual_scores":
+            L_post = F.cross_entropy(s, y.long())
+            L_delta = F.mse_loss(rh, y1 - p0)
+        else:
+            L_post = F.nll_loss(torch.log(s.clamp_min(1e-8)), y.long())
+            L_delta = F.mse_loss(s - p0, y1 - p0)
         c_q = torch.linalg.vector_norm(s - p0, dim=1)
     L_sm = l_small(c_q, fr) if fr is not None else torch.zeros((), device=p0.device)
     return {"L_pre": L_pre, "L_post": L_post, "L_near": L_near, "L_delta": L_delta, "L_small": L_sm, "correction_norm": c_q.mean()}
@@ -85,18 +119,25 @@ def train_synchronized(
     maintenance_epochs: set[int] | None = None,
     recalibrate: Callable[[int], FreeRadius] | None = None,
     core_optimizer: torch.optim.Optimizer | None = None,
-) -> tuple[ClassificationNNCDHAdapter, dict[str, Any]]:
+) -> tuple[torch.nn.Module, dict[str, Any]]:
+    cfg.validate(model.task_type)
     torch.manual_seed(cfg.seed)
     device = model.cases.device
     X, y = data.X_train.to(device), data.y_train.to(device)
-    C = int(data.num_classes)
     feat_dim = model.retrieve(X[:1], exclude_identical=False)["query_features"].shape[1]
-    adapter = ClassificationNNCDHAdapter(feat_dim, C, 0, cfg.hidden_dims, cfg.output_mode).to(device)
+    if model.task_type == "classification":
+        adapter = ClassificationNNCDHAdapter(feat_dim, int(data.num_classes), 0, cfg.hidden_dims, cfg.output_mode).to(device)
+    else:
+        adapter = NNCDHAdapter(feat_dim, 1, cfg.hidden_dims).to(device)
+        # The preserved foundation contains a historical pair network; the T1
+        # aggregate path never trains or uses that extra information channel.
+        for p in adapter.adapt_net_pair.parameters():
+            p.requires_grad_(False)
     ropt = core_optimizer if core_optimizer is not None else make_optimizer(model, core_cfg)
-    aopt = torch.optim.Adam(adapter.parameters(), lr=cfg.adapter_lr)
+    aopt = torch.optim.Adam([p for p in adapter.parameters() if p.requires_grad], lr=cfg.adapter_lr)
     g = torch.Generator().manual_seed(cfg.seed)
     hist: list[dict[str, Any]] = []
-    best = (float("inf"), None, None, -1)
+    best = (float("inf"), None, None, -1, None, None, None)
     bad = 0
     maintenance_epochs = maintenance_epochs or set()
 
@@ -115,7 +156,8 @@ def train_synchronized(
         for s in range(0, y.numel(), core_cfg.batch_size):
             b = perm[s : s + core_cfg.batch_size].to(device)
             if ph == "retrieval":
-                T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b)
+                with frozen_parameters(adapter):
+                    T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b)
                 if cfg.schedule == "independent":
                     L = T["L_pre"]
                 else:
@@ -129,14 +171,8 @@ def train_synchronized(
                     model.update_momentum_encoder(core_cfg.mcb_momentum)
             else:
                 model.eval()  # frozen retrieval, LOO still enforced explicitly
-                for p in model.parameters():
-                    p.requires_grad_(False)
-                T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b)
-                for p in model.parameters():
-                    p.requires_grad_(True)
-                if model.momentum_encoder is not None:
-                    for p in model.momentum_encoder.parameters():
-                        p.requires_grad_(False)
+                with frozen_parameters(model):
+                    T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b)
                 if cfg.schedule == "independent":
                     L = cfg.v_post * T["L_post"] + cfg.v_delta * T["L_delta"]  # v0 adapter losses, no L_small
                 else:
@@ -154,24 +190,20 @@ def train_synchronized(
             if recalibrate is not None:
                 fr = recalibrate(ep)
                 rec["free_radius"] = fr.to_dict()
-            best, bad = (float("inf"), None, None, -1), 0
+            best, bad = (float("inf"), None, None, -1, None, None, None), 0
         # validation: post-adaptation task loss on the untouched validation stream
         model.eval()
         adapter.eval()
         with torch.no_grad():
-            r = model.retrieve(data.X_val.to(device), exclude_identical=False)
-            w = r["weights"]
-            labels = model.labels[r["case_indices"]].float()
-            p0 = (w @ labels) / (w @ labels).sum(1, keepdim=True).clamp_min(1e-12)
-            _, s_ = adapter(r["query_features"] - w @ r["case_features"], p0, None)
-            yv = data.y_val.to(device).long()
-            v_post = float(F.cross_entropy(s_, yv) if cfg.output_mode == "nominal_residual_scores" else F.nll_loss(torch.log(s_.clamp_min(1e-8)), yv))
-            v_pre = float(F.nll_loss(torch.log(p0.clamp_min(1e-8)), yv))
+            V = _forward_terms(model, adapter, data.X_val.to(device), data.y_val.to(device),
+                               fr, output_mode=cfg.output_mode, near_scale=near_scale)
+            v_post, v_pre = float(V["L_post"]), float(V["L_pre"])
         rec.update({"val_L_post": v_post, "val_L_pre": v_pre, "n_cases": model.case_count()})
         hist.append(rec)
         # select on post loss only after the adapter has trained at least once
         if any(h["phase"] == "adapter" for h in hist) and v_post < best[0] - 1e-9:
-            best, bad = (v_post, copy.deepcopy(model.state_dict()), copy.deepcopy(adapter.state_dict()), ep), 0
+            best, bad = (v_post, copy.deepcopy(model.state_dict()), copy.deepcopy(adapter.state_dict()), ep,
+                         copy.deepcopy(ropt.state_dict()), copy.deepcopy(aopt.state_dict()), copy.deepcopy(fr)), 0
         elif any(h["phase"] == "adapter" for h in hist):
             bad += 1
             if bad > cfg.patience and not any(e > ep for e in maintenance_epochs):
@@ -180,5 +212,8 @@ def train_synchronized(
         model.load_state_dict(best[1])
         model._invalidate_case_cache()
         adapter.load_state_dict(best[2])
+        ropt.load_state_dict(best[4])
+        aopt.load_state_dict(best[5])
+        fr = best[6]
     adapter.eval()
     return adapter, {"history": hist, "best_epoch": best[3], "free_radius": None if fr is None else fr.to_dict()}

@@ -167,3 +167,32 @@ def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseC
         "correction_l1_mean": float(mag.mean()),
         "n": int(y.numel()),
     }
+
+
+@torch.no_grad()
+def evaluate_regression_reuse(model, adapter, X, y, *, success_tolerance):
+    """Actual aggregate NN-CDH pre/post outputs, in training-standardized units."""
+    from .outcomes import final_prediction, frozen_evaluation, prediction_loss, query_success
+
+    device = model.cases.device
+    pre_rows, post_rows = [], []
+    with frozen_evaluation(model, adapter):
+        for start in range(0, len(y), 256):
+            xb = X[start:start + 256].to(device)
+            r = model.retrieve(xb, exclude_identical=False)
+            pre, post, _ = final_prediction(model, xb, r, adapter=adapter)
+            pre_rows.append(pre.view(-1))
+            post_rows.append(post.view(-1))
+    pre, post = torch.cat(pre_rows), torch.cat(post_rows)
+    target = y.to(device).view(-1)
+    errors_pre, errors_post = (pre - target).abs(), (post - target).abs()
+    metrics = {"n": len(y), "correction_l1_mean": float((post - pre).abs().mean()),
+               "improved_queries": int((errors_post < errors_pre).sum()),
+               "worsened_queries": int((errors_post > errors_pre).sum()),
+               "success_tolerance": success_tolerance}
+    for suffix, pred in (("pre", pre), ("post", post)):
+        mse = float(prediction_loss(pred, target, "squared_error").mean())
+        metrics.update({f"loss_{suffix}": mse, f"rmse_{suffix}": mse ** .5,
+                        f"mae_{suffix}": float((pred - target).abs().mean()),
+                        f"success_rate_{suffix}": float(query_success(pred, target, "regression", success_tolerance).float().mean())})
+    return metrics
