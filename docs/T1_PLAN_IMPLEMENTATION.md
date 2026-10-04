@@ -27,6 +27,7 @@ not validate the revised pipeline.
 | `model/t1/reuse.py` | Classification aggregate label-conditioned adaptation with independent nominal/logit and combined/single-loss switches. Training examples use stable-ID LOO. |
 | `model/t1/sync.py` | Independent and alternating classification/regression schedules, preserving parameter freeze flags. Regression preserves the existing aggregate NN-CDH information path. Best checkpoints restore corresponding optimizer/radius states. Maintenance receives the actual adapter and scores final outcomes. |
 | `model/t1/core.py` | Core training, validation-only checkpoint selection, optional MCB and complete nonzero retrieval contributions with pre/final decisions. |
+| `model/t1/revise.py` | Simulated reviewer M0/M1/M2 evaluation can export the actual stage models, masks, corrected targets, optimizer states and training flags. Original model/data stay isolated; invalid classification relabels fail before mutation. |
 | `model/t1/artifacts.py`, `tools/t1_run.py` | Specification commit, pipeline version, dirty flag, actual source hash/bundle, data snapshots and model/adapter/archive checkpoints. Retention, reuse, frozen reuse+retention, sync, MCB, revision and legacy-reference runners. |
 
 The final maintained core baseline can still be run with `legacy_reference`.
@@ -62,6 +63,7 @@ has been established.
 | General score recovering prior methods | Open research task; distinguish score equality, ranking equivalence and full selector equivalence |
 | Broader synthetic reliability, rare/boundary/shift studies and confirmatory seeds | Pilot infrastructure exists; full revised sweeps are not complete |
 | Reviewer force-include and feature-weight interventions | Not implemented |
+| Causal revision checkpoint artifacts | Actual M0/M1/M2 saving implemented; 24-run/72-stage simulated review replay passed. Older revision checkpoints saved the untouched baseline and cannot validate M1/M2 predictions. |
 | Human UI study | Not implemented |
 | Regression synchronization | Implemented; 36-run classification/regression three-schedule pilot and checkpoint replay pass. Residual and final MSE are algebraically equivalent, explicitly reported; full grids remain pending. |
 | Image/text legacy, TabArena and contemporary comparators | Not wired to T1 runner |
