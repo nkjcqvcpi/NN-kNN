@@ -24,7 +24,7 @@ equations where marked; open scientific choices are explicitly exploratory.
 | General maintenance score/prior-method recovery | Open derivation/research | Distinguish score identity, ranking and selector equivalence; test counterexamples rather than invent an approved formula |
 | T2/RL Stage A transfer | Maintained actor-critic workflows exist; T1 not integrated | Separate actor/critic statistics and audit streams; role-specific outcomes explicitly declared; target/optimizer/store alignment |
 | T3 prompt/internal/combined integration | Specification imported; implementation absent | Scoped typed cases, shared evidence/audit event, bounded host query loop, open-weight internal interface and matched controls |
-| Analysis/debug loop | 108 recent independent-optimizer runs are indexed | Revisit comparisons when training semantics change; inspect failed/unequal-capacity runs, report cost and uncertainty |
+| Analysis/debug loop | Independent optimizer, revision and synthetic grids audited; core no-op selection fixed with 36 before/after replays and 98 passing tests | Revisit comparisons when training semantics change; inspect failed/unequal-capacity runs, report cost and uncertainty |
 
 Engineering coverage and scientific success are separate. Implementing a UI is
 not conducting a human study; implementing a host interface is not evidence of
