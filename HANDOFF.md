@@ -1,5 +1,13 @@
 # Handoff
 
+**2026-10-04 reviewer preparation:** The loopback workbench in
+`tools/t1_reviewer_ui.py` now records prospective review intent, actual same-event
+credit, reversible stable-ID edits and bounded M2/MC continuation. All 117 T1
+tests pass; nine scripted sessions replayed 75 versions plus nine MC controls.
+Read `docs/T1_REVIEWER_UI.md` for evidence and boundaries. This is engineering
+preparation; recruited participants, expert content insertion, constrained
+adaptation and arbitrary run import/resume remain open.
+
 ## T1 full-cycle NN-kNN (PI plan implementation)
 
 **2026-10-02 update:** The local `neural-cbr` worktree is being aligned to career-2027

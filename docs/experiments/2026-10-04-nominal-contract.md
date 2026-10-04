@@ -45,6 +45,10 @@ archived source, manually encodes the raw categories, regenerates each of the 45
 predictors and all 4,050 actual test events, and checks residuals, activations,
 stable IDs, predictions and subgroup metrics. It passes; scripts and evidence
 are in the task work folder as `independent_nominal_audit.*`.
+The separate archived-source audit also passes 27 direct C/H/A checks and
+full/cached selector comparisons at all 45 removal steps for each of three
+seeds. Its full verification is in the task outputs as
+`neural-cbr-nominal-contract-20261004-verification.json`.
 
 ## Observed behavior and limits
 
