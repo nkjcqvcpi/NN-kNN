@@ -48,8 +48,17 @@ class CaseArchive:
 
     def restore(self, model, case_ids: list[int], optimizer: torch.optim.Optimizer | None = None) -> list[int]:
         """Put archived cases back into free active slots with their exact saved state."""
+        requested = [int(cid) for cid in case_ids]
+        if len(requested) != len(set(requested)):
+            raise ValueError("Restore IDs must be unique")
+        if any(cid not in self.entries for cid in requested):
+            raise ValueError("Every restore ID must exist in the archive")
+        if set(requested) & set(model.active_case_ids().tolist()):
+            raise ValueError("Cannot restore an already active stable ID")
+        if model.case_count() + len(requested) > model.case_capacity():
+            raise RuntimeError("No free case slot to restore into; raise capacity or evict first.")
         slots = []
-        for cid in case_ids:
+        for cid in requested:
             entry = self.entries.pop(int(cid))
             slot = model.case_count()
             if slot >= model.case_capacity():

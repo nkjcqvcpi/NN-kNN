@@ -532,7 +532,7 @@ class Runner:
         if true_labels is None:
             raise ValueError("synthetic data must expose true labels for the simulated reviewer")
         rv = self.cfg["revise"]
-        rows = flagging_ablation(model, data, scores, cc, truth_corrupted=truth, true_labels=np.asarray(true_labels), budgets=rv["budgets"], methods=rv["methods"], retrain_epochs=rv["retrain_epochs"], run_id=f"{self.exp}-s{seed}", seed=seed, core_optimizer=tr.optimizer, retrain_lr_scale=float(rv["retrain_lr_scale"]), capture_artifacts=True)
+        rows = flagging_ablation(model, data, scores, cc, truth_corrupted=truth, true_labels=np.asarray(true_labels), budgets=rv["budgets"], methods=rv["methods"], retrain_epochs=rv["retrain_epochs"], run_id=f"{self.exp}-s{seed}", seed=seed, core_optimizer=tr.optimizer, retrain_lr_scale=float(rv["retrain_lr_scale"]), capture_artifacts=True, matched_training_control=bool(rv.get("matched_training_control", False)))
         for r in rows:
             artifacts = r.pop("_artifacts")
             final_model = artifacts["final_model"]
@@ -544,19 +544,19 @@ class Runner:
             for stage, checkpoint in stages.items():
                 checkpoint["model_description"] = {"core": cc.__dict__, "stage": stage}
                 checkpoint["evaluation_metrics"] = r[stage]
-                checkpoint["training_targets"] = data.y_train if stage == "M0" else artifacts["y_train_corrected"]
+                checkpoint["training_targets"] = data.y_train if stage in {"M0", "MC"} else artifacts["y_train_corrected"]
             label = f"{r['method']}_b{r['review_budget']}"
             m = {k: v for k, v in r.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
-            for ck in ("M0", "M1", "M2"):
+            for ck in stages:
                 for k, v in r[ck].items():
                     m[f"test_{ck}_{k}"] = v
-            for fk in ("flips_M0_M1", "flips_M0_M2", "influenced_flips_M0_M1", "collateral_flips_M0_M1"):
+            for fk in (key for key in r if "flips_" in key):
                 if fk in r:
                     for k, v in r[fk].items():
                         m[f"{fk}_{k}"] = v
-            self.finish(ds=ds, seed=seed, cond_label=label, cond={"method": r["method"], "review_budget": r["review_budget"]}, data=data, model=final_model, store=final_store, archive=None, metrics=m, history={"core": tr.history, "retrain": artifacts["history"]}, events=[],
+            self.finish(ds=ds, seed=seed, cond_label=label, cond={"method": r["method"], "review_budget": r["review_budget"]}, data=data, model=final_model, store=final_store, archive=None, metrics=m, history={"core": tr.history, "retrain": artifacts["history"], "matched_control": artifacts.get("control_history", [])}, events=[],
                         components={"retrieve": "NN-kNN core", "reuse_or_adapter": "off", "revise": "simulated oracle review (T1.2 harness)", "retain": "none", "mcb": "off", "component_synchronization": "off"},
-                        budgets={"review_budget": r["review_budget"], "retrain_epochs": rv["retrain_epochs"]}, maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "stage": "M2", "statistics_training_targets": "M2.pt:training_targets"}, extra_files={"interventions.json": r["interventions"]}, binary_files={f"{stage}.pt": checkpoint for stage, checkpoint in stages.items()}, optimizer=artifacts["final_optimizer"])
+                        budgets={"review_budget": r["review_budget"], "retrain_epochs": rv["retrain_epochs"], "matched_control_epochs": r.get("matched_control_epochs", 0)}, maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "stage": "M2", "statistics_training_targets": "M2.pt:training_targets"}, extra_files={"interventions.json": r["interventions"]}, binary_files={**{f"{stage}.pt": checkpoint for stage, checkpoint in stages.items()}, "intervention_state.pt": artifacts["intervention_log"]}, optimizer=artifacts["final_optimizer"])
 
 
 def main() -> None:

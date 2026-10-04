@@ -965,7 +965,8 @@ class NN_KNN_Model(nn.Module):
 
 
 
-    def retrieve(self, query, exclude_identical=None, case_mask=None, query_case_ids=None):
+    def retrieve(self, query, exclude_identical=None, case_mask=None, query_case_ids=None,
+                 force_case_ids=None, forced_weight_floor=None):
         """Run the NN-kNN retrieval step only (no label aggregation / reuse).
 
         Returns a dict with ``case_indices`` (active slots used), ``query_features``,
@@ -983,9 +984,32 @@ class NN_KNN_Model(nn.Module):
         ``exclude_identical=False``, exclude only that case identity; equal
         inputs from distinct cases remain available. Absent IDs keep the
         maintained legacy behavior.
+        ``force_case_ids``: optional stable IDs for a transient controlled
+        decision in the normalized-softmax/pre-top-k path. All eligibility
+        gates remain active. ``forced_weight_floor`` is an explicit positive
+        per-forced-case activation floor; returned ``override`` marks the
+        changed membership/activation treatment without altering parameters.
         """
         batch_size = query.size(0)
         num_cases = self.case_count()
+        forced = None
+        if force_case_ids is not None:
+            if (self.sampling_cases_flag or not self.normalize_over_cases or
+                    self.case_normalizer != "softmax" or not self.config.get("pre_topk_mask", False) or
+                    self.config.get("case_score_mode", default_args["case_score_mode"]) not in {"bias_minus_distance", "neg_distance"}):
+                raise ValueError("Forced retrieval requires unsampled normalized softmax with pre-top-k learned scoring")
+            raw_ids = torch.as_tensor(force_case_ids, device=query.device).view(-1)
+            forced = raw_ids.long()
+            if not torch.equal(raw_ids, forced) or forced.numel() == 0 or forced.unique().numel() != forced.numel():
+                raise ValueError("force_case_ids must contain unique integer stable IDs")
+            if forced.numel() > min(num_cases, int(self.config.get("top_k", 20))):
+                raise ValueError("Forced cases exceed the top-k budget")
+            if not torch.isin(forced, self.active_case_ids()).all():
+                raise ValueError("Forced case IDs must be active; restore archived cases separately")
+            if forced_weight_floor is None or not 0 < float(forced_weight_floor) <= 1.0 / forced.numel():
+                raise ValueError("Forced retrieval needs an explicit positive activation floor with count*floor <= 1")
+        elif forced_weight_floor is not None:
+            raise ValueError("forced_weight_floor requires force_case_ids")
         if num_cases <= 0:
             raise ValueError("NN_KNN_Model.forward requires at least one active case")
         case_indices = torch.arange(num_cases).to(query.device)  # Default: use all case_nets
@@ -1047,6 +1071,11 @@ class NN_KNN_Model(nn.Module):
             cm = torch.as_tensor(case_mask, dtype=torch.bool, device=distances.device)[case_indices]
             excluded = (~cm).unsqueeze(0).expand_as(distances)
             identical_mask = excluded if identical_mask is None else (identical_mask | excluded)
+        forced_columns = None
+        if forced is not None:
+            forced_columns = torch.isin(self.case_ids[case_indices], forced)
+            if identical_mask is not None and identical_mask[:, forced_columns].any():
+                raise ValueError("Forced retrieval cannot bypass quarantine or query self-exclusion")
 
         # Convert distances to activations
         # pre_activations = self.scaled_sigmoid(self.biases[case_indices] - distances)  # [batch_size, num_selected_cases]
@@ -1123,7 +1152,15 @@ class NN_KNN_Model(nn.Module):
                 if self.config.get("pre_topk_mask", False):
                     K = int(self.config.get("top_k", 20))
                     K = min(K, z.size(1))
-                    top_vals, top_idx = torch.topk(z, k=K, dim=1)
+                    if forced_columns is None:
+                        top_vals, top_idx = torch.topk(z, k=K, dim=1)
+                    else:
+                        # Override membership only; normalize the real, unchanged
+                        # learned scores. An explicit floor makes participation
+                        # robust to softmax underflow for a very low-scoring case.
+                        rank = z.masked_fill(forced_columns.unsqueeze(0), float("inf"))
+                        _, top_idx = torch.topk(rank, k=K, dim=1)
+                        top_vals = z.gather(1, top_idx)
                     fill_val = float("-inf") if self.case_normalizer == "softmax" else -1e9
                     z_masked = torch.full_like(z, fill_val)
                     z = z_masked.scatter(1, top_idx, top_vals)
@@ -1152,6 +1189,10 @@ class NN_KNN_Model(nn.Module):
                 weighted_activations = z
             if identical_mask is not None:
                 weighted_activations = weighted_activations.masked_fill(identical_mask, 0.0)
+        if forced_columns is not None:
+            floor = float(forced_weight_floor)
+            weighted_activations = ((1.0 - forced.numel() * floor) * weighted_activations +
+                                    floor * forced_columns.to(weighted_activations.dtype).unsqueeze(0))
         return {
             "case_indices": case_indices,
             "query_features": query_features,
@@ -1159,9 +1200,13 @@ class NN_KNN_Model(nn.Module):
             "distances": distances,
             "weights": weighted_activations,
             "excluded": identical_mask,
+            "override": None if forced is None else {"forced_case_ids": forced.tolist(),
+                                                      "activation_floor": float(forced_weight_floor),
+                                                      "transient": True},
         }
 
-    def forward(self, query, exclude_identical=None, case_mask=None, query_case_ids=None):
+    def forward(self, query, exclude_identical=None, case_mask=None, query_case_ids=None,
+                force_case_ids=None, forced_weight_floor=None):
         """
         Perform forward pass and optionally provide explanations.
 
@@ -1177,7 +1222,8 @@ class NN_KNN_Model(nn.Module):
             most_activated_activations (torch.Tensor, optional): Activations of the top-k most activated cases.
         """
         batch_size = query.size(0)
-        r = self.retrieve(query, exclude_identical=exclude_identical, case_mask=case_mask, query_case_ids=query_case_ids)
+        r = self.retrieve(query, exclude_identical=exclude_identical, case_mask=case_mask, query_case_ids=query_case_ids,
+                          force_case_ids=force_case_ids, forced_weight_floor=forced_weight_floor)
         case_indices = r["case_indices"]
         query_features = r["query_features"]
         case_features = r["case_features"]
