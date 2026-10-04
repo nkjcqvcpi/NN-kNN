@@ -206,7 +206,7 @@ class Runner:
         tr = train_retrieval(model, data.X_train, data.y_train, data.X_val, data.y_val, cc)
         return model, cc, tr
 
-    def finish(self, *, ds, seed, cond_label, cond, data, model, store, archive, metrics, history, events, components, budgets, maintenance, model_desc, extra_files=None, prediction_adapter=None, binary_files=None, optimizer=None):
+    def finish(self, *, ds, seed, cond_label, cond, data, model, store, archive, metrics, history, events, components, budgets, maintenance, model_desc, extra_files=None, prediction_adapter=None, binary_files=None, optimizer=None, adapter_optimizer_state=None, optimizer_checkpoint_epoch=None):
         run_dir = self.out / ds["name"] / cond_label / f"s{seed}"
         run_cfg = {"experiment": self.exp, "dataset": ds, "seed": seed, "condition": cond, "config": self.cfg}
         run_id = f"{self.exp}-{ds['name']}-{cond_label}-s{seed}-{config_id(run_cfg)[:8]}"
@@ -228,6 +228,8 @@ class Runner:
                     "archive": None if archive is None else archive.state_dict(),
                     "adapter_state": None if prediction_adapter is None else prediction_adapter.state_dict(),
                     "optimizer_state": None if optimizer is None else optimizer.state_dict(),
+                    "adapter_optimizer_state": adapter_optimizer_state,
+                    "optimizer_checkpoint_epoch": optimizer_checkpoint_epoch,
                     "requires_grad": {n: p.requires_grad for n, p in model.named_parameters()},
                     "model_description": model_desc}, run_dir / "checkpoint.pt")
         data_path = self.out / ds["name"] / f"data_snapshot_s{seed}.pt"
@@ -331,7 +333,12 @@ class Runner:
                  "provenance_semantics": ainfo["provenance_semantics"]}
             self.finish(ds=ds, seed=seed, cond_label=label, cond=cond, data=data, model=model, store=store_b, archive=None, metrics=m, history={"core": tr.history, "adapter": info["history"]}, events=[],
                         components={"retrieve": "trained NN-kNN core (frozen)", "reuse_or_adapter": f"aggregate label-conditioned NN-CDH ({cond['output_mode']}, {cond['loss']})", "revise": "off", "retain": "none", "mcb": "off", "component_synchronization": "off (retrieval frozen first)"},
-                        budgets={"case_capacity": model.case_count(), "adapter_epochs_max": rc.epochs}, maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "adapter": rc.__dict__}, prediction_adapter=adapter)
+                        budgets={"case_capacity": model.case_count(), "adapter_epochs_max": rc.epochs,
+                                 "adapter_epochs_run": info["epochs_run"], "adapter_best_epoch": info["best_epoch"]},
+                        maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "adapter": rc.__dict__},
+                        prediction_adapter=adapter, optimizer=tr.optimizer,
+                        adapter_optimizer_state=info["optimizer_state"],
+                        optimizer_checkpoint_epoch={"retrieval": tr.best_epoch, "adapter": info["best_epoch"]})
 
     def run_reuse_retention(self, ds, seed):
         """Matched maintenance with a trained frozen adapter and final-outcome evidence."""
@@ -364,6 +371,8 @@ class Runner:
                             maintenance={"policy": cond["policy"], "reference_stream": self.cfg["statistics"]["source"],
                                          "thresholds_and_smoothing": self.cfg["statistics"]},
                             model_desc={"core": cc.__dict__, "adapter": rc.__dict__}, prediction_adapter=adapter,
+                            adapter_optimizer_state=info["optimizer_state"],
+                            optimizer_checkpoint_epoch={"retrieval": None, "adapter": info["best_epoch"]},
                             extra_files={"maintenance_scoring_trace.json": res.get("scoring_trace", []),
                                          "maintenance_summary.json": res["summary"]})
 
@@ -491,7 +500,10 @@ class Runner:
             self.finish(ds=ds, seed=seed, cond_label=cond["schedule"], cond=cond, data=data, model=model, store=store, archive=archive, metrics=m, history={"core": tr.history, "sync": info["history"]}, events=events,
                         components={"retrieve": "NN-kNN core", "reuse_or_adapter": sc.output_mode, "revise": "off", "retain": "checkpoint maintenance" if events else "none", "mcb": "off", "component_synchronization": sc.schedule},
                         budgets={"case_capacity": model.case_count(), "sync_epochs_max": sc.epochs, "sync_epochs_run": len(info["history"])}, maintenance={"policy": self.cfg["retention"]["policy"] if events else "none"},
-                        model_desc={"core": cc.__dict__, "sync": sc.__dict__, "free_radius_at_t_star": fr.to_dict(), "free_radius_selected": info["free_radius"]}, prediction_adapter=adapter)
+                        model_desc={"core": cc.__dict__, "sync": sc.__dict__, "free_radius_at_t_star": fr.to_dict(), "free_radius_selected": info["free_radius"]},
+                        prediction_adapter=adapter, optimizer=ropt,
+                        adapter_optimizer_state=info["adapter_optimizer_state"],
+                        optimizer_checkpoint_epoch={"retrieval": info["best_epoch"], "adapter": info["best_epoch"]})
 
     def run_mcb(self, ds, seed):
         data = self.data_for(ds, seed)
