@@ -1198,6 +1198,7 @@ class NN_KNN_Model(nn.Module):
             "query_features": query_features,
             "case_features": case_features,
             "distances": distances,
+            "feature_distance_contributions": elementwise_distance,
             "weights": weighted_activations,
             "excluded": identical_mask,
             "override": None if forced is None else {"forced_case_ids": forced.tolist(),
