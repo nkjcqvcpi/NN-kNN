@@ -34,7 +34,6 @@ def test_corruption_does_not_change_any_features_or_clean_holdout():
 
 
 def test_training_coverage_factors_preserve_raw_holdout():
-    from sklearn.preprocessing import StandardScaler
     a = make_synthetic("synthetic", 9, generator_version="independent_v1", duplicate_count=0, rare_count=0)
     b = make_synthetic("synthetic", 9, generator_version="independent_v1", duplicate_count=120, rare_count=24)
     # Different train-only scalers are expected. Undo their affine transformations

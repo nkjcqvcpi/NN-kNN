@@ -209,8 +209,9 @@ def train_retrieval(
 
     ``checkpoint_hook`` runs *after* the listed epochs (safe maintenance checkpoints).
     Early stopping and best-state selection use the validation stream only. When a
-    maintenance checkpoint changes the case set, the best-state tracker restarts
-    because pre- and post-maintenance states are different case bases.
+    maintenance checkpoint actually changes model state or active capacity, the
+    best-state tracker restarts. No-op hooks preserve the matching best model
+    and optimizer. Only executable checkpoints within this budget delay stopping.
     """
     device = model.cases.device
     opt = optimizer or make_optimizer(model, cfg)
@@ -256,12 +257,21 @@ def train_retrieval(
         val = evaluate(model, X_val, y_val)
         rec = {"epoch": ep, "train_loss": tot / max(nb, 1), "val_loss": val["loss_pre"], "val_metric": val["metric_pre"], "n_cases": model.case_count()}
         if ep in checkpoint_epochs and checkpoint_hook is not None:
+            before_count = model.case_count()
+            before_state = copy.deepcopy(model.state_dict())
             info = checkpoint_hook(ep, model, opt)
             rec["checkpoint"] = info
-            best, bad = (math.inf, None, -1), 0  # new case base: restart selection
-            best_optimizer = None
-            val = evaluate(model, X_val, y_val)
-            rec["val_loss_after_checkpoint"] = val["loss_pre"]
+            after_state = model.state_dict()
+            changed = (model.case_count() != before_count or
+                       set(before_state) != set(after_state) or
+                       any(not torch.equal(value, after_state[key])
+                           for key, value in before_state.items()))
+            rec["checkpoint_state_changed"] = changed
+            if changed:
+                best, bad = (math.inf, None, -1), 0  # real state change: restart selection
+                best_optimizer = None
+                val = evaluate(model, X_val, y_val)
+                rec["val_loss_after_checkpoint"] = val["loss_pre"]
         res.history.append(rec)
         if val["loss_pre"] < best[0] - 1e-9:
             best = (val["loss_pre"], copy.deepcopy(model.state_dict()), ep)
@@ -269,7 +279,8 @@ def train_retrieval(
             bad = 0
         else:
             bad += 1
-            if bad > cfg.patience and not any(e > ep for e in checkpoint_epochs):
+            pending = checkpoint_hook is not None and any(ep < e <= epochs for e in checkpoint_epochs)
+            if bad > cfg.patience and not pending:
                 break
     res.epochs_run = ep
     if select_best and best[1] is not None:
