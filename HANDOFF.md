@@ -292,3 +292,9 @@ and matched-capacity synchronization evidence.
 Read `NNKNN_AGENT_GUIDE.md` for model descriptions, workflow entry points,
 RL/DQN/NEC protocol details, Table 1 protocol details, output schemas,
 restart/resume patterns, and machine-specific caveats.
+
+T3 scoped original-artifact retrieval and a bounded host-directed loop are now
+implemented in `model/t3/`, documented in `docs/T3_RETRIEVAL_CONTRACT.md`.
+Ten actual-geometry/lifecycle/loop/credit tests pass. The shared-metric path is
+an explicit ablation; no NN-CDH, automatic global promotion or tool execution
+occurs. Actual LLM reuse and internal integration remain to be demonstrated.
