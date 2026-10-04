@@ -30,20 +30,29 @@ def active_adapter(model, adapter=None):
     return None
 
 
-def final_prediction(model, X, retrieval, *, adapter=None, case_mask=None, query_case_ids=None, exclude_identical=False):
+def final_prediction(model, X, retrieval, *, adapter=None, case_mask=None, query_case_ids=None, exclude_identical=False, query_nominal=None, diagnostics=None):
     """Use the actual reuse path; prediction losses exclude adaptation penalties."""
     w = retrieval["weights"]
     if not torch.isfinite(w).all() or not torch.allclose(w.sum(1), torch.ones(w.shape[0], device=w.device), atol=1e-5):
         raise ValueError("Maintenance needs a valid normalized neighborhood for every reference query")
     labels = model.labels[retrieval["case_indices"]].float()
     pre = w @ labels.view(w.shape[1], -1)
+    if diagnostics is not None:
+        diagnostics.clear()
     if model.task_type == "classification":
         pre = pre / pre.sum(1, keepdim=True).clamp_min(1e-12)
+        if diagnostics is not None:
+            diagnostics["p0"] = pre.detach()
         ad = active_adapter(model, adapter)
         if ad is None:
             return pre, pre, "nll"
         dz = retrieval["query_features"] - w @ retrieval["case_features"]
-        _, final = ad(dz, pre, None)
+        from .nominal import nominal_difference
+        du = nominal_difference(ad, model, retrieval, query_nominal)
+        residual, final = ad(dz, pre, du)
+        if diagnostics is not None:
+            diagnostics.update(delta_z=dz.detach(), delta_u=None if du is None else du.detach(),
+                               residual=residual.detach(), final_values=final.detach(), output_mode=ad.output_mode)
         return pre, final, "cross_entropy" if ad.output_mode == "nominal_residual_scores" else "nll"
     if adapter is not None:
         final = adapter.forward_aggregate(retrieval["query_features"], retrieval["case_features"], labels, w)

@@ -265,6 +265,13 @@ Do not call the full plan complete from these pilots. Source fingerprints and
 bundles identify dirty code during each batch. Preserve older artifacts and the
 unrelated local dirty results/checkpoints rather than staging them together.
 
+Grouped nominal classification inputs are documented in
+`docs/experiments/2026-10-04-nominal-contract.md`: 45 engineering runs and 4,050
+events independently replay, with 111 passing T1 tests and all five maintained
+smoke modes passing. Unknown-category task generalization remains weak despite
+correct unknown/missing encoding. Keep it distinct from real-data performance
+and matched-capacity synchronization evidence.
+
 Read `NNKNN_AGENT_GUIDE.md` for model descriptions, workflow entry points,
 RL/DQN/NEC protocol details, Table 1 protocol details, output schemas,
 restart/resume patterns, and machine-specific caveats.

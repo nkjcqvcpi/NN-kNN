@@ -54,6 +54,10 @@ class T1Data:
     case_truth: dict[str, np.ndarray] = field(default_factory=dict)  # synthetic ground-truth flags per train row
     test_groups: dict[str, np.ndarray] = field(default_factory=dict)  # e.g. shifted-subdomain test mask
     meta: dict[str, Any] = field(default_factory=dict)
+    nominal_train: dict[str, list[Any]] | None = None
+    nominal_val: dict[str, list[Any]] | None = None
+    nominal_test: dict[str, list[Any]] | None = None
+    nominal_maint: dict[str, list[Any]] | None = None
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -101,6 +105,10 @@ def make_splits(
     if name.startswith("synthetic"):
         if task_type != "classification":
             raise ValueError("synthetic diagnostics support classification only")
+        if name == "synthetic_nominal":
+            if synthetic:
+                raise ValueError("nominal engineering data has its own fixed declared generator")
+            return make_nominal_synthetic(seed)
         return make_synthetic(name, seed, **(synthetic or {}))
     if synthetic is not None:
         raise ValueError("synthetic parameters cannot be applied to real datasets")
@@ -270,3 +278,45 @@ def make_synthetic(name: str, seed: int, *, generator_version="legacy",
             "synthetic_split_policy": "fixed 360 base training, 90 validation, 180 in-domain/60 shifted/20 rare test; splits fractions and max_train do not apply",
         },
     )
+
+
+def make_nominal_synthetic(seed: int) -> T1Data:
+    """Grouped-category engineering task, not a competitive benchmark.
+
+Color and shape are deliberately outside X; size is explicitly represented.
+Some observations lack color, making their latent target partly unobservable.
+Held-out amber is absent from the training vocabulary. Report those groups.
+"""
+    streams = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(3)]
+    def draw(n, rng, heldout):
+        color = rng.integers(0, 3, n)
+        shape = rng.integers(0, 2, n)
+        size = rng.integers(0, 2, n)
+        colors = np.asarray(["red", "green", "blue"], dtype=object)[color]
+        unknown = np.zeros(n, dtype=bool)
+        if heldout:
+            unknown[:n // 5] = True
+            color[unknown], colors[unknown] = 3, "amber"
+        missing = np.zeros(n, dtype=bool)
+        missing[-n // 10:] = True
+        colors[missing] = None
+        y = (color + shape) % 3
+        X = np.column_stack([size, rng.normal(size=(n, 2))]).astype(np.float32)
+        values = {"color": colors.tolist(), "shape": np.asarray(["circle", "square"])[shape].tolist(),
+                  "size": np.asarray(["small", "large"])[size].tolist()}
+        return X, y, values, {"known": ~(unknown | missing), "unknown": unknown, "missing": missing}
+    Xtr, ytr, ntr, _ = draw(180, streams[0], False)
+    Xv, yv, nv, _ = draw(60, streams[1], True)
+    Xt, yt, nt, groups = draw(90, streams[2], True)
+    scaler = StandardScaler().fit(Xtr)
+    tensor = lambda X: torch.tensor(scaler.transform(X), dtype=torch.float32)
+    return T1Data(name="synthetic_nominal", task_type="classification",
+        X_train=tensor(Xtr), y_train=torch.tensor(ytr, dtype=torch.long),
+        X_val=tensor(Xv), y_val=torch.tensor(yv, dtype=torch.long),
+        X_test=tensor(Xt), y_test=torch.tensor(yt, dtype=torch.long), num_classes=3,
+        nominal_train=ntr, nominal_val=nv, nominal_test=nt, test_groups=groups,
+        meta={"source": "synthetic_nominal/v1", "split_seed": seed,
+              "nominal_coverage": {"color": False, "shape": False, "size": True},
+              "heldout_only_category": "amber", "size_representation_column": 0,
+              "target_rule": "(latent color code + shape code) mod 3; missing hides latent color",
+              "split_policy": "fixed 180 train/60 validation/90 test; split fractions and max_train do not apply"})

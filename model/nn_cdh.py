@@ -608,12 +608,12 @@ class ClassificationNNCDHAdapter(nn.Module):
         parts = [Delta_z_q]
         if self.nominal_dim > 0:
             if Delta_u_q is None:
-                Delta_u_q = torch.zeros(
-                    (Delta_z_q.size(0), self.nominal_dim),
-                    dtype=Delta_z_q.dtype,
-                    device=Delta_z_q.device,
-                )
+                raise ValueError("uncovered nominal fields require their actual query-minus-neighborhood differences")
+            if Delta_u_q.shape != (Delta_z_q.size(0), self.nominal_dim) or not torch.isfinite(Delta_u_q).all():
+                raise ValueError("nominal differences must have the declared field-group dimension and finite values")
             parts.append(Delta_u_q)
+        elif Delta_u_q is not None and Delta_u_q.shape[-1] != 0:
+            raise ValueError("nominal fields covered by representation must not be duplicated")
         parts.append(p0_q)
         adapter_input = torch.cat(parts, dim=-1)
 
@@ -694,5 +694,4 @@ class ClassificationNNCDHAdapter(nn.Module):
             "neutral_flips": neutral_flips,
             "net_flip_benefit": correct_flips - harmful_flips,
         }
-
 

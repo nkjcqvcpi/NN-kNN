@@ -1,0 +1,15 @@
+base: alignment_adapted_candidates.yaml
+experiment: alignment_nominal_retention
+status: exploratory_nominal_engineering
+seeds: [8, 9, 10]
+datasets: [{name: synthetic_nominal, task_type: classification}]
+core: {epochs: 20, patience: 10}
+reuse:
+  epochs: 30
+  patience: 15
+  hidden_dims: [32, 16]
+  nominal_fields_covered_by_representation: false
+  nominal_fields:
+    - {name: color, covered_by_representation: false}
+    - {name: shape, covered_by_representation: false}
+    - {name: size, covered_by_representation: true}

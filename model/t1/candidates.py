@@ -20,6 +20,7 @@ class MaintenanceReference:
     regression_success_tolerance: float | None = None
     adapter: object = None
     stream: str = "train_loo"
+    query_nominal: torch.Tensor | None = None
 
     def validate(self):
         if self.stream not in {"train_loo", "maintenance_split"}:
@@ -30,6 +31,8 @@ class MaintenanceReference:
             raise ValueError("Training reference queries require stable IDs for leave-one-out")
         if self.query_case_ids is not None and self.query_case_ids.numel() != len(self.y):
             raise ValueError("Reference IDs must align with queries")
+        if self.query_nominal is not None and self.query_nominal.shape[0] != len(self.y):
+            raise ValueError("Reference nominal values must align with queries")
 
 
 def _retrieve(model, X, qids, mask=None):
@@ -57,8 +60,9 @@ cache scores are approximations; full scores are computed for validation too.
             X = reference.X[start:start + batch_size].to(device)
             y = reference.y[start:start + batch_size].to(device)
             ids = None if reference.query_case_ids is None else reference.query_case_ids[start:start + batch_size].to(device)
+            nominal = None if reference.query_nominal is None else reference.query_nominal[start:start + batch_size]
             r = _retrieve(model, X, ids)
-            _, p, loss_kind = final_prediction(model, X, r, adapter=reference.adapter, query_case_ids=ids)
+            _, p, loss_kind = final_prediction(model, X, r, adapter=reference.adapter, query_case_ids=ids, query_nominal=nominal)
             baseline = prediction_loss(p, y, loss_kind)
             baseline_loss += float(baseline.sum())
             for i in range(n):
@@ -69,7 +73,7 @@ cache scores are approximations; full scores are computed for validation too.
                 cache_query_ids[i].extend((torch.nonzero(selected).view(-1).cpu() + start).tolist())
                 if cached_threshold is None:
                     rw = _retrieve(model, X, ids, mask)
-                    _, pw, kind = final_prediction(model, X, rw, adapter=reference.adapter, case_mask=mask, query_case_ids=ids)
+                    _, pw, kind = final_prediction(model, X, rw, adapter=reference.adapter, case_mask=mask, query_case_ids=ids, query_nominal=nominal)
                     delta = prediction_loss(pw, y, kind) - baseline
                     full[i] += float(delta.sum())
                     cached[i] += float(delta[selected].sum())
@@ -78,12 +82,13 @@ cache scores are approximations; full scores are computed for validation too.
                     if selected.any():
                         subids = None if ids is None else ids[selected]
                         rw = _retrieve(model, X[selected], subids, mask)
-                        _, pw, kind = final_prediction(model, X[selected], rw, adapter=reference.adapter, case_mask=mask, query_case_ids=subids)
+                        subnominal = None if nominal is None else nominal.to(device)[selected]
+                        _, pw, kind = final_prediction(model, X[selected], rw, adapter=reference.adapter, case_mask=mask, query_case_ids=subids, query_nominal=subnominal)
                         cached[i] += float((prediction_loss(pw, y[selected], kind) - baseline[selected]).sum())
                         rerun_queries += int(selected.sum())
                     if validate_cache:
                         rw = _retrieve(model, X, ids, mask)
-                        _, pw, kind = final_prediction(model, X, rw, adapter=reference.adapter, case_mask=mask, query_case_ids=ids)
+                        _, pw, kind = final_prediction(model, X, rw, adapter=reference.adapter, case_mask=mask, query_case_ids=ids, query_nominal=nominal)
                         full[i] += float((prediction_loss(pw, y, kind) - baseline).sum())
                         validation_queries += len(y)
     full /= nq
@@ -112,8 +117,9 @@ def coverage_reachability(model, reference, *, activation_threshold, zero_reacha
             X = reference.X[start:start + batch_size].to(device)
             y = reference.y[start:start + batch_size].to(device)
             ids = None if reference.query_case_ids is None else reference.query_case_ids[start:start + batch_size].to(device)
+            nominal = None if reference.query_nominal is None else reference.query_nominal[start:start + batch_size]
             r = _retrieve(model, X, ids)
-            _, p, _ = final_prediction(model, X, r, adapter=reference.adapter, query_case_ids=ids)
+            _, p, _ = final_prediction(model, X, r, adapter=reference.adapter, query_case_ids=ids, query_nominal=nominal)
             success = query_success(p, y, model.task_type, reference.regression_success_tolerance)
             cover += ((r["weights"] > activation_threshold) & success[:, None]).sum(0).cpu().numpy()
         # Evaluate every active case problem separately, with stable-ID self exclusion.
@@ -124,7 +130,8 @@ def coverage_reachability(model, reference, *, activation_threshold, zero_reacha
             labels = model.labels[start:start + batch_size]
             y = labels.argmax(1) if model.task_type == "classification" else labels.view(-1)
             r = _retrieve(model, X, ids)
-            _, p, _ = final_prediction(model, X, r, adapter=reference.adapter, query_case_ids=ids)
+            nominal = (reference.adapter.values_for_ids(ids) if getattr(reference.adapter, "nominal_dim", 0) else None)
+            _, p, _ = final_prediction(model, X, r, adapter=reference.adapter, query_case_ids=ids, query_nominal=nominal)
             success = query_success(p, y, model.task_type, reference.regression_success_tolerance)
             reach[start:start + batch_size] = ((r["weights"] > activation_threshold) & success[:, None]).sum(1).cpu().numpy()
     zeros = reach == 0

@@ -23,6 +23,7 @@ import torch.nn.functional as F
 from model.nn_cdh import ClassificationNNCDHAdapter
 
 from .core import expected_calibration_error
+from .nominal import NominalSchema, NominalClassificationAdapter, nominal_difference, fit_nominal_schema
 
 
 @dataclass
@@ -39,6 +40,7 @@ class ReuseConfig:
     batch_size: int = 64
     seed: int = 0
     nominal_fields_covered_by_representation: bool = True  # declared, not inferred (section 5.2)
+    nominal_fields: tuple[dict[str, Any], ...] = ()  # explicit per-field coverage
 
     def validate(self) -> None:
         if self.output_mode not in {"nominal_residual_scores", "logit_residual"}:
@@ -47,10 +49,18 @@ class ReuseConfig:
             raise ValueError(self.loss)
         if self.loss == "combined" and not (self.lambda_diff > 0 and self.lambda_cls > 0):
             raise ValueError("combined loss requires lambda_diff > 0 and lambda_cls > 0 (plan 5.4)")
+        if self.epochs < 1 or self.patience < 0 or self.batch_size < 1:
+            raise ValueError("adapter training needs positive epochs/batch size and nonnegative patience")
+        if not self.nominal_fields and not self.nominal_fields_covered_by_representation:
+            raise ValueError("uncovered nominal inputs require explicit field-by-field declarations")
+        if self.nominal_fields:
+            NominalSchema(self.nominal_fields)
+            if self.nominal_fields_covered_by_representation != all(f["covered_by_representation"] for f in self.nominal_fields):
+                raise ValueError("aggregate coverage flag must agree with the explicit per-field declarations")
 
 
 @torch.no_grad()
-def neighborhood_inputs(model, X: torch.Tensor, *, exclude_identical: bool, X_nominal: torch.Tensor | None = None, nominal_case: torch.Tensor | None = None, query_case_ids=None) -> dict[str, torch.Tensor]:
+def neighborhood_inputs(model, X: torch.Tensor, *, exclude_identical: bool, X_nominal: torch.Tensor | None = None, nominal_case: torch.Tensor | None = None, query_case_ids=None, nominal_adapter=None) -> dict[str, torch.Tensor]:
     """Frozen-retrieval neighborhood quantities for queries X."""
     model.eval()
     r = model.retrieve(X.to(model.cases.device), exclude_identical=exclude_identical if query_case_ids is None else False, query_case_ids=query_case_ids)
@@ -61,8 +71,10 @@ def neighborhood_inputs(model, X: torch.Tensor, *, exclude_identical: bool, X_no
     z_bar = w @ r["case_features"]
     dz = r["query_features"] - z_bar
     du = None
-    if X_nominal is not None and nominal_case is not None:
-        du = X_nominal.to(w.device).float() - w @ nominal_case[r["case_indices"]].float()
+    if nominal_adapter is not None:
+        du = nominal_difference(nominal_adapter, model, r, X_nominal)
+    elif X_nominal is not None or nominal_case is not None:
+        raise ValueError("nominal inputs require a fitted schema and stable case-ID binding via nominal_adapter")
     return {"dz": dz.detach(), "p0": p0.detach(), "du": du, "weights": w.detach()}
 
 
@@ -100,11 +112,25 @@ def train_classification_adapter(model, data, cfg: ReuseConfig) -> tuple[Classif
     cfg.validate()
     torch.manual_seed(cfg.seed)
     C = int(data.num_classes)
+    schema, train_nominal, val_nominal = None, None, None
+    if cfg.nominal_fields:
+        schema = fit_nominal_schema(data, cfg.nominal_fields)
+        train_nominal = schema.encode(data.nominal_train, rows=len(data.y_train))
+        val_nominal = schema.encode(data.nominal_val, rows=len(data.y_val))
+    elif getattr(data, "nominal_train", None):
+        raise ValueError("nominal data requires explicit field-by-field representation coverage")
     tr = neighborhood_inputs(model, data.X_train, exclude_identical=True, query_case_ids=torch.arange(len(data.y_train)))
-    va = neighborhood_inputs(model, data.X_val, exclude_identical=False)
-    adapter = ClassificationNNCDHAdapter(
-        feature_dim=tr["dz"].shape[1], num_classes=C, nominal_dim=0, hidden_dims=cfg.hidden_dims, output_mode=cfg.output_mode
-    ).to(tr["dz"].device)
+    kwargs = dict(feature_dim=tr["dz"].shape[1], num_classes=C, hidden_dims=cfg.hidden_dims, output_mode=cfg.output_mode)
+    if schema is not None:
+        adapter = NominalClassificationAdapter(schema=schema, case_ids=torch.arange(len(data.y_train)),
+                                              case_values=train_nominal, **kwargs)
+    else:
+        adapter = ClassificationNNCDHAdapter(nominal_dim=0, **kwargs)
+    adapter = adapter.to(tr["dz"].device)
+    if schema is not None:
+        tr = neighborhood_inputs(model, data.X_train, exclude_identical=True, query_case_ids=torch.arange(len(data.y_train)),
+                                 X_nominal=train_nominal, nominal_adapter=adapter)
+    va = neighborhood_inputs(model, data.X_val, exclude_identical=False, X_nominal=val_nominal, nominal_adapter=adapter)
     opt = torch.optim.Adam(adapter.parameters(), lr=cfg.lr)
     ytr = data.y_train.to(tr["dz"].device)
     yva = data.y_val.to(tr["dz"].device)
@@ -117,14 +143,14 @@ def train_classification_adapter(model, data, cfg: ReuseConfig) -> tuple[Classif
         perm = torch.randperm(ytr.numel(), generator=g)
         for s in range(0, ytr.numel(), cfg.batch_size):
             b = perm[s : s + cfg.batch_size]
-            r, sc = adapter(tr["dz"][b], tr["p0"][b], None)
+            r, sc = adapter(tr["dz"][b], tr["p0"][b], None if tr["du"] is None else tr["du"][b])
             L = _adapter_losses(adapter, r, sc, tr["p0"][b], ytr[b], cfg)
             opt.zero_grad()
             L["loss"].backward()
             opt.step()
         adapter.eval()
         with torch.no_grad():
-            r, sc = adapter(va["dz"], va["p0"], None)
+            r, sc = adapter(va["dz"], va["p0"], va["du"])
             Lv = _adapter_losses(adapter, r, sc, va["p0"], yva, cfg)
         hist.append({"epoch": ep, "val_loss": float(Lv["loss"]), "val_l_diff": float(Lv["l_diff"]), "val_l_cls": float(Lv["l_cls"])})
         if float(Lv["loss"]) < best[0] - 1e-9:
@@ -135,16 +161,19 @@ def train_classification_adapter(model, data, cfg: ReuseConfig) -> tuple[Classif
                 break
     adapter.load_state_dict(best[1])
     adapter.eval()
-    return adapter, {"history": hist, "best_epoch": best[2], "n_train_examples": int(ytr.numel()), "neighborhoods": "leave_one_out"}
+    info = {"history": hist, "best_epoch": best[2], "n_train_examples": int(ytr.numel()), "neighborhoods": "leave_one_out"}
+    if schema is not None:
+        info["nominal_manifest"] = schema.state_dict()
+    return adapter, info
 
 
 @torch.no_grad()
-def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseConfig) -> dict[str, Any]:
+def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseConfig, *, query_nominal=None, test_groups=None) -> dict[str, Any]:
     """Pre (retrieval-only) vs post (adapted) on the same case set; flip accounting."""
-    nb = neighborhood_inputs(model, X, exclude_identical=False)
+    nb = neighborhood_inputs(model, X, exclude_identical=False, X_nominal=query_nominal, nominal_adapter=adapter)
     p0 = nb["p0"]
     y = y.to(p0.device).long()
-    r, s = adapter(nb["dz"], p0, None)
+    r, s = adapter(nb["dz"], p0, nb["du"])
     pre = p0.argmax(1)
     post = s.argmax(1)
     probs_post = s if cfg.output_mode == "logit_residual" else _probs_from_scores(s, cfg.probability_mode)
@@ -156,7 +185,7 @@ def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseC
         "unchanged": int((pre == post).sum()),
     }
     mag = (s - p0).abs().sum(1) if cfg.output_mode == "nominal_residual_scores" else (probs_post - p0).abs().sum(1)
-    return {
+    metrics = {
         "accuracy_pre": float(ok_pre.float().mean()),
         "accuracy_post": float(ok_post.float().mean()),
         "ece_pre": expected_calibration_error(p0.cpu(), y.cpu()),
@@ -167,6 +196,15 @@ def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseC
         "correction_l1_mean": float(mag.mean()),
         "n": int(y.numel()),
     }
+    for group, mask in (test_groups or {}).items():
+        mask = torch.as_tensor(mask, dtype=torch.bool, device=y.device)
+        if mask.shape != y.shape:
+            raise ValueError("test group masks must align with targets")
+        metrics[f"n_{group}"] = int(mask.sum())
+        if mask.any():
+            metrics[f"accuracy_pre_{group}"] = float(ok_pre[mask].float().mean())
+            metrics[f"accuracy_post_{group}"] = float(ok_post[mask].float().mean())
+    return metrics
 
 
 @torch.no_grad()
