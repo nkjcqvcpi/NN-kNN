@@ -1,0 +1,21 @@
+base: p2_reuse.yaml
+experiment: alignment_adapted_retraining
+type: adapted_retrained_removal
+status: exploratory_adapted_continuation_engineering
+seeds: [8, 9, 10]
+datasets: [{name: iris, task_type: classification, max_train: 18}]
+core: {epochs: 8, patience: 8, top_k: 3, batch_size: 6}
+reuse:
+  output_mode: nominal_residual_scores
+  loss: combined
+  epochs: 8
+  patience: 8
+  batch_size: 6
+  hidden_dims: [16, 8]
+K: [0.6666666667]
+continuation: {lr_scale: 0.1}
+retention: {policy: removal_influence, min_per_cohort: 1, allowed_loss_increase: 0.03}
+conditions:
+  - {scope: retrieval_only, retrieval_epochs: 1, adapter_epochs: 0}
+  - {scope: adapter_only, retrieval_epochs: 0, adapter_epochs: 1}
+  - {scope: alternating, retrieval_epochs: 1, adapter_epochs: 1}

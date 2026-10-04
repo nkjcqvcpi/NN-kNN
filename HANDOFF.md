@@ -1,5 +1,14 @@
 # Handoff
 
+**2026-10-04 adapted continuation:** Selected adapter/core Adam export passes
+27-run phase/step/continuation audits (`df58412`). Adapted removal now has isolated
+continued candidate adapters, full-reference cumulative-loss acceptance and
+matched full/random controls; the nine-run Iris pilot replays 837 candidates,
+54 controls and all final states exactly. Read `docs/T1_ADAPTED_RETRAINING.md`.
+Its compression reaches 18→12 but mean test accuracy falls .9222→.9111;
+engineering success does not establish predictive benefit. Wider budgets,
+regression and broader controls remain open.
+
 **2026-10-04 reviewer preparation:** The loopback workbench in
 `tools/t1_reviewer_ui.py` now records prospective review intent, actual same-event
 credit, reversible stable-ID edits and bounded M2/MC continuation. All 117 T1
