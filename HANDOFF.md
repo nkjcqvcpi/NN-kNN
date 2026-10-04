@@ -255,6 +255,16 @@ do not create other branches without the owner's permission.
 
 ## Where Durable Guidance Lives
 
+October 4 neural-cbr continuation: `docs/T1_EXECUTION_LEDGER.md` tracks outstanding
+T1/T2/T3 implementation and scientific dependencies. Actual M0/M1/M2/MC revision
+checkpoints, reversible reviewer controls and repaired synchronization selection
+are implemented. The 168-run synthetic factor grid and 672 stage replays are
+documented in `docs/experiments/2026-10-04-synthetic-reliability.md`; benefits are
+mixed and descriptive, with no completed participant study or T3 host result.
+Do not call the full plan complete from these pilots. Source fingerprints and
+bundles identify dirty code during each batch. Preserve older artifacts and the
+unrelated local dirty results/checkpoints rather than staging them together.
+
 Read `NNKNN_AGENT_GUIDE.md` for model descriptions, workflow entry points,
 RL/DQN/NEC protocol details, Table 1 protocol details, output schemas,
 restart/resume patterns, and machine-specific caveats.

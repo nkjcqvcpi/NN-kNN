@@ -330,9 +330,21 @@ def evaluate_m0_m1_m2(
             out["_artifacts"]["control_history"] = control_history
     for name, e in (("M0", e0), ("M1", e1), ("M2", e2)):
         out[name] = {k: v for k, v in e.items() if not k.startswith(("pred", "prob"))}
+    def add_groups(metrics, event):
+        if model.task_type == "classification":
+            for group, mask in getattr(data, "test_groups", {}).items():
+                mask = torch.as_tensor(mask, dtype=torch.bool, device=y.device)
+                if mask.shape != y.shape:
+                    raise ValueError("test group mask must align with test targets")
+                metrics[f"n_{group}"] = int(mask.sum())
+                if mask.any():
+                    metrics[f"accuracy_{group}"] = float((event["pred_pre"][mask] == y[mask]).float().mean())
+    for name, event in (("M0", e0), ("M1", e1), ("M2", e2)):
+        add_groups(out[name], event)
     if control is not None:
         ec = evaluate(control, data.X_test, data.y_test)
         out["MC"] = {k: v for k, v in ec.items() if not k.startswith(("pred", "prob"))}
+        add_groups(out["MC"], ec)
         out["matched_control_epochs"] = retrain_epochs
         out["M2_minus_MC_loss"] = e2["loss_pre"] - ec["loss_pre"]
         if model.task_type == "classification":
@@ -402,6 +414,9 @@ def flagging_ablation(
     """Simulated review: the reviewer inspects the top-b flagged cases and repairs the corrupted ones."""
     rng = np.random.default_rng(seed)
     ids = scores.case_ids
+    for budget in budgets:
+        if isinstance(budget, bool) or not isinstance(budget, (int, np.integer)) or not 0 <= budget <= len(ids):
+            raise ValueError("review budgets must be integer counts within the active case base")
     if model.case_count() != len(data.y_train) or not np.array_equal(ids, np.arange(len(data.y_train))):
         raise ValueError("flagging_ablation expects the full-memory model whose slots equal training rows")
     rows = []

@@ -172,8 +172,9 @@ def truth_retention(model, data) -> dict[str, Any]:
         if idx.size:
             out[f"kept_fraction_{k}"] = float(np.mean([i in kept for i in idx]))
     clean = np.ones(len(data.y_train), dtype=bool)
-    for v in data.case_truth.values():
-        clean &= ~v
+    for key in ("corrupted", "duplicate", "rare"):
+        if key in data.case_truth:
+            clean &= ~data.case_truth[key]
     out["kept_fraction_clean_base"] = float(np.mean([i in kept for i in np.nonzero(clean)[0]]))
     return out
 
@@ -196,7 +197,7 @@ class Runner:
 
     def data_for(self, ds: dict[str, Any], seed: int):
         sp = self.cfg["splits"]
-        return make_splits(ds["name"], ds["task_type"], seed, test_frac=sp["test_frac"], val_frac=sp["val_frac"], maint_frac=sp.get("maint_frac", 0.0), reg_cohort_bins=sp.get("reg_cohort_bins", 5), max_train=ds.get("max_train"))
+        return make_splits(ds["name"], ds["task_type"], seed, test_frac=sp["test_frac"], val_frac=sp["val_frac"], maint_frac=sp.get("maint_frac", 0.0), reg_cohort_bins=sp.get("reg_cohort_bins", 5), max_train=ds.get("max_train"), synthetic=ds.get("synthetic"))
 
     def trained_core(self, data, seed: int, **over):
         cc = core_cfg_for(self.cfg, data.task_type, seed, **over)
@@ -230,9 +231,12 @@ class Runner:
                     "model_description": model_desc}, run_dir / "checkpoint.pt")
         data_path = self.out / ds["name"] / f"data_snapshot_s{seed}.pt"
         if not data_path.exists():
-            torch.save({name: getattr(data, name) for name in
+            snapshot = {name: getattr(data, name) for name in
                         ("X_train", "y_train", "X_val", "y_val", "X_test", "y_test",
-                         "X_maint", "y_maint", "y_scale")}, data_path)
+                         "X_maint", "y_maint", "y_scale", "meta")}
+            snapshot.update({name: {k: torch.as_tensor(v) for k, v in getattr(data, name).items()}
+                             for name in ("case_truth", "test_groups")})
+            torch.save(snapshot, data_path)
         for name, obj in (extra_files or {}).items():
             write_json(run_dir / name, obj)
         for name, obj in (binary_files or {}).items():
