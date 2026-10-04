@@ -1,6 +1,6 @@
 # T1 implementation status: neural-cbr
 
-Inspected 2026-10-02. Implementation changes start from `6adeb30`.
+Inspected 2026-10-04. Implementation changes start from `6adeb30`.
 The authority is career-2027 at `cd77277600841438d98ac5793867da28b8ec6dd0`;
 the 18 imported files and original paths are recorded in
 `t1_spec/SOURCE_SNAPSHOT.json`. Imported source wording is preserved; original
@@ -25,7 +25,7 @@ not validate the revised pipeline.
 | `model/t1/maintenance.py` | Removal picks the lowest eligible influence, refreshes after each actual deletion and checks cumulative final-loss increase against the original memory. Archives and per-case optimizer rows move with stable IDs. |
 | `model/t1/retraining.py` | Retrieval-only removal plus fixed-budget training, independent copied model/Adam trials, refreshed candidates, original-loss budget, and an unmodified-memory extra-training control at each round. Logs both PI influence and the difference from matched training. |
 | `model/t1/reuse.py` | Classification aggregate label-conditioned adaptation with independent nominal/logit and combined/single-loss switches. Training examples use stable-ID LOO. |
-| `model/t1/sync.py` | Independent and alternating classification schedules. Maintenance receives the actual current adapter, so it scores final outcomes. |
+| `model/t1/sync.py` | Independent and alternating classification/regression schedules, preserving parameter freeze flags. Regression preserves the existing aggregate NN-CDH information path. Best checkpoints restore corresponding optimizer/radius states. Maintenance receives the actual adapter and scores final outcomes. |
 | `model/t1/core.py` | Core training, validation-only checkpoint selection, optional MCB and complete nonzero retrieval contributions with pre/final decisions. |
 | `model/t1/artifacts.py`, `tools/t1_run.py` | Specification commit, pipeline version, dirty flag, actual source hash/bundle, data snapshots and model/adapter/archive checkpoints. Retention, reuse, frozen reuse+retention, sync, MCB, revision and legacy-reference runners. |
 
@@ -63,7 +63,7 @@ has been established.
 | Broader synthetic reliability, rare/boundary/shift studies and confirmatory seeds | Pilot infrastructure exists; full revised sweeps are not complete |
 | Reviewer force-include and feature-weight interventions | Not implemented |
 | Human UI study | Not implemented |
-| Regression synchronization | Not implemented |
+| Regression synchronization | Implemented; 36-run classification/regression three-schedule pilot and checkpoint replay pass. Residual and final MSE are algebraically equivalent, explicitly reported; full grids remain pending. |
 | Image/text legacy, TabArena and contemporary comparators | Not wired to T1 runner |
 | RL actor/critic T1 integration | Not implemented; role outcome and reference decisions remain open |
 | T3 prompt/internal/combined host integration | Not implemented; roadmap only |

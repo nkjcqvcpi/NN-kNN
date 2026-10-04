@@ -41,7 +41,7 @@ from model.t1.maintenance import CaseArchive, run_maintenance  # noqa: E402
 from model.t1.mcb import StabilityTracker  # noqa: E402
 from model.t1.provenance import CaseStatisticsStore, ScoreConfig, active_cohorts, audit_provenance, score_cases  # noqa: E402
 from model.t1.retention import RetentionConfig  # noqa: E402
-from model.t1.reuse import ReuseConfig, evaluate_reuse, train_classification_adapter  # noqa: E402
+from model.t1.reuse import ReuseConfig, evaluate_reuse, evaluate_regression_reuse, train_classification_adapter  # noqa: E402
 from model.t1.revise import flagging_ablation  # noqa: E402
 from model.t1.sync import SyncConfig, train_synchronized  # noqa: E402
 
@@ -443,13 +443,15 @@ class Runner:
         from model.t1.geometry import case_case_distance
 
         D = case_case_distance(base)
-        near_scale = float(D[torch.isfinite(D) & (D > 0)].median())
+        positive = D[torch.isfinite(D) & (D > 0)]
+        near_scale = float(positive.median()) if positive.numel() else 1.0
         for cond in self.cfg["conditions"]:
             model = copy.deepcopy(base)
             fields = SyncConfig.__dataclass_fields__
             merged = {**self.cfg["sync"], **cond}
+            merged.setdefault("output_mode", "aggregate_regression" if data.task_type == "regression" else "nominal_residual_scores")
             sc = SyncConfig(seed=seed, **{k: (tuple(v) if k == "hidden_dims" else v) for k, v in merged.items() if k in fields and k != "seed"})
-            store, archive, events = CaseStatisticsStore(), CaseArchive(), []
+            store, archive, events = CaseStatisticsStore(data.task_type), CaseArchive(), []
             K = resolve_K(self.cfg["sync"].get("K", 1.0), model.case_count()) if "rrr" in sc.schedule else None
 
             def hook(ep, mdl, opt, adapter):
@@ -464,13 +466,21 @@ class Runner:
             for grp in ropt.param_groups:
                 grp["lr"] = grp["lr"] * float(self.cfg["sync"]["retrieval_lr_scale"])
             adapter, info = train_synchronized(model, data, cc, sc, fr, near_scale=near_scale, maintenance_hook=hook, maintenance_epochs=m_epochs, recalibrate=recal, core_optimizer=ropt)
-            rc = ReuseConfig(output_mode=sc.output_mode, loss="combined", lambda_diff=1.0, lambda_cls=1.0, probability_mode=self.cfg["sync"].get("probability_mode", "softmax"), seed=seed)
-            ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc)
-            m = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)}, **{f"test_flip_{k}": v for k, v in ev["flips"].items()}, "tau_task": fr.tau_task, "free_radius_status": fr.status, "n_cases": model.case_count()}
-            self.finish(ds=ds, seed=seed, cond_label=cond["schedule"], cond=cond, data=data, model=model, store=store if events else None, archive=archive, metrics=m, history={"core": tr.history, "sync": info["history"]}, events=events,
+            if data.task_type == "classification":
+                rc = ReuseConfig(output_mode=sc.output_mode, loss="combined", lambda_diff=1.0, lambda_cls=1.0, probability_mode=self.cfg["sync"].get("probability_mode", "softmax"), seed=seed)
+                ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc)
+            else:
+                ev = evaluate_regression_reuse(model, adapter, data.X_test, data.y_test,
+                                               success_tolerance=self.cfg["statistics"]["regression_success_tolerance"])
+            audit(model, data, self.cfg, store, info["best_epoch"], adapter=adapter)
+            m = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
+                 **{f"test_flip_{k}": v for k, v in ev.get("flips", {}).items()},
+                 "tau_task": fr.tau_task, "free_radius_status": fr.status,
+                 "tau_task_final": info["free_radius"]["tau_task"], "n_cases": model.case_count()}
+            self.finish(ds=ds, seed=seed, cond_label=cond["schedule"], cond=cond, data=data, model=model, store=store, archive=archive, metrics=m, history={"core": tr.history, "sync": info["history"]}, events=events,
                         components={"retrieve": "NN-kNN core", "reuse_or_adapter": sc.output_mode, "revise": "off", "retain": "checkpoint maintenance" if events else "none", "mcb": "off", "component_synchronization": sc.schedule},
-                        budgets={"case_capacity": model.case_count(), "sync_epochs_max": sc.epochs}, maintenance={"policy": self.cfg["retention"]["policy"] if events else "none"},
-                        model_desc={"core": cc.__dict__, "sync": sc.__dict__, "free_radius_at_t_star": fr.to_dict()}, prediction_adapter=adapter)
+                        budgets={"case_capacity": model.case_count(), "sync_epochs_max": sc.epochs, "sync_epochs_run": len(info["history"])}, maintenance={"policy": self.cfg["retention"]["policy"] if events else "none"},
+                        model_desc={"core": cc.__dict__, "sync": sc.__dict__, "free_radius_at_t_star": fr.to_dict(), "free_radius_selected": info["free_radius"]}, prediction_adapter=adapter)
 
     def run_mcb(self, ds, seed):
         data = self.data_for(ds, seed)
