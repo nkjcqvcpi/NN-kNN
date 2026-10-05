@@ -1,0 +1,17 @@
+base: alignment_adapted_retraining.yaml
+experiment: alignment_adapted_budget_grid
+status: exploratory_adapted_budget_and_capacity_grid
+datasets:
+  - {name: iris, task_type: classification, max_train: 36}
+  - {name: wine, task_type: classification, max_train: 36}
+K: [0.5, 0.75]
+conditions:
+  - {scope: retrieval_e2_loss0, retrieval_epochs: 2, adapter_epochs: 0, allowed_loss_increase: 0.0}
+  - {scope: adapter_e2_loss0, retrieval_epochs: 0, adapter_epochs: 2, allowed_loss_increase: 0.0}
+  - {scope: alternating_e2_loss0, retrieval_epochs: 1, adapter_epochs: 1, allowed_loss_increase: 0.0}
+  - {scope: retrieval_e2_loss003, retrieval_epochs: 2, adapter_epochs: 0, allowed_loss_increase: 0.03}
+  - {scope: adapter_e2_loss003, retrieval_epochs: 0, adapter_epochs: 2, allowed_loss_increase: 0.03}
+  - {scope: alternating_e2_loss003, retrieval_epochs: 1, adapter_epochs: 1, allowed_loss_increase: 0.03}
+  - {scope: retrieval_e2_loss010, retrieval_epochs: 2, adapter_epochs: 0, allowed_loss_increase: 0.1}
+  - {scope: adapter_e2_loss010, retrieval_epochs: 0, adapter_epochs: 2, allowed_loss_increase: 0.1}
+  - {scope: alternating_e2_loss010, retrieval_epochs: 1, adapter_epochs: 1, allowed_loss_increase: 0.1}
