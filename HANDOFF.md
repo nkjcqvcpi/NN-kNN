@@ -389,3 +389,11 @@ align by ID, target lag preserved;181 tests pass. Only16 target capacities
 reached;34 MC regressions and4 greedy-return regressions show the training guard
 is insufficient. No live schedule integration yet. Next expand explicit training
 reference coverage and test optional live maintenance with matched controls.
+
+`docs/T2_REFERENCE_COVERAGE_GUARD.md`:optional individual-query loss bound and
+broader recorded training reference implemented;108 same-checkpoint conditions,
+all29,659 candidates/432 actual moment tensors replay,36 original controls exact;
+182 tests pass. Wide16/4 queries reaches19/36 targets but6 return regressions;
+strict query guard reaches10/36,MC regressions6/36,still6 return regressions.
+References up to1,553 steps old;constraints protect only observed losses. Next
+optional live transaction/control experiment and negative-reward calibration.

@@ -21,7 +21,7 @@ class TrainingReference:
 
 
 def constrained_retain(model,reference,*,keep_capacity,loss_budget=0.,min_exposure=1,
-                       protected_ids=(),smoothing=1.):
+                       protected_ids=(),smoothing=1.,max_query_loss_increase=None):
     """Fresh direct full-bank removal trials; refill allowed, no gradients.
 
     Unknown cases relative to this original reference are protected. Rank only
@@ -35,6 +35,8 @@ def constrained_retain(model,reference,*,keep_capacity,loss_budget=0.,min_exposu
     if type(keep_capacity) is not int or not 1<=keep_capacity<=n:raise ValueError('invalid target capacity')
     if not math.isfinite(loss_budget) or loss_budget<0 or not math.isfinite(smoothing) or smoothing<=0:
         raise ValueError('invalid loss budget or prior')
+    if max_query_loss_increase is not None and (not math.isfinite(max_query_loss_increase) or max_query_loss_increase<0):
+        raise ValueError('invalid per-query loss budget')
     if type(min_exposure) is not int or min_exposure<1:raise ValueError('positive min_exposure required')
     if reference.stream!=('training_gae' if critic else 'actor_policy_surrogate'):
         raise ValueError('only explicit training references may select retention; MC is diagnostic')
@@ -97,9 +99,10 @@ def constrained_retain(model,reference,*,keep_capacity,loss_budget=0.,min_exposu
                 if not math.isfinite(c+h+2*smoothing):raise ValueError('nonfinite support mass')
                 loss=float(losses.mean());q=(c+smoothing)/(c+h+2*smoothing)
                 record=dict(round=len(accepted),case_id=ids[slot],mean_loss=loss,query_losses=losses.cpu().tolist(),
-                    C=c,H=h,Q=q,within_budget=loss<=initial+loss_budget+1e-7)
+                    C=c,H=h,Q=q,within_budget=loss<=initial+loss_budget+1e-7,
+                    within_query_budget=max_query_loss_increase is None or bool((losses<=original+max_query_loss_increase+1e-7).all()))
                 trials.append(record)
-                if record['within_budget']:round_trials.append((q,loss,ids[slot],slot,losses))
+                if record['within_budget'] and record['within_query_budget']:round_trials.append((q,loss,ids[slot],slot,losses))
             if not round_trials:break
             _,_,case_id,slot,current=min(round_trials,key=lambda t:t[:3])
             mask[slot]=False;accepted.append(case_id)
@@ -108,7 +111,7 @@ def constrained_retain(model,reference,*,keep_capacity,loss_budget=0.,min_exposu
         if actor:removed=core.compact_cases(keep)
         else:removed=model._compact_cases(keep)
         return dict(stream=reference.stream,reference_queries=len(queries),original_loss=initial,
-            final_loss=float(current.mean()),loss_budget=loss_budget,initial_query_losses=original.cpu().tolist(),
+            final_loss=float(current.mean()),loss_budget=loss_budget,max_query_loss_increase=max_query_loss_increase,initial_query_losses=original.cpu().tolist(),
             final_query_losses=current.cpu().tolist(),initial_ids=ids,final_ids=final_ids,
             exposure=exposure.cpu().tolist(),protected_ids=sorted(protected),accepted=accepted,trials=trials,
             target_capacity=keep_capacity,actual_capacity=model.case_entries,removed=removed,
