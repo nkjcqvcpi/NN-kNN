@@ -71,3 +71,10 @@ Recall selection avoids degradation but retains epoch0 twice; hard negatives
 improve tune recall@2 to .65625–.671875 while BM25 remains1.0. Read
 `T3_RANKING_OBJECTIVE.md`. Public-host utility remains independently unproven;
 first public control keeps the original seed8 snapshot.
+
+October5 host failure journal:actual public schema failures exposed lost local
+retrieval events. Optional sink now saves each completed event before the next
+host,including withholding; four real-core archived-output replays preserve
+all four new events and exact delivered prompt payloads.34 focused tests pass.
+`T3_HOST_FAILURE_JOURNAL.md` records old evidence gaps and pending public outcomes;
+no replacement host needs or reconstructed original IDs are claimed.
