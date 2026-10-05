@@ -1,5 +1,10 @@
 # Optional frozen-host formatting contract
 
+The complete strict plain/constrained80-trial comparison is now verified in
+`T3_STRICT_FORMAT_CONTROL.md`:24 versus seven failures,identical144 calls per
+arm,complete128 combined retrieval traces and3,552 manual candidates. All Hotpot
+support/joint F1 remain zero;no second retrieval or competitive benefit claim.
+
 `model/t3/host_schema.py` defines request,answer and continuation schemas.
 Requests must supply exactly readiness,need,requested types and observable public
 state; answers must supply readiness,answer and ordered title/index citations.
@@ -38,7 +43,8 @@ Task evidence: `work/t3_format_enforced_freeze.json`,
 `outputs/neural-cbr-t3-format-parser-verification.json`,
 `outputs/t3-public-host-20261005-format-enforced/` and
 `work/t3_format_enforced.log`. Retrievals are journaled before subsequent host
-calls and partial events retained on failures. The80-trial result is pending.
+calls and partial events retained on failures. The80-trial result is complete;
+see `T3_FORMAT_HOST_RESULTS.md` and the strict control above.
 
 A completed31-trial prefix snapshot validates actual constrained generations:
 55 calls,24 retrievals (18 NN/six BM25),1,152 manual candidate comparisons and six

@@ -29,8 +29,8 @@ Seven failures comprise four128-token JSON truncations and three invalid ordered
 citation pairs at77/98 tokens. The weaker decoder item union does not enforce
 title/index order;runtime validation correctly rejects them. Relative to legacy
 plain11 errors,the lower seven-error count does not establish a decoder effect:
-the strict validation treatment also differs,and the strict plain control is
-still running. On SQuAD,fixed NN F1 .1538 is below legacy .4341;Hotpot learned F1
+the strict validation treatment also differs. The strict plain control has now
+completed;read `T3_STRICT_FORMAT_CONTROL.md`. On SQuAD,fixed NN F1 .1538 is below legacy .4341;Hotpot learned F1
 .2500 exceeds legacy .1875,but support/joint F1 remain zero. These tiny
 engineering groups do not establish scientific benefits or competitiveness.
 

@@ -1,5 +1,14 @@
 # Handoff
 
+**2026-10-05 strict decoding control complete:** Read
+`docs/T3_STRICT_FORMAT_CONTROL.md`.Both80-trial arms/144 calls each/all128
+retrievals/3,552 manual candidates verify. Strict plain24 failures versus
+constrained seven;all144 raw plain outputs exactly equal legacy,with13 additional
+validation rejections. No second retrieval/all Hotpot support/joint F1 zero.
+Summed trial seconds1,162.08 vs1,430.32 plus6.36 format startup;no isolated cost
+claim. Driver13300 terminal0;utility driver85101 now makes real full/removal/
+empty calls,then query driver95436 collects train-only needs. Full plans active.
+
 **2026-10-05 actual-need fitting preparation:** Read
 `docs/T3_ACTUAL_NEED_TRAINING.md`. Optional bound192-query manifest preserves
 actual host needs and rejects missing/edited/orphan/dev inputs;default question
