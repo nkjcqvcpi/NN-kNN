@@ -27,6 +27,8 @@ def main():
     ap.add_argument('--seeds',type=int,nargs='+',default=[8,9,10])
     ap.add_argument('--epochs',type=int,default=20)
     ap.add_argument('--dimensions',type=int,default=256)
+    ap.add_argument('--objective',choices=['softmax','hard_negative'],default='softmax')
+    ap.add_argument('--selection',choices=['tune_loss','tune_recall'],default='tune_loss')
     args=ap.parse_args()
     if args.epochs<1:ap.error('positive fixed epoch budget required')
     args.output.mkdir(parents=True,exist_ok=False)
@@ -46,7 +48,7 @@ def main():
         loss=top1=top2=0.
         with torch.no_grad():
             for task in group:
-                value,result=need_loss(models[task.question_id],task.question,[c.case_id for c in task.cases],dimensions=args.dimensions)
+                value,result=need_loss(models[task.question_id],task.question,[c.case_id for c in task.cases],dimensions=args.dimensions,objective=args.objective)
                 loss+=float(value)
                 ids=models[task.question_id].active_case_ids()
                 order=torch.argsort(result['distances'][0],stable=True)
@@ -58,7 +60,9 @@ def main():
         fit_ids=samples['fit_ids'],tune_ids=samples['tune_ids'],candidate_ids={k:[c.case_id for c in v] for k,v in banks.items()},
         objective='provided-passage identity need matching; not answer or outcome utility',dimensions=args.dimensions,
         bank_size=64,seeds=args.seeds,epochs=args.epochs,learning_rate=.03,weight_decay=0.,trainable='global diagonal feature weights only',
-        projection='clamp .05..20 then mean-normalize to1',selection='lowest held-out-article tune mean need loss,including initial epoch0',
+        projection='clamp .05..20 then mean-normalize to1',selection=args.selection,need_objective=args.objective,
+        selection_rules=dict(tune_loss='minimum tune loss,including epoch0',tune_recall='maximum tune recall@2,then@1,then minimum loss; including epoch0'),
+        hard_negative_count=8,hard_negative_margin=.2,
         representation='fixed SHA256 lexical count L2; encoder and case biases untrained',
         public_dev_annotations_used=False,global_promotion=False)
     (args.output/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
@@ -71,6 +75,9 @@ def main():
             count2+=any(r['case_id'] in positive for r in ranked[:2])
         lexical[name]=dict(source_recall_at1=count1/len(group),source_recall_at2=count2/len(group))
     runs=[]
+    def selection_key(row):
+        tune=row['tune']
+        return (tune['mean_need_loss'],) if args.selection=='tune_loss' else (-tune['source_recall_at2'],-tune['source_recall_at1'],tune['mean_need_loss'])
     for seed in args.seeds:
         random_stream=random.Random(seed)
         metric.feature_weights.data.fill_(1)
@@ -78,14 +85,14 @@ def main():
         initial=metric.feature_weights.detach().clone()
         baseline=dict(fit=evaluate(fit),tune=evaluate(tune))
         history=[dict(epoch=0,**baseline)]
-        best=baseline['tune']['mean_need_loss'];best_epoch=0
+        best=selection_key(baseline);best_epoch=0
         selected=copy.deepcopy(metric.state_dict());selected_optimizer=copy.deepcopy(optimizer.state_dict())
         events=[];start=time.perf_counter()
         for epoch in range(1,args.epochs+1):
             order=list(fit);random_stream.shuffle(order)
             for task in order:
                 optimizer.zero_grad()
-                loss,result=need_loss(models[task.question_id],task.question,[c.case_id for c in task.cases],dimensions=args.dimensions)
+                loss,result=need_loss(models[task.question_id],task.question,[c.case_id for c in task.cases],dimensions=args.dimensions,objective=args.objective)
                 loss.backward()
                 grad=metric.feature_weights.grad
                 if grad is None or not bool(torch.isfinite(grad).all()):raise ValueError('missing/nonfinite actual need gradient')
@@ -96,13 +103,13 @@ def main():
                     metric.feature_weights.clamp_(.05,20)
                     metric.feature_weights.div_(metric.feature_weights.mean())
             row=dict(epoch=epoch,fit=evaluate(fit),tune=evaluate(tune));history.append(row)
-            if row['tune']['mean_need_loss']<best:
-                best=row['tune']['mean_need_loss'];best_epoch=epoch
+            if selection_key(row)<best:
+                best=selection_key(row);best_epoch=epoch
                 selected=copy.deepcopy(metric.state_dict());selected_optimizer=copy.deepcopy(optimizer.state_dict())
         final=copy.deepcopy(metric.state_dict());metric.load_state_dict(selected)
         result=dict(seed=seed,selected_epoch=best_epoch,initial=baseline,selected=dict(fit=evaluate(fit),tune=evaluate(tune)),
             bm25=lexical,actual_training_steps=len(events),nonzero_gradient_steps=sum(e['gradient_norm']>0 for e in events),
-            parameter_delta_l2=float((metric.feature_weights-initial).norm()),trainable_parameters=metric.feature_weights.numel(),
+            parameter_delta_l2=float((metric.feature_weights-initial).detach().norm()),trainable_parameters=metric.feature_weights.numel(),
             training_seconds=time.perf_counter()-start,history=history)
         folder=args.output/f's{seed}';folder.mkdir()
         torch.save(dict(selected_metric=selected,selected_optimizer=selected_optimizer,final_metric=final,

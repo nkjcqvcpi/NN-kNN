@@ -1,5 +1,13 @@
 # Handoff
 
+**2026-10-05 ranking diagnosis:** Read `docs/T3_RANKING_OBJECTIVE.md`.
+Six original/retrained controls verify15,360 updates/25,344 evaluations and all
+selected/final Adam states. Recall-based selection avoids the earlier downgrade
+but selects untrained epoch0 for two seeds; hard negatives improve tune recall@2
+to .65625–.671875,still below BM25 1.0. Defaults unchanged. Public host controls
+retain original seed8; request-schema failures and event-journal gaps are being
+preserved/debugged separately. No public utility/generalization claim.
+
 **2026-10-05 actual T3 need matching:** Read `docs/T3_NEED_MATCHING.md`.
 Three real256-weight lexical metric trainings and full retrainings reproduce
 7,680 updates/12,672 evaluations/all checkpoints and Adam states. Held-out loss
