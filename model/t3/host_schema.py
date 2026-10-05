@@ -8,6 +8,15 @@ import copy
 from .retrieval import TYPES,Request
 
 
+def request_prompt(question):
+    """Shared literal request treatment for public fit/tune/evaluation calls."""
+    if not isinstance(question,str) or not question.strip():raise ValueError('public question required')
+    return ('Produce a retrieval request as ONLY valid JSON. Include exactly four keys: '
+        '"ready": false; "need": a string copying the Question below; '
+        '"requested_types": ["evidence"]; "observable_task_state": "awaiting evidence". '
+        'Do not answer or omit fields. Do not explain reasoning.\nQuestion: '+question)
+
+
 def decision_schema(stage,*,allowed_types=('evidence',)):
     if stage not in {'request','answer','continuation'}:
         raise ValueError('unsupported host stage')

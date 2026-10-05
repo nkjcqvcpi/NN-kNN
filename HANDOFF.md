@@ -1,5 +1,14 @@
 # Handoff
 
+**2026-10-05 actual-need fitting preparation:** Read
+`docs/T3_ACTUAL_NEED_TRAINING.md`. Optional bound192-query manifest preserves
+actual host needs and rejects missing/edited/orphan/dev inputs;default question
+control retained.52 T3 tests plus one real128-update epoch exactly reproduce
+old selected/final metric/Adam/events/curves;16 frozen prompt strings match.
+Driver95436 waits for utility driver85101,then collects192 train-only needs and
+runs six matched hard-negative trainings. Public benefit/actual-need training
+still pending. Source147 files `f3e4de178a6f4bc47bb549eb34a67545107996709b1c8397fa35d425190c8497`.
+
 **2026-10-05 constrained80 complete:** Read `docs/T3_FORMAT_HOST_RESULTS.md`
 and `docs/T3_NEED_SHIFT_DIAGNOSIS.md`.144 calls/48,041 input/6,488 output tokens,
 seven errors (four truncations/three ordered pairs),64 complete retrieval traces

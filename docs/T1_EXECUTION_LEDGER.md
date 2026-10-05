@@ -1,5 +1,11 @@
 # Continuous execution ledger — 2026-10-04
 
+October5 actual-need fitting entry implemented with full train-only identity,
+host/file/prompt/output/token/data bindings and no missing-query fallback.
+52 T3 tests pass;one real128-update default epoch exactly reproduces old metric,
+Adam,events/curves and16 request prompt strings.192 real needs plus six matched
+trainings queued after utility audit. Read `T3_ACTUAL_NEED_TRAINING.md`.
+
 October5 direct public set utility implemented:exact full/removal/empty subsets,
 objective-specific loss differences,complementarity and unobserved missing
 feedback;completed invalid host outputs remain observed task failures,

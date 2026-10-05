@@ -17,6 +17,7 @@ from model.nnknn_model import GlocalFeatureWeight
 from model.t1.artifacts import source_fingerprint
 from model.t3.benchmarks import load_squad
 from model.t3.lexical import artifact_text,bm25_rank,candidate_bank,core_bank,need_loss
+from model.t3.need_queries import load_need_queries
 
 
 def main():
@@ -29,9 +30,9 @@ def main():
     ap.add_argument('--dimensions',type=int,default=256)
     ap.add_argument('--objective',choices=['softmax','hard_negative'],default='softmax')
     ap.add_argument('--selection',choices=['tune_loss','tune_recall'],default='tune_loss')
+    ap.add_argument('--need-queries',type=Path)
     args=ap.parse_args()
     if args.epochs<1:ap.error('positive fixed epoch budget required')
-    args.output.mkdir(parents=True,exist_ok=False)
     torch.set_num_threads(1)
     data=json.loads((args.data_root/'manifest_mirror_complete.json').read_text())
     source=next(r for r in data['files'] if r['name']=='squad_train_v11.json')
@@ -40,6 +41,10 @@ def main():
     by_id={t.question_id:t for t in tasks}
     fit=[by_id[i] for i in samples['fit_ids']];tune=[by_id[i] for i in samples['tune_ids']]
     assert {t.group for t in fit}.isdisjoint({t.group for t in tune})
+    queries={t.question_id:t.question for t in fit+tune};query_binding=None
+    if args.need_queries is not None:
+        queries,query_binding=load_need_queries(args.need_queries,fit+tune,data_sha256=source['sha256'],sample_sha256=hashlib.sha256(args.samples.read_bytes()).hexdigest())
+    args.output.mkdir(parents=True,exist_ok=False)
     corpus=tuple({c.case_id:c for t in tasks for c in t.cases}.values())
     banks={t.question_id:candidate_bank(t,corpus,size=64) for t in fit+tune}
     metric=GlocalFeatureWeight(args.dimensions,1)
@@ -48,7 +53,7 @@ def main():
         loss=top1=top2=0.
         with torch.no_grad():
             for task in group:
-                value,result=need_loss(models[task.question_id],task.question,[c.case_id for c in task.cases],dimensions=args.dimensions,objective=args.objective)
+                value,result=need_loss(models[task.question_id],queries[task.question_id],[c.case_id for c in task.cases],dimensions=args.dimensions,objective=args.objective)
                 loss+=float(value)
                 ids=models[task.question_id].active_case_ids()
                 order=torch.argsort(result['distances'][0],stable=True)
@@ -64,13 +69,14 @@ def main():
         selection_rules=dict(tune_loss='minimum tune loss,including epoch0',tune_recall='maximum tune recall@2,then@1,then minimum loss; including epoch0'),
         hard_negative_count=8,hard_negative_margin=.2,
         representation='fixed SHA256 lexical count L2; encoder and case biases untrained',
-        public_dev_annotations_used=False,global_promotion=False)
+        public_dev_annotations_used=False,global_promotion=False,query_binding=query_binding,
+        query_source='actual frozen host request' if query_binding else 'original public question',query_texts=queries)
     (args.output/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
     lexical={}
     for name,group in [('fit',fit),('tune',tune)]:
         count1=count2=0
         for task in group:
-            ranked=bm25_rank(task.question,banks[task.question_id]);positive={c.case_id for c in task.cases}
+            ranked=bm25_rank(queries[task.question_id],banks[task.question_id]);positive={c.case_id for c in task.cases}
             count1+=ranked[0]['case_id'] in positive
             count2+=any(r['case_id'] in positive for r in ranked[:2])
         lexical[name]=dict(source_recall_at1=count1/len(group),source_recall_at2=count2/len(group))
@@ -92,7 +98,7 @@ def main():
             order=list(fit);random_stream.shuffle(order)
             for task in order:
                 optimizer.zero_grad()
-                loss,result=need_loss(models[task.question_id],task.question,[c.case_id for c in task.cases],dimensions=args.dimensions,objective=args.objective)
+                loss,result=need_loss(models[task.question_id],queries[task.question_id],[c.case_id for c in task.cases],dimensions=args.dimensions,objective=args.objective)
                 loss.backward()
                 grad=metric.feature_weights.grad
                 if grad is None or not bool(torch.isfinite(grad).all()):raise ValueError('missing/nonfinite actual need gradient')
