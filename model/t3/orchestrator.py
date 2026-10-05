@@ -42,6 +42,8 @@ def run_loop(task: str, host, retriever, access: Access, budget: Budget, *, now:
         decision = host(task=task, evidence=copy.deepcopy(evidence))
         if not isinstance(decision, dict):
             raise ValueError("host must emit an explicit structured decision")
+        if type(decision.get("ready")) is not bool:
+            raise ValueError("host must explicitly emit boolean ready")
         if clock()-start >= budget.max_seconds:
             reason = "wall_clock_budget"
             break

@@ -54,6 +54,11 @@ python tools/t3_prepare_host.py --revision c1899de289a04d12100db370d81485cdf75e4
 python tools/t3_host_smoke.py --model-dir <local-model-dir> --files-manifest <local-files-manifest.json> --expected-revision c1899de289a04d12100db370d81485cdf75e47ca --device xpu --runtime-library-bin <torch-runtime-Library-bin> --out <host-smoke.json>
 ```
 
+The later scoped prompt engineering fixture is documented separately in
+`T3_PROMPT_ENGINEERING_PILOT.md`: actual host requests and original-evidence
+reuse now run, while internal integration and public benchmark evidence remain
+open. The original smoke results above retain their prerequisite-only boundary.
+
 The task outputs contain the smoke JSON; model weights, package environment,
 download manifest and rejected preliminary attempt remain in its work folder.
 Keep weights outside Git. CPU is the portable default; use an explicitly

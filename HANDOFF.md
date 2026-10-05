@@ -295,9 +295,11 @@ restart/resume patterns, and machine-specific caveats.
 
 T3 scoped original-artifact retrieval and a bounded host-directed loop are now
 implemented in `model/t3/`, documented in `docs/T3_RETRIEVAL_CONTRACT.md`.
-Ten actual-geometry/lifecycle/loop/credit tests pass. The shared-metric path is
+Eleven actual-geometry/lifecycle/loop/credit tests pass. The shared-metric path is
 an explicit ablation; no NN-CDH, automatic global promotion or tool execution
-occurs. Actual LLM reuse and internal integration remain to be demonstrated.
+occurs. Actual LLM prompt reuse is now tested in the bounded fictional fixture
+documented in `docs/T3_PROMPT_ENGINEERING_PILOT.md`; internal integration and
+public downstream evidence remain unimplemented.
 
 The synchronization post-hoc capacity comparison is audited: 36 runs/72
 states, 4,554 final events and a separate manual 9,108 before/final prediction

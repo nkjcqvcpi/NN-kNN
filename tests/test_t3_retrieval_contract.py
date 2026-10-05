@@ -64,7 +64,7 @@ def test_admission_requires_scope_lifecycle_intent_or_validation(kwargs):
 
 def test_loop_requires_host_query_stops_duplicate_and_preserves_originals():
     def host(**kwargs):
-        return dict(need="lookup public fact", requested_types=["evidence"])
+        return dict(ready=False, need="lookup public fact", requested_types=["evidence"])
     result = run_loop("task", host, retriever(), Access("s", "u"), Budget(), now=1)
     assert result["stop_reason"] == "duplicate_need"
     assert result["retrieval_rounds"] == 1
@@ -75,7 +75,7 @@ def test_loop_requires_host_query_stops_duplicate_and_preserves_originals():
 def test_context_budget_and_host_ready_do_not_imply_delivery():
     def host(**kwargs):
         return dict(ready=True, answer="public answer") if kwargs["evidence"] else dict(
-            need="lookup public fact", requested_types=["evidence"])
+            ready=False, need="lookup public fact", requested_types=["evidence"])
     small = run_loop("task", host, retriever(), Access("s", "u"), Budget(max_evidence_chars=1), now=1)
     assert small["stop_reason"] == "context_budget" and not small["evidence"]
     assert small["events"][0]["delivered_to_host"] is False
@@ -94,3 +94,9 @@ def test_objective_conditional_credit_has_no_same_label_rule():
 def test_event_ids_do_not_collide_across_reconstructed_retrievers():
     request, access = Request("need", ("evidence",)), Access("s", "u")
     assert retriever().retrieve(request, access, now=1)["event_id"] != retriever().retrieve(request, access, now=1)["event_id"]
+
+
+def test_missing_readiness_is_a_host_schema_failure_not_invented_need():
+    with pytest.raises(ValueError, match="boolean ready"):
+        run_loop("task", lambda **kwargs: dict(need="guess", requested_types=["evidence"]),
+            retriever(), Access("s", "u"), Budget(), now=1)
