@@ -326,3 +326,9 @@ Paired maintenance-reference routing is implemented and audited in
 candidate/216 control trainings,18 identical initial pairs and exact model/Adam
 replays. Maintenance improves test RMSE in all18 pairs; repeated selection and
 small task/seed coverage prevent a generalization guarantee.151 tests pass.
+
+RL critic core retrieval IDs now follow canonical critic memory IDs through
+admission/compaction/target alignment and legacy checkpoint restore. See
+`docs/T2_CRITIC_IDENTITY.md`:actual old/new replay verifies ID-based exclusion
+and lagged target preservation; three tests and maintained RL smoke pass.
+No Stage A competitiveness or full-cycle transfer success is claimed.

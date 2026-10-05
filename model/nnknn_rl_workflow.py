@@ -517,6 +517,8 @@ class NNKNNValueNetwork(nn.Module):
             del self.nnknn_model._buffers["labels"]
             self.nnknn_model.register_parameter("labels", labels_param)
         self.nnknn_model.to(self.nnknn_model.cases.device)
+        self._align_core_case_ids()
+        self.register_load_state_dict_post_hook(self._restore_core_case_ids)
 
     @property
     def case_entries(self) -> int:
@@ -524,6 +526,19 @@ class NNKNNValueNetwork(nn.Module):
 
     def active_case_ids(self) -> torch.Tensor:
         return self.case_ids[: self.case_entries]
+
+    def _align_core_case_ids(self) -> None:
+        """Use critic memory IDs for retrieval too, including inactive rows.
+
+        Keep the outer buffers for checkpoint compatibility. Older checkpoints
+        allocated a second, capacity-offset ID sequence inside the core.
+        """
+        with torch.no_grad():
+            self.nnknn_model.case_ids.copy_(self.case_ids)
+            self.nnknn_model.next_case_id.copy_(self.next_case_id)
+
+    def _restore_core_case_ids(self, module, incompatible_keys) -> None:
+        self._align_core_case_ids()
 
     def _assign_new_case_ids(self, start: int, count: int) -> None:
         if count <= 0:
@@ -534,6 +549,7 @@ class NNKNNValueNetwork(nn.Module):
                 torch.arange(first_id, first_id + count, device=self.case_ids.device, dtype=torch.long)
             )
             self.next_case_id.add_(count)
+        self._align_core_case_ids()
 
     def _compact_cases(self, keep_indices: torch.Tensor | list[int]) -> int:
         active_count = self.case_entries
@@ -546,6 +562,7 @@ class NNKNNValueNetwork(nn.Module):
                 self.case_ids[:new_count].copy_(kept_ids)
             if new_count < active_count:
                 self.case_ids[new_count:active_count].fill_(-1)
+        self._align_core_case_ids()
         return removed
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
@@ -1660,6 +1677,7 @@ def _align_nnknn_target_case_store(
         target.case_ids.copy_(source.case_ids)
         target.next_case_id.copy_(source.next_case_id)
         target.nnknn_model.set_active_case_count(new_count)
+        target._align_core_case_ids()
     target.eval()
 
 
