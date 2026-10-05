@@ -380,3 +380,12 @@ Six actual on/off pairs preserve all learning/MC states;106 snapshots/306 events
 2,448 removals and930 history rows replay;177 tests pass. Active coverage is
 sparse and missing observations remain unknown. No quality selector activated
 yet; next constrained/fresh role-specific retention and negative-reward startup.
+
+`docs/T2_FRESH_REFERENCE_RETENTION.md`:standalone exploratory full-bank/refill
+selector protects unknown IDs/action coverage and filters absolute loss budget
+before fresh Q ranking.72 actual one-role interventions, six new preserve-mode
+trainings, all7,468 candidates/737 removals replay;144 nonempty Adam moments
+align by ID, target lag preserved;181 tests pass. Only16 target capacities
+reached;34 MC regressions and4 greedy-return regressions show the training guard
+is insufficient. No live schedule integration yet. Next expand explicit training
+reference coverage and test optional live maintenance with matched controls.
