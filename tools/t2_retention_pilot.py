@@ -14,7 +14,12 @@ def main():
     parser.add_argument('--source',type=Path,required=True)
     parser.add_argument('--runs',type=Path,required=True,help='JSON with runs/run_dir entries')
     parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--reference-batches',type=int,default=1)
+    parser.add_argument('--query-loss-budget',type=float,default=None)
     args=parser.parse_args()
+    if args.reference_batches<1:parser.error('--reference-batches must be positive')
+    if args.query_loss_budget is not None and (not math.isfinite(args.query_loss_budget) or args.query_loss_budget<0):
+        parser.error('--query-loss-budget must be finite and nonnegative')
     sys.path.insert(0,str(args.source.resolve()))
     import torch
     import model.nnknn_rl_workflow as w
@@ -24,7 +29,8 @@ def main():
     torch.set_num_threads(1)
     args.output.mkdir(parents=True,exist_ok=False)
     manifest=dict(source_fingerprint=source_fingerprint(args.source),runs=[],skips=[],
-        selection='latest recorded training reference; fixed parameters, full-bank refill',
+        selection='latest recorded training reference; fixed parameters, full-bank refill',reference_batches=args.reference_batches,
+        query_loss_budget=args.query_loss_budget,
         scope='post-checkpoint one-role compaction; no retraining or live maintenance integration')
 
     def equal(a,b):
@@ -52,12 +58,14 @@ def main():
         baseline=w.load_nnknn_rl_checkpoint(checkpoint,device='cpu',restore_optimizers=True)
         base_metrics=diagnostic(baseline,cp)
         for role,stream in [('critic','training_gae'),('actor','actor_policy_surrogate')]:
-            role_events=[e for e in events if e['role']==role and e['stream']==stream]
+            role_events=[e for e in events if e['role']==role and e['stream']==stream and
+                (e['global_step']<cp['selected_step'] if cp['selected_source']=='best_eval' else e['global_step']<=cp['selected_step'])]
             if not role_events:
                 manifest['skips'].append(dict(run=str(run),role=role,reason='no actual ready-policy training reference',conditions=4))
                 continue
-            step=max(e['global_step'] for e in role_events)
-            selected=[e for e in role_events if e['global_step']==step]
+            steps=sorted({e['global_step'] for e in role_events})[-args.reference_batches:]
+            step=max(steps)
+            selected=[e for e in role_events if e['global_step'] in steps]
             for e in selected:
                 assert hashlib.sha256(Path(e['snapshot']).read_bytes()).hexdigest()==e['snapshot_sha256']
                 if role=='actor':assert e['executed_under_ready_policy']
@@ -83,7 +91,8 @@ def main():
                     target_before=copy.deepcopy(state['target_model'].state_dict())
                     target_ids=w._case_store_ids(state['target_model']).tolist()
                     started=time.perf_counter()
-                    result=constrained_retain(model,ref,keep_capacity=max(1,math.floor(len(old_ids)*fraction)),loss_budget=budget)
+                    result=constrained_retain(model,ref,keep_capacity=max(1,math.floor(len(old_ids)*fraction)),loss_budget=budget,
+                        max_query_loss_increase=args.query_loss_budget)
                     elapsed=time.perf_counter()-started
                     alignment=w._realign_optimizer_case_state(optim,model,old_ids)
                     if role=='critic':w._align_nnknn_target_case_store(model,state['target_model'])
@@ -138,7 +147,9 @@ def main():
                                 assert (c,h,q,float(values.mean()))==(trial['C'],trial['H'],trial['Q'],trial['mean_loss'])
                                 feasible_flag=float(values.mean())<=float(initial.mean())+budget+1e-7
                                 assert feasible_flag==trial['within_budget']
-                                if feasible_flag:feasible.append((q,float(values.mean()),trial['case_id'],slot,values))
+                                query_flag=args.query_loss_budget is None or bool((values<=initial+args.query_loss_budget+1e-7).all())
+                                assert query_flag==trial['within_query_budget']
+                                if feasible_flag and query_flag:feasible.append((q,float(values.mean()),trial['case_id'],slot,values))
                             if round_index<len(result['accepted']):
                                 best=min(feasible,key=lambda t:t[:3]);assert best[2]==result['accepted'][round_index]
                                 mask[best[3]]=False;current=best[4]
@@ -150,7 +161,7 @@ def main():
                     torch.save(dict(before=before,after=snapshot(state),reference=ref.__dict__),directory/'states.pt')
                     metrics=diagnostic(state,cp)
                     record=dict(condition=condition,checkpoint=str(checkpoint),checkpoint_sha256=hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
-                        role=role,reference_step=step,reference_events=selected,result=result,alignment=alignment,
+                        role=role,reference_step=step,reference_steps=steps,reference_events=selected,result=result,alignment=alignment,
                         checked_moment_tensors=checked_moments,selection_seconds=elapsed,baseline=base_metrics,after=metrics,
                         verified_candidate_trials=len(result['trials']),all_checks_passed=True)
                     (directory/'result.json').write_text(json.dumps(record,indent=2),encoding='utf-8')

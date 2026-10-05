@@ -64,3 +64,17 @@ def test_compaction_identity_Adam_and_lagged_target_alignment():
     assert m.active_case_ids().tolist()==target.active_case_ids().tolist()==[0,2]
     assert target.nnknn_model.labels[:2].flatten().tolist()==[10.,12.]
     assert torch.equal(optimizer.state[m.nnknn_model.biases]['exp_avg'][:2],state['exp_avg'][[0,2]])
+
+
+def test_per_query_guard_prevents_mean_budget_from_hiding_local_harm():
+    m=NNKNNValueNetwork(2,case_capacity=4,top_k=2,use_glocal_weightor=False)
+    m.add_cases(torch.zeros(2,2),torch.tensor([-1.,1.]))
+    twin=copy.deepcopy(m)
+    ref=TrainingReference(torch.zeros(2,2),'training_gae',targets=torch.tensor([-1.,1.]))
+    aggregate=constrained_retain(m,ref,keep_capacity=1,loss_budget=1.)
+    assert aggregate['reached'] and max(aggregate['final_query_losses'])==4.
+    guarded=constrained_retain(twin,ref,keep_capacity=1,loss_budget=1.,max_query_loss_increase=0.)
+    assert not guarded['accepted'] and guarded['actual_capacity']==2
+    assert all(t['within_budget'] and not t['within_query_budget'] for t in guarded['trials'])
+    with pytest.raises(ValueError,match='per-query'):
+        constrained_retain(twin,ref,keep_capacity=1,max_query_loss_increase=float('nan'))
