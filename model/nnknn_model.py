@@ -1207,7 +1207,8 @@ class NN_KNN_Model(nn.Module):
         }
 
     def forward(self, query, exclude_identical=None, case_mask=None, query_case_ids=None,
-                force_case_ids=None, forced_weight_floor=None, query_nominal=None):
+                force_case_ids=None, forced_weight_floor=None, query_nominal=None,
+                return_retrieval=False):
         """
         Perform forward pass and optionally provide explanations.
 
@@ -1427,7 +1428,9 @@ class NN_KNN_Model(nn.Module):
             # most_activated_activations_raw = w_k
             # most_activated_activations_norm = w_k_norm
         # -----------------------------------------------------------------------
-        return final_predictions, predicted_solution, pre_adapted_solution, most_activated_cases, most_activated_case_labels, most_activated_activations
+        outputs = (final_predictions, predicted_solution, pre_adapted_solution, most_activated_cases, most_activated_case_labels, most_activated_activations)
+        # Opt-in trace from the exact retrieval that produced this prediction.
+        return (*outputs, r) if return_retrieval else outputs
 
 
 def classification_class_mass_loss(

@@ -332,3 +332,9 @@ admission/compaction/target alignment and legacy checkpoint restore. See
 `docs/T2_CRITIC_IDENTITY.md`:actual old/new replay verifies ID-based exclusion
 and lagged target preservation; three tests and maintained RL smoke pass.
 No Stage A competitiveness or full-cycle transfer success is claimed.
+
+`docs/T2_ROLE_AUDIT_PILOT.md` records12 corrected four-role CartPole pilots,
+24 safe states,48 MC events/all384 direct fixed-set interventions independently
+replayed. State restoration now also reconstructs active critic count.159
+tests/RL smoke pass. Strong seed variation and high NN/NN critic error remain;
+next add second task and actual actor/GAE audit rather than claim Stage A passed.
