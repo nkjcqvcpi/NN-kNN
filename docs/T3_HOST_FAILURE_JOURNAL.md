@@ -37,8 +37,9 @@ counts must accompany outcomes. The first request prompt had missing-type schema
 failures;27 completed trials/17 schema failures/31 recorded completed host calls
 were preserved before diagnostic termination. In-flight generation cost is not
 claimed by that count. Stage-separated request prompt v2 proceeds separately;
-the completed public outcome analysis is still pending. Future runs use the
-journal; old errored trials without events remain an explicit evidence gap.
+the completed80-trial outcome analysis is in `T3_PUBLIC_HOST_RESULTS.md`.
+Eleven post-retrieval failures lack original traces;53 recorded events replay.
+Future runs use the journal; old errored trials remain an explicit evidence gap.
 
 Source `cc396e87b62a1ab38d9eb5d05c7472fc7acc825f8a1dfd778d0adf8cbb2eb1b0`,
 139 files,ZIP SHA256
