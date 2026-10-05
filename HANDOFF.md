@@ -1,5 +1,13 @@
 # Handoff
 
+**2026-10-05 direct set utility:** Read `docs/T3_DIRECT_SET_UTILITY.md`.
+Exact delivered full/single-removal/empty evaluation implemented;missing or
+invalid outcomes remain unobserved,no refill or parameter update.46 T3 tests
+pass. All32 fixed/learned public sets (including source failures) queued for
+fresh frozen-host generations,maximum128 extra calls. Utility driver77730 waits
+for format/plain driver13300;not public outcome evidence yet. Source144 files
+`1993a63f35dadedb4d4cf4d053940bed2184751ee6f573ed80c6032b6b309d40`.
+
 **2026-10-05 actual constrained prefix audit:**31 completed trials/55 calls,
 24 actual retrievals/1,152 manual candidates pass exact journal/core/payload
 replay,including six failed-trial partial traces. This is a provisional prefix.
