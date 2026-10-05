@@ -1,5 +1,14 @@
 # Handoff
 
+**2026-10-05 public QA foundation:** Read
+`docs/T3_PUBLIC_BENCHMARK_FOUNDATION.md`. Source-checked SQuAD98,169 questions and
+Hotpot distractor mirror7,405 questions preserve originals/separate gold labels;
+511,156 score comparisons match pinned publisher evaluators. One unavailable
+Hotpot sentence902 annotation is preserved explicitly,not repaired/dropped.
+Prospective engineering sample IDs are fixed before host outcomes.33 T3 tests
+pass; no public host/retrieval result yet. Next freeze matched corpus/context/
+host/compute protocols and run controls; Hotpot training still needs its train set.
+
 **2026-10-05 T3 version binding:** Read `docs/T3_VERSION_BINDING.md`.
 Immutable validated metadata,active-only ID alignment and actual model/encoder
 state checks fix four demonstrated old-core failures.205 joint tests pass;

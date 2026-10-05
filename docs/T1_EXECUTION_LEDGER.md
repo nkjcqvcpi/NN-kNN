@@ -49,3 +49,11 @@ admission flags,mutable metadata,unnoticed weight drift and inactive-row identit
 alignment.205 joint tests pass;16 fresh frozen-host trials/12 actual retrieval
 events/four no-refill removals replay with bound hashes. Opaque encoders remain
 declared-only. Public benchmark controls and learned/specialized retrieval remain.
+
+October5 public QA foundation: source-checked SQuAD98,169 questions/Hotpot7,405,
+511,156 publisher scorer comparisons,full7,405-row mirror conversion audit and
+33 T3 tests pass. One unavailable support902 remains explicitly recorded. Gold
+annotations stay outside host payloads; article-disjoint SQuAD fit/tune and
+prospective dev engineering IDs are recorded. Read
+`T3_PUBLIC_BENCHMARK_FOUNDATION.md`. No public model outcome or fullwiki claim;
+matched controls,learned retrieval and Hotpot training data remain next work.
