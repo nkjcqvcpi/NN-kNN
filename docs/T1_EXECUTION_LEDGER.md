@@ -43,3 +43,9 @@ active IDs and actual model-version binding before public benchmark comparisons.
 Each completed part records its commit, exact experiment/config/source snapshot,
 checks, observed tradeoffs and remaining limits. Raw artifacts remain under
 `results/t1_pi20260920/`; chat-facing reports are placed in this task's `outputs`.
+
+October5 T3 version binding fixes four demonstrated old-core failures: truthy
+admission flags,mutable metadata,unnoticed weight drift and inactive-row identity
+alignment.205 joint tests pass;16 fresh frozen-host trials/12 actual retrieval
+events/four no-refill removals replay with bound hashes. Opaque encoders remain
+declared-only. Public benchmark controls and learned/specialized retrieval remain.

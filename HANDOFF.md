@@ -1,5 +1,12 @@
 # Handoff
 
+**2026-10-05 T3 version binding:** Read `docs/T3_VERSION_BINDING.md`.
+Immutable validated metadata,active-only ID alignment and actual model/encoder
+state checks fix four demonstrated old-core failures.205 joint tests pass;
+16 fresh frozen-host trials/12 retrieval events/four direct removals replay.
+Opaque query callables remain declared-only. Next: public matched single-/multi-hop
+data and benchmark controls,then learned compatibility and typed-head comparisons.
+
 **2026-10-05 critic label diagnosis:** Read
 `docs/T2_CRITIC_LABEL_CALIBRATION.md`.24 original8,192-step runs plus24 complete
 retrainings verify196,608 actual GAE samples,5,669 mutable row updates,all3,744

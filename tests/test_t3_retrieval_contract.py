@@ -100,3 +100,98 @@ def test_missing_readiness_is_a_host_schema_failure_not_invented_need():
     with pytest.raises(ValueError, match="boolean ready"):
         run_loop("task", lambda **kwargs: dict(need="guess", requested_types=["evidence"]),
             retriever(), Access("s", "u"), Budget(), now=1)
+
+
+@pytest.mark.parametrize('field,value', [('validated','false'),('explicit_retention',1),
+    ('quarantined',0),('case_id',-1),('content',[]),('source',' '),('expires_at',True)])
+def test_metadata_rejects_truthy_admission_and_invalid_identifiers(field, value):
+    kwargs = dict(case_id=0,content='original',artifact_type='evidence',source='fixture',scope='global',validated=True)
+    kwargs[field] = value
+    with pytest.raises(ValueError):
+        Case(**kwargs)
+
+
+def test_snapshot_copies_metadata_and_request_access_collections():
+    model,cases = fixture_bank()
+    r = Retriever(model,cases,lambda request:torch.tensor([[0.]]),model_version='v1',encoder_version='v1')
+    cases[0] = Case(0,'replacement','evidence','other','global',validated=True)
+    assert r.cases[0].content == 'global original'
+    with pytest.raises(TypeError):
+        r.cases[0] = cases[0]
+    with pytest.raises(AttributeError):
+        r.cases = {}
+    types,seen,domains = ['evidence'],[0],{'d'}
+    req,access = Request('need',types,already_retrieved_ids=seen),Access('s','u',domains)
+    types.append('tool'); seen.clear(); domains.clear()
+    assert req.requested_types == ('evidence',) and req.already_retrieved_ids == (0,)
+    assert access.domain_ids == frozenset({'d'})
+
+
+@pytest.mark.parametrize('change', ['bias','raw_case','metric','config','tau','count'])
+def test_actual_model_drift_rejected_even_when_declared_version_unchanged(change):
+    r = retriever()
+    with torch.no_grad():
+        if change == 'bias': r.model.biases[0].add_(1)
+        elif change == 'raw_case': r.model.cases[0].add_(1)
+        elif change == 'metric': next(r.model.glocal_weightor.parameters()).add_(1)
+        elif change == 'config': r.model.config['tau'] = 2
+        elif change == 'tau': r.model.tau = 2
+        elif change == 'count': r.model.set_active_case_count(5)
+    with pytest.raises(ValueError,match='model changed'):
+        r.retrieve(Request('need',('evidence',)),Access('s','u'),now=1)
+
+
+def test_only_active_slots_require_metadata_and_are_audited():
+    model,cases = fixture_bank()
+    model.set_active_case_count(2)
+    model.case_ids[2:] = -1
+    r = Retriever(model,cases[:2],lambda request:torch.tensor([[0.]]),model_version='v1',encoder_version='v1')
+    result = r.retrieve(Request('need',('evidence',)),Access('s','u'),now=1)
+    assert result['audit']['eligible_ids'] == [0] and result['audit']['gated_count'] == 1
+    assert result['audit']['encoder_verification'] == 'declared_only'
+    assert result['audit']['encoder_state_sha256'] is None
+
+
+def test_drift_during_encoding_never_delivers_evidence():
+    model,cases = fixture_bank()
+    def encoder(request):
+        model.biases[0].add_(1)
+        return torch.tensor([[0.]])
+    r = Retriever(model,cases,encoder,model_version='v1',encoder_version='v1')
+    with pytest.raises(ValueError,match='model changed'):
+        r.retrieve(Request('need',('evidence',)),Access('s','u'),now=1)
+
+
+def test_module_encoder_weights_are_bound_and_mixed_modes_restored():
+    class Encoder(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.linear = torch.nn.Linear(1,1)
+            self.dropout = torch.nn.Dropout(.9)
+        def forward(self, request):
+            assert not self.training and not self.dropout.training
+            return self.dropout(self.linear(torch.zeros(1,1)))
+    model,cases = fixture_bank()
+    model.train(); model.glocal_weightor.eval()
+    encoder = Encoder(); encoder.linear.eval()
+    r = Retriever(model,cases,encoder,model_version='v1',encoder_version='v1')
+    before = [(m,m.training) for root in (model,encoder) for m in root.modules()]
+    result = r.retrieve(Request('need',('evidence',)),Access('s','u'),now=1)
+    assert all(m.training == mode for m,mode in before)
+    assert result['audit']['encoder_verification'] == 'module_state'
+    with torch.no_grad(): encoder.linear.weight.add_(1)
+    with pytest.raises(ValueError,match='encoder changed'):
+        r.retrieve(Request('need',('evidence',)),Access('s','u'),now=1)
+
+
+def test_feature_cache_is_not_a_versioned_source_and_is_restored():
+    model = build_model(torch.tensor([[0.],[.1],[.2]]),torch.zeros(3),
+        CoreConfig(task_type='regression',representation='mlp',bias_init='manual'),None)
+    cases = [Case(i,str(i),'evidence','fixture','global',validated=True) for i in range(3)]
+    model.cached_features = torch.full((3,model.feature_dim),1e6)
+    old_cache = model.cached_features
+    r = Retriever(model,cases,lambda request:torch.tensor([[0.]]),model_version='v1',encoder_version='v1')
+    result = r.retrieve(Request('need',('evidence',)),Access('s','u'),now=1)
+    assert model.cached_features is old_cache
+    expected = model.feature_extractor(model.cases).detach().tolist()
+    assert result['audit']['case_features'] == expected
