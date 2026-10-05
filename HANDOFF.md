@@ -314,3 +314,9 @@ and1,944 final events replay, with exact selected/full/random parameter and Adam
 states. The18-case pilot worsens test RMSE in12/18 cases despite meeting its
 train-LOO budget. Next diagnosis is matched train-LOO versus maintenance-holdout
 acceptance; do not present a loss-budget pass as generalization protection.
+
+The108-run classification budget/capacity grid is fully audited:432 states,
+3,564 final events, all41,775 candidate and1,439 control trainings plus exact
+selected/full/random optimizer states. See `docs/T1_ADAPTED_BUDGET_STUDY.md`.
+Two zero-budget Wine seed9 retrieval conditions stop before K; preserve actual
+capacity matching. The108 correlated conditions are not108 independent seeds.
