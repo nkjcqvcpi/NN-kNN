@@ -22,6 +22,10 @@ def main():
     ap.add_argument('--steps',type=int,default=512)
     ap.add_argument('--seeds',type=int,nargs='+',default=[8,9,10])
     ap.add_argument('--tasks',nargs='+',default=['cartpole'])
+    ap.add_argument('--roles',nargs='+',choices=['mlp_mlp','nnknn_mlp','mlp_nnknn','nnknn_nnknn'],
+                    default=['mlp_mlp','nnknn_mlp','mlp_nnknn','nnknn_nnknn'])
+    ap.add_argument('--critic-target-modes',nargs='+',choices=['ema','hard','none'],default=['ema'])
+    ap.add_argument('--audit-queries-per-batch',type=int,default=0)
     args=ap.parse_args()
     root=Path(args.output)
     root.mkdir(parents=True,exist_ok=False)
@@ -33,14 +37,18 @@ def main():
     torch.set_num_threads(1)
     for task in args.tasks:
       for seed in args.seeds:
-        for actor_type,critic_type in [('mlp','mlp'),('nnknn','mlp'),('mlp','nnknn'),('nnknn','nnknn')]:
-            label=f'{task}/{actor_type}_{critic_type}/s{seed}'
+       for role in args.roles:
+        actor_type,critic_type=role.split('_')
+        for target_mode in args.critic_target_modes:
+            label=f'{task}/{role}__{target_mode}/s{seed}'
             cfg=make_nnknn_rl_config('smoke',seed=seed,actor_type=actor_type,critic_type=critic_type,
                 total_timesteps=args.steps,case_capacity=128,critic_case_capacity=128,
                 eval_frequency=0,eval_episode_frequency=100000,eval_episodes=3,
                 critic_holdout_episode_frequency=0,policy_update_episodes=2,
                 early_stopping=False,success_threshold=None,top_k=8,
-                min_case_entries=8,min_cases_per_action=2)
+                min_case_entries=8,min_cases_per_action=2,
+                critic_target_value_mode=target_mode,
+                case_audit_queries_per_batch=args.audit_queries_per_batch)
             start=time.perf_counter()
             state=train_nnknn_rl(task,cfg,output_dir=root/label,device='cpu',progress=False)
             train_seconds=time.perf_counter()-start
@@ -62,6 +70,7 @@ def main():
             credit=summarize_credit(events)
             credit_json=[dict(role=k[0],stream=k[1],cases=v) for k,v in credit.items()]
             record=dict(role=label,task=task,seed=seed,actor_type=actor_type,critic_type=critic_type,
+                configured_target_mode=target_mode,audit_queries_per_batch=args.audit_queries_per_batch,
                 source_fingerprint=fingerprint,versions=versions,run_dir=str(run_dir),
                 training_seconds=train_seconds,summary=state['summary'],independent_mc=holdout,
                 audit_events=len(events),interventions=sum(len(e['interventions']) for e in events),
@@ -69,7 +78,7 @@ def main():
             records.append(record)
             (root/'manifest.json').write_text(json.dumps(dict(status='exploratory_current_core_not_stage_a_gate',
                 roles=records,source_fingerprint=fingerprint,versions=versions),indent=2),encoding='utf-8')
-            print(f'completed {len(records)}/{4*len(args.seeds)*len(args.tasks)} {label} events={len(events)}',flush=True)
+            print(f'completed {len(records)}/{len(args.roles)*len(args.critic_target_modes)*len(args.seeds)*len(args.tasks)} {label} events={len(events)}',flush=True)
 
 
 if __name__=='__main__':

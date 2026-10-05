@@ -344,3 +344,10 @@ ceiling; two-task/four-role/three-seed2,048-step24-run matrix audits48 states,
 96 MC events/all768 removals.160 tests pass. All6 Acrobot NN actors are unready
 (5 empty,1 only3 cases missing an action);-458 evaluation is uniform fallback.
 Preserve raw-positive admission; diagnose GAE/value warm start explicitly.
+
+`docs/T2_TRAINING_CONTRIBUTION_AUDIT.md`:optional bounded pre-gradient audit
+preserves training;18 target-mode pilots replay159 snapshots,318 GAE/282 actor
+surrogate events/all4,800 deletions, plus144 MC/all1,152 deletions. Six observer
+EMA references have exact weights/evaluation.162 tests pass. Acrobot has only3
+batches versus target interval4; hard/EMA never update beyond initialization.
+Repeat common interval1 before drawing a target-update conclusion.
