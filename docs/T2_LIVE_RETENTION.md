@@ -60,7 +60,9 @@ eight bounded query/target pairs exactly matching. Actor-only's own-policy MC
 MSE falls on all CartPole seeds, but common-policy MSE worsens on all three.
 Both-mode seed10 MSE3435.767→306.870 also changes MC rollout return299.5→85,
 target mean69.731→33.138 and samples599→170; common-policy MSE2706.460 is a
-different, more comparable diagnostic. Thus lower own-policy MSE alone does not
+  different, more comparable diagnostic. Common-policy evaluation is an off-policy
+  transfer diagnostic: learned V belongs to its own policy,so this alone cannot
+  establish on-policy calibration. Thus lower own-policy MSE alone does not
 show critic calibration or a better policy. Common-policy Acrobot critic MSE
 improves all three seeds, without resolving actor startup. All diagnostics are
 excluded from retention, gradients and admission.

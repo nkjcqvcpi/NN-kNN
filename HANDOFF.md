@@ -1,5 +1,14 @@
 # Handoff
 
+**2026-10-05 critic label diagnosis:** Read
+`docs/T2_CRITIC_LABEL_CALIBRATION.md`.24 original8,192-step runs plus24 complete
+retrainings verify196,608 actual GAE samples,5,669 mutable row updates,all3,744
+training/1,536 MC removals and stable-ID Adam alignment. Default mutable matching
+never executes; trainable labels improve one seed. Wider matching can lower
+off-policy transfer MSE while preventing actor readiness. Fixed remains default;
+no Stage A gate established. Next independent implementation package addresses
+T3 immutable case provenance and actual retrieval model-version binding.
+
 **2026-10-04 adapted continuation:** Selected adapter/core Adam export passes
 27-run phase/step/continuation audits (`df58412`). Adapted removal now has isolated
 continued candidate adapters, full-reference cumulative-loss acceptance and
