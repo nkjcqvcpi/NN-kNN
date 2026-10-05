@@ -397,3 +397,14 @@ all29,659 candidates/432 actual moment tensors replay,36 original controls exact
 strict query guard reaches10/36,MC regressions6/36,still6 return regressions.
 References up to1,553 steps old;constraints protect only observed losses. Next
 optional live transaction/control experiment and negative-reward calibration.
+
+`docs/T2_LIVE_RETENTION.md`:optional/off-default current-batch guarded retention
+integrated after gradient/insertion/prune,before target sync;stable-ID Adam/lag
+target preserved,unknown/action/readiness protected,direct dataclass validated.
+30 conditions plus complete instrumented replays;all47,701 candidates/821
+removals,2,588 moments/7,108 other states/589 target alignments replay;6 no-op
+pairs exact,240 MC/all1,920 deletions,18 common-policy diagnostics verified;
+187 tests pass. Actor-only CartPole worsens all3 seeds;own-policy lower MC MSE
+misleads versus fixed-policy errors. Acrobot remains unready. Next extended
+negative-reward/target-mode experiments and matched capacity/cost confirmation;
+no gate or complete-plan claim.

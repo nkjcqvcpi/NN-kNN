@@ -8,6 +8,7 @@ import json
 import hashlib
 from pathlib import Path
 import random
+import time
 from typing import Any
 
 import numpy as np
@@ -104,6 +105,12 @@ class NNKNNRLConfig:
     case_audit_queries_per_batch: int = 0
     case_optimizer_maintenance: str = 'reset'
     case_quality_tracking: bool = False
+    case_retention_keep_fraction: float | None = None
+    case_retention_frequency: int = 1_000
+    case_retention_queries: int = 16
+    case_retention_loss_budget: float = 0.
+    case_retention_query_budget: float | None = 0.
+    case_retention_roles: str = 'both'
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -1415,6 +1422,24 @@ def make_nnknn_rl_config(profile: str = "fast", **overrides: Any) -> NNKNNRLConf
     data['case_quality_tracking']=_coerce_bool_field('case_quality_tracking',False)
     if data['case_quality_tracking'] and data['case_audit_queries_per_batch']==0:
         raise ValueError('case_quality_tracking requires explicit bounded audit queries')
+    fraction=data.get('case_retention_keep_fraction')
+    if fraction is not None:
+        fraction=float(fraction)
+        if not np.isfinite(fraction) or not 0<fraction<=1:raise ValueError('retention fraction must lie in (0,1]')
+        if data['case_optimizer_maintenance']!='preserve_by_id':raise ValueError('live retention requires preserve_by_id optimizer maintenance')
+    data['case_retention_keep_fraction']=fraction
+    data['case_retention_frequency']=int(data.get('case_retention_frequency',1000))
+    data['case_retention_queries']=int(data.get('case_retention_queries',16))
+    if data['case_retention_frequency']<=0 or not 1<=data['case_retention_queries']<=128:
+        raise ValueError('positive retention frequency and queries in [1,128] required')
+    for field_name in ('case_retention_loss_budget','case_retention_query_budget'):
+        value=data.get(field_name,0.)
+        if value is None and field_name=='case_retention_query_budget':continue
+        value=float(value)
+        if not np.isfinite(value) or value<0:raise ValueError('finite nonnegative retention loss budgets required')
+        data[field_name]=value
+    data['case_retention_roles']=str(data.get('case_retention_roles','both'))
+    if data['case_retention_roles'] not in {'both','actor','critic'}:raise ValueError('invalid retention roles')
     return NNKNNRLConfig(**data)
 
 
@@ -2374,8 +2399,24 @@ def _train_actor_critic_batch(
         int(torch.stack(reward_variation_flags).sum().detach().cpu().item()) if reward_variation_flags else 0
     )
     total_loss = actor_loss.detach() + float(cfg.value_loss_coef) * critic_optimization_mse
+    retention_reference={}
+    if cfg.case_retention_keep_fraction is not None:
+        # Evenly cover the actual current batch; no diagnostic rollout queries.
+        def selected_indices(indices):
+            count=min(cfg.case_retention_queries,len(indices))
+            return indices[torch.linspace(0,len(indices)-1,count,device=device).long()] if count else indices
+        critic_indices=selected_indices(torch.arange(len(actions),device=device))
+        ready_indices=selected_indices(torch.tensor(policy_readiness,dtype=torch.bool,device=device).nonzero().flatten())
+        retention_reference['critic']=dict(queries=obs_t[critic_indices].detach().clone(),stream='training_gae',
+            targets=value_targets[critic_indices].detach().clone(),batch_query_indices=critic_indices.cpu().tolist())
+        retention_reference['actor']=dict(queries=obs_t[ready_indices].detach().clone(),stream='actor_policy_surrogate',
+            actions=actions_t[ready_indices].detach().clone(),advantages=normalized_advantages[ready_indices].detach().clone(),
+            behavior_epsilons=behavior_epsilons_t[ready_indices].detach().flatten().clone(),
+            policy_ready=torch.ones(len(ready_indices),dtype=torch.bool,device=device),probability_floor=cfg.advantage_epsilon,
+            batch_query_indices=ready_indices.cpu().tolist(),advantage_source='normalized_clipped_training_gae')
     return {
         "global_step": global_step,
+        **({'_retention_reference':retention_reference} if cfg.case_retention_keep_fraction is not None else {}),
         "_case_optimizer_alignment": alignment_events,
         "episodes": len(episodes),
         "samples": int(obs_t.shape[0]),
@@ -2680,6 +2721,10 @@ def train_nnknn_rl(
 
     spec = get_rl_task_spec(task_name)
     cfg = config or make_nnknn_rl_config(spec.default_profile)
+    if cfg.case_retention_keep_fraction is not None:
+        # Dataclass callers must obey the same explicit retention constraints
+        # as CLI/profile callers, before constructing environments or training.
+        cfg=make_nnknn_rl_config(**cfg.to_dict())
     seed_everything(cfg.seed)
     run_device = _resolve_device_arg(device)
 
@@ -2747,6 +2792,8 @@ def train_nnknn_rl(
     critic_update_batches = 0
     last_maintenance_bucket = 0
     optimizer_alignment_rows: list[dict[str,Any]] = []
+    retention_events: list[dict[str,Any]] = []
+    last_retention_bucket=0
 
     def total_cases_pruned() -> int:
         return actor_cases_pruned + critic_cases_pruned
@@ -2760,7 +2807,9 @@ def train_nnknn_rl(
         nonlocal critic_label_updates, critic_label_update_samples
         nonlocal partial_rollout_segments, partial_rollout_samples
         nonlocal critic_target_syncs, critic_update_batches, last_maintenance_bucket
+        nonlocal last_retention_bucket
         optimizer_alignment_rows.extend(loss_row.pop('_case_optimizer_alignment',[]))
+        retention_reference=loss_row.pop('_retention_reference',{})
 
         for case_store, model, optimizer_for_store in (
             ("actor", actor, actor_optimizer),
@@ -2826,6 +2875,56 @@ def train_nnknn_rl(
                     if row is not None:
                         maintenance_rows.append(row)
 
+        if cfg.case_retention_keep_fraction is not None:
+            bucket=completed_step//cfg.case_retention_frequency
+            if bucket>last_retention_bucket:
+                last_retention_bucket=bucket
+                from model.t2.retention import TrainingReference,constrained_retain
+                # Align newly inserted structural rows before preserving a pre-retention snapshot.
+                if target_value_model is not None:_align_nnknn_target_case_store(value_network,target_value_model)
+                for role,model,optimizer in [('critic',value_network,critic_optimizer or joint_optimizer),('actor',actor,actor_optimizer)]:
+                    if cfg.case_retention_roles not in {'both',role}:continue
+                    if not isinstance(model,(NNKNNPolicyNetwork,NNKNNValueNetwork)):continue
+                    raw=retention_reference[role]
+                    event=dict(role=role,global_step=completed_step,phase='after_gradient_insertion_prune_before_retention',
+                        reference={k:v.cpu().tolist() if torch.is_tensor(v) else v for k,v in raw.items()},
+                        bootstrap_value_source=loss_row['bootstrap_value_source'])
+                    if not len(raw['queries']) or model.case_entries<=1:
+                        event.update(skipped=True,reason='no actual ready-policy reference or insufficient active cases')
+                        retention_events.append(event);continue
+                    snapshot_dir=run_dir/'retention_states';snapshot_dir.mkdir(exist_ok=True)
+                    snapshot=snapshot_dir/f'{role}_step_{completed_step}.pt'
+                    torch.save(dict(actor_state=_model_state(actor),critic_state=_copy_state_dict_to_cpu(value_network),
+                        target_state=_copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None,
+                        optimizer_states=dict(actor_or_joint=_optimizer_state_snapshot(actor_optimizer),critic=_optimizer_state_snapshot(critic_optimizer)),
+                        config=cfg.to_dict(),obs_dim=obs_dim,action_dim=action_dim),snapshot)
+                    event.update(snapshot=str(snapshot),snapshot_sha256=hashlib.sha256(snapshot.read_bytes()).hexdigest())
+                    fields={k:v for k,v in raw.items() if k not in {'batch_query_indices','advantage_source'}}
+                    reference=TrainingReference(**fields)
+                    old_ids=_case_store_ids(model)
+                    target_capacity=max(1,int(model.case_entries*cfg.case_retention_keep_fraction))
+                    if role=='actor':
+                        # Preserve the configured behavior readiness threshold
+                        # as well as the selector's per-action coverage floor.
+                        target_capacity=min(model.case_entries,max(target_capacity,cfg.min_case_entries))
+                    started=time.perf_counter()
+                    result=constrained_retain(model,reference,
+                        keep_capacity=target_capacity,
+                        loss_budget=cfg.case_retention_loss_budget,max_query_loss_increase=cfg.case_retention_query_budget)
+                    event.update(result=result,selection_seconds=time.perf_counter()-started,skipped=False)
+                    alignment=_realign_optimizer_case_state(optimizer,model,old_ids)
+                    alignment.update(case_store=role,source='fresh_training_reference_retention',global_step=completed_step)
+                    optimizer_alignment_rows.append(alignment);event['alignment']=alignment
+                    if role=='critic':
+                        critic_cases_pruned+=result['removed']
+                        if target_value_model is not None:_align_nnknn_target_case_store(value_network,target_value_model)
+                    else:actor_cases_pruned+=result['removed']
+                    retention_events.append(event)
+                    row=_maintenance_row(global_step=completed_step,case_store=role,cases_pruned=result['removed'],cases_replaced=0,
+                        model=model,source='fresh_training_reference_retention')
+                    if row is not None:maintenance_rows.append(row)
+                loss_row.update(case_entries=_actor_case_entries(actor),critic_case_entries=value_network.case_entries if isinstance(value_network,NNKNNValueNetwork) else None,
+                    action_counts=_actor_action_counts_json(actor),**_actor_case_bias_stats(actor))
         if target_value_model is not None:
             _align_nnknn_target_case_store(value_network, target_value_model)
             critic_update_batches += 1
@@ -3302,6 +3401,9 @@ def train_nnknn_rl(
             role_streams='training_gae, actor_policy_surrogate and optional independent_mc kept separate'))
     if quality_ledger is not None:
         _write_json(run_dir/'case_quality_selected.json',quality_ledger.state_dict())
+    if cfg.case_retention_keep_fraction is not None:
+        _write_json(run_dir/'case_retention_events.json',dict(events=retention_events,
+            selection='current training batch, post-gradient/insertion/prune, before target sync; no diagnostic selection'))
     _write_csv(run_dir / "case_maintenance.csv", maintenance_rows)
     _write_csv(run_dir / "final_eval_episodes.csv", selected_eval["episode_metrics"])
     _write_csv(run_dir / "last_eval_episodes.csv", last_eval["episode_metrics"])
