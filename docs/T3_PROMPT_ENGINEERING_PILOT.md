@@ -58,3 +58,29 @@ trained/type-specific/calibrated retrieval, feedback promotion/rollback,
 internal and combined integration, stronger/cloud/API hosts, biomedical evidence
 and answer evaluation, and bounded agent transfer. No human, biomedical,
 competitive-quality or scientific readiness result has been established.
+
+## Exact-set removal extension
+
+`tools/t3_prompt_pilot.py --direct-set-removal` now adds a separate causal audit
+after the sixteen trials. It deletes each displayed one-shot artifact from the
+already selected evidence set, does not refill or retrieve again, and calls the
+same frozen host at the answer stage. Audit verifies the full rendered prompt
+is byte-identical except for that evidence JSON replacement. It links the
+source event, case ID, full/removed sets, public outputs, objective0/1 loss and
+the actual retrieval activation used in conditional C/H/Q credit.
+
+Frozen source `b1676e208a0f5346b364f609f03b50d95bffce8b73a662b0fdc4165d8b27abca`,
+113 files, ZIP SHA256
+`e2516d89a3ee3545e2e1ef083979b8e6d75eb45995b41a80d2922466f0b7fb89`.
+The repeated sixteen outcomes match the previous fixture. Four additional
+actual generations change the correct color to UNKNOWN after removing its
+sole supporting record. Each has loss0→1, activation1, conditional utility1,
+C1/H0 and smoothed Q2/3. Credit stays a conditional engineering observation;
+there is no global reliability/parameter promotion. Single-record sets do not
+test redundancy, complementary support, poisoning or rare-capability recovery.
+
+There are32 total calls,4,160 input and852 output tokens in the extended batch.
+An independent audit checks all four exact-set operations, prompt identity,
+actual stored responses, objective loss, event weights and C/H/Q calculations.
+Quarantine/reranking remains a separate intervention. Public benchmarks and
+matched contemporary controls remain required.
