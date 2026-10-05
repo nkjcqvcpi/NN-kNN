@@ -29,6 +29,8 @@ def main():
     ap.add_argument('--audit-queries-per-batch',type=int,default=0)
     ap.add_argument('--critic-target-sync-interval',type=int,default=4)
     ap.add_argument('--case-optimizer-maintenance',nargs='+',choices=['reset','preserve_by_id'],default=['reset'])
+    ap.add_argument('--eval-frequency',type=int,default=0)
+    ap.add_argument('--eval-episode-frequency',type=int,default=100000)
     args=ap.parse_args()
     root=Path(args.output)
     root.mkdir(parents=True,exist_ok=False)
@@ -44,7 +46,7 @@ def main():
         label=f'{task}/{role}__{target_mode}__{optimizer_mode}/s{seed}'
         cfg=make_nnknn_rl_config('smoke',seed=seed,actor_type=actor_type,critic_type=critic_type,
             total_timesteps=args.steps,case_capacity=128,critic_case_capacity=128,
-            eval_frequency=0,eval_episode_frequency=100000,eval_episodes=3,
+            eval_frequency=args.eval_frequency,eval_episode_frequency=args.eval_episode_frequency,eval_episodes=3,
             critic_holdout_episode_frequency=0,policy_update_episodes=2,
             early_stopping=False,success_threshold=None,top_k=8,
             min_case_entries=8,min_cases_per_action=2,
