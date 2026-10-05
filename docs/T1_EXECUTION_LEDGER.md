@@ -1,5 +1,11 @@
 # Continuous execution ledger — 2026-10-04
 
+October5 direct public set utility implemented:exact full/removal/empty subsets,
+objective-specific loss differences,complementarity and unobserved missing
+feedback;no refill/update.46 T3 tests pass.32 complete fixed/learned source sets
+queued for real frozen-host calls after format/plain controls and audits.
+Read `T3_DIRECT_SET_UTILITY.md`;public utility outcomes still pending.
+
 October5 public80 controls completed:144 calls,11 failures,53 recorded events
 replayed with1,480 manual NN candidates. Learned/iterative gains unproven,all
 Hotpot support/joint F1 zero,no second retrieval;11 old error traces missing.
