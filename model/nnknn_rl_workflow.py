@@ -1778,6 +1778,17 @@ def _copy_state_dict_to_cpu(module: nn.Module) -> dict[str, torch.Tensor]:
     return {key: value.detach().cpu().clone() for key, value in module.state_dict().items()}
 
 
+def _optimizer_state_snapshot(optimizer: optim.Optimizer | None):
+    if optimizer is None:return None
+    def cpu(value):
+        if torch.is_tensor(value):return value.detach().cpu().clone()
+        if isinstance(value,dict):return {k:cpu(v) for k,v in value.items()}
+        if isinstance(value,list):return [cpu(v) for v in value]
+        if isinstance(value,tuple):return tuple(cpu(v) for v in value)
+        return copy.deepcopy(value)
+    return cpu(optimizer.state_dict())
+
+
 def _sync_shared_target_value_model(
     source: SharedNNKNNActorCriticNetwork,
     target: SharedNNKNNActorCriticNetwork,
@@ -2714,6 +2725,8 @@ def train_nnknn_rl(
     best_eval_step: int | None = None
     best_actor_state: dict[str, Any] | None = None
     best_critic_state: dict[str, torch.Tensor] | None = None
+    best_target_state = None
+    best_optimizer_states = None
     actor_cases_pruned = 0
     actor_cases_replaced = 0
     critic_cases_pruned = 0
@@ -3028,6 +3041,9 @@ def train_nnknn_rl(
                         best_eval_step = completed_step
                         best_actor_state = _model_state(actor)
                         best_critic_state = _copy_state_dict_to_cpu(value_network)
+                        best_target_state = _copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None
+                        best_optimizer_states = dict(actor_or_joint=_optimizer_state_snapshot(actor_optimizer),
+                            critic=_optimizer_state_snapshot(critic_optimizer))
                     if progress:
                         print(
                             "[nnknn-rl][eval] "
@@ -3087,6 +3103,9 @@ def train_nnknn_rl(
                     best_eval_step = completed_step
                     best_actor_state = _model_state(actor)
                     best_critic_state = _copy_state_dict_to_cpu(value_network)
+                    best_target_state = _copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None
+                    best_optimizer_states = dict(actor_or_joint=_optimizer_state_snapshot(actor_optimizer),
+                        critic=_optimizer_state_snapshot(critic_optimizer))
                 if progress:
                     print(
                         "[nnknn-rl][eval] "
@@ -3153,6 +3172,9 @@ def train_nnknn_rl(
         selected_source = "final"
         selected_actor_state = _model_state(actor)
         selected_critic_state = _copy_state_dict_to_cpu(value_network)
+        selected_target_state = _copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None
+        selected_optimizer_states = dict(actor_or_joint=_optimizer_state_snapshot(actor_optimizer),
+            critic=_optimizer_state_snapshot(critic_optimizer))
     else:
         selected_eval = best_eval
         selected_step = int(best_eval_step or 0)
@@ -3161,6 +3183,15 @@ def train_nnknn_rl(
         selected_critic_state = best_critic_state or _copy_state_dict_to_cpu(value_network)
         _load_model_state(actor, selected_actor_state)
         value_network.load_state_dict(selected_critic_state)
+        selected_target_state = best_target_state
+        selected_optimizer_states = best_optimizer_states
+        actor_optimizer.load_state_dict(selected_optimizer_states['actor_or_joint'])
+        if critic_optimizer is not None:
+            critic_optimizer.load_state_dict(selected_optimizer_states['critic'])
+        if target_value_model is not None:
+            # Detach the shared raw bank before restore, then realign below.
+            target_value_model.nnknn_model._buffers['cases'] = target_value_model.nnknn_model.cases.detach().clone()
+            target_value_model.load_state_dict(selected_target_state)
     if target_value_model is not None:
         _align_nnknn_target_case_store(value_network, target_value_model)
 
@@ -3188,6 +3219,9 @@ def train_nnknn_rl(
         "actor_behavior_policy": _actor_behavior_policy_name(actor),
         "actor_state": selected_actor_state,
         "critic_state_dict": selected_critic_state,
+        "target_state_dict": selected_target_state,
+        "selected_optimizer_states": selected_optimizer_states,
+        "training_state_scope": "selected parameters/optimizer/target; rollout, environment and RNG resume not included",
         "task": spec.to_dict(),
         "config": cfg.to_dict(),
         "obs_dim": obs_dim,
@@ -3360,6 +3394,7 @@ def train_nnknn_rl(
         "model": actor,
         "value_model": value_network,
         "target_model": target_value_model,
+        "optimizers": dict(actor_or_joint=actor_optimizer,critic=critic_optimizer),
         "task": spec,
         "config": cfg,
         "run_dir": run_dir,
@@ -3379,10 +3414,11 @@ def load_nnknn_rl_checkpoint(
     checkpoint_path: str | Path,
     *,
     device: str | torch.device | None = None,
+    restore_optimizers: bool = False,
 ) -> dict[str, Any]:
     run_device = _resolve_device_arg(device)
     checkpoint_path = Path(checkpoint_path)
-    checkpoint = torch.load(checkpoint_path, map_location=run_device, weights_only=False)
+    checkpoint = torch.load(checkpoint_path, map_location=run_device, weights_only=True)
     algorithm = checkpoint.get("algorithm")
     if algorithm != ALGORITHM_NAME:
         raise ValueError(
@@ -3405,12 +3441,33 @@ def load_nnknn_rl_checkpoint(
     )
     _load_model_state(model, checkpoint["actor_state"])
     value_model.load_state_dict(checkpoint["critic_state_dict"])
+    target_model = None
+    if checkpoint.get('target_state_dict') is not None:
+        target_model = _build_nnknn_target_value_model(value_model,device=run_device)
+        target_model.nnknn_model._buffers['cases'] = target_model.nnknn_model.cases.detach().clone()
+        target_model.load_state_dict(checkpoint['target_state_dict'])
+        _align_nnknn_target_case_store(value_model,target_model)
+    restored_optimizers = None
+    if restore_optimizers:
+        states=checkpoint.get('selected_optimizer_states')
+        if states is None:
+            raise ValueError('legacy checkpoint has no selected optimizer state')
+        if cfg.share_nnknn_representation and isinstance(model,NNKNNPolicyNetwork) and isinstance(value_model,NNKNNValueNetwork):
+            actor_optimizer=_build_joint_nnknn_rl_optimizer(model,value_model,base_lr=cfg.learning_rate,case_lr=cfg.case_learning_rate)
+            critic_optimizer=None
+        else:
+            actor_optimizer=_build_nnknn_rl_optimizer(model,base_lr=cfg.learning_rate,case_lr=cfg.case_learning_rate)
+            critic_optimizer=_build_nnknn_rl_optimizer(value_model,base_lr=cfg.critic_learning_rate,case_lr=cfg.case_learning_rate)
+        actor_optimizer.load_state_dict(states['actor_or_joint'])
+        if critic_optimizer is not None:critic_optimizer.load_state_dict(states['critic'])
+        restored_optimizers=dict(actor_or_joint=actor_optimizer,critic=critic_optimizer)
     model.eval()
     value_model.eval()
     return {
         "model": model,
         "value_model": value_model,
-        "target_model": None,
+        "target_model": target_model,
+        "optimizers": restored_optimizers,
         "config": cfg,
         "task": checkpoint["task"],
         "checkpoint": checkpoint,

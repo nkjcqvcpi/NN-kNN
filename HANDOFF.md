@@ -364,3 +364,11 @@ maintenance operations check496 moment tensors/248 steps/377 other-role/shared
 states;6 historical reset references exact. CartPole improves all3 seeds
 (145.111→301 mean),Acrobot remains unready.165 tests pass. Step is per vector,
 not per case; update counts and actual capacities differ, no gate claim.
+
+`docs/T2_SELECTED_CHECKPOINT_STATE.md`:best evaluation now preserves matching
+Adam and lagged target;safe optional optimizer restore,legacy eval compatibility.
+Four forced earlier-phase tests and12 real pilots verify21 Adam/6 target states
+and real continuation;5 nonfinal selected (4 earlier steps,1 same512 before last
+partial optimization).169 tests/RL smoke pass,48 MC/all384 deletions replay.
+This is selected learning state, not rollout/environment/RNG resume. Next
+role-specific quality/provenance retention and negative-reward calibration.
