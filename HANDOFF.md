@@ -357,3 +357,10 @@ actual hard/EMA updates;hard equals online,EMA lag measurable,actors remain
 unready.18 final states/72 MC/all576 deletions and18 training snapshots/36 GAE/
 all288 deletions replay.163 tests include controlled negative-reward GAE
 startup counterexample. Next inspect explicit reset versus ID-preserved Adam.
+
+`docs/T2_OPTIMIZER_ALIGNMENT.md`:optional preserve_by_id, defaultreset retained.
+Twelve runs actually retrain to exact actor/critic/target/evaluation;141
+maintenance operations check496 moment tensors/248 steps/377 other-role/shared
+states;6 historical reset references exact. CartPole improves all3 seeds
+(145.111→301 mean),Acrobot remains unready.165 tests pass. Step is per vector,
+not per case; update counts and actual capacities differ, no gate claim.

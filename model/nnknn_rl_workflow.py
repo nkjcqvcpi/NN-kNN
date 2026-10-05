@@ -101,6 +101,7 @@ class NNKNNRLConfig:
     critic_target_ema_tau: float = 0.05
     source_reference: str = "Separate-memory NN-kNN actor-critic with staged cases and GAE advantages"
     case_audit_queries_per_batch: int = 0
+    case_optimizer_maintenance: str = 'reset'
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -1406,6 +1407,9 @@ def make_nnknn_rl_config(profile: str = "fast", **overrides: Any) -> NNKNNRLConf
     data['case_audit_queries_per_batch'] = int(data.get('case_audit_queries_per_batch',0))
     if not 0 <= data['case_audit_queries_per_batch'] <= 32:
         raise ValueError('case_audit_queries_per_batch must lie in [0,32]')
+    data['case_optimizer_maintenance'] = str(data.get('case_optimizer_maintenance','reset'))
+    if data['case_optimizer_maintenance'] not in {'reset','preserve_by_id'}:
+        raise ValueError('case_optimizer_maintenance must be reset or preserve_by_id')
     return NNKNNRLConfig(**data)
 
 
@@ -1634,6 +1638,51 @@ def _reset_optimizer_case_state(optimizer: optim.Optimizer | None, model: nn.Mod
     for name, parameter in model.named_parameters():
         if name in case_names:
             optimizer.state.pop(parameter, None)
+
+
+def _case_store_ids(model: nn.Module) -> torch.Tensor | None:
+    if isinstance(model,NNKNNValueNetwork):
+        return model.active_case_ids().detach().clone()
+    if isinstance(model,NNKNNPolicyNetwork):
+        return model.nnknn_model.active_case_ids().detach().clone()
+    return None
+
+
+def _realign_optimizer_case_state(optimizer: optim.Optimizer | None, model: nn.Module,
+                                 old_ids: torch.Tensor) -> dict[str,Any]:
+    """Preserve private case moments by identity; new/inactive rows get zero.
+
+    Adam's scalar step remains shared by each vector parameter, including new
+    rows. This is not a per-case independent optimizer or a learning guarantee.
+    """
+    current=_case_store_ids(model)
+    if current is None:
+        raise TypeError('optimizer alignment requires a standalone case store')
+    before=[int(i) for i in old_ids.cpu().tolist()]
+    after=[int(i) for i in current.cpu().tolist()]
+    if len(before)!=len(set(before)) or len(after)!=len(set(after)) or any(i<0 for i in before+after):
+        raise ValueError('optimizer alignment requires unique active stable IDs')
+    positions={case_id:row for row,case_id in enumerate(before)}
+    preserved=[case_id for case_id in after if case_id in positions]
+    result=dict(mode='preserve_by_id',preserved_case_ids=preserved,
+        new_case_ids=[i for i in after if i not in positions],
+        removed_case_ids=[i for i in before if i not in set(after)],
+        tensor_states=0,scalar_steps={})
+    if optimizer is None:return result
+    with torch.no_grad():
+        for name,parameter in model.named_parameters():
+            if name not in _nnknn_case_parameter_names(model):continue
+            state=optimizer.state.get(parameter,{})
+            if 'step' in state:
+                result['scalar_steps'][name]=float(state['step'])
+            for value in state.values():
+                if not torch.is_tensor(value) or value.shape!=parameter.shape or value.ndim==0:continue
+                original=value.clone()
+                value.zero_()
+                for new_row,case_id in enumerate(after):
+                    if case_id in positions:value[new_row].copy_(original[positions[case_id]])
+                result['tensor_states']+=1
+    return result
 
 
 def _build_nnknn_target_value_model(
@@ -2284,6 +2333,8 @@ def _train_actor_critic_batch(
             )
             critic_train_value_mean = float(critic_train_predictions.mean().cpu().item())
 
+    optimizer_ids = [(name,model,optimizer,_case_store_ids(model)) for name,model,optimizer in
+        [('actor',actor,actor_optimizer),('critic',value_model,critic_optimizer or joint_optimizer)]]
     critic_add_stats = {"added": 0, "pruned": 0, "replaced": 0, "label_updates": 0, "label_update_samples": 0}
     if isinstance(value_model, NNKNNValueNetwork):
         critic_add_stats = value_model.add_cases(obs_t, value_targets.detach())
@@ -2295,6 +2346,13 @@ def _train_actor_critic_batch(
         actor_add_stats = actor.add_cases(obs_t[positive_mask], actions_t[positive_mask])
 
     actor.train()
+    alignment_events=[]
+    if cfg.case_optimizer_maintenance=='preserve_by_id':
+        for name,model,optimizer,old_ids in optimizer_ids:
+            if old_ids is not None:
+                event=_realign_optimizer_case_state(optimizer,model,old_ids)
+                event.update(case_store=name,source='capacity_insert',global_step=global_step)
+                alignment_events.append(event)
     stats = _actor_case_bias_stats(actor)
     reward_varying_episodes = (
         int(torch.stack(reward_variation_flags).sum().detach().cpu().item()) if reward_variation_flags else 0
@@ -2302,6 +2360,7 @@ def _train_actor_critic_batch(
     total_loss = actor_loss.detach() + float(cfg.value_loss_coef) * critic_optimization_mse
     return {
         "global_step": global_step,
+        "_case_optimizer_alignment": alignment_events,
         "episodes": len(episodes),
         "samples": int(obs_t.shape[0]),
         "loss": float(total_loss.cpu().item()),
@@ -2666,6 +2725,7 @@ def train_nnknn_rl(
     critic_target_syncs = 1 if target_value_model is not None else 0
     critic_update_batches = 0
     last_maintenance_bucket = 0
+    optimizer_alignment_rows: list[dict[str,Any]] = []
 
     def total_cases_pruned() -> int:
         return actor_cases_pruned + critic_cases_pruned
@@ -2679,6 +2739,7 @@ def train_nnknn_rl(
         nonlocal critic_label_updates, critic_label_update_samples
         nonlocal partial_rollout_segments, partial_rollout_samples
         nonlocal critic_target_syncs, critic_update_batches, last_maintenance_bucket
+        optimizer_alignment_rows.extend(loss_row.pop('_case_optimizer_alignment',[]))
 
         for case_store, model, optimizer_for_store in (
             ("actor", actor, actor_optimizer),
@@ -2692,7 +2753,7 @@ def train_nnknn_rl(
             else:
                 critic_cases_pruned += pruned
                 critic_cases_replaced += replaced
-            if pruned > 0 or replaced > 0:
+            if (pruned > 0 or replaced > 0) and cfg.case_optimizer_maintenance=='reset':
                 _reset_optimizer_case_state(optimizer_for_store, model)
             row = _maintenance_row(
                 global_step=completed_step,
@@ -2720,13 +2781,19 @@ def train_nnknn_rl(
                 ):
                     if not isinstance(model, (NNKNNPolicyNetwork, NNKNNValueNetwork)):
                         continue
+                    old_ids=_case_store_ids(model)
                     pruned = model.prune_cases()
                     if case_store == "actor":
                         actor_cases_pruned += pruned
                     else:
                         critic_cases_pruned += pruned
                     if pruned > 0:
-                        _reset_optimizer_case_state(optimizer_for_store, model)
+                        if cfg.case_optimizer_maintenance=='reset':
+                            _reset_optimizer_case_state(optimizer_for_store, model)
+                        else:
+                            event=_realign_optimizer_case_state(optimizer_for_store,model,old_ids)
+                            event.update(case_store=case_store,source='scheduled_prune',global_step=completed_step)
+                            optimizer_alignment_rows.append(event)
                     row = _maintenance_row(
                         global_step=completed_step,
                         case_store=case_store,
@@ -3171,6 +3238,9 @@ def train_nnknn_rl(
     _write_csv(run_dir / "loss_metrics.csv", loss_rows)
     _write_csv(run_dir / "eval_metrics.csv", eval_rows)
     _write_csv(run_dir / "critic_holdout_metrics.csv", critic_holdout_rows)
+    if cfg.case_optimizer_maintenance=='preserve_by_id':
+        _write_json(run_dir/'case_optimizer_events.json',dict(events=optimizer_alignment_rows,
+            scalar_step_semantics='global_per_parameter_including_new_rows'))
     if cfg.case_audit_queries_per_batch:
         _write_json(run_dir/'case_audit_events.json',dict(events=case_audit_events,
             role_streams='training_gae and actor_policy_surrogate; independent MC remains separate'))
