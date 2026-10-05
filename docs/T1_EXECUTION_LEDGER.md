@@ -1,5 +1,12 @@
 # Continuous execution ledger — 2026-10-04
 
+October5 public80 controls completed:144 calls,11 failures,53 recorded events
+replayed with1,480 manual NN candidates. Learned/iterative gains unproven,all
+Hotpot support/joint F1 zero,no second retrieval;11 old error traces missing.
+Read `T3_PUBLIC_HOST_RESULTS.md`. Optional strict schemas/token filtering pass42
+T3 tests and actual backend checks;real80-trial constrained host run underway.
+Read `T3_HOST_SCHEMA.md`;no complete-plan or format benefit claim.
+
 User authorization: implement the entire plan, run and inspect experiments,
 analyze and improve the design/results, and commit each completed part.
 GPT-6 Luna may run experiments. Work stays on `neural-cbr`; existing unrelated

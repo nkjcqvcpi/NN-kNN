@@ -1,5 +1,12 @@
 # Handoff
 
+**2026-10-05 optional host schema:** Read `docs/T3_HOST_SCHEMA.md`.
+Strict public request/answer validation and optional isolated token filtering
+implemented;42 T3 tests and actual backend parser checks pass. Boolean-const,
+numeric/pair-order backend limits are explicit. The80-trial real constrained
+host run is underway;fixed token ceilings can still truncate JSON. No outcome
+benefit is claimed. Next audit complete journals and run strict plain control.
+
 **2026-10-05 completed public host controls:** Read `docs/T3_PUBLIC_HOST_RESULTS.md`.
 All80 trials/144 calls/48,219 input/6,543 output tokens complete;11 errors count
 as zero. Learned/iterative gains are unproven;all Hotpot support/joint F1 zero.
