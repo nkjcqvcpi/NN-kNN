@@ -2,7 +2,9 @@
 
 October5 direct public set utility implemented:exact full/removal/empty subsets,
 objective-specific loss differences,complementarity and unobserved missing
-feedback;no refill/update.46 T3 tests pass.32 complete fixed/learned source sets
+feedback;completed invalid host outputs remain observed task failures,
+preventing valid-output selection bias;no refill/update.47 T3 tests pass.
+32 complete fixed/learned source sets
 queued for real frozen-host calls after format/plain controls and audits.
 Read `T3_DIRECT_SET_UTILITY.md`;public utility outcomes still pending.
 

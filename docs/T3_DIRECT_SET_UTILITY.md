@@ -9,7 +9,7 @@ propagate without invented observations. Payload copies prevent a mutating
 evaluator from altering subsequent interventions.
 
 Named finite lower-is-better objective dimensions must remain fixed. Missing
-or invalid outcomes require an explicit unobserved reason and generate no utility
+outcomes require an explicit unobserved reason and generate no utility
 or negative feedback. Per-case loss differences,set gain and two-case
 complementarity are separate. Zero usefulness does not establish falsehood or
 irrelevance. No global reliability label,parameter update or promotion follows.
@@ -29,24 +29,33 @@ ceiling128 calls/16,384 generated tokens. This intervention compute is separate
 from the source experiment. Full-set outcomes are newly generated;they are not
 silently equated with the earlier generation or iterative trajectory. Primary
 loss is1-answer F1; Hotpot support/joint losses remain separately named.
-Invalid outputs count as task failures separately but leave case utility
-unobserved. Actual NN activation exposure and objective C/H/Q are recorded
+Completed invalid outputs count as observed task failures with zero task scores,
+unit losses and explicit formatting diagnostics. They remain in utility comparisons;
+they are not missing feedback or false-case labels. Actual NN activation exposure
+and objective C/H/Q are recorded
 separately;missing comparable losses produce no credit and no automatic update.
 
-All46 T3 tests pass,including complementarity,harmful-case sign,missing full
+All47 T3 tests pass,including complementarity,harmful-case sign,missing full
 feedback,immutable subsets,single-case deduplication,objective drift and sink
-failure before the next host. These tests are engineering evidence,not public
+failure before the next host and observed completed-task failure. These tests are engineering evidence,not public
 utility outcomes. The real32-set job is queued behind the current format/plain
 GPU jobs;it requires completed strict plain results and audit before starting.
 The driver stops on failed prerequisites. Independent objective/payload/credit
 replay is required after generation. No public utility benefit is claimed yet.
 
-Frozen144-file source
+The first144-file preparation source
 `1993a63f35dadedb4d4cf4d053940bed2184751ee6f573ed80c6032b6b309d40`,ZIP
-`56e5982a772efa73892d43e01b2754f2647712a4e5319f8a70bef8bd91522047`.
-Task evidence: `work/t3_public_set_utility_freeze.json`,
-`work/run_t3_utility_after_strict_plain.ps1`, `work/t3_utility_driver.log`,
-`work/t3_public_set_utility.log` and
+`56e5982a772efa73892d43e01b2754f2647712a4e5319f8a70bef8bd91522047`
+is preserved and has not run. Before utility generations,the treatment of
+completed invalid outputs was corrected to observed failure,preventing
+valid-output selection bias. A distinct frozen source and sequencing driver
+replace the waiting preparation job;no running GPU experiment is interrupted.
+Corrected144-file source
+`aaba914ea1445c77bcb474a0cb0f18578460a372905f02cafe9222746afee797`,ZIP
+`62defc4cca7082cb471fd3741cdf3e43a22b8261f7d87bc8f638f7e2bbb3bb2c`.
+Task evidence: `work/t3_public_set_utility_task_failure_freeze.json`,
+`work/run_t3_utility_task_failure_after_strict_plain.ps1`, `work/t3_utility_task_failure_driver.log`,
+`work/t3_public_set_utility_task_failure.log` and
 `outputs/t3-public-set-utility-20261005/` (created only when the job starts).
 Typed objectives/calibration,validated feedback batches,poisoning/rollback,
 internal/combined and stronger-host controls remain required follow-up work.

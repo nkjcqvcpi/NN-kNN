@@ -20,7 +20,7 @@ def test_complementary_cases_and_fixed_order_survive_evaluator_mutation():
 
 def test_missing_full_feedback_is_unobserved_and_never_negative_credit():
     def evaluate(payload):
-        return dict(losses=None,unobserved_reason='invalid host output') if len(payload)==2 else dict(losses={'answer':0})
+        return dict(losses=None,unobserved_reason='feedback not available') if len(payload)==2 else dict(losses={'answer':0})
     audit=direct_set_audit(cases(),evaluate)
     assert all(m['status']=='unobserved' and m['loss_differences'] is None for m in audit['marginal'])
     assert audit['set_loss_gain'] is None and audit['pair_complementarity'] is None
@@ -33,6 +33,15 @@ def test_harmful_case_and_single_case_empty_not_repeated():
     audit=direct_set_audit(cases()[:1],evaluate)
     assert seen==[1,0] and audit['marginal'][0]['loss_differences']=={'answer':-1}
     assert audit['pair_complementarity'] is None
+
+
+def test_completed_task_failure_is_observed_and_not_dropped():
+    def evaluate(payload):
+        return dict(losses={'answer':float(len(payload)==2)},task_failure=len(payload)==2)
+    audit=direct_set_audit(cases(),evaluate)
+    assert audit['outcomes'][0]['outcome']['task_failure'] is True
+    assert all(m['status']=='observed' and m['loss_differences']=={'answer':-1} for m in audit['marginal'])
+    assert audit['set_loss_gain']=={'answer':-1}
 
 
 def test_sink_failure_stops_before_next_host_and_objectives_cannot_drift():
