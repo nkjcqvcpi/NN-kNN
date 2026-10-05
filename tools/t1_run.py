@@ -370,13 +370,18 @@ class Runner:
                     "adapter": info["best_epoch"] if initial else "fixed_final"}}
         for cond in self.cfg["conditions"]:
             re, ae = cond["retrieval_epochs"], cond["adapter_epochs"]
+            condition_cfg = copy.deepcopy(self.cfg)
+            reference_stream = cond.get("reference_stream", self.cfg["statistics"]["source"])
+            condition_cfg["statistics"]["source"] = reference_stream
+            # Validate a real independent stream before training any forks.
+            maintenance_reference(data, condition_cfg, initial_adapter).validate()
             for kspec in self.cfg["K"]:
                 store = CaseStatisticsStore(data.task_type)
-                audit(base, data, self.cfg, store, 0, adapter=initial_adapter)
+                audit(base, data, condition_cfg, store, 0, adapter=initial_adapter)
                 label = f"{cond['scope']}_K{kspec}"
                 model, opt, ad, ast, archive, result = run_adapted_retrained_removal(
                     base, tr.optimizer, initial_adapter, info["optimizer_state"], data, cc, rc,
-                    maintenance_reference(data, self.cfg, initial_adapter), store, score_cfg_for(self.cfg),
+                    maintenance_reference(data, condition_cfg, initial_adapter), store, score_cfg_for(condition_cfg),
                     retention_cfg_for(cond, self.cfg, seed), resolve_K(kspec, base.case_count()),
                     retrieval_epochs=re, adapter_epochs=ae, lr_scale=self.cfg["continuation"]["lr_scale"], run_id=label)
                 # An unchanged full-memory trajectory gets the same accepted
@@ -394,15 +399,15 @@ class Runner:
                 cev = evaluate_adapted(control, cad)
                 random_model, random_opt, random_ad, random_ast, random_info = matched_random_continuation(
                     base, tr.optimizer, initial_adapter, info["optimizer_state"], data, cc, rc, store,
-                    score_cfg_for(self.cfg), retention_cfg_for(cond, self.cfg, seed), model.case_count(),
+                    score_cfg_for(condition_cfg), retention_cfg_for(cond, self.cfg, seed), model.case_count(),
                     retrieval_epochs=re, adapter_epochs=ae, lr_scale=self.cfg["continuation"]["lr_scale"], seed=seed)
                 rev = evaluate_adapted(random_model, random_ad)
-                random_loss = reference_loss(random_model, maintenance_reference(data, self.cfg, random_ad))
+                random_loss = reference_loss(random_model, maintenance_reference(data, condition_cfg, random_ad))
                 random_info["final_reference_loss"] = random_loss
                 random_info["cumulative_loss_increase"] = random_loss - result["summary"]["original_reference_loss"]
                 random_info["within_adaptive_loss_budget"] = random_info["cumulative_loss_increase"] <= retention_cfg_for(cond, self.cfg, seed).allowed_loss_increase + 1e-10
                 final_store = CaseStatisticsStore(data.task_type)
-                audit(model, data, self.cfg, final_store, len(result["events"]), adapter=ad)
+                audit(model, data, condition_cfg, final_store, len(result["events"]), adapter=ad)
                 metrics = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
                     **{f"matched_full_test_{k}": v for k, v in cev.items() if not isinstance(v, dict)},
                     **{f"matched_random_test_{k}": v for k, v in rev.items() if not isinstance(v, dict)},
@@ -417,7 +422,7 @@ class Runner:
                     budgets={"case_capacity": model.case_count(), "accepted_optimizer_updates": result["summary"]["optimizer_updates"]["accepted"],
                         "retrieval_epochs_per_trial": re, "adapter_epochs_per_trial": ae,
                         "matching": "equal accepted phase blocks and examples; capacity and cost differ"},
-                    maintenance={"policy": "removal_influence", "reference_stream": self.cfg["statistics"]["source"],
+                    maintenance={"policy": "removal_influence", "reference_stream": reference_stream,
                         "selection_loss": "final_prediction_only", "adapter_training_loss": rc.loss},
                     model_desc=model_desc, prediction_adapter=ad,
                     optimizer=opt, adapter_optimizer_state=ast,
