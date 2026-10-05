@@ -39,3 +39,22 @@ Task evidence: `work/t3_format_enforced_freeze.json`,
 `outputs/t3-public-host-20261005-format-enforced/` and
 `work/t3_format_enforced.log`. Retrievals are journaled before subsequent host
 calls and partial events retained on failures. The80-trial result is pending.
+
+A completed31-trial prefix snapshot validates actual constrained generations:
+55 calls,24 retrievals (18 NN/six BM25),1,152 manual candidate comparisons and six
+schema failures. All24 events,including failed-trial partial events,match the
+immediate journal exactly;no error trace gap remains in this prefix. Source/ZIP
+bytes,case/model/encoder hashes,payload prefixes and objective scores replay.
+The verifier makes no fresh LLM generations. This provisional31-trial boundary
+is not terminal80-trial results. Evidence:
+`outputs/t3-format-prefix-31/snapshot.json` and
+`outputs/neural-cbr-t3-format-prefix-verification.json`.
+
+The strict plain80-trial control is queued after the current GPU job. Its driver
+waits for the verified process,requires the terminal80-trial summary and full
+journal audit,then uses the identical141-file archive with `--strict-schema`
+and no format library. It stops on failed prerequisites. Both runs receive full
+journal audits;GPU trials do not overlap. Sequencing evidence:
+`work/run_t3_strict_plain_after_format.ps1` and
+`work/t3_format_then_plain_driver.log`. Runtime latency still includes changing
+machine load and is not a hardware-isolated comparison.

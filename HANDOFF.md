@@ -1,5 +1,12 @@
 # Handoff
 
+**2026-10-05 actual constrained prefix audit:**31 completed trials/55 calls,
+24 actual retrievals/1,152 manual candidates pass exact journal/core/payload
+replay,including six failed-trial partial traces. This is a provisional prefix.
+Live format job32954 continues;driver13300 waits,then audits all80 and launches
+the strict plain80 control from the same141-file archive. No overlapping GPU
+trial or complete public benefit claim. Read `docs/T3_HOST_SCHEMA.md`.
+
 **2026-10-05 optional host schema:** Read `docs/T3_HOST_SCHEMA.md`.
 Strict public request/answer validation and optional isolated token filtering
 implemented;42 T3 tests and actual backend parser checks pass. Boolean-const,
