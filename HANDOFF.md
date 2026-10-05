@@ -307,3 +307,10 @@ reconstruction. See `docs/T1_SYNC_CAPACITY_COMPARISON.md`. Use explicitly named
 post-adaptation metrics; the first draft report accidentally tabulated pre
 metrics, despite correct full metric replay. Capacity is matched, compute is
 measured rather than equal. Keep all failed/older batches and corrected reports.
+
+Adapted removal now supports aggregate regression, documented in
+`docs/T1_ADAPTED_REGRESSION.md`:18 runs/72 states, all1,662 candidates/108 controls
+and1,944 final events replay, with exact selected/full/random parameter and Adam
+states. The18-case pilot worsens test RMSE in12/18 cases despite meeting its
+train-LOO budget. Next diagnosis is matched train-LOO versus maintenance-holdout
+acceptance; do not present a loss-budget pass as generalization protection.

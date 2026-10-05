@@ -349,11 +349,29 @@ class Runner:
         data = self.data_for(ds, seed)
         base, cc, tr = self.trained_core(data, seed)
         rc = ReuseConfig(seed=seed, **self.cfg["reuse"])
-        initial_adapter, info = train_classification_adapter(base, data, rc)
+        from model.t1.reuse import train_regression_adapter, evaluate_regression_reuse
+        initial_adapter, info = (train_classification_adapter(base, data, rc) if data.task_type == "classification"
+                                 else train_regression_adapter(base, data, rc))
+        actual_mode = rc.output_mode if data.task_type == "classification" else "aggregate_regression_residual"
+        model_desc = {"core": cc.__dict__, "adapter": rc.__dict__, "actual_adapter_mode": actual_mode}
+        def evaluate_adapted(m, a):
+            if data.task_type == "classification":
+                return evaluate_reuse(m, a, data.X_test, data.y_test, rc,
+                    query_nominal=encoded_queries(a, data, "test"), test_groups=data.test_groups)
+            return evaluate_regression_reuse(m, a, data.X_test, data.y_test,
+                success_tolerance=self.cfg["statistics"]["regression_success_tolerance"])
+        def checkpoint(m, a, opt, astate, *, initial=False):
+            return {"model_state": m.state_dict(), "adapter_state": a.state_dict(),
+                "optimizer_state": opt.state_dict(), "adapter_optimizer_state": astate,
+                "active_case_count": m.case_count(), "model_description": model_desc,
+                "requires_grad": {n: p.requires_grad for n, p in m.named_parameters()},
+                "adapter_requires_grad": {n: p.requires_grad for n, p in a.named_parameters()},
+                "optimizer_checkpoint_epoch": {"retrieval": tr.best_epoch if initial else "fixed_final",
+                    "adapter": info["best_epoch"] if initial else "fixed_final"}}
         for cond in self.cfg["conditions"]:
             re, ae = cond["retrieval_epochs"], cond["adapter_epochs"]
             for kspec in self.cfg["K"]:
-                store = CaseStatisticsStore()
+                store = CaseStatisticsStore(data.task_type)
                 audit(base, data, self.cfg, store, 0, adapter=initial_adapter)
                 label = f"{cond['scope']}_K{kspec}"
                 model, opt, ad, ast, archive, result = run_adapted_retrained_removal(
@@ -372,21 +390,18 @@ class Runner:
                         lr_scale=self.cfg["continuation"]["lr_scale"])
                     cast = copy.deepcopy(caopt.state_dict())
                     control_history.append(ci)
-                ev = evaluate_reuse(model, ad, data.X_test, data.y_test, rc,
-                    query_nominal=encoded_queries(ad, data, "test"), test_groups=data.test_groups)
-                cev = evaluate_reuse(control, cad, data.X_test, data.y_test, rc,
-                    query_nominal=encoded_queries(cad, data, "test"), test_groups=data.test_groups)
+                ev = evaluate_adapted(model, ad)
+                cev = evaluate_adapted(control, cad)
                 random_model, random_opt, random_ad, random_ast, random_info = matched_random_continuation(
                     base, tr.optimizer, initial_adapter, info["optimizer_state"], data, cc, rc, store,
                     score_cfg_for(self.cfg), retention_cfg_for(cond, self.cfg, seed), model.case_count(),
                     retrieval_epochs=re, adapter_epochs=ae, lr_scale=self.cfg["continuation"]["lr_scale"], seed=seed)
-                rev = evaluate_reuse(random_model, random_ad, data.X_test, data.y_test, rc,
-                    query_nominal=encoded_queries(random_ad, data, "test"), test_groups=data.test_groups)
+                rev = evaluate_adapted(random_model, random_ad)
                 random_loss = reference_loss(random_model, maintenance_reference(data, self.cfg, random_ad))
                 random_info["final_reference_loss"] = random_loss
                 random_info["cumulative_loss_increase"] = random_loss - result["summary"]["original_reference_loss"]
                 random_info["within_adaptive_loss_budget"] = random_info["cumulative_loss_increase"] <= retention_cfg_for(cond, self.cfg, seed).allowed_loss_increase + 1e-10
-                final_store = CaseStatisticsStore()
+                final_store = CaseStatisticsStore(data.task_type)
                 audit(model, data, self.cfg, final_store, len(result["events"]), adapter=ad)
                 metrics = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
                     **{f"matched_full_test_{k}": v for k, v in cev.items() if not isinstance(v, dict)},
@@ -396,7 +411,7 @@ class Runner:
                     model=model, store=final_store, archive=archive, metrics=metrics,
                     history={"core": tr.history, "adapter": info["history"], "matched_full": control_history,
                              "matched_random": random_info["history"]},
-                    events=result["events"], components={"retrieve": "NN-kNN core", "reuse_or_adapter": rc.output_mode,
+                    events=result["events"], components={"retrieve": "NN-kNN core", "reuse_or_adapter": actual_mode,
                         "revise": "off", "retain": "adapted retrained full removal", "mcb": "off",
                         "component_synchronization": cond["scope"]},
                     budgets={"case_capacity": model.case_count(), "accepted_optimizer_updates": result["summary"]["optimizer_updates"]["accepted"],
@@ -404,17 +419,14 @@ class Runner:
                         "matching": "equal accepted phase blocks and examples; capacity and cost differ"},
                     maintenance={"policy": "removal_influence", "reference_stream": self.cfg["statistics"]["source"],
                         "selection_loss": "final_prediction_only", "adapter_training_loss": rc.loss},
-                    model_desc={"core": cc.__dict__, "adapter": rc.__dict__}, prediction_adapter=ad,
+                    model_desc=model_desc, prediction_adapter=ad,
                     optimizer=opt, adapter_optimizer_state=ast,
                     optimizer_checkpoint_epoch={"retrieval": "fixed_final", "adapter": "fixed_final"},
                     extra_files={"maintenance_summary.json": result["summary"], "maintenance_scoring_trace.json": result["scoring_trace"],
                                  "matched_random_summary.json": random_info},
-                    binary_files={"initial.pt": {"model_state": base.state_dict(), "adapter_state": initial_adapter.state_dict(),
-                        "optimizer_state": tr.optimizer.state_dict(), "adapter_optimizer_state": info["optimizer_state"], "active_case_count": base.case_count()},
-                        "matched_full.pt": {"model_state": control.state_dict(), "adapter_state": cad.state_dict(),
-                        "optimizer_state": copt.state_dict(), "adapter_optimizer_state": cast, "active_case_count": control.case_count()},
-                        "matched_random.pt": {"model_state": random_model.state_dict(), "adapter_state": random_ad.state_dict(),
-                        "optimizer_state": random_opt.state_dict(), "adapter_optimizer_state": random_ast, "active_case_count": random_model.case_count()}})
+                    binary_files={"initial.pt": checkpoint(base, initial_adapter, tr.optimizer, info["optimizer_state"], initial=True),
+                        "matched_full.pt": checkpoint(control, cad, copt, cast),
+                        "matched_random.pt": checkpoint(random_model, random_ad, random_opt, random_ast)})
 
     def run_reuse_retention(self, ds, seed):
         """Matched maintenance with a trained frozen adapter and final-outcome evidence."""

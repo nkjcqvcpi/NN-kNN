@@ -1,4 +1,4 @@
-"""Classification reuse: aggregate, retrieved-label-conditioned NN-CDH (plan section 5).
+"""Supervised aggregate reuse, including classification NN-CDH (plan section 5).
 
 Training protocol (section 5.5):
   1. retrieval core and case memory are trained and frozen;
@@ -20,7 +20,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from model.nn_cdh import ClassificationNNCDHAdapter
+from model.nn_cdh import ClassificationNNCDHAdapter, NNCDHAdapter
 
 from .core import expected_calibration_error
 from .nominal import NominalSchema, NominalClassificationAdapter, nominal_difference, fit_nominal_schema
@@ -168,6 +168,77 @@ def train_classification_adapter(model, data, cfg: ReuseConfig) -> tuple[Classif
     if schema is not None:
         info["nominal_manifest"] = schema.state_dict()
     return adapter, info
+
+
+def regression_adapter_losses(final, p0, y, cfg):
+    """Additive residual and final-output MSE coincide; keep weighting explicit."""
+    target = y.float().view_as(final)
+    l_cls = F.mse_loss(final, target)
+    l_diff = F.mse_loss(final-p0, target-p0)
+    total = l_diff if cfg.loss == "diff_only" else l_cls if cfg.loss == "cls_only" else (
+        cfg.lambda_diff*l_diff+cfg.lambda_cls*l_cls)
+    return {"loss": total, "l_diff": l_diff, "l_cls": l_cls}
+
+
+def train_regression_adapter(model, data, cfg: ReuseConfig):
+    """Frozen-core, training-LOO aggregate residual fit with selected Adam state.
+
+    Numeric ReuseConfig budgets/weights are shared. Classification output and
+    probability modes are unused; the actual regression interface is recorded.
+    """
+    cfg.validate()
+    if model.task_type != "regression" or data.task_type != "regression" or cfg.nominal_fields:
+        raise ValueError("Regression reuse needs an explicit regression task and continuous inputs")
+    device = model.cases.device
+    torch.manual_seed(cfg.seed)
+    def inputs(X, ids=None):
+        with torch.no_grad():
+            model.eval()
+            r = model.retrieve(X.to(device), exclude_identical=False, query_case_ids=ids)
+            p0 = r["weights"] @ model.labels[r["case_indices"]].float()
+            dz = r["query_features"]-r["weights"] @ r["case_features"]
+        return dz.detach(), p0.detach()
+    tr = inputs(data.X_train, torch.arange(len(data.y_train), device=device))
+    va = inputs(data.X_val)
+    adapter = NNCDHAdapter(tr[0].shape[1], 1, cfg.hidden_dims).to(device)
+    adapter.adapt_net_pair.requires_grad_(False)
+    opt = torch.optim.Adam([p for p in adapter.parameters() if p.requires_grad], lr=cfg.lr)
+    ytr, yva = data.y_train.to(device), data.y_val.to(device)
+    generator = torch.Generator().manual_seed(cfg.seed)
+    best, bad, history = (float("inf"), None, None, -1), 0, []
+    def prediction(values):
+        dz, p0 = values
+        return p0+adapter.adapt_net_final(torch.cat((dz, p0), dim=1))
+    for epoch in range(1, cfg.epochs+1):
+        adapter.train()
+        perm = torch.randperm(len(ytr), generator=generator)
+        for start in range(0, len(ytr), cfg.batch_size):
+            b = perm[start:start+cfg.batch_size].to(device)
+            final = prediction((tr[0][b], tr[1][b]))
+            loss = regression_adapter_losses(final, tr[1][b], ytr[b], cfg)["loss"]
+            if not torch.isfinite(loss):
+                raise ValueError("Nonfinite regression adapter training loss")
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+        adapter.eval()
+        with torch.no_grad():
+            losses = regression_adapter_losses(prediction(va), va[1], yva, cfg)
+        value = float(losses["loss"])
+        if not np.isfinite(value):
+            raise ValueError("Nonfinite regression validation loss")
+        history.append(dict(epoch=epoch, val_loss=value, val_l_diff=float(losses["l_diff"]), val_l_cls=float(losses["l_cls"])))
+        if value < best[0]-1e-9:
+            best, bad = (value, copy.deepcopy(adapter.state_dict()), copy.deepcopy(opt.state_dict()), epoch), 0
+        else:
+            bad += 1
+            if bad > cfg.patience:
+                break
+    adapter.load_state_dict(best[1])
+    return adapter.eval(), dict(history=history, best_epoch=best[3], epochs_run=len(history),
+        optimizer_state=best[2], optimizer_checkpoint_epoch=best[3], n_train_examples=len(ytr),
+        neighborhoods="stable_ID_leave_one_out", actual_output_mode="aggregate_regression_residual",
+        unused_classification_options=["output_mode", "probability_mode"])
 
 
 @torch.no_grad()

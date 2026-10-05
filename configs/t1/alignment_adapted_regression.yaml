@@ -1,0 +1,10 @@
+base: alignment_adapted_retraining.yaml
+experiment: alignment_adapted_regression
+status: exploratory_aggregate_regression_removal_continuation
+datasets:
+  - {name: energy_efficiency, task_type: regression, max_train: 18}
+  - {name: yacht, task_type: regression, max_train: 18}
+conditions:
+  - {scope: retrieval_e2, retrieval_epochs: 2, adapter_epochs: 0}
+  - {scope: adapter_e2, retrieval_epochs: 0, adapter_epochs: 2}
+  - {scope: alternating_e2, retrieval_epochs: 1, adapter_epochs: 1}

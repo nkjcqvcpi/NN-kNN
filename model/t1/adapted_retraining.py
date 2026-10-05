@@ -15,7 +15,7 @@ import torch
 from .core import clone_optimizer
 from .maintenance import CaseArchive, realign_optimizer_state
 from .nominal import encoded_queries
-from .reuse import _adapter_losses
+from .reuse import _adapter_losses, regression_adapter_losses
 from .sync import _forward_terms, frozen_parameters
 
 
@@ -98,8 +98,7 @@ own continued adapter. Rejected forks cannot change the accepted memory.
     # Reuse the continuation validation before returning even a no-removal run.
     if adapter is None or core_optimizer is None or adapter_optimizer_state is None:
         raise ValueError("Both selected optimizer states and the adapter are required")
-    if model.task_type != "classification" or core_cfg.task_type != "classification" or adapter.output_mode != reuse_cfg.output_mode:
-        raise ValueError("Classification and matching output semantics are required")
+    _validate_task_adapter(model, core_cfg, adapter, reuse_cfg)
     if getattr(model, "classification_adapter", None) is not None or model.nn_cdh is not None:
         raise ValueError("Pass an external adapter with an unattached retrieval core")
     if len(data.y_train) == 0 or not torch.isin(model.active_case_ids().cpu(), torch.arange(len(data.y_train))).all():
@@ -201,26 +200,35 @@ own continued adapter. Rejected forks cannot change the accepted memory.
         "events": events, "scoring_trace": trace}
 
 
+def _validate_task_adapter(model, core_cfg, adapter, reuse_cfg):
+    if model.task_type != core_cfg.task_type or model.task_type not in {"classification", "regression"}:
+        raise ValueError("Matching supported task types are required")
+    if model.task_type == "classification":
+        if getattr(adapter, "output_mode", None) != reuse_cfg.output_mode:
+            raise ValueError("Continuation output mode must match the selected adapter")
+    elif not hasattr(adapter, "forward_aggregate") or not hasattr(adapter, "adapt_net_final"):
+        raise ValueError("Regression requires the declared aggregate residual adapter")
+    elif any(p.requires_grad for p in adapter.adapt_net_pair.parameters()):
+        raise ValueError("Regression's unused pair network must remain frozen")
+
+
 def continued_adapted_trial(model, core_optimizer, adapter, adapter_optimizer_state,
                             data, core_cfg, reuse_cfg, *, retrieval_epochs,
                             adapter_epochs, lr_scale, drop_slot=None,
                             training_case_ids=None):
     """Return independent model/adapter/Adam forks at the fixed final epoch.
 
-Retrieval updates minimize final classification loss through the frozen adapter;
+Retrieval updates minimize final task prediction loss through the frozen adapter;
 adapter updates use the declared v0 residual/classification objective through
 frozen retrieval. When both budgets are positive, alternate single epochs,
 starting with retrieval. Equal budgets mean equal examples/updates, not cost.
 """
     reuse_cfg.validate()
-    if model.task_type != "classification" or core_cfg.task_type != "classification":
-        raise ValueError("This continuation package requires classification")
     if adapter is None or adapter_optimizer_state is None or core_optimizer is None:
         raise ValueError("Continuation requires both selected Adam states and an adapter")
+    _validate_task_adapter(model, core_cfg, adapter, reuse_cfg)
     if getattr(model, "classification_adapter", None) is not None or model.nn_cdh is not None:
         raise ValueError("Pass an external adapter with an unattached retrieval core")
-    if adapter.output_mode != reuse_cfg.output_mode:
-        raise ValueError("Continuation output mode must match the selected adapter")
     if any(type(v) is not int or v < 0 for v in (retrieval_epochs, adapter_epochs)) or retrieval_epochs + adapter_epochs == 0:
         raise ValueError("Explicit nonnegative integer budgets must include at least one epoch")
     if not np.isfinite(lr_scale) or lr_scale <= 0:
@@ -299,10 +307,18 @@ starting with retrieval. Equal budgets mean equal examples/updates, not cost.
                         r = trial.retrieve(X[b], exclude_identical=False, query_case_ids=qids[b])
                         w = r["weights"]
                         p0 = w @ trial.labels[r["case_indices"]].float()
-                        p0 = p0 / p0.sum(1, keepdim=True).clamp_min(1e-12)
-                        dz = r["query_features"] - w @ r["case_features"]
-                        rh, final = ad(dz, p0, nominal_difference(ad, trial, r, query_nominal))
-                        losses = _adapter_losses(ad, rh, final, p0, y[b], reuse_cfg)
+                        if trial.task_type == "classification":
+                            p0 = p0 / p0.sum(1, keepdim=True).clamp_min(1e-12)
+                            dz = r["query_features"] - w @ r["case_features"]
+                            rh, final = ad(dz, p0, nominal_difference(ad, trial, r, query_nominal))
+                            losses = _adapter_losses(ad, rh, final, p0, y[b], reuse_cfg)
+                        else:
+                            final = ad.forward_aggregate(r["query_features"], r["case_features"],
+                                trial.labels[r["case_indices"]].float(), w)
+                            # With an additive real-valued residual these losses
+                            # are algebraically equal; combined weighting scales
+                            # the objective, it does not add independent evidence.
+                            losses = regression_adapter_losses(final, p0, y[b], reuse_cfg)
                     loss = losses["loss"]
                     terms = {"L_post": losses["l_cls"]}
                     loss.backward()
@@ -313,9 +329,12 @@ starting with retrieval. Equal budgets mean equal examples/updates, not cost.
                 post_sum += float(terms["L_post"].detach()) * len(b)
                 batch_count += 1
                 updates[phase] += 1
-            history.append({"epoch": epoch, "phase": phase, "examples": len(y),
+            record = {"epoch": epoch, "phase": phase, "examples": len(y),
                             "optimizer_updates": batch_count, "loss": loss_sum / len(y),
-                            "final_classification_loss": post_sum / len(y)})
+                            "final_prediction_loss": post_sum / len(y)}
+            if trial.task_type == "classification":
+                record["final_classification_loss"] = post_sum / len(y)
+            history.append(record)
     trial.eval()
     ad.eval()
     expected_batches = math.ceil(len(y) / core_cfg.batch_size)
@@ -328,6 +347,6 @@ starting with retrieval. Equal budgets mean equal examples/updates, not cost.
         "retrieval_query_case_pairs": len(y) * trial.case_count() * len(phases),
         "seconds": time.perf_counter() - start,
         "selection": "fixed_final_epoch_no_validation_or_test",
-        "objective_retrieval": "final_classification_loss",
+        "objective_retrieval": "final_classification_loss" if trial.task_type == "classification" else "final_squared_error",
         "objective_adapter": reuse_cfg.loss,
         "compute_matching": "equal_examples_and_phase_budgets_not_equal_cost"}
