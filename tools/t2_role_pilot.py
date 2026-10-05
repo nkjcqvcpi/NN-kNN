@@ -31,6 +31,9 @@ def main():
     ap.add_argument('--case-optimizer-maintenance',nargs='+',choices=['reset','preserve_by_id'],default=['reset'])
     ap.add_argument('--eval-frequency',type=int,default=0)
     ap.add_argument('--eval-episode-frequency',type=int,default=100000)
+    ap.add_argument('--quality-tracking',action='store_true')
+    ap.add_argument('--critic-holdout-episode-frequency',type=int,default=0)
+    ap.add_argument('--critic-holdout-episodes',type=int,default=5)
     args=ap.parse_args()
     root=Path(args.output)
     root.mkdir(parents=True,exist_ok=False)
@@ -47,12 +50,14 @@ def main():
         cfg=make_nnknn_rl_config('smoke',seed=seed,actor_type=actor_type,critic_type=critic_type,
             total_timesteps=args.steps,case_capacity=128,critic_case_capacity=128,
             eval_frequency=args.eval_frequency,eval_episode_frequency=args.eval_episode_frequency,eval_episodes=3,
-            critic_holdout_episode_frequency=0,policy_update_episodes=2,
+            critic_holdout_episode_frequency=args.critic_holdout_episode_frequency,
+            critic_holdout_episodes=args.critic_holdout_episodes,policy_update_episodes=2,
             early_stopping=False,success_threshold=None,top_k=8,
             min_case_entries=8,min_cases_per_action=2,
             critic_target_value_mode=target_mode,
             critic_target_sync_interval=args.critic_target_sync_interval,
             case_optimizer_maintenance=optimizer_mode,
+            case_quality_tracking=args.quality_tracking,
             case_audit_queries_per_batch=args.audit_queries_per_batch)
         start=time.perf_counter()
         state=train_nnknn_rl(task,cfg,output_dir=root/label,device='cpu',progress=False)

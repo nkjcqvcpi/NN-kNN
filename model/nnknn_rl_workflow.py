@@ -5,6 +5,7 @@ import csv
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 import json
+import hashlib
 from pathlib import Path
 import random
 from typing import Any
@@ -102,6 +103,7 @@ class NNKNNRLConfig:
     source_reference: str = "Separate-memory NN-kNN actor-critic with staged cases and GAE advantages"
     case_audit_queries_per_batch: int = 0
     case_optimizer_maintenance: str = 'reset'
+    case_quality_tracking: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -1410,6 +1412,9 @@ def make_nnknn_rl_config(profile: str = "fast", **overrides: Any) -> NNKNNRLConf
     data['case_optimizer_maintenance'] = str(data.get('case_optimizer_maintenance','reset'))
     if data['case_optimizer_maintenance'] not in {'reset','preserve_by_id'}:
         raise ValueError('case_optimizer_maintenance must be reset or preserve_by_id')
+    data['case_quality_tracking']=_coerce_bool_field('case_quality_tracking',False)
+    if data['case_quality_tracking'] and data['case_audit_queries_per_batch']==0:
+        raise ValueError('case_quality_tracking requires explicit bounded audit queries')
     return NNKNNRLConfig(**data)
 
 
@@ -2727,6 +2732,9 @@ def train_nnknn_rl(
     best_critic_state: dict[str, torch.Tensor] | None = None
     best_target_state = None
     best_optimizer_states = None
+    best_quality_state = None
+    from model.t2.quality import QualityLedger
+    quality_ledger=QualityLedger(str(run_dir.resolve())) if cfg.case_quality_tracking else None
     actor_cases_pruned = 0
     actor_cases_replaced = 0
     critic_cases_pruned = 0
@@ -2856,6 +2864,8 @@ def train_nnknn_rl(
             seed=diagnostic_seed,
             global_step=completed_step,
             device=run_device,
+            audit_sink=collect_case_audit if quality_ledger is not None else None,
+            max_audit_queries=cfg.case_audit_queries_per_batch if quality_ledger is not None else 0,
         )
         row = {
             "global_step": int(completed_step),
@@ -2893,12 +2903,18 @@ def train_nnknn_rl(
         step=event['global_step']
         audit_dir=run_dir/'case_audit_states'
         audit_dir.mkdir(exist_ok=True)
-        snapshot=audit_dir/f'step_{step}.pt'
+        event.setdefault('phase','independent_post_batch_mc')
+        snapshot=audit_dir/f"{event['phase']}_step_{step}.pt"
         if not snapshot.exists():
             torch.save(dict(actor_state=_model_state(actor),critic_state=_copy_state_dict_to_cpu(value_network),
                 target_state=_copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None,
                 config=cfg.to_dict(),obs_dim=obs_dim,action_dim=action_dim),snapshot)
         event['snapshot']=str(snapshot)
+        if quality_ledger is not None:
+            event['snapshot_sha256']=hashlib.sha256(snapshot.read_bytes()).hexdigest()
+            namespace=f"{event['role']}:{event['stream']}:{step}:{event['query_index']}:{event.get('diagnostic_seed','training')}"
+            model=actor if event['role']=='actor' else value_network
+            quality_ledger.apply(event,event_id=namespace,active_ids=_case_store_ids(model).cpu().tolist())
         case_audit_events.append(event)
 
     try:
@@ -3044,6 +3060,7 @@ def train_nnknn_rl(
                         best_target_state = _copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None
                         best_optimizer_states = dict(actor_or_joint=_optimizer_state_snapshot(actor_optimizer),
                             critic=_optimizer_state_snapshot(critic_optimizer))
+                        best_quality_state = quality_ledger.state_dict() if quality_ledger is not None else None
                     if progress:
                         print(
                             "[nnknn-rl][eval] "
@@ -3106,6 +3123,7 @@ def train_nnknn_rl(
                     best_target_state = _copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None
                     best_optimizer_states = dict(actor_or_joint=_optimizer_state_snapshot(actor_optimizer),
                         critic=_optimizer_state_snapshot(critic_optimizer))
+                    best_quality_state = quality_ledger.state_dict() if quality_ledger is not None else None
                 if progress:
                     print(
                         "[nnknn-rl][eval] "
@@ -3175,6 +3193,7 @@ def train_nnknn_rl(
         selected_target_state = _copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None
         selected_optimizer_states = dict(actor_or_joint=_optimizer_state_snapshot(actor_optimizer),
             critic=_optimizer_state_snapshot(critic_optimizer))
+        selected_quality_state = quality_ledger.state_dict() if quality_ledger is not None else None
     else:
         selected_eval = best_eval
         selected_step = int(best_eval_step or 0)
@@ -3185,6 +3204,8 @@ def train_nnknn_rl(
         value_network.load_state_dict(selected_critic_state)
         selected_target_state = best_target_state
         selected_optimizer_states = best_optimizer_states
+        selected_quality_state = best_quality_state
+        if quality_ledger is not None:quality_ledger=QualityLedger.from_state_dict(selected_quality_state)
         actor_optimizer.load_state_dict(selected_optimizer_states['actor_or_joint'])
         if critic_optimizer is not None:
             critic_optimizer.load_state_dict(selected_optimizer_states['critic'])
@@ -3221,6 +3242,7 @@ def train_nnknn_rl(
         "critic_state_dict": selected_critic_state,
         "target_state_dict": selected_target_state,
         "selected_optimizer_states": selected_optimizer_states,
+        "selected_case_quality_state": selected_quality_state,
         "training_state_scope": "selected parameters/optimizer/target; rollout, environment and RNG resume not included",
         "task": spec.to_dict(),
         "config": cfg.to_dict(),
@@ -3277,7 +3299,9 @@ def train_nnknn_rl(
             scalar_step_semantics='global_per_parameter_including_new_rows'))
     if cfg.case_audit_queries_per_batch:
         _write_json(run_dir/'case_audit_events.json',dict(events=case_audit_events,
-            role_streams='training_gae and actor_policy_surrogate; independent MC remains separate'))
+            role_streams='training_gae, actor_policy_surrogate and optional independent_mc kept separate'))
+    if quality_ledger is not None:
+        _write_json(run_dir/'case_quality_selected.json',quality_ledger.state_dict())
     _write_csv(run_dir / "case_maintenance.csv", maintenance_rows)
     _write_csv(run_dir / "final_eval_episodes.csv", selected_eval["episode_metrics"])
     _write_csv(run_dir / "last_eval_episodes.csv", last_eval["episode_metrics"])
@@ -3395,6 +3419,7 @@ def train_nnknn_rl(
         "value_model": value_network,
         "target_model": target_value_model,
         "optimizers": dict(actor_or_joint=actor_optimizer,critic=critic_optimizer),
+        "case_quality": quality_ledger,
         "task": spec,
         "config": cfg,
         "run_dir": run_dir,
@@ -3448,6 +3473,10 @@ def load_nnknn_rl_checkpoint(
         target_model.load_state_dict(checkpoint['target_state_dict'])
         _align_nnknn_target_case_store(value_model,target_model)
     restored_optimizers = None
+    restored_quality=None
+    if checkpoint.get('selected_case_quality_state') is not None:
+        from model.t2.quality import QualityLedger
+        restored_quality=QualityLedger.from_state_dict(checkpoint['selected_case_quality_state'])
     if restore_optimizers:
         states=checkpoint.get('selected_optimizer_states')
         if states is None:
@@ -3468,6 +3497,7 @@ def load_nnknn_rl_checkpoint(
         "value_model": value_model,
         "target_model": target_model,
         "optimizers": restored_optimizers,
+        "case_quality": restored_quality,
         "config": cfg,
         "task": checkpoint["task"],
         "checkpoint": checkpoint,
