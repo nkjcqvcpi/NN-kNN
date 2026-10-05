@@ -408,3 +408,11 @@ pairs exact,240 MC/all1,920 deletions,18 common-policy diagnostics verified;
 misleads versus fixed-policy errors. Acrobot remains unready. Next extended
 negative-reward/target-mode experiments and matched capacity/cost confirmation;
 no gate or complete-plan claim.
+
+`docs/T2_EXTENDED_STARTUP.md`:18 two-budget/three-target-mode runs fully retrain;
+111 batches/92,160 actual GAE samples/351 raw-positive admissions verify;9 exact
+2,048-step experience prefixes,93 snapshots/216 training events/all1,728
+deletions plus144 MC/all1,152 deletions replay.8,192 seeds8/9 only ready at7,001,
+greedy−500;seed10 missing action coverage,fallback−458. Hard/none final critics
+exact at interval1;fixed active labels cannot test target-label learning lag.
+Next explicit label-mode/matching/calibration comparisons;no fictitious cases.
