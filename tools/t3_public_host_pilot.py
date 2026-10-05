@@ -41,7 +41,7 @@ def main():
     from model.t3.lexical import HashQuery,bm25_rank,candidate_bank,core_bank
     from model.t3.orchestrator import Budget,run_loop
     from model.t3.retrieval import Access,Retriever
-    from model.t3.host_schema import decision_schema,decoder_schema,validate_decision
+    from model.t3.host_schema import decision_schema,decoder_schema,validate_decision,request_prompt
     format_metadata=None
     if args.format_library is not None:
         sys.path.insert(0,str(args.format_library.resolve(strict=True)))
@@ -175,10 +175,7 @@ def main():
                             retriever=Retriever(core,list(bank),HashQuery(),model_version='fixed' if condition=='fixed' else f'need-s8-{metric_sha[:12]}',encoder_version='hash256-v1')
                         def callback(task,evidence):
                             if not evidence:
-                                prompt=('Produce a retrieval request as ONLY valid JSON. Include exactly four keys: '
-                                    '"ready": false; "need": a string copying the Question below; '
-                                    '"requested_types": ["evidence"]; "observable_task_state": "awaiting evidence". '
-                                    'Do not answer or omit fields. Do not explain reasoning.\nQuestion: '+task)
+                                prompt=request_prompt(task)
                             elif condition=='iterative' and len(evidence)<2:
                                 prompt=common(task,evidence)
                                 prompt+='\nIf another fact is needed,return {"ready":false,"need":NEW explicit missing-fact subquestion,"requested_types":["evidence"],"observable_task_state":short public fact state}. Otherwise return {"ready":true,"answer":string,"supporting_facts":list}.'
