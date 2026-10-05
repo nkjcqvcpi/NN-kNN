@@ -372,3 +372,11 @@ and real continuation;5 nonfinal selected (4 earlier steps,1 same512 before last
 partial optimization).169 tests/RL smoke pass,48 MC/all384 deletions replay.
 This is selected learning state, not rollout/environment/RNG resume. Next
 role-specific quality/provenance retention and negative-reward calibration.
+
+`docs/T2_ROLE_QUALITY_LEDGER.md`:quality tracking is explicit/off by default;
+actor surrogate/critic GAE/MC never merge. Atomic validation/dedup, snapshot
+provenance, retired versus active rows and selected-stage restore implemented.
+Six actual on/off pairs preserve all learning/MC states;106 snapshots/306 events/
+2,448 removals and930 history rows replay;177 tests pass. Active coverage is
+sparse and missing observations remain unknown. No quality selector activated
+yet; next constrained/fresh role-specific retention and negative-reward startup.
