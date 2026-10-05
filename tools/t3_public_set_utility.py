@@ -77,7 +77,7 @@ def main():
         planned_sets=len(selected),maximum_calls=len(selected)*4,maximum_generated_tokens=len(selected)*4*128,
         decode=input_protocol['decode'],host_knowledge_allowed=True,trainable_host_parameters=0,
         objective='answer loss=1-answer F1; Hotpot support/joint losses reported separately; no self-rating',
-        missing='invalid output yields task failure separately,but no observed utility or negative feedback',
+        missing='absent delivered sets/outcomes are unobserved; completed invalid host outputs are observed task failures,not false-case labels',
         comparison='fresh answer-stage full set versus exact single removals/empty; fixed prompt/settings,no refill',
         boundary='exploratory public questions,not same original generation/trajectory; intervention compute charged separately; no global update')
     args.output.mkdir(parents=True,exist_ok=False)
@@ -126,7 +126,9 @@ def main():
                     if dataset=='hotpot':losses.update(support=1-scores['sp_f1'],joint=1-scores['joint_f1'])
                     return dict(losses=losses,decision=decision,scores=scores,host_call_index=len(calls)-1)
                 except (ValueError,KeyError,TypeError) as exc:
-                    return dict(losses=None,unobserved_reason=str(exc),task_failure=True,host_call_index=len(calls)-1)
+                    scores=dict(em=0.,f1=0.);losses=dict(answer=1.)
+                    if dataset=='hotpot':scores.update(sp_f1=0.,joint_f1=0.);losses.update(support=1.,joint=1.)
+                    return dict(losses=losses,scores=scores,task_failure=True,format_error=str(exc),host_call_index=len(calls)-1)
             def sink(outcome):append('outcome_events.jsonl',dict(**key,observation=outcome))
             audit=direct_set_audit(evidence,evaluate,outcome_sink=sink)
             activation={r['case_id']:r['weight'] for event in events for r in event['audit']['candidates'] if r['case_id'] in event['audit']['selected_ids']}
@@ -145,7 +147,7 @@ def main():
     statuses=Counter(c['utility_status'] for r in completed for c in r.get('conditional_credit',[]))
     summary=dict(sets=len(completed),evaluated_sets=sum(r['status']=='evaluated' for r in completed),utility_observations=dict(statuses),
         host_calls=len(calls),input_tokens=sum(c['input_tokens'] for c in calls),output_tokens=sum(c['output_tokens'] for c in calls),
-        generation_seconds=sum(c['seconds'] for c in calls),invalid_outcomes=sum(o['outcome']['losses'] is None for r in completed for o in r.get('audit',{}).get('outcomes',[])),
+        generation_seconds=sum(c['seconds'] for c in calls),invalid_outcomes=sum(o['outcome'].get('task_failure',False) for r in completed for o in r.get('audit',{}).get('outcomes',[])),
         boundary=protocol['boundary'])
     (args.output/'summary.json').write_text(json.dumps(summary,indent=2),encoding='utf-8')
 

@@ -1,7 +1,7 @@
 """Direct no-refill outcome comparisons; no automatic feedback learning.
 
 Evaluators receive only exact subsets of the recorded delivered set. Missing
-or invalid outcomes remain unobserved. Loss differences are conditional on this
+outcomes remain unobserved. Loss differences are conditional on this
 query/set/host,not a global reliability label or a retrieval relevance score.
 """
 import copy
