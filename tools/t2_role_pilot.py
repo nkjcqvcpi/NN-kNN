@@ -42,7 +42,12 @@ def main():
     ap.add_argument('--no-retention-query-guard',action='store_true')
     ap.add_argument('--retention-roles',choices=['actor','critic','both'],default='both')
     ap.add_argument('--case-maintenance-frequency',type=int,default=1000)
+    ap.add_argument('--critic-label-modes',nargs='+',choices=['fixed','mutable','trainable','hybrid'],default=['fixed'])
+    ap.add_argument('--critic-label-activation-threshold',type=float,default=0.)
+    ap.add_argument('--critic-label-update-alpha',type=float,default=.25)
     args=ap.parse_args()
+    if any(mode!='fixed' for mode in args.critic_label_modes) and any(role.endswith('_mlp') for role in args.roles):
+        ap.error('nonfixed label variants require explicit NN-kNN critic roles')
     root=Path(args.output)
     root.mkdir(parents=True,exist_ok=False)
     source=Path(__file__).resolve().parents[1]
@@ -51,10 +56,11 @@ def main():
     versions=dict(torch=torch.__version__,gymnasium=gymnasium.__version__)
     records=[]
     torch.set_num_threads(1)
-    conditions=product(args.tasks,args.seeds,args.roles,args.critic_target_modes,args.case_optimizer_maintenance)
-    for task,seed,role,target_mode,optimizer_mode in conditions:
+    conditions=product(args.tasks,args.seeds,args.roles,args.critic_target_modes,args.case_optimizer_maintenance,args.critic_label_modes)
+    for task,seed,role,target_mode,optimizer_mode,label_mode in conditions:
         actor_type,critic_type=role.split('_')
         label=f'{task}/{role}__{target_mode}__{optimizer_mode}/s{seed}'
+        if label_mode!='fixed':label=f'{task}/{role}__{target_mode}__{optimizer_mode}__labels_{label_mode}/s{seed}'
         cfg=make_nnknn_rl_config('smoke',seed=seed,actor_type=actor_type,critic_type=critic_type,
             total_timesteps=args.steps,case_capacity=128,critic_case_capacity=128,
             eval_frequency=args.eval_frequency,eval_episode_frequency=args.eval_episode_frequency,eval_episodes=3,
@@ -64,6 +70,10 @@ def main():
             min_case_entries=8,min_cases_per_action=2,
             critic_target_value_mode=target_mode,
             critic_target_sync_interval=args.critic_target_sync_interval,
+            critic_mutable_value_labels=label_mode in {'mutable','hybrid'},
+            critic_trainable_value_labels=label_mode in {'trainable','hybrid'},
+            critic_value_label_activation_threshold=args.critic_label_activation_threshold,
+            critic_value_label_update_alpha=args.critic_label_update_alpha,
             case_optimizer_maintenance=optimizer_mode,
             case_quality_tracking=args.quality_tracking,
             case_maintenance_frequency=args.case_maintenance_frequency,
@@ -95,6 +105,9 @@ def main():
         credit_json=[dict(role=k[0],stream=k[1],cases=v) for k,v in credit.items()]
         record=dict(role=label,task=task,seed=seed,actor_type=actor_type,critic_type=critic_type,
             configured_target_mode=target_mode,audit_queries_per_batch=args.audit_queries_per_batch,
+            critic_label_mode=label_mode,
+            critic_label_activation_threshold=args.critic_label_activation_threshold,
+            critic_label_update_alpha=args.critic_label_update_alpha,
             case_optimizer_maintenance=optimizer_mode,
             source_fingerprint=fingerprint,versions=versions,run_dir=str(run_dir),
             training_seconds=train_seconds,summary=state['summary'],independent_mc=holdout,
@@ -103,7 +116,7 @@ def main():
         records.append(record)
         (root/'manifest.json').write_text(json.dumps(dict(status='exploratory_current_core_not_stage_a_gate',
             roles=records,source_fingerprint=fingerprint,versions=versions),indent=2),encoding='utf-8')
-        total=len(args.roles)*len(args.critic_target_modes)*len(args.seeds)*len(args.tasks)*len(args.case_optimizer_maintenance)
+        total=len(args.roles)*len(args.critic_target_modes)*len(args.seeds)*len(args.tasks)*len(args.case_optimizer_maintenance)*len(args.critic_label_modes)
         print(f'completed {len(records)}/{total} {label} events={len(events)}',flush=True)
 
 

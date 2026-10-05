@@ -32,6 +32,14 @@ competitive LLM integration. Pilot numerical values are not PI approval. Real
 participants, inaccessible data/source, qualified judgments and paid/cloud host
 resources are documented dependencies while independent implementation proceeds.
 
+October5 critic-label package:24 originals plus24 complete retrainings verify
+196,608 GAE samples/843 actor admissions,5,669 mutable row updates,1,634 Adam
+moments,all3,744 training/1,536 MC removals and24 off-policy transfer diagnostics.
+Default mutable matching never executes; trainable labels improve one seed;
+wider matching can prevent actor readiness. Read `T2_CRITIC_LABEL_CALIBRATION.md`.
+The full Stage A gate remains open. Next T3 package checks immutable case metadata,
+active IDs and actual model-version binding before public benchmark comparisons.
+
 Each completed part records its commit, exact experiment/config/source snapshot,
 checks, observed tradeoffs and remaining limits. Raw artifacts remain under
 `results/t1_pi20260920/`; chat-facing reports are placed in this task's `outputs`.
