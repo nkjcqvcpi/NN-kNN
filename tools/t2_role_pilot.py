@@ -26,6 +26,7 @@ def main():
                     default=['mlp_mlp','nnknn_mlp','mlp_nnknn','nnknn_nnknn'])
     ap.add_argument('--critic-target-modes',nargs='+',choices=['ema','hard','none'],default=['ema'])
     ap.add_argument('--audit-queries-per-batch',type=int,default=0)
+    ap.add_argument('--critic-target-sync-interval',type=int,default=4)
     args=ap.parse_args()
     root=Path(args.output)
     root.mkdir(parents=True,exist_ok=False)
@@ -48,6 +49,7 @@ def main():
                 early_stopping=False,success_threshold=None,top_k=8,
                 min_case_entries=8,min_cases_per_action=2,
                 critic_target_value_mode=target_mode,
+                critic_target_sync_interval=args.critic_target_sync_interval,
                 case_audit_queries_per_batch=args.audit_queries_per_batch)
             start=time.perf_counter()
             state=train_nnknn_rl(task,cfg,output_dir=root/label,device='cpu',progress=False)

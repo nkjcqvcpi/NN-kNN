@@ -351,3 +351,9 @@ surrogate events/all4,800 deletions, plus144 MC/all1,152 deletions. Six observer
 EMA references have exact weights/evaluation.162 tests pass. Acrobot has only3
 batches versus target interval4; hard/EMA never update beyond initialization.
 Repeat common interval1 before drawing a target-update conclusion.
+
+`docs/T2_EXECUTED_TARGET_DIAGNOSIS.md`:nine interval1 Acrobot repeats verify3
+actual hard/EMA updates;hard equals online,EMA lag measurable,actors remain
+unready.18 final states/72 MC/all576 deletions and18 training snapshots/36 GAE/
+all288 deletions replay.163 tests include controlled negative-reward GAE
+startup counterexample. Next inspect explicit reset versus ID-preserved Adam.
