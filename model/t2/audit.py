@@ -27,7 +27,9 @@ def policy_output(values):
 
 
 def audit_query(model, query, *, stream, target=None, action=None,
-                advantage=None, policy_ready=None, smoothing=1.0):
+                advantage=None, policy_ready=None, smoothing=1.0,
+                behavior_epsilon=0.0, probability_floor=1e-12,
+                advantage_source='declared_signed_advantage'):
     """Audit an evaluation query without changing memories, parameters or RNG.
 
     Critic Delta is removal squared loss minus full squared loss. Actor Delta
@@ -44,6 +46,10 @@ def audit_query(model, query, *, stream, target=None, action=None,
         raise ValueError('actor surrogate stream must be explicit')
     if not math.isfinite(smoothing) or smoothing <= 0:
         raise ValueError('smoothing must be finite and positive')
+    if not math.isfinite(behavior_epsilon) or not 0 <= behavior_epsilon <= 1:
+        raise ValueError('behavior_epsilon must lie in [0,1]')
+    if not math.isfinite(probability_floor) or probability_floor <= 0:
+        raise ValueError('probability_floor must be finite and positive')
     core = model.nnknn_model
     if core.nn_cdh is not None or getattr(core, 'classification_adapter', None) is not None:
         raise ValueError('adapter-aware RL auditing is not yet defined')
@@ -63,7 +69,10 @@ def audit_query(model, query, *, stream, target=None, action=None,
     def prediction(output):
         return output.reshape(-1)[0] if critic else policy_output(output)[0]
     def loss(value):
-        return (value - float(target)).square() if critic else -float(advantage) * value[int(action)].clamp_min(1e-12).log()
+        if critic:
+            return (value - float(target)).square()
+        behavior = (1-behavior_epsilon)*value + behavior_epsilon/model.action_dim
+        return -float(advantage)*behavior[int(action)].clamp_min(probability_floor).log()
     with evaluation(model):
         outputs = core(q, return_retrieval=True)
         r = outputs[-1]
@@ -87,6 +96,9 @@ def audit_query(model, query, *, stream, target=None, action=None,
         return dict(role='critic' if critic else 'actor', stream=stream,
             target=float(target) if critic else None, action=int(action) if actor else None,
             advantage=float(advantage) if actor else None, query=q[0].cpu().tolist(),
+            advantage_source=advantage_source if actor else None,
+            behavior_epsilon=behavior_epsilon if actor else None,
+            probability_floor=probability_floor if actor else None,
             full_prediction=full.cpu().tolist(), full_loss=float(full_loss.cpu()),
             case_ids=core.case_ids[indices].cpu().tolist(), weights=weights.cpu().tolist(),
             distances=r['distances'][0].cpu().tolist(), biases=core.biases[indices].cpu().tolist(),

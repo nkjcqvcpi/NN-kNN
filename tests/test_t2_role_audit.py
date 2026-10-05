@@ -80,3 +80,11 @@ def test_undefined_target_or_sampling_cannot_silently_enter_credit():
     m.nnknn_model.sampling_cases_flag=True
     with pytest.raises(ValueError,match='deterministic'):
         audit_query(m,[0.,0.],stream='independent_mc',target=0.)
+
+
+def test_uniform_behavior_mixture_has_no_case_surrogate_credit():
+    m=NNKNNPolicyNetwork(2,2,case_capacity=3,top_k=2,use_glocal_weightor=False)
+    m.add_cases(torch.tensor([[0.,0.],[0.,0.]]),torch.tensor([0,1]))
+    e=audit_query(m,[0.,0.],stream='actor_policy_surrogate',action=0,advantage=2.,
+                  policy_ready=True,behavior_epsilon=1.)
+    assert all(i['delta']==0 and i['C']==0 and i['H']==0 for i in e['interventions'])

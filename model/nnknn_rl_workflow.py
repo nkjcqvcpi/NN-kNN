@@ -100,6 +100,7 @@ class NNKNNRLConfig:
     critic_target_sync_interval: int = 4
     critic_target_ema_tau: float = 0.05
     source_reference: str = "Separate-memory NN-kNN actor-critic with staged cases and GAE advantages"
+    case_audit_queries_per_batch: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -1402,6 +1403,9 @@ def make_nnknn_rl_config(profile: str = "fast", **overrides: Any) -> NNKNNRLConf
         if int(data.get("critic_update_epochs", 1)) != 1:
             raise ValueError("Shared-representation NN-kNN actor/critic requires critic_update_epochs=1")
         data["critic_learning_rate"] = float(data.get("learning_rate", 5e-4))
+    data['case_audit_queries_per_batch'] = int(data.get('case_audit_queries_per_batch',0))
+    if not 0 <= data['case_audit_queries_per_batch'] <= 32:
+        raise ValueError('case_audit_queries_per_batch must lie in [0,32]')
     return NNKNNRLConfig(**data)
 
 
@@ -2102,11 +2106,13 @@ def _train_actor_critic_batch(
     device: torch.device,
     global_step: int,
     completed_episodes: int,
+    audit_sink=None,
 ) -> dict[str, Any] | None:
     observations: list[np.ndarray] = []
     next_observations: list[np.ndarray] = []
     actions: list[int] = []
     behavior_epsilons: list[float] = []
+    policy_readiness: list[bool] = []
     rewards: list[torch.Tensor] = []
     terminated: list[bool] = []
     episode_boundaries: list[bool] = []
@@ -2122,6 +2128,7 @@ def _train_actor_critic_batch(
         observations.extend(episode["observations"])
         next_observations.extend(episode["next_observations"])
         actions.extend(episode["actions"])
+        policy_readiness.extend(episode.get('policy_readiness',[False]*episode_length))
         behavior_epsilons.extend(
             float(value)
             for value in episode.get("behavior_epsilons", [0.0] * episode_length)
@@ -2141,6 +2148,8 @@ def _train_actor_critic_batch(
         return None
     if len(behavior_epsilons) != len(actions):
         raise ValueError("Each NN-kNN-RL action must have a matching behavior epsilon")
+    if len(policy_readiness) != len(actions):
+        raise ValueError('Each action must have a matching policy readiness flag')
 
     obs_t = torch.as_tensor(np.asarray(observations, dtype=np.float32), dtype=torch.float32, device=device)
     next_obs_t = torch.as_tensor(np.asarray(next_observations, dtype=np.float32), dtype=torch.float32, device=device)
@@ -2189,6 +2198,27 @@ def _train_actor_critic_batch(
     value_model.train()
     value_predictions = value_model(obs_t)
     critic_loss = F.mse_loss(value_predictions, value_targets.detach())
+    if audit_sink is not None and cfg.case_audit_queries_per_batch:
+        from model.t2.audit import audit_query
+        for index in range(min(cfg.case_audit_queries_per_batch,len(actions))):
+            if isinstance(value_model,NNKNNValueNetwork) and value_model.case_entries:
+                event=audit_query(value_model,obs_t[index],stream='training_gae',target=float(value_targets[index]))
+                if not np.isclose(event['full_prediction'],float(value_predictions[index].detach()),atol=1e-5,rtol=1e-5):
+                    raise ValueError('audit evaluation differs from actual training critic prediction')
+                event.update(global_step=global_step,query_index=index,phase='before_gradient_and_insertion',
+                    bootstrap_value_source='target' if target_value_model is not None else 'online',
+                    raw_advantage=float(raw_advantages[index]))
+                audit_sink(event)
+            if isinstance(actor,NNKNNPolicyNetwork) and policy_readiness[index] and actor.case_entries:
+                event=audit_query(actor,obs_t[index],stream='actor_policy_surrogate',action=actions[index],
+                    advantage=float(normalized_advantages[index]),policy_ready=True,
+                    behavior_epsilon=float(behavior_epsilons_t[index]),probability_floor=cfg.advantage_epsilon,
+                    advantage_source='normalized_clipped_training_gae')
+                if not np.allclose(event['full_prediction'],probs[index].detach().cpu().numpy(),atol=1e-5,rtol=1e-5):
+                    raise ValueError('audit evaluation differs from actual training policy prediction')
+                event.update(global_step=global_step,query_index=index,phase='before_gradient_and_insertion',
+                    raw_advantage=float(raw_advantages[index]),executed_under_ready_policy=True)
+                audit_sink(event)
 
     if joint_optimizer is not None:
         joint_optimizer.zero_grad()
@@ -2777,6 +2807,19 @@ def train_nnknn_rl(
     pending_update_episodes: list[dict[str, Any]] = []
     early_stopping = _build_early_stopping_tracker(cfg, spec)
     actual_timesteps = 0
+    episode_policy_readiness: list[bool] = []
+    case_audit_events: list[dict[str,Any]] = []
+    def collect_case_audit(event):
+        step=event['global_step']
+        audit_dir=run_dir/'case_audit_states'
+        audit_dir.mkdir(exist_ok=True)
+        snapshot=audit_dir/f'step_{step}.pt'
+        if not snapshot.exists():
+            torch.save(dict(actor_state=_model_state(actor),critic_state=_copy_state_dict_to_cpu(value_network),
+                target_state=_copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None,
+                config=cfg.to_dict(),obs_dim=obs_dim,action_dim=action_dim),snapshot)
+        event['snapshot']=str(snapshot)
+        case_audit_events.append(event)
 
     try:
         for global_step in range(cfg.total_timesteps):
@@ -2799,6 +2842,7 @@ def train_nnknn_rl(
             episode_next_observations.append(np.asarray(next_obs, dtype=np.float32))
             episode_actions.append(action)
             episode_behavior_epsilons.append(selection.behavior_epsilon)
+            episode_policy_readiness.append(selection.policy_ready)
             episode_rewards.append(float(reward))
             episode_terminated.append(bool(terminated))
             episode_truncated.append(bool(truncated))
@@ -2817,6 +2861,7 @@ def train_nnknn_rl(
                         "next_observations": episode_next_observations,
                         "actions": episode_actions,
                         "behavior_epsilons": episode_behavior_epsilons,
+                        "policy_readiness": episode_policy_readiness,
                         "rewards": episode_rewards,
                         "terminated": episode_terminated,
                         "truncated": episode_truncated,
@@ -2837,6 +2882,7 @@ def train_nnknn_rl(
                         device=run_device,
                         global_step=completed_step,
                         completed_episodes=episode_index,
+                        audit_sink=collect_case_audit if cfg.case_audit_queries_per_batch else None,
                     )
                     if loss_row is not None:
                         record_batch_result(loss_row, completed_step)
@@ -2932,6 +2978,7 @@ def train_nnknn_rl(
                 episode_next_observations = []
                 episode_actions = []
                 episode_behavior_epsilons = []
+                episode_policy_readiness = []
                 episode_rewards = []
                 episode_terminated = []
                 episode_truncated = []
@@ -2995,6 +3042,7 @@ def train_nnknn_rl(
                 "next_observations": episode_next_observations,
                 "actions": episode_actions,
                 "behavior_epsilons": episode_behavior_epsilons,
+                "policy_readiness": episode_policy_readiness,
                 "rewards": episode_rewards,
                 "terminated": episode_terminated,
                 "truncated": episode_truncated,
@@ -3015,6 +3063,7 @@ def train_nnknn_rl(
                 device=run_device,
                 global_step=actual_timesteps,
                 completed_episodes=episode_index,
+                audit_sink=collect_case_audit if cfg.case_audit_queries_per_batch else None,
             )
             if loss_row is not None:
                 record_batch_result(loss_row, actual_timesteps)
@@ -3122,6 +3171,9 @@ def train_nnknn_rl(
     _write_csv(run_dir / "loss_metrics.csv", loss_rows)
     _write_csv(run_dir / "eval_metrics.csv", eval_rows)
     _write_csv(run_dir / "critic_holdout_metrics.csv", critic_holdout_rows)
+    if cfg.case_audit_queries_per_batch:
+        _write_json(run_dir/'case_audit_events.json',dict(events=case_audit_events,
+            role_streams='training_gae and actor_policy_surrogate; independent MC remains separate'))
     _write_csv(run_dir / "case_maintenance.csv", maintenance_rows)
     _write_csv(run_dir / "final_eval_episodes.csv", selected_eval["episode_metrics"])
     _write_csv(run_dir / "last_eval_episodes.csv", last_eval["episode_metrics"])
