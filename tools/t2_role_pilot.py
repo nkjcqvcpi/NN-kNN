@@ -34,6 +34,14 @@ def main():
     ap.add_argument('--quality-tracking',action='store_true')
     ap.add_argument('--critic-holdout-episode-frequency',type=int,default=0)
     ap.add_argument('--critic-holdout-episodes',type=int,default=5)
+    ap.add_argument('--retention-fraction',type=float,default=None)
+    ap.add_argument('--retention-frequency',type=int,default=1000)
+    ap.add_argument('--retention-queries',type=int,default=16)
+    ap.add_argument('--retention-loss-budget',type=float,default=0.)
+    ap.add_argument('--retention-query-budget',type=float,default=0.)
+    ap.add_argument('--no-retention-query-guard',action='store_true')
+    ap.add_argument('--retention-roles',choices=['actor','critic','both'],default='both')
+    ap.add_argument('--case-maintenance-frequency',type=int,default=1000)
     args=ap.parse_args()
     root=Path(args.output)
     root.mkdir(parents=True,exist_ok=False)
@@ -58,6 +66,12 @@ def main():
             critic_target_sync_interval=args.critic_target_sync_interval,
             case_optimizer_maintenance=optimizer_mode,
             case_quality_tracking=args.quality_tracking,
+            case_maintenance_frequency=args.case_maintenance_frequency,
+            case_retention_keep_fraction=args.retention_fraction,
+            case_retention_frequency=args.retention_frequency,case_retention_queries=args.retention_queries,
+            case_retention_loss_budget=args.retention_loss_budget,
+            case_retention_query_budget=None if args.no_retention_query_guard else args.retention_query_budget,
+            case_retention_roles=args.retention_roles,
             case_audit_queries_per_batch=args.audit_queries_per_batch)
         start=time.perf_counter()
         state=train_nnknn_rl(task,cfg,output_dir=root/label,device='cpu',progress=False)
