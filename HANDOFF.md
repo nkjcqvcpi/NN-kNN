@@ -1,5 +1,13 @@
 # Handoff
 
+**2026-10-05 host failure journal:** Read `docs/T3_HOST_FAILURE_JOURNAL.md`.
+Completed retrieval events now reach an optional sink before later host calls,
+including withheld payloads; public runner journals and keeps partial events.
+Four real-core replays of archived real malformed host outputs preserve all four
+events,with prompt payloads matching.34 focused tests pass. Original request v1
+was diagnostically terminated with failures retained; request v2 public80-trial
+run is still being evaluated. Do not claim lost old event IDs were recovered.
+
 **2026-10-05 ranking diagnosis:** Read `docs/T3_RANKING_OBJECTIVE.md`.
 Six original/retrained controls verify15,360 updates/25,344 evaluations and all
 selected/final Adam states. Recall-based selection avoids the earlier downgrade

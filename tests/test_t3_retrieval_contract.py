@@ -195,3 +195,27 @@ def test_feature_cache_is_not_a_versioned_source_and_is_restored():
     assert model.cached_features is old_cache
     expected = model.feature_extractor(model.cases).detach().tolist()
     assert result['audit']['case_features'] == expected
+
+
+def test_iterative_round_budget_delivers_one_then_novel_one():
+    def host(**kwargs):
+        if len(kwargs['evidence'])==2:return dict(ready=True,answer='done')
+        return dict(ready=False,need='global evidence' if not kwargs['evidence'] else 'user original information',requested_types=['evidence'])
+    result=run_loop('task',host,retriever(),Access('s','u'),Budget(max_rounds=2,max_cases=2,max_cases_per_round=1),now=1)
+    assert result['stop_reason']=='host_ready' and result['retrieval_rounds']==2
+    assert [len(e['evidence']) for e in result['events']]==[1,1]
+    assert len({c['case_id'] for c in result['evidence']})==2
+
+
+def test_journal_preserves_completed_retrieval_when_next_host_fails():
+    events=[]
+    def host(**kwargs):
+        if kwargs['evidence']:raise ValueError('malformed next host decision')
+        return dict(ready=False,need='global need',requested_types=['evidence'])
+    with pytest.raises(ValueError,match='malformed'):
+        run_loop('task',host,retriever(),Access('s','u'),Budget(),now=1,event_sink=events.append)
+    assert len(events)==1 and events[0]['delivered_to_host'] is True
+    assert events[0]['event_id']==events[0]['audit']['event_id']
+    events.clear()
+    result=run_loop('task',host,retriever(),Access('s','u'),Budget(max_evidence_chars=1),now=1,event_sink=events.append)
+    assert events==result['events'] and events[0]['delivered_to_host'] is False
