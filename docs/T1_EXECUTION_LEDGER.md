@@ -1,5 +1,11 @@
 # Continuous execution ledger — 2026-10-04
 
+October5 strict plain80 complete and compared with constrained80:144 calls each,
+24 vs seven failures,all128 combined retrieval traces/3,552 manual candidates
+verify.144 raw plain outputs match legacy exactly;13 extra validation rejections.
+No second retrieval/Hotpot support or joint benefit. Direct32-set utility now
+running;train-only need collection/fitting queued. Read `T3_STRICT_FORMAT_CONTROL.md`.
+
 October5 actual-need fitting entry implemented with full train-only identity,
 host/file/prompt/output/token/data bindings and no missing-query fallback.
 52 T3 tests pass;one real128-update default epoch exactly reproduces old metric,
