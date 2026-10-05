@@ -4,9 +4,11 @@ from types import SimpleNamespace
 
 import pytest
 import torch
+import numpy as np
 
 from model.t1.calibration import calibrate_free_radius
 from model.t1.core import CoreConfig, build_model
+from model.t1.maintenance import realign_optimizer_state
 from model.t1.sync import SyncConfig, train_synchronized
 import model.t1.sync as sync
 
@@ -67,3 +69,21 @@ def test_actual_edit_at_same_count_resets_best_checkpoint(monkeypatch):
                                  maintenance_epochs={4}, maintenance_hook=edit)
     assert info["best_epoch"] == 4
     assert info["history"][3]["maintenance_state_changed"] is True
+
+
+def test_compute_record_counts_actual_phases_and_premaintenance_capacity(monkeypatch):
+    m, data, cc, fr, _ = setup(monkeypatch)
+    def remove(ep, model, opt, ad):
+        keep = np.arange(1, 6)
+        model.compact_cases(torch.as_tensor(keep))
+        realign_optimizer_state(opt, model, keep, 6)
+        return {"n_before": 6, "n_after": 5}
+    _, info = train_synchronized(m, data, cc, config("alternating_rrr"), fr, near_scale=1.,
+        maintenance_epochs={4}, maintenance_hook=remove)
+    hist = info["history"]
+    assert len(hist) == 6 and info["elapsed_seconds"] > 0
+    assert [h["optimizer_updates"] for h in hist] == [2] * 6
+    assert [h["training_examples"] for h in hist] == [6] * 6
+    assert [h["retrieval_query_case_pairs"] for h in hist] == [36, 36, 36, 36, 30, 30]
+    assert sum(h["optimizer_updates"] for h in hist if h["phase"] == "retrieval") == 8
+    assert sum(h["optimizer_updates"] for h in hist if h["phase"] == "adapter") == 4

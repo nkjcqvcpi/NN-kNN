@@ -298,3 +298,10 @@ implemented in `model/t3/`, documented in `docs/T3_RETRIEVAL_CONTRACT.md`.
 Ten actual-geometry/lifecycle/loop/credit tests pass. The shared-metric path is
 an explicit ablation; no NN-CDH, automatic global promotion or tool execution
 occurs. Actual LLM reuse and internal integration remain to be demonstrated.
+
+The synchronization post-hoc capacity comparison is audited: 36 runs/72
+states, 4,554 final events and a separate manual 9,108 before/final prediction
+reconstruction. See `docs/T1_SYNC_CAPACITY_COMPARISON.md`. Use explicitly named
+post-adaptation metrics; the first draft report accidentally tabulated pre
+metrics, despite correct full metric replay. Capacity is matched, compute is
+measured rather than equal. Keep all failed/older batches and corrected reports.
