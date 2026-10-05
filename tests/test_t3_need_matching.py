@@ -38,3 +38,15 @@ def test_need_loss_has_actual_core_gradient_and_shared_audit_geometry():
         assert row['distance']==pytest.approx(float(result['distances'][0,col].detach()))
         assert sum(row['feature_distance_contributions'])==pytest.approx(row['distance']**2)
     with pytest.raises(ValueError):need_loss(model,'badge',[30],dimensions=32)
+
+
+def test_hard_negative_loss_uses_actual_frozen_geometry():
+    cases=[case(10,'green badge'),case(20,'red city'),case(30,'blue city')]
+    metric=GlocalFeatureWeight(32,1);model=core_bank(cases,dimensions=32,metric=metric)
+    loss,result=need_loss(model,'badge',[10],dimensions=32,objective='hard_negative',hard_negatives=1,margin=.2)
+    distances=result['distances'][0]
+    expected=torch.nn.functional.softplus(distances[0]-distances[1:].min()+.2)
+    torch.testing.assert_close(loss,expected)
+    loss.backward()
+    assert bool(torch.isfinite(metric.feature_weights.grad).all()) and bool((metric.feature_weights.grad!=0).any())
+    with pytest.raises(ValueError):need_loss(model,'badge',[10,20,30],dimensions=32,objective='hard_negative')

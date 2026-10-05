@@ -64,3 +64,10 @@ Adam states. Held-out loss improves while source recall@2 worsens; BM25 reaches
 1.0 on the64-question tune group. `T3_NEED_MATCHING.md` records the counterexample,
 frozen source and float32 audit tolerance. No utility/promotion claim. Proceed
 with prespecified public-host controls and separate ranking/representation fixes.
+
+October5 ranking controls:six originals plus six full actual/manual-gradient
+retrainings verify15,360 updates/25,344 evaluation calls and all Adam states.
+Recall selection avoids degradation but retains epoch0 twice; hard negatives
+improve tune recall@2 to .65625–.671875 while BM25 remains1.0. Read
+`T3_RANKING_OBJECTIVE.md`. Public-host utility remains independently unproven;
+first public control keeps the original seed8 snapshot.

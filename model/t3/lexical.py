@@ -99,7 +99,7 @@ def core_bank(cases,*,dimensions=256,metric=None):
     return model
 
 
-def need_loss(model,question,positive_ids,*,dimensions=256):
+def need_loss(model,question,positive_ids,*,dimensions=256,objective='softmax',hard_negatives=8,margin=.2):
     if (model.sampling_cases_flag or model.case_normalizer!='softmax' or
             not model.normalize_over_cases or model.config.get('case_score_mode')!='bias_minus_distance' or
             model.config.get('top_k',0)<model.case_count()):
@@ -111,5 +111,14 @@ def need_loss(model,question,positive_ids,*,dimensions=256):
     # Actual core distances and biases define the probability. The full bank is
     # used for training; no top-k loss proxy,answer text or MC outcome enters it.
     logits=(model.biases-result['distances'][0])/model.tau
-    loss=torch.logsumexp(logits,0)-torch.logsumexp(logits[mask],0)
+    if objective=='softmax':
+        loss=torch.logsumexp(logits,0)-torch.logsumexp(logits[mask],0)
+    elif objective=='hard_negative':
+        if type(hard_negatives) is not int or hard_negatives<1 or not math.isfinite(margin) or margin<0 or bool(mask.all()):
+            raise ValueError('hard-negative objective needs negatives,positive count and finite nonnegative margin')
+        distances=result['distances'][0]
+        closest_positive=distances[mask].min()
+        closest_negative=distances[~mask].sort(stable=True).values[:hard_negatives]
+        loss=torch.nn.functional.softplus((closest_positive-closest_negative+margin)/model.tau).mean()
+    else:raise ValueError('unsupported declared need objective')
     return loss,result
