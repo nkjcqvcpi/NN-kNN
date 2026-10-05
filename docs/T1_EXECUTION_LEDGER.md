@@ -57,3 +57,10 @@ annotations stay outside host payloads; article-disjoint SQuAD fit/tune and
 prospective dev engineering IDs are recorded. Read
 `T3_PUBLIC_BENCHMARK_FOUNDATION.md`. No public model outcome or fullwiki claim;
 matched controls,learned retrieval and Hotpot training data remain next work.
+
+October5 actual T3 need matching:three trainings plus three full manual-gradient
+retrainings reproduce7,680 updates/12,672 evaluation calls and all selected/final
+Adam states. Held-out loss improves while source recall@2 worsens; BM25 reaches
+1.0 on the64-question tune group. `T3_NEED_MATCHING.md` records the counterexample,
+frozen source and float32 audit tolerance. No utility/promotion claim. Proceed
+with prespecified public-host controls and separate ranking/representation fixes.

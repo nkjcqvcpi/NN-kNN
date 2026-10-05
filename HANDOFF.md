@@ -1,5 +1,13 @@
 # Handoff
 
+**2026-10-05 actual T3 need matching:** Read `docs/T3_NEED_MATCHING.md`.
+Three real256-weight lexical metric trainings and full retrainings reproduce
+7,680 updates/12,672 evaluations/all checkpoints and Adam states. Held-out loss
+falls but top-two source recall .546875→.46875–.484375; BM25 reaches1.0 on the
+same64-question tune group. This is a ranking counterexample,not utility success.
+Public-host controls will use prespecified seed8 and report outcomes/costs;
+representation/objective improvements remain separate prospective experiments.
+
 **2026-10-05 public QA foundation:** Read
 `docs/T3_PUBLIC_BENCHMARK_FOUNDATION.md`. Source-checked SQuAD98,169 questions and
 Hotpot distractor mirror7,405 questions preserve originals/separate gold labels;
