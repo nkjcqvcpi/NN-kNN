@@ -16,6 +16,7 @@ class RLTaskSpec:
     max_episode_steps: int
     default_profile: str
     literature_notes: tuple[str, ...]
+    maximum_return: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -36,7 +37,15 @@ _RL_TASKS: dict[str, RLTaskSpec] = {
             "Fast DQN sanity task used by the official PyTorch DQN tutorial.",
             "Engineering gate before moving to Atari/ALE, the DQN and NEC paper-aligned benchmark family.",
         ),
-    )
+        maximum_return=500.0,
+    ),
+    "acrobot": RLTaskSpec(
+        name="acrobot", env_id="Acrobot-v1", family="classic_control",
+        observation_kind="flat_box", action_kind="discrete",
+        max_episode_steps=500, default_profile="smoke",
+        literature_notes=("Engineering negative-reward task; no confirmed competitiveness margin.",),
+        maximum_return=0.0,
+    ),
 }
 
 
@@ -47,6 +56,8 @@ def normalize_rl_task_name(task_name: str) -> str:
         "cartpole_v1": "cartpole",
         "cartpole-v1": "cartpole",
         "cartpolev1": "cartpole",
+        "acrobot_v1": "acrobot",
+        "acrobotv1": "acrobot",
     }
     return aliases.get(normalized, normalized)
 
