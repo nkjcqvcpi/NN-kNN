@@ -320,3 +320,9 @@ The108-run classification budget/capacity grid is fully audited:432 states,
 selected/full/random optimizer states. See `docs/T1_ADAPTED_BUDGET_STUDY.md`.
 Two zero-budget Wine seed9 retrieval conditions stop before K; preserve actual
 capacity matching. The108 correlated conditions are not108 independent seeds.
+
+Paired maintenance-reference routing is implemented and audited in
+`docs/T1_ADAPTED_REFERENCE_GUARD.md`:36 runs,144 states,3,888 events, all3,306
+candidate/216 control trainings,18 identical initial pairs and exact model/Adam
+replays. Maintenance improves test RMSE in all18 pairs; repeated selection and
+small task/seed coverage prevent a generalization guarantee.151 tests pass.
