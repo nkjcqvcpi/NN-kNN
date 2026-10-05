@@ -8,6 +8,10 @@ need, requested types and public task state. Learned encoders, specialized heads
 and cross-head calibration remain separate required comparisons.
 
 Cases retain original text, stable IDs, type, source, scope and lifecycle.
+The bank is read-only and aligns active IDs only. Actual tensor/config hashes bind
+the retrieval state; drift rejects old-version results. Torch module encoders
+carry actual state hashes; opaque encoder callables are explicitly declared-only.
+Read `T3_VERSION_BINDING.md` for verified failures,limitations and host regression.
 Session admission requires expiration, persistent user admission requires
 explicit retention intent, and domain/global admission requires validated
 records. These flags are inputs from the caller's admission authority, not proof
