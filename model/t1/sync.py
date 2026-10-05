@@ -21,6 +21,7 @@ with leave-one-out retrieval. Early stopping uses the validation stream only.
 from __future__ import annotations
 
 import copy
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Callable
@@ -128,6 +129,7 @@ def train_synchronized(
     core_optimizer: torch.optim.Optimizer | None = None,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
     cfg.validate(model.task_type)
+    started = time.perf_counter()
     torch.manual_seed(cfg.seed)
     device = model.cases.device
     X, y = data.X_train.to(device), data.y_train.to(device)
@@ -171,8 +173,10 @@ def train_synchronized(
         perm = torch.randperm(y.numel(), generator=g)
         agg = {k: 0.0 for k in ("L_pre", "L_post", "L_near", "L_delta", "L_small", "correction_norm")}
         nb = 0
+        query_case_pairs = 0
         for s in range(0, y.numel(), core_cfg.batch_size):
             b = perm[s : s + core_cfg.batch_size].to(device)
+            query_case_pairs += len(b) * model.case_count()
             if ph == "retrieval":
                 with frozen_parameters(adapter):
                     T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b, query_nominal=None if nominal_train is None else nominal_train[b])
@@ -202,7 +206,9 @@ def train_synchronized(
             for k in agg:
                 agg[k] += float(T[k].detach())
             nb += 1
-        rec = {"epoch": ep, "phase": ph, **{k: v / max(nb, 1) for k, v in agg.items()}}
+        rec = {"epoch": ep, "phase": ph, "optimizer_updates": nb,
+               "training_examples": len(y), "retrieval_query_case_pairs": query_case_pairs,
+               **{k: v / max(nb, 1) for k, v in agg.items()}}
         if ep in maintenance_epochs and maintenance_hook is not None and cfg.schedule == "alternating_rrr":
             before_count = model.case_count()
             before_state = copy.deepcopy(model.state_dict())
@@ -246,6 +252,7 @@ def train_synchronized(
         fr = best[6]
     adapter.eval()
     return adapter, {"history": hist, "best_epoch": best[3],
+                     "elapsed_seconds": time.perf_counter() - started,
                      "retrieval_optimizer_state": copy.deepcopy(ropt.state_dict()),
                      "adapter_optimizer_state": copy.deepcopy(aopt.state_dict()),
                      "optimizer_checkpoint_epoch": best[3],
