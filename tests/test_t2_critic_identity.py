@@ -50,8 +50,9 @@ def test_loading_legacy_checkpoint_repairs_core_ids_without_changing_values():
     state = copy.deepcopy(m.state_dict())
     state['nnknn_model.case_ids'] = torch.tensor([3, 4, 2])
     state['nnknn_model.next_case_id'] = torch.tensor(5)
-    restored = critic()
+    restored = NNKNNValueNetwork(2, case_capacity=3, top_k=3)
     restored.load_state_dict(state)
+    assert restored.case_entries == 2
     assert_ids(restored, [0, 1])
     assert torch.equal(restored(torch.tensor([[2., 3.]])), m(torch.tensor([[2., 3.]])))
     restored._compact_cases([1])

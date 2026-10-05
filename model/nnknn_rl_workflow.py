@@ -538,6 +538,13 @@ class NNKNNValueNetwork(nn.Module):
             self.nnknn_model.next_case_id.copy_(self.next_case_id)
 
     def _restore_core_case_ids(self, module, incompatible_keys) -> None:
+        # active_case_count is a Python attribute, not a state-dict buffer.
+        # Recover the compact active prefix when loading into an empty critic.
+        active = self.case_ids >= 0
+        count = int(active.sum().item())
+        if not bool(active[:count].all()) or bool(active[count:].any()):
+            raise ValueError("critic checkpoint case IDs must form a compact active prefix")
+        self.nnknn_model.set_active_case_count(count)
         self._align_core_case_ids()
 
     def _assign_new_case_ids(self, start: int, count: int) -> None:
@@ -2397,11 +2404,15 @@ def evaluate_critic_holdout(
     seed: int,
     global_step: int,
     device: str | torch.device | None = None,
+    audit_sink=None,
+    max_audit_queries: int = 0,
 ) -> dict[str, Any]:
     """Evaluate critic generalization on behavior-policy rollouts excluded from training."""
 
     if episodes <= 0:
         raise ValueError("critic holdout episodes must be positive")
+    if max_audit_queries < 0:
+        raise ValueError("max_audit_queries must be nonnegative")
     spec = get_rl_task_spec(task_name)
     actor_device = next(actor.parameters()).device
     critic_device = next(value_model.parameters()).device
@@ -2512,6 +2523,17 @@ def evaluate_critic_holdout(
         with torch.no_grad():
             predictions_t = value_model(observations_t)
             holdout_mse = F.mse_loss(predictions_t, targets_t)
+        if audit_sink is not None and max_audit_queries and isinstance(value_model, NNKNNValueNetwork) and value_model.case_entries:
+            from model.t2.audit import audit_query
+            for audit_index in range(min(max_audit_queries, targets_t.numel())):
+                event = audit_query(value_model, observations_t[audit_index],
+                                    stream="independent_mc", target=float(targets_t[audit_index]))
+                event.update(diagnostic_seed=seed, query_index=audit_index,
+                             global_step=global_step, gamma=cfg.gamma,
+                             reward_shaping=cfg.reward_shaping,
+                             time_limit_bootstrap="target_critic" if target_value_model is not None else "online_critic",
+                             unmasked_holdout_prediction=float(predictions_t[audit_index]))
+                audit_sink(event)
         return {
             "critic_holdout_mse": float(holdout_mse.cpu().item()),
             "critic_holdout_explained_variance": explained_variance(predictions_t, targets_t),
