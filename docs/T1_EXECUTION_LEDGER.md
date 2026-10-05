@@ -21,7 +21,7 @@ GPT-6 Luna may run experiments. Work stays on `neural-cbr`; existing unrelated
 result/checkpoint changes are preserved. No push has been requested.
 
 Authority remains career-2027 `cd77277600841438d98ac5793867da28b8ec6dd0`;
-live repository metadata on October 4 reports no push since September 21.
+live `ls-remote` on October5 confirms the same HEAD commit.
 Existing snapshots map 18 imported documents. Later PI notes supersede older
 equations where marked; open scientific choices are explicitly exploratory.
 
@@ -38,7 +38,7 @@ equations where marked; open scientific choices are explicitly exploratory.
 | MCB | Local mechanism implemented | External IU source availability and matched broad comparisons; no false exact-reproduction claim |
 | General maintenance score/prior-method recovery | Open derivation/research | Distinguish score identity, ranking and selector equivalence; test counterexamples rather than invent an approved formula |
 | T2/RL Stage A transfer | IDs/restore/selected Adam-target repaired;optional live retention:30 conditions/full replays/all47,701 candidates,6 exact no-op pairs,18 common-policy diagnostics,187 tests;18 extended-startup runs verify111 batches/92,160 GAE samples/351 admissions/all1,728 training+1,152 MC deletions | Actor retention return regressions/MC distribution effects;Acrobot seeds8/9 only ready7,001 at8,192 then ineffective greedy,seed10 uncovered;label-mode/calibration,500-case/matched cost and broader gate remain |
-| T3 prompt/internal/combined integration | Scoped typed original retrieval and bounded loop implemented; actual frozen local host requests/reuses original evidence in 16 fictional trials, 12 retrieval events independently replay; two failed prompt versions preserved; eleven contract tests pass | Exact-set interventions, public matched standard RAG/prompt controls, trained/specialized/calibrated metrics, feedback lifecycle and internal/combined interface; no downstream success claim |
+| T3 prompt/internal/combined integration | Original-artifact/scoped retrieval,bound versions,actual learned lexical metric and host loop implemented;80 legacy public controls/53 recorded events plus80 constrained controls/all64 events replay;47 T3 tests;48 fresh NN+16 BM25 query-shift diagnostics;no second host retrieval or Hotpot support/joint benefit | Strict plain80 running;32 direct set interventions queued;actual train-only needs,specialized/calibrated metrics,feedback lifecycle,internal/combined/cloud/strong API controls and biomedical/agent studies remain;no competitive/general benefit claim |
 | Analysis/debug loop | Independent optimizer, revision and synthetic grids audited; core no-op selection fixed with 36 before/after replays and 98 passing tests | Revisit comparisons when training semantics change; inspect failed/unequal-capacity runs, report cost and uncertainty |
 
 Engineering coverage and scientific success are separate. Implementing a UI is

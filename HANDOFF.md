@@ -1,5 +1,14 @@
 # Handoff
 
+**2026-10-05 constrained80 complete:** Read `docs/T3_FORMAT_HOST_RESULTS.md`
+and `docs/T3_NEED_SHIFT_DIAGNOSIS.md`.144 calls/48,041 input/6,488 output tokens,
+seven errors (four truncations/three ordered pairs),64 complete retrieval traces
+and1,776 manual candidates replay. No second retrieval;all Hotpot support/joint
+F1 zero.44 host needs change hash vectors;48 fresh NN+16 BM25 direct-question
+counterfactuals change12 sets/14 orders,without altering primary requests or
+claiming QA improvement. Strict plain80 runs under driver13300;corrected utility
+driver85101 waits for its audited completion. Full T1/T2/T3 plans remain active.
+
 **2026-10-05 direct set utility:** Read `docs/T3_DIRECT_SET_UTILITY.md`.
 Exact delivered full/single-removal/empty evaluation implemented;missing
 outcomes remain unobserved,completed invalid host outputs are observed task
