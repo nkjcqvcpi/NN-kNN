@@ -338,3 +338,9 @@ No Stage A competitiveness or full-cycle transfer success is claimed.
 replayed. State restoration now also reconstructs active critic count.159
 tests/RL smoke pass. Strong seed variation and high NN/NN critic error remain;
 next add second task and actual actor/GAE audit rather than claim Stage A passed.
+
+`docs/T2_TWO_TASK_DIAGNOSIS.md`:Acrobot added with a separate physical return
+ceiling; two-task/four-role/three-seed2,048-step24-run matrix audits48 states,
+96 MC events/all768 removals.160 tests pass. All6 Acrobot NN actors are unready
+(5 empty,1 only3 cases missing an action);-458 evaluation is uniform fallback.
+Preserve raw-positive admission; diagnose GAE/value warm start explicitly.

@@ -147,7 +147,8 @@ def _validate_early_stopping_config(data: dict[str, Any]) -> None:
 
 def _build_early_stopping_tracker(config: Any, spec: RLTaskSpec) -> EarlyStoppingTracker:
     configured_target = getattr(config, "early_stopping_target_score", None)
-    target_score = float(spec.max_episode_steps if configured_target is None else configured_target)
+    task_maximum = spec.max_episode_steps if spec.maximum_return is None else spec.maximum_return
+    target_score = float(task_maximum if configured_target is None else configured_target)
     return EarlyStoppingTracker(
         enabled=bool(getattr(config, "early_stopping", False)),
         patience=int(getattr(config, "early_stopping_patience", 30)),

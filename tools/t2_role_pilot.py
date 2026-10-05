@@ -21,6 +21,7 @@ def main():
     ap.add_argument('--output',required=True)
     ap.add_argument('--steps',type=int,default=512)
     ap.add_argument('--seeds',type=int,nargs='+',default=[8,9,10])
+    ap.add_argument('--tasks',nargs='+',default=['cartpole'])
     args=ap.parse_args()
     root=Path(args.output)
     root.mkdir(parents=True,exist_ok=False)
@@ -30,9 +31,10 @@ def main():
     versions=dict(torch=torch.__version__,gymnasium=gymnasium.__version__)
     records=[]
     torch.set_num_threads(1)
-    for seed in args.seeds:
+    for task in args.tasks:
+      for seed in args.seeds:
         for actor_type,critic_type in [('mlp','mlp'),('nnknn','mlp'),('mlp','nnknn'),('nnknn','nnknn')]:
-            label=f'{actor_type}_{critic_type}/s{seed}'
+            label=f'{task}/{actor_type}_{critic_type}/s{seed}'
             cfg=make_nnknn_rl_config('smoke',seed=seed,actor_type=actor_type,critic_type=critic_type,
                 total_timesteps=args.steps,case_capacity=128,critic_case_capacity=128,
                 eval_frequency=0,eval_episode_frequency=100000,eval_episodes=3,
@@ -40,10 +42,10 @@ def main():
                 early_stopping=False,success_threshold=None,top_k=8,
                 min_case_entries=8,min_cases_per_action=2)
             start=time.perf_counter()
-            state=train_nnknn_rl('cartpole',cfg,output_dir=root/label,device='cpu',progress=False)
+            state=train_nnknn_rl(task,cfg,output_dir=root/label,device='cpu',progress=False)
             train_seconds=time.perf_counter()-start
             events=[]
-            holdout=evaluate_critic_holdout('cartpole',state['model'],state['value_model'],state['target_model'],
+            holdout=evaluate_critic_holdout(task,state['model'],state['value_model'],state['target_model'],
                 cfg,episodes=2,seed=40000+seed*2,global_step=args.steps,device='cpu',
                 audit_sink=events.append,max_audit_queries=8)
             assert state['summary']['actual_timesteps']==args.steps
@@ -59,7 +61,7 @@ def main():
             (run_dir/'role_audit_events.json').write_text(json.dumps(events,indent=2),encoding='utf-8')
             credit=summarize_credit(events)
             credit_json=[dict(role=k[0],stream=k[1],cases=v) for k,v in credit.items()]
-            record=dict(role=label,seed=seed,actor_type=actor_type,critic_type=critic_type,
+            record=dict(role=label,task=task,seed=seed,actor_type=actor_type,critic_type=critic_type,
                 source_fingerprint=fingerprint,versions=versions,run_dir=str(run_dir),
                 training_seconds=train_seconds,summary=state['summary'],independent_mc=holdout,
                 audit_events=len(events),interventions=sum(len(e['interventions']) for e in events),
@@ -67,7 +69,7 @@ def main():
             records.append(record)
             (root/'manifest.json').write_text(json.dumps(dict(status='exploratory_current_core_not_stage_a_gate',
                 roles=records,source_fingerprint=fingerprint,versions=versions),indent=2),encoding='utf-8')
-            print(f'completed {len(records)}/{4*len(args.seeds)} {label} events={len(events)}',flush=True)
+            print(f'completed {len(records)}/{4*len(args.seeds)*len(args.tasks)} {label} events={len(events)}',flush=True)
 
 
 if __name__=='__main__':
