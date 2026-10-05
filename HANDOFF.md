@@ -1,5 +1,12 @@
 # Handoff
 
+**2026-10-05 completed public host controls:** Read `docs/T3_PUBLIC_HOST_RESULTS.md`.
+All80 trials/144 calls/48,219 input/6,543 output tokens complete;11 errors count
+as zero. Learned/iterative gains are unproven;all Hotpot support/joint F1 zero.
+No second retrieval occurs.53 recorded events/1,480 manual NN candidates replay;
+11 errored original traces remain missing. Optional strict-schema decoding is
+running separately;actual costs,format reliability and QA are assessed together.
+
 **2026-10-05 host failure journal:** Read `docs/T3_HOST_FAILURE_JOURNAL.md`.
 Completed retrieval events now reach an optional sink before later host calls,
 including withheld payloads; public runner journals and keeps partial events.
