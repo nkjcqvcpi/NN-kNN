@@ -1,5 +1,10 @@
 # Continuous execution ledger — 2026-10-04
 
+October6 two actual bounded requests complete at118/186 tokens;independent prompt,
+tokenizer/schema/journal checks pass,original repetition remains. Full192 bounded
+collection actually started (90847),then six fits/replays/common-query/two public
+arms. Read `T3_REQUEST_LOOP_DIAGNOSIS.md`;format repair is not semantic benefit.
+
 October6 both192-query128/256 treatments fail on the same two repeating strings;
 190 other outputs exact,complete failed-accounting audits pass,neither fit starts.
 Optional bounded grammar implemented and actual backend continuation rejection

@@ -1,5 +1,11 @@
 # Handoff
 
+**2026-10-06 actual bounded diagnostic passed/full collection live:** Two real
+requests complete at118/186 tokens with512/510-character original repeated needs;
+independent checks pass. Semantic repetition remains. Frozen149 source and live
+session90847 collect all192 before six fits/replays/common-query/two32-trial public
+arms. Read `docs/T3_REQUEST_LOOP_DIAGNOSIS.md`;no completed fitting claim yet.
+
 **2026-10-06 request repetition diagnosis:** Read
 `docs/T3_REQUEST_LOOP_DIAGNOSIS.md`. Both complete192-query128/256 treatments
 retain the same two repeating-string failures;190 outputs match exactly.
