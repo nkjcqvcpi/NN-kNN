@@ -1,5 +1,10 @@
 # Handoff
 
+**2026-10-05 metric provenance:** Read `docs/T3_METRIC_PROVENANCE.md`.
+Public evaluation binds actual checkpoint/seed/epoch/objective/query source and
+train-only split instead of a fixed seed8/tune-loss label.57 T3 tests and six real
+historical checkpoint/data/split checks pass. Live192-query source remains frozen.
+
 **2026-10-05 public utility32 complete:** Read `docs/T3_PUBLIC_UTILITY_RESULTS.md`.
 128 actual calls/52,730 input/3,532 output tokens/743.30 generation seconds;
 all64 pairs and journals/objectives/C/H/Q/complementarity verify.32 full outputs
