@@ -1,5 +1,10 @@
 # Handoff
 
+**2026-10-06 actual internal experiment queued:** Session96676 waits for verified
+bounded owner23992,then64 fresh answer-only none/prompt/internal/combined calls
+and full independent audit. Source152 `225483f2...`;all242 tests pass. Remote
+career-2027 HEAD unchanged. Read `docs/T3_INTERNAL_INTERFACE.md`;no quality claim.
+
 **2026-10-06 real internal preflight:**16 fresh core retrievals/592 manual
 candidates/32 actual Qwen-token histograms/32 synthetic probability checks pass.
 Large-vocabulary probability trace bug reproduced and fixed;66 T3 tests pass.
