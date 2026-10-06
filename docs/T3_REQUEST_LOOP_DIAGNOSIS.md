@@ -35,3 +35,33 @@ tests with one existing T1 tensor-to-scalar warning. Task evidence:
 `outputs/neural-cbr-t3-failed-need-collection-256-verification.json`,
 `outputs/neural-cbr-t3-request-loop-diagnosis.json`.
 The original147 and uniform256149 source archives remain unchanged.
+
+## Fresh actual diagnostic and full run
+
+Both real bounded-profile requests complete:118/186 output tokens,512/510 need
+characters,182 total input/304 output tokens and63.77 generation seconds. Exact
+tokenizer/source-prompt/host/decode/schema/output/journal checks pass. The needs
+retain the original repeated prefixes; format completion has not repaired their
+semantic quality. The token grammar can close before512 when the next whole token
+would exceed the bound. An initial verifier incorrectly required exactly512 in
+both cases; inspection of the actual510-character second output corrected that
+assumption. No output was changed.
+
+The bounded192-query collection has actually started,followed by six matched
+20-epoch fits,six independent full retrainings and common-query evaluation. Two
+public exploratory32-trial arms then compare question-trained and actual-need
+metrics using seed8,identical bounded grammar/request256/answer128 conditions.
+Seed8 is recorded before these new public outputs; earlier exploratory results
+remain known. Both arms use the existing16 exploratory questions;reserved64
+remain untouched. This is redesign evidence,not independent confirmation.
+
+Frozen149-file source:
+`e26aac9c13ab3e00e7c022c4ad02d6b0469f034735be0c0e18975665e19a3dd7`,
+ZIP `7a87a29675d5190345bd1ad5d8556cc5fdbf8e02ce7b1ebe7f4b9dba903a8963`.
+Task evidence: `outputs/t3-bounded-request-diagnostic-20261006/`,
+`outputs/neural-cbr-t3-bounded-request-probe-verification.json`,
+`work/t3_bounded_request_plan.json`,`work/run_t3_bounded_request_256.ps1`,
+`work/t3_bounded_request_256_driver.log`. The first sequencing preflight referred
+to the new output rather than the preserved old failure;it stopped before any
+generation. The corrected driver verified no new output existed and preserved
+that preflight log separately before starting. Session90847 is the live full run.
