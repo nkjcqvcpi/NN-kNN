@@ -57,3 +57,13 @@ def test_bad_activation_alignment_and_cross_task_batch_are_rejected():
     mixture=ArtifactLogitMixture([case(8,'B')],{8:1.},Tokenizer(),vocabulary_size=4,alpha=.1,tokenizer_version='frozen-test')
     with pytest.raises(ValueError,match='one task'):mixture(torch.ones(2,3,dtype=torch.long),torch.zeros(2,4))
     with pytest.raises(ValueError,match='finite allowed'):mixture(torch.ones(1,3,dtype=torch.long),torch.full((1,4),-torch.inf))
+
+
+def test_large_host_vocabulary_trace_matches_composed_probability():
+    vocab=151936
+    mixture=ArtifactLogitMixture([case(8,'A B')],{8:1.},Tokenizer(),vocabulary_size=vocab,alpha=.1,tokenizer_version='large-host-test')
+    output=mixture(torch.tensor([[1,2]]),torch.zeros(1,vocab))
+    expected=.9/vocab+.1*2/3
+    assert mixture.events[0]['mixture_argmax']==0
+    assert mixture.events[0]['mixture_probability_at_argmax']==pytest.approx(expected,rel=1e-6,abs=1e-7)
+    assert float(output[0,0].exp())==pytest.approx(expected,rel=1e-6,abs=1e-7)

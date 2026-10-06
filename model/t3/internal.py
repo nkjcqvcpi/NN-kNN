@@ -79,10 +79,14 @@ class ArtifactLogitMixture:
             result=result.masked_fill(~allowed,-torch.inf)
         else:result=scores
         old=int(scores.argmax(-1)[0]);new=int(result.argmax(-1)[0])
+        if not bool(torch.isneginf(result[~allowed]).all()):
+            raise ValueError('internal interface changed a forbidden host token')
         self._events.append(dict(step=len(self._events),input_length=input_ids.shape[1],
             allowed_tokens=int(allowed.sum()),allowed_artifact_mass=float(mass),active=active,
+            allowed_artifact_token_ids=torch.nonzero(pointer[0]>0).flatten().cpu().tolist(),
+            forbidden_tokens_preserved=True,
             host_argmax=old,mixture_argmax=new,argmax_changed=old!=new,
             artifact_probability_at_argmax=float(pointer[0,new]) if active else 0.,
             host_probability_at_argmax=float(host[0,new].exp()),
-            mixture_probability_at_argmax=float(result.float().softmax(-1)[0,new])))
+            mixture_probability_at_argmax=float(result[0,new].float().exp()) if active else float(host[0,new].exp())))
         return result

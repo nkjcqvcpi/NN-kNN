@@ -1,5 +1,10 @@
 # Handoff
 
+**2026-10-06 real internal preflight:**16 fresh core retrievals/592 manual
+candidates/32 actual Qwen-token histograms/32 synthetic probability checks pass.
+Large-vocabulary probability trace bug reproduced and fixed;66 T3 tests pass.
+Actual64-answer experiment still required;read `docs/T3_INTERNAL_INTERFACE.md`.
+
 **2026-10-06 internal interface candidate:** Read `docs/T3_INTERNAL_INTERFACE.md`.
 Frozen activation-weighted output-token mixture and four-arm64-call mechanism
 driver implemented;65 T3 tests pass. Same archived real needs/fresh core retrieval,
