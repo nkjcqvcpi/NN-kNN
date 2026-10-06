@@ -1,5 +1,10 @@
 # Continuous execution ledger — 2026-10-04
 
+October6 two matched public32 arms complete/full audit:128 calls/64 retrievals/
+2,368 manual candidates. Actual-need metric gives mixed SQuAD and unchanged
+Hotpot outcomes;all Hotpot support/joint0,no second retrieval. Driver90847 done;
+internal64 actual answers running. Read `T3_ACTUAL_NEED_PUBLIC_RESULTS.md`.
+
 October6 optional sublinear/binary lexical robustness encodings implemented
 consistently across cases/queries/loss/provenance/public/internal runners;71 T3
 tests pass. Default count behavior preserved;real matched fitting/replay needed.
