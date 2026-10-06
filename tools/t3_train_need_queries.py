@@ -20,6 +20,7 @@ def main():
     for name in ('reference-run','reference-verification','data-root','samples','model-dir','runtime-library-bin','format-library','output'):
         ap.add_argument('--'+name,type=Path,required=True)
     ap.add_argument('--request-token-ceiling',type=int,choices=(128,256,512),default=128)
+    ap.add_argument('--request-profile',choices=('standard','bounded'),default='standard')
     args=ap.parse_args()
     verification=json.loads(args.reference_verification.read_text())
     if verification.get('provisional_snapshot') or not verification.get('all_recorded_retrieval_traces_verified') or verification['counts']['trials']!=80:
@@ -37,7 +38,7 @@ def main():
     from transformers import AutoModelForCausalLM,AutoTokenizer
     from model.t1.artifacts import source_fingerprint
     from model.t3.benchmarks import load_squad
-    from model.t3.host_schema import request_prompt,request_decode,decoder_schema,validate_decision
+    from model.t3.host_schema import request_prompt,request_decode,decision_schema,decoder_schema,validate_decision
     from model.t3.need_queries import load_need_queries
     sys.path.insert(0,str(args.format_library.resolve(strict=True)))
     import importlib.metadata
@@ -64,8 +65,12 @@ def main():
     fit=[by_id[qid] for qid in samples['fit_ids']];tune=[by_id[qid] for qid in samples['tune_ids']]
     if {t.group for t in fit}&{t.group for t in tune}:raise ValueError('article leakage')
     decode=request_decode(reference['decode'],args.request_token_ceiling)
-    protocol=dict(version=1 if args.request_token_ceiling==128 else 2,dataset=source['name'],data_sha256=source['sha256'],sample_sha256=sha(args.samples),
-        source_fingerprint=source_fingerprint(Path(__file__).resolve().parents[1]),host=host,format_backend=reference['format_backend'],
+    format_backend=dict(reference['format_backend'],
+        schemas={stage:decision_schema(stage,request_profile=args.request_profile) for stage in ('request','answer','continuation')},
+        decoder_schemas={stage:decoder_schema(stage,request_profile=args.request_profile) for stage in ('request','answer','continuation')})
+    protocol=dict(version=1 if args.request_token_ceiling==128 and args.request_profile=='standard' else 2,dataset=source['name'],data_sha256=source['sha256'],sample_sha256=sha(args.samples),
+        source_fingerprint=source_fingerprint(Path(__file__).resolve().parents[1]),host=host,format_backend=format_backend,
+        reference_format_backend=reference['format_backend'],request_profile=args.request_profile,
         reference_verification_sha256=sha(args.reference_verification),query_source='actual frozen host request',
         public_dev_annotations_used=False,fit_ids=samples['fit_ids'],tune_ids=samples['tune_ids'],
         decode=decode,request_token_ceiling=args.request_token_ceiling,
@@ -87,7 +92,7 @@ def main():
         prompt=request_prompt(task.question)
         public=tokenizer.apply_chat_template([dict(role='user',content=prompt)],tokenize=False,add_generation_prompt=True,enable_thinking=False)
         inputs=tokenizer(public,return_tensors='pt').to('xpu');start=time.perf_counter()
-        fn=build_transformers_prefix_allowed_tokens_fn(token_data,JsonSchemaParser(decoder_schema('request')))
+        fn=build_transformers_prefix_allowed_tokens_fn(token_data,JsonSchemaParser(decoder_schema('request',request_profile=args.request_profile)))
         with torch.no_grad():output=model.generate(**inputs,**decode,prefix_allowed_tokens_fn=fn,pad_token_id=tokenizer.eos_token_id)
         torch.xpu.synchronize()
         text=tokenizer.decode(output[0,inputs['input_ids'].shape[1]:],skip_special_tokens=True)
@@ -95,7 +100,7 @@ def main():
             output_tokens=output.shape[1]-inputs['input_ids'].shape[1],seconds=time.perf_counter()-start)
         append('host_calls.jsonl',dict(question_id=task.question_id,call=call))
         record=dict(question_id=task.question_id,question=task.question,call=call,request=None,error=None)
-        try:record['request']=validate_decision(json.loads(text.strip()),'request')
+        try:record['request']=validate_decision(json.loads(text.strip()),'request',request_profile=args.request_profile)
         except (ValueError,KeyError,TypeError) as exc:record['error']=str(exc)
         records.append(record);append('records.jsonl',record)
         print(len(records),task.question_id,'observed' if record['error'] is None else record['error'],flush=True)

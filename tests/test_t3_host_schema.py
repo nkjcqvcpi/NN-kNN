@@ -41,3 +41,17 @@ def test_request_budget_is_explicit_and_does_not_mutate_answer_budget():
     import pytest
     for value in (True,129,0,None):
         with pytest.raises(ValueError,match='ceiling'):request_decode(base,value)
+
+
+def test_bounded_request_profile_enforces_lengths_without_replacing_need():
+    from model.t3.host_schema import decision_schema,decoder_schema,validate_decision
+    import pytest
+    request={'ready':False,'need':'x'*513,'requested_types':['evidence'],'observable_task_state':'awaiting evidence'}
+    assert validate_decision(request,'request')==request
+    with pytest.raises(ValueError,match='bounded string'):validate_decision(request,'request',request_profile='bounded')
+    request['need']='actual emitted need'
+    assert validate_decision(request,'continuation',request_profile='bounded')==request
+    request['observable_task_state']='x'*129
+    with pytest.raises(ValueError,match='bounded string'):validate_decision(request,'request',request_profile='bounded')
+    assert decoder_schema('request',request_profile='bounded')['properties']['need']['maxLength']==512
+    assert decision_schema('answer',request_profile='bounded')==decision_schema('answer')

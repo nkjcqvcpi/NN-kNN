@@ -13,6 +13,8 @@ def load_need_queries(path,tasks,*,data_sha256,sample_sha256):
     if protocol.get('version') not in (1,2) or protocol.get('dataset')!='squad_train_v11.json' or protocol.get('data_sha256')!=data_sha256 or protocol.get('sample_sha256')!=sample_sha256:
         raise ValueError('need data/sample/version binding mismatch')
     ceiling=128
+    profile=protocol.get('request_profile','standard')
+    if protocol['version']==1 and profile!='standard':raise ValueError('bounded request profile needs explicit version2 treatment')
     if protocol['version']==2:
         ceiling=protocol.get('request_token_ceiling')
         if protocol.get('decode')!=request_decode(protocol.get('decode',{}),ceiling):
@@ -42,7 +44,7 @@ def load_need_queries(path,tasks,*,data_sha256,sample_sha256):
             raise ValueError('need prompt/stage binding mismatch')
         if type(call['input_tokens']) is not int or call['input_tokens']<1 or type(call['output_tokens']) is not int or not 1<=call['output_tokens']<=ceiling:
             raise ValueError('actual need token accounting required')
-        emitted=validate_decision(json.loads(call['output'].strip()),'request')
+        emitted=validate_decision(json.loads(call['output'].strip()),'request',request_profile=profile)
         if emitted!=record['request']:raise ValueError('stored need differs from actual emitted request')
         queries[qid]=emitted['need']
     if set(queries)!=set(expected):raise ValueError('complete prespecified fit/tune need coverage required')

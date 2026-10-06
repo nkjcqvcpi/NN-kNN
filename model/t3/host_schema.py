@@ -25,15 +25,20 @@ def request_prompt(question):
         'Do not answer or omit fields. Do not explain reasoning.\nQuestion: '+question)
 
 
-def decision_schema(stage,*,allowed_types=('evidence',)):
+def decision_schema(stage,*,allowed_types=('evidence',),request_profile='standard'):
     if stage not in {'request','answer','continuation'}:
         raise ValueError('unsupported host stage')
+    if request_profile not in ('standard','bounded'):
+        raise ValueError('unknown request schema profile')
     if not isinstance(allowed_types,(tuple,list)) or not allowed_types or any(not isinstance(t,str) or t not in TYPES for t in allowed_types) or len(set(allowed_types))!=len(allowed_types):
         raise ValueError('explicit supported artifact types required')
     request=dict(type='object',additionalProperties=False,required=['ready','need','requested_types','observable_task_state'],properties=dict(
         ready=dict(const=False),need=dict(type='string',minLength=1,maxLength=4096),
         requested_types=dict(type='array',minItems=1,maxItems=len(allowed_types),items=dict(type='string',enum=list(allowed_types))),
         observable_task_state=dict(type='string',maxLength=8192)))
+    if request_profile=='bounded':
+        request['properties']['need']['maxLength']=512
+        request['properties']['observable_task_state']['maxLength']=128
     # The optional decoder supports an item union,not heterogeneous positional
     # tuples. validate_decision enforces [title,index] after generation.
     citation=dict(type='array',minItems=2,maxItems=2,items=dict(anyOf=[dict(type='string',minLength=1,maxLength=256),dict(type='integer',minimum=0)]))
@@ -43,8 +48,8 @@ def decision_schema(stage,*,allowed_types=('evidence',)):
     return request if stage=='request' else answer if stage=='answer' else dict(anyOf=[request,answer])
 
 
-def validate_decision(decision,stage,*,allowed_types=('evidence',)):
-    decision_schema(stage,allowed_types=allowed_types)
+def validate_decision(decision,stage,*,allowed_types=('evidence',),request_profile='standard'):
+    decision_schema(stage,allowed_types=allowed_types,request_profile=request_profile)
     if not isinstance(decision,dict) or type(decision.get('ready')) is not bool:
         raise ValueError('host requires explicit boolean readiness')
     actual='answer' if decision['ready'] else 'request'
@@ -54,6 +59,8 @@ def validate_decision(decision,stage,*,allowed_types=('evidence',)):
         if set(decision)!={'ready','need','requested_types','observable_task_state'}:
             raise ValueError('host request must supply exact public fields')
         request=Request(decision['need'],decision['requested_types'],observable_task_state=decision['observable_task_state'])
+        if request_profile=='bounded' and (len(request.need)>512 or len(request.observable_task_state)>128):
+            raise ValueError('host request exceeds bounded string profile')
         if not isinstance(decision['requested_types'],list) or not 1<=len(decision['requested_types'])<=len(allowed_types) or not set(request.requested_types)<=set(allowed_types):
             raise ValueError('host request types exceed declared routes')
     else:
@@ -68,13 +75,13 @@ def validate_decision(decision,stage,*,allowed_types=('evidence',)):
     return decision
 
 
-def decoder_schema(stage,*,allowed_types=('evidence',)):
+def decoder_schema(stage,*,allowed_types=('evidence',),request_profile='standard'):
     """Backend0.11.3 cannot parse boolean const; enforce readiness afterwards.
 
     It also does not fully enforce numeric minima or positional tuple types.
     Runtime validation stays authoritative; grammar is not a truth validator.
     """
-    schema=copy.deepcopy(decision_schema(stage,allowed_types=allowed_types))
+    schema=copy.deepcopy(decision_schema(stage,allowed_types=allowed_types,request_profile=request_profile))
     def convert(value):
         if isinstance(value,dict):
             if type(value.get('const')) is bool:
