@@ -220,7 +220,7 @@ def main():
                     record.update(error=str(exc),host_decisions=decisions,partial_events=partial_events,scores=dict(em=0.,f1=0.))
                 record.update(host_calls=calls[start_call:],seconds=time.perf_counter()-start)
                 assert len(record['host_calls'])<=3
-                assert sum(c['output_tokens'] for c in record['host_calls'])<=384
+                assert sum(c['output_tokens'] for c in record['host_calls'])<=protocol['budgets']['total_generated_token_ceiling']
                 rows.append(record)
                 with (args.output/'trials.jsonl').open('a',encoding='utf-8') as file:file.write(json.dumps(record,ensure_ascii=False)+'\n')
                 print(dataset,task.question_id,condition,record['scores'],record.get('error',record.get('result',{}).get('stop_reason')),flush=True)
