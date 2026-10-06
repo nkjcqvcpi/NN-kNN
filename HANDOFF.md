@@ -1,5 +1,11 @@
 # Handoff
 
+**2026-10-05 request collection failure/repair:** Read
+`docs/T3_REQUEST_BUDGET_REPAIR.md`. Frozen128-token collection observes a truncated
+request at145;finish and preserve all192,then reject incomplete fitting. New
+explicit uniform256 request treatment is implemented;answers remain128 and
+all59 T3 tests pass. New collection/public comparison must share the treatment.
+
 **2026-10-05 metric provenance:** Read `docs/T3_METRIC_PROVENANCE.md`.
 Public evaluation binds actual checkpoint/seed/epoch/objective/query source and
 train-only split instead of a fixed seed8/tune-loss label.57 T3 tests and six real

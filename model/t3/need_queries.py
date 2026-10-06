@@ -4,14 +4,21 @@ import json
 from pathlib import Path
 import re
 
-from .host_schema import request_prompt,validate_decision
+from .host_schema import request_prompt,request_decode,validate_decision
 
 
 def load_need_queries(path,tasks,*,data_sha256,sample_sha256):
     raw=Path(path).read_bytes();artifact=json.loads(raw)
     protocol=artifact['protocol']
-    if protocol.get('version')!=1 or protocol.get('dataset')!='squad_train_v11.json' or protocol.get('data_sha256')!=data_sha256 or protocol.get('sample_sha256')!=sample_sha256:
+    if protocol.get('version') not in (1,2) or protocol.get('dataset')!='squad_train_v11.json' or protocol.get('data_sha256')!=data_sha256 or protocol.get('sample_sha256')!=sample_sha256:
         raise ValueError('need data/sample/version binding mismatch')
+    ceiling=128
+    if protocol['version']==2:
+        ceiling=protocol.get('request_token_ceiling')
+        if protocol.get('decode')!=request_decode(protocol.get('decode',{}),ceiling):
+            raise ValueError('need request decode ceiling mismatch')
+        if protocol.get('maximum_calls')!=len(tasks) or protocol.get('maximum_generated_tokens')!=len(tasks)*ceiling:
+            raise ValueError('need request total budget mismatch')
     if protocol.get('query_source')!='actual frozen host request' or protocol.get('public_dev_annotations_used') is not False:
         raise ValueError('actual train-only needs required')
     host=protocol.get('host',{})
@@ -33,7 +40,7 @@ def load_need_queries(path,tasks,*,data_sha256,sample_sha256):
         call=record['call']
         if call['stage']!='request' or call['source_prompt']!=request_prompt(expected[qid]) or call['source_prompt'] not in call['prompt']:
             raise ValueError('need prompt/stage binding mismatch')
-        if type(call['input_tokens']) is not int or call['input_tokens']<1 or type(call['output_tokens']) is not int or not 1<=call['output_tokens']<=128:
+        if type(call['input_tokens']) is not int or call['input_tokens']<1 or type(call['output_tokens']) is not int or not 1<=call['output_tokens']<=ceiling:
             raise ValueError('actual need token accounting required')
         emitted=validate_decision(json.loads(call['output'].strip()),'request')
         if emitted!=record['request']:raise ValueError('stored need differs from actual emitted request')

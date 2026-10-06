@@ -8,6 +8,14 @@ import copy
 from .retrieval import TYPES,Request
 
 
+def request_decode(base,token_ceiling):
+    """Explicit uniform request budget; answer/continuation budgets stay separate."""
+    if type(token_ceiling) is not int or token_ceiling not in (128,256,512):
+        raise ValueError('request token ceiling must be128,256 or512')
+    result=copy.deepcopy(base);result['max_new_tokens']=token_ceiling
+    return result
+
+
 def request_prompt(question):
     """Shared literal request treatment for public fit/tune/evaluation calls."""
     if not isinstance(question,str) or not question.strip():raise ValueError('public question required')

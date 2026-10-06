@@ -33,3 +33,11 @@ def test_backend_schema_exposes_weaker_boolean_contract_without_mutating_it():
     assert supported['properties']['ready']==dict(type='boolean')
     assert supported['required']==declared['required']
     assert decision_schema('request')==declared
+def test_request_budget_is_explicit_and_does_not_mutate_answer_budget():
+    from model.t3.host_schema import request_decode
+    base={'max_new_tokens':128,'do_sample':False}
+    assert request_decode(base,256)=={'max_new_tokens':256,'do_sample':False}
+    assert base['max_new_tokens']==128
+    import pytest
+    for value in (True,129,0,None):
+        with pytest.raises(ValueError,match='ceiling'):request_decode(base,value)
