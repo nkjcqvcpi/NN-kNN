@@ -1,5 +1,10 @@
 # Continuous execution ledger — 2026-10-04
 
+October5 public metric provenance corrected: actual checkpoint/seed/epoch/query
+and selection bindings replace a hardcoded label;57 T3 tests and six real old
+checkpoint/data/split checks pass. Actual192-query generation remains live.
+Read `T3_METRIC_PROVENANCE.md`; no new public outcome benefit is claimed.
+
 October5 public32 direct utility sets complete:128 actual calls/64 removal pairs,
 all exact prompt/journal/score/manual credit/complementarity checks pass;32 full
 outputs repeat source.12 helpful/11 harmful/41 zero;four task failures retained,

@@ -42,6 +42,7 @@ def main():
     from model.t3.orchestrator import Budget,run_loop
     from model.t3.retrieval import Access,Retriever
     from model.t3.host_schema import decision_schema,decoder_schema,validate_decision,request_prompt
+    from model.t3.metric_provenance import metric_provenance
     format_metadata=None
     if args.format_library is not None:
         sys.path.insert(0,str(args.format_library.resolve(strict=True)))
@@ -73,9 +74,15 @@ def main():
     selected=metric['selected_metric']['feature_weights']
     assert selected.shape==(1,256) and bool(torch.isfinite(selected).all()) and bool((selected>0).all())
     metric_sha=hashlib.sha256(args.metric_checkpoint.read_bytes()).hexdigest()
+    metric_binding=metric_provenance(args.metric_checkpoint)
     data=json.loads((args.data_root/'manifest_mirror_complete.json').read_text())
     files={r['name']:r for r in data['files']}
     samples=json.loads(args.sample_manifest.read_text())['samples']
+    train_samples=samples['squad_train_v11.json']
+    if (metric_binding['data_source']!=files['squad_train_v11.json'] or
+        metric_binding['fit_ids']!=train_samples['fit_ids'] or
+        metric_binding['tune_ids']!=train_samples['tune_ids']):
+        raise ValueError('metric fitting data/split differs from public experiment binding')
     groups=[]
     for dataset,name,loader in [('squad','squad_dev_v11.json',load_squad),('hotpot','hotpot_dev_distractor_converted.json',load_hotpot)]:
         options=dict(allow_unaligned_support=True) if dataset=='hotpot' else {}
@@ -88,7 +95,7 @@ def main():
         groups.append((dataset,chosen,gold,banks))
     decode=dict(max_new_tokens=128,do_sample=False,temperature=None,top_p=None,top_k=None,use_cache=True)
     protocol=dict(source_fingerprint=source_fingerprint(Path(__file__).resolve().parents[1]),host=host_manifest,metric_checkpoint_sha256=metric_sha,
-        metric_selection='prespecified seed8,tune-loss-selected need-match snapshot; not selected on dev outcomes',
+        metric_selection=metric_binding,
         data=data,conditions=args.conditions,decode=decode,
         budgets=dict(total_host_call_ceiling=3,total_generated_token_ceiling=384,max_cases=2,max_evidence_chars=12000,max_retrieval_rounds=2),
         opportunity_boundary='matched resource ceilings; one-shot1 retrieval/two host calls,iterative up to2 retrievals/three host calls,none one host call; report actual cost',
@@ -172,7 +179,7 @@ def main():
                             core=core_bank(bank)
                             if condition in {'learned','iterative'}:core.glocal_weightor.feature_weights.data.copy_(selected)
                             core.eval().requires_grad_(False)
-                            retriever=Retriever(core,list(bank),HashQuery(),model_version='fixed' if condition=='fixed' else f'need-s8-{metric_sha[:12]}',encoder_version='hash256-v1')
+                            retriever=Retriever(core,list(bank),HashQuery(),model_version='fixed' if condition=='fixed' else f"need-s{metric_binding['seed']}-{metric_sha[:12]}",encoder_version='hash256-v1')
                         def callback(task,evidence):
                             if not evidence:
                                 prompt=request_prompt(task)
