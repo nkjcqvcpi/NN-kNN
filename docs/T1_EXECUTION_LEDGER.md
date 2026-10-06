@@ -1,5 +1,11 @@
 # Continuous execution ledger — 2026-10-04
 
+October6 six fits and six exact state/gradient replays complete,with2,688 NN/
+384 BM25/172,032 common-input checks. Net actual-need tune recall@2 gains2/0/1
+of64;no rank1 improvement,BM25 stronger. Repeated need causes one fixed-NN miss
+in explicit same-bank diagnosis. Public arms running;internal64 queued.
+Read `T3_ACTUAL_NEED_TRAINING_RESULTS.md`;not independent confirmation/promotion.
+
 October6 all192 real bounded needs complete and independently audited;190 old
 success outputs unchanged,two tune string closures,fit/tune vector shift100/50.
 Three original-question controls complete;actual fits/replays/public comparison

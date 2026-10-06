@@ -1,5 +1,13 @@
 # Handoff
 
+**2026-10-06 six actual fits/replays complete:** Read
+`docs/T3_ACTUAL_NEED_TRAINING_RESULTS.md`.15,360 nonzero updates/25,344 evals/
+40,704 query checks reproduce exactly;2,688 common-input NN/384 BM25/172,032
+manual candidate checks pass. Actual-input recall@2 gains net2/0/1 of64 across
+seeds,no recall@1 gain;BM25 remains stronger. Repeated Northwestern need causes
+fixed-NN source miss,while BM25 retains rank1. Public32-trial question-control
+arm now runs;actual arm follows,then internal64 queued96676. No promotion.
+
 **2026-10-06 complete actual192 needs:** Full source/prompt/tokenizer/host/output/
 journal audit passes;192/192 valid,16,705 input/9,926 output/1,882.85 seconds.
 All190 old successes exact;two tune repairs512/510 chars preserve repetition.
