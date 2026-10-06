@@ -1,5 +1,14 @@
 # Handoff
 
+**2026-10-05 public utility32 complete:** Read `docs/T3_PUBLIC_UTILITY_RESULTS.md`.
+128 actual calls/52,730 input/3,532 output tokens/743.30 generation seconds;
+all64 pairs and journals/objectives/C/H/Q/complementarity verify.32 full outputs
+exactly repeat source;four completed formatting failures retained.12 helpful,
+11 harmful,41 zero;SQuAD full gain negative,Hotpot positive but no support/joint
+benefit. Empty counterfactual differs from prior no-retrieval final instruction.
+No global update/false-case label. Utility driver85101 terminal0;query driver
+95436 now generates192 actual train-only needs before six matched fits.
+
 **2026-10-05 strict decoding control complete:** Read
 `docs/T3_STRICT_FORMAT_CONTROL.md`.Both80-trial arms/144 calls each/all128
 retrievals/3,552 manual candidates verify. Strict plain24 failures versus
