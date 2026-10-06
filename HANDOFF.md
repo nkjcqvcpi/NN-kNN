@@ -1,5 +1,12 @@
 # Handoff
 
+**2026-10-06 matched public arms complete:** Read
+`docs/T3_ACTUAL_NEED_PUBLIC_RESULTS.md`.64 trials/128 calls/64 retrievals/2,368
+manual candidates audited;32 initial requests exact. SQuAD one-shot slightly
+worse,one-case allowance one-question gain;Hotpot unchanged/all support/joint0.
+No actual second retrieval. Driver90847 terminal0;internal96676 actual answers
+now running. CPU optional encoding six fits complete,replay99319 live.
+
 **2026-10-06 lexical robustness ablations:** Read
 `docs/T3_TERM_FREQUENCY_ROBUSTNESS.md`. Optional sublinear/binary encoding is
 consistent across case/query/training/retrieval/audit bindings;71 T3 tests pass.
