@@ -75,3 +75,27 @@ preparation time is reported separately from generation. Task evidence:
 `work/audit_t3_internal_host.py`. A fresh64-call host run and its full independent
 audit remain necessary. No internal quality benefit or empirical architecture
 selection is established by this preflight.
+
+## Queued actual experiment
+
+The four-arm64-call experiment is now queued as session96676 behind the verified
+bounded experiment owner23992. It is independent of that experiment's scientific
+outcome and waits for its GPU use to finish. Source152 files:
+`225483f26fb77911321ac86ac52db90095e5b88d8d0a14500fe237e2ab8e8a40`,
+ZIP `54a5c8265b13ab9aafd6196458c437ec675875b048abf1c6749718ee0065110a`.
+The prospective plan records alpha0.1 and all four arms before new answers.
+The independent auditor checks64 calls,16 fresh original-query/core retrievals,
+592 manual candidate contributions,actual tokenizer counts,original case
+provenance,per-step permitted artifact mass and selected-token mixture formulas,
+generated IDs,strict failure scoring and complete journals. It does not perform
+fresh independent LLM regeneration or certify the internal architecture.
+
+Task paths: `work/t3_internal_experiment_plan.json`,
+`work/run_t3_internal_after_bounded.ps1`,`work/t3_internal_after_bounded_driver.log`.
+Future results: `outputs/t3-internal-host-20261006/`,
+`outputs/neural-cbr-t3-internal-host-verification.json`.
+All242 repository tests pass with the existing T1 tensor-to-scalar warning.
+The career-2027 remote HEAD was rechecked onOctober6 and remains the imported
+`cd77277600841438d98ac5793867da28b8ec6dd0`. Broader semantic/typed integration,
+competitive outcomes,poisoning/rollback,scope calibration,stronger/cloud hosts
+and qualified/human validation remain open.

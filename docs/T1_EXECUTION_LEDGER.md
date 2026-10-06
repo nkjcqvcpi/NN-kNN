@@ -1,5 +1,10 @@
 # Continuous execution ledger — 2026-10-04
 
+October6 internal64 fresh answers+independent case/token/score/journal audit
+queued96676 after verified bounded owner23992. All242 repository tests pass;
+career-2027 HEAD remains the pinned snapshot. Read `T3_INTERNAL_INTERFACE.md`;
+broader scientific gates and the full objective remain open.
+
 October6 internal preflight uses16 actual core retrievals/592 manual candidates/
 32 actual Qwen histograms/32 independent synthetic probability checks. Diagnostic
 large-vocabulary float32 renormalization bug reproduced/fixed;66 T3 tests pass.
