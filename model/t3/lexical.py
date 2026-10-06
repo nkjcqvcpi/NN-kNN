@@ -26,28 +26,38 @@ def artifact_text(case):
     return obj['title']+' '+(obj['passage'] if 'passage' in obj else ' '.join(obj['sentences']))
 
 
-def hash_vector(text, dimensions=256):
+def hash_vector(text, dimensions=256,*,term_frequency='count'):
     if type(dimensions) is not int or dimensions<2:
         raise ValueError('hash representation requires at least two dimensions')
+    if term_frequency not in ('count','sublinear','binary'):
+        raise ValueError('unsupported lexical term frequency')
     v=torch.zeros(dimensions)
-    for token in tokens(text):
-        v[int.from_bytes(hashlib.sha256(token.encode()).digest()[:8],'big')%dimensions]+=1
+    if term_frequency=='count':
+        for token in tokens(text):
+            v[int.from_bytes(hashlib.sha256(token.encode()).digest()[:8],'big')%dimensions]+=1
+    else:
+        for token,count in Counter(tokens(text)).items():
+            value=1+math.log(count) if term_frequency=='sublinear' else 1.
+            v[int.from_bytes(hashlib.sha256(token.encode()).digest()[:8],'big')%dimensions]+=value
     return v/v.norm().clamp_min(1e-9)
 
 
 class HashQuery(torch.nn.Module):
-    def __init__(self,dimensions=256):
+    def __init__(self,dimensions=256,*,term_frequency='count'):
         super().__init__()
         # Configuration is part of the versioned module topology via extra_repr.
         if type(dimensions) is not int or dimensions<2:
             raise ValueError('hash representation requires at least two dimensions')
+        if term_frequency not in ('count','sublinear','binary'):raise ValueError('unsupported lexical term frequency')
         self.dimensions=dimensions
+        self.term_frequency=term_frequency
 
     def extra_repr(self):
-        return f'dimensions={self.dimensions}, tokenizer=ascii-alnum-lower, hash=sha256-64bit, norm=l2, fields=need'
+        base=f'dimensions={self.dimensions}, tokenizer=ascii-alnum-lower, hash=sha256-64bit, norm=l2, fields=need'
+        return base if self.term_frequency=='count' else base+f', term_frequency={self.term_frequency}'
 
     def forward(self,request: Request):
-        return hash_vector(request.need,self.dimensions).unsqueeze(0)
+        return hash_vector(request.need,self.dimensions,term_frequency=self.term_frequency).unsqueeze(0)
 
 
 def candidate_bank(task,corpus,*,size=64,seed=20261005):
@@ -87,11 +97,12 @@ def bm25_rank(query,cases,*,k1=1.2,b=.75):
     return sorted(scores,key=lambda row:(-row['score'],row['case_id']))
 
 
-def core_bank(cases,*,dimensions=256,metric=None):
-    X=torch.stack([hash_vector(artifact_text(c),dimensions) for c in cases])
+def core_bank(cases,*,dimensions=256,metric=None,term_frequency='count'):
+    X=torch.stack([hash_vector(artifact_text(c),dimensions,term_frequency=term_frequency) for c in cases])
     with contextlib.redirect_stdout(io.StringIO()):
         model=build_model(X,torch.zeros(len(cases)),CoreConfig(task_type='regression',bias_init='manual',top_k=len(cases)),None)
     model.case_ids.copy_(torch.tensor([c.case_id for c in cases]))
+    if term_frequency!='count':model.config['t3_term_frequency']=term_frequency
     if metric is not None:model.glocal_weightor=metric
     for parameter in model.parameters():parameter.requires_grad_(False)
     if metric is not None:
@@ -99,7 +110,9 @@ def core_bank(cases,*,dimensions=256,metric=None):
     return model
 
 
-def need_loss(model,question,positive_ids,*,dimensions=256,objective='softmax',hard_negatives=8,margin=.2):
+def need_loss(model,question,positive_ids,*,dimensions=256,objective='softmax',hard_negatives=8,margin=.2,term_frequency='count'):
+    if model.config.get('t3_term_frequency','count')!=term_frequency:
+        raise ValueError('query/case term frequency mismatch')
     if (model.sampling_cases_flag or model.case_normalizer!='softmax' or
             not model.normalize_over_cases or model.config.get('case_score_mode')!='bias_minus_distance' or
             model.config.get('top_k',0)<model.case_count()):
@@ -107,7 +120,7 @@ def need_loss(model,question,positive_ids,*,dimensions=256,objective='softmax',h
     ids=model.active_case_ids()
     mask=torch.isin(ids,torch.tensor(tuple(positive_ids)))
     if not bool(mask.any()):raise ValueError('need training requires an actual positive source ID')
-    result=model.retrieve(hash_vector(question,dimensions).unsqueeze(0),exclude_identical=False)
+    result=model.retrieve(hash_vector(question,dimensions,term_frequency=term_frequency).unsqueeze(0),exclude_identical=False)
     # Actual core distances and biases define the probability. The full bank is
     # used for training; no top-k loss proxy,answer text or MC outcome enters it.
     logits=(model.biases-result['distances'][0])/model.tau

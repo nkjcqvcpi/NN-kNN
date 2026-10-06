@@ -1,5 +1,11 @@
 # Continuous execution ledger — 2026-10-04
 
+October6 optional sublinear/binary lexical robustness encodings implemented
+consistently across cases/queries/loss/provenance/public/internal runners;71 T3
+tests pass. Default count behavior preserved;real matched fitting/replay needed.
+Public control32 audited and actual32 running;existing sources frozen.
+Read `T3_TERM_FREQUENCY_ROBUSTNESS.md`;not a semantic/utility benefit claim.
+
 October6 six fits and six exact state/gradient replays complete,with2,688 NN/
 384 BM25/172,032 common-input checks. Net actual-need tune recall@2 gains2/0/1
 of64;no rank1 improvement,BM25 stronger. Repeated need causes one fixed-NN miss

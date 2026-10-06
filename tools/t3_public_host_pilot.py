@@ -115,7 +115,7 @@ def main():
         questions={dataset:[t.host_task() for t in tasks] for dataset,tasks,_,_ in groups},
         scopes='eight exploratory public dev questions each; no fullwiki or hidden-test result; no dev annotation training',
         trainable_host_parameters=0,retrieval_training_during_evaluation=False,host_knowledge_allowed=True,
-        representations='BM25 vs frozen lexical NN geometry vs trained diagonal lexical metric; no semantic encoder or utility training',
+        representations=f"BM25 vs frozen/trained {metric_binding['term_frequency']} lexical NN geometry; no semantic encoder or utility training",
         iteration='frozen host explicit novel subquestion and observable state; one case per round; no driver replacement query')
     protocol['prompt_version']='stage-separated-request-schema-v2; v1 missing-type failures preserved; exploratory schema diagnosis,not confirmation'
     protocol['event_journal']='retrieval_events.jsonl is written before next host call,including withheld events and later schema failures'
@@ -188,10 +188,11 @@ def main():
                     else:
                         if condition=='bm25':retriever=BM25(bank)
                         else:
-                            core=core_bank(bank)
+                            core=core_bank(bank,term_frequency=metric_binding['term_frequency'])
                             if condition in {'learned','iterative'}:core.glocal_weightor.feature_weights.data.copy_(selected)
                             core.eval().requires_grad_(False)
-                            retriever=Retriever(core,list(bank),HashQuery(),model_version='fixed' if condition=='fixed' else f"need-s{metric_binding['seed']}-{metric_sha[:12]}",encoder_version='hash256-v1')
+                            tf=metric_binding['term_frequency']
+                            retriever=Retriever(core,list(bank),HashQuery(term_frequency=tf),model_version='fixed' if condition=='fixed' else f"need-s{metric_binding['seed']}-{metric_sha[:12]}",encoder_version='hash256-v1' if tf=='count' else f'hash256-{tf}-v1')
                         def callback(task,evidence):
                             if not evidence:
                                 prompt=request_prompt(task)
