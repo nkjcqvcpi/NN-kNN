@@ -1,5 +1,10 @@
 # Continuous execution ledger — 2026-10-04
 
+October6 internal output-interface candidate and four-arm mechanism driver
+implemented with original-case/token/activation lineage and hard-mask preservation;
+65 T3 tests pass. No internal quality result yet;bounded192 collection remains
+live on its earlier frozen source. Read `T3_INTERNAL_INTERFACE.md`.
+
 October6 two actual bounded requests complete at118/186 tokens;independent prompt,
 tokenizer/schema/journal checks pass,original repetition remains. Full192 bounded
 collection actually started (90847),then six fits/replays/common-query/two public
