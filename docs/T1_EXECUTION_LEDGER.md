@@ -1,5 +1,10 @@
 # Continuous execution ledger — 2026-10-04
 
+October5 actual need145 truncates under128;collection continues and incomplete
+fitting is rejected. Uniform request-budget repair implemented with declared
+version2 manifests and matching public host/grammar/cap checks.59 T3 tests pass.
+Read `T3_REQUEST_BUDGET_REPAIR.md`;new256 treatment not yet measured.
+
 October5 public metric provenance corrected: actual checkpoint/seed/epoch/query
 and selection bindings replace a hardcoded label;57 T3 tests and six real old
 checkpoint/data/split checks pass. Actual192-query generation remains live.

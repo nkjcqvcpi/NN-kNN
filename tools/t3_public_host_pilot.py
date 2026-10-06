@@ -29,6 +29,7 @@ def main():
     ap.add_argument('--conditions',nargs='+',choices=['none','bm25','fixed','learned','iterative'],default=['none','bm25','fixed','learned','iterative'])
     ap.add_argument('--format-library',type=Path)
     ap.add_argument('--strict-schema',action='store_true')
+    ap.add_argument('--request-token-ceiling',type=int,choices=(128,256,512),default=128)
     args=ap.parse_args()
     args.output.mkdir(parents=True,exist_ok=False)
     native=args.runtime_library_bin.resolve(strict=True)
@@ -41,7 +42,7 @@ def main():
     from model.t3.lexical import HashQuery,bm25_rank,candidate_bank,core_bank
     from model.t3.orchestrator import Budget,run_loop
     from model.t3.retrieval import Access,Retriever
-    from model.t3.host_schema import decision_schema,decoder_schema,validate_decision,request_prompt
+    from model.t3.host_schema import decision_schema,decoder_schema,validate_decision,request_prompt,request_decode
     from model.t3.metric_provenance import metric_provenance
     format_metadata=None
     if args.format_library is not None:
@@ -94,10 +95,19 @@ def main():
         banks={t.question_id:(candidate_bank(t,corpus,size=64) if dataset=='squad' else tuple(sorted(t.cases,key=lambda c:c.case_id))) for t in chosen}
         groups.append((dataset,chosen,gold,banks))
     decode=dict(max_new_tokens=128,do_sample=False,temperature=None,top_p=None,top_k=None,use_cache=True)
+    request_decoding=request_decode(decode,args.request_token_ceiling)
+    if metric_binding['query_binding'] and metric_binding['query_binding']['protocol']['decode']!=request_decoding:
+        raise ValueError('actual-need metric request budget differs from public evaluation')
+    if metric_binding['query_binding']:
+        query_protocol=metric_binding['query_binding']['protocol']
+        if query_protocol['host']!=host_manifest or format_metadata is None or any(
+            query_protocol['format_backend'][key]!=format_metadata[key]
+            for key in ('version','backend_source_sha256','schemas','decoder_schemas')):
+            raise ValueError('actual-need metric host/format treatment differs from public evaluation')
     protocol=dict(source_fingerprint=source_fingerprint(Path(__file__).resolve().parents[1]),host=host_manifest,metric_checkpoint_sha256=metric_sha,
         metric_selection=metric_binding,
-        data=data,conditions=args.conditions,decode=decode,
-        budgets=dict(total_host_call_ceiling=3,total_generated_token_ceiling=384,max_cases=2,max_evidence_chars=12000,max_retrieval_rounds=2),
+        data=data,conditions=args.conditions,decode=decode,request_decode=request_decoding,
+        budgets=dict(total_host_call_ceiling=3,total_generated_token_ceiling=args.request_token_ceiling+256,max_cases=2,max_evidence_chars=12000,max_retrieval_rounds=2),
         opportunity_boundary='matched resource ceilings; one-shot1 retrieval/two host calls,iterative up to2 retrievals/three host calls,none one host call; report actual cost',
         case_pools={dataset:{qid:[asdict(c) for c in bank] for qid,bank in banks.items()} for dataset,_,_,banks in groups},
         questions={dataset:[t.host_task() for t in tasks] for dataset,tasks,_,_ in groups},
@@ -127,7 +137,7 @@ def main():
         constrained={}
         if tokenizer_data is not None:
             constrained['prefix_allowed_tokens_fn']=build_transformers_prefix_allowed_tokens_fn(tokenizer_data,JsonSchemaParser(decoder_schema(stage)))
-        with torch.no_grad():output=host.generate(**inputs,**decode,**constrained,pad_token_id=tokenizer.eos_token_id)
+        with torch.no_grad():output=host.generate(**inputs,**(request_decoding if stage=='request' else decode),**constrained,pad_token_id=tokenizer.eos_token_id)
         torch.xpu.synchronize()
         answer=tokenizer.decode(output[0,inputs['input_ids'].shape[1]:],skip_special_tokens=True)
         calls.append(dict(prompt=public,output=answer,stage=stage,input_tokens=inputs['input_ids'].shape[1],output_tokens=output.shape[1]-inputs['input_ids'].shape[1],seconds=time.perf_counter()-start))

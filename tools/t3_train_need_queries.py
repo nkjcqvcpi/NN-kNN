@@ -19,6 +19,7 @@ def main():
     ap=argparse.ArgumentParser(description=__doc__)
     for name in ('reference-run','reference-verification','data-root','samples','model-dir','runtime-library-bin','format-library','output'):
         ap.add_argument('--'+name,type=Path,required=True)
+    ap.add_argument('--request-token-ceiling',type=int,choices=(128,256,512),default=128)
     args=ap.parse_args()
     verification=json.loads(args.reference_verification.read_text())
     if verification.get('provisional_snapshot') or not verification.get('all_recorded_retrieval_traces_verified') or verification['counts']['trials']!=80:
@@ -36,7 +37,7 @@ def main():
     from transformers import AutoModelForCausalLM,AutoTokenizer
     from model.t1.artifacts import source_fingerprint
     from model.t3.benchmarks import load_squad
-    from model.t3.host_schema import request_prompt,decoder_schema,validate_decision
+    from model.t3.host_schema import request_prompt,request_decode,decoder_schema,validate_decision
     from model.t3.need_queries import load_need_queries
     sys.path.insert(0,str(args.format_library.resolve(strict=True)))
     import importlib.metadata
@@ -62,11 +63,14 @@ def main():
     by_id={t.question_id:t for t in tasks}
     fit=[by_id[qid] for qid in samples['fit_ids']];tune=[by_id[qid] for qid in samples['tune_ids']]
     if {t.group for t in fit}&{t.group for t in tune}:raise ValueError('article leakage')
-    protocol=dict(version=1,dataset=source['name'],data_sha256=source['sha256'],sample_sha256=sha(args.samples),
+    decode=request_decode(reference['decode'],args.request_token_ceiling)
+    protocol=dict(version=1 if args.request_token_ceiling==128 else 2,dataset=source['name'],data_sha256=source['sha256'],sample_sha256=sha(args.samples),
         source_fingerprint=source_fingerprint(Path(__file__).resolve().parents[1]),host=host,format_backend=reference['format_backend'],
         reference_verification_sha256=sha(args.reference_verification),query_source='actual frozen host request',
         public_dev_annotations_used=False,fit_ids=samples['fit_ids'],tune_ids=samples['tune_ids'],
-        decode=reference['decode'],maximum_calls=192,maximum_generated_tokens=192*128,
+        decode=decode,request_token_ceiling=args.request_token_ceiling,
+        request_treatment='uniform request cap; same prompt/host/grammar; no per-question retry',
+        reference_decode=reference['decode'],maximum_calls=192,maximum_generated_tokens=192*args.request_token_ceiling,
         trainable_host_parameters=0,missing='failed needs remain unobserved; no fallback/filter/refill; downstream fitter rejects incomplete manifest')
     args.output.mkdir(parents=True,exist_ok=False)
     (args.output/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
@@ -74,6 +78,7 @@ def main():
     tokenizer=AutoTokenizer.from_pretrained(args.model_dir,local_files_only=True,trust_remote_code=False)
     start=time.perf_counter();token_data=build_token_enforcer_tokenizer_data(tokenizer)
     protocol['format_initialization_seconds']=time.perf_counter()-start
+    (args.output/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
     model=AutoModelForCausalLM.from_pretrained(args.model_dir,local_files_only=True,trust_remote_code=False,dtype=torch.float16,attn_implementation='eager').to('xpu').eval().requires_grad_(False)
     records=[]
     def append(name,value):
@@ -83,7 +88,7 @@ def main():
         public=tokenizer.apply_chat_template([dict(role='user',content=prompt)],tokenize=False,add_generation_prompt=True,enable_thinking=False)
         inputs=tokenizer(public,return_tensors='pt').to('xpu');start=time.perf_counter()
         fn=build_transformers_prefix_allowed_tokens_fn(token_data,JsonSchemaParser(decoder_schema('request')))
-        with torch.no_grad():output=model.generate(**inputs,**reference['decode'],prefix_allowed_tokens_fn=fn,pad_token_id=tokenizer.eos_token_id)
+        with torch.no_grad():output=model.generate(**inputs,**decode,prefix_allowed_tokens_fn=fn,pad_token_id=tokenizer.eos_token_id)
         torch.xpu.synchronize()
         text=tokenizer.decode(output[0,inputs['input_ids'].shape[1]:],skip_special_tokens=True)
         call=dict(stage='request',source_prompt=prompt,prompt=public,output=text,input_tokens=inputs['input_ids'].shape[1],

@@ -60,3 +60,15 @@ def test_unbound_host_or_duplicate_host_files_are_rejected(tmp_path):
     with pytest.raises(ValueError,match='host revision'):load(tmp_path,task,artifact)
     _,artifact=fixture();artifact['protocol']['host']['files']*=2
     with pytest.raises(ValueError,match='host file'):load(tmp_path,task,artifact)
+
+
+def test_extended_requests_require_explicit_uniform_budget(tmp_path):
+    task,artifact=fixture();artifact['records'][0]['call']['output_tokens']=129
+    with pytest.raises(ValueError,match='token accounting'):load(tmp_path,task,artifact)
+    artifact['protocol'].update(version=2,request_token_ceiling=256,decode={'max_new_tokens':256},maximum_calls=1,maximum_generated_tokens=256)
+    queries,_=load(tmp_path,task,artifact)
+    assert queries['fit']==artifact['records'][0]['request']['need']
+    artifact['protocol']['decode']['max_new_tokens']=128
+    with pytest.raises(ValueError,match='decode ceiling'):load(tmp_path,task,artifact)
+    artifact['protocol']['decode']['max_new_tokens']=256;artifact['protocol']['maximum_generated_tokens']=128
+    with pytest.raises(ValueError,match='total budget'):load(tmp_path,task,artifact)
