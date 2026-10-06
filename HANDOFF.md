@@ -1,5 +1,12 @@
 # Handoff
 
+**2026-10-06 lexical robustness ablations:** Read
+`docs/T3_TERM_FREQUENCY_ROBUSTNESS.md`. Optional sublinear/binary encoding is
+consistent across case/query/training/retrieval/audit bindings;71 T3 tests pass.
+Default counts/encoder description bit-exact. Real fits/replays still required;
+live149/152 jobs preserved. Public question-control32 completes audit;actual arm
+is live in90847,internal64 remains queued96676.
+
 **2026-10-06 six actual fits/replays complete:** Read
 `docs/T3_ACTUAL_NEED_TRAINING_RESULTS.md`.15,360 nonzero updates/25,344 evals/
 40,704 query checks reproduce exactly;2,688 common-input NN/384 BM25/172,032

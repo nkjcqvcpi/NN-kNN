@@ -31,6 +31,7 @@ def main():
     ap.add_argument('--objective',choices=['softmax','hard_negative'],default='softmax')
     ap.add_argument('--selection',choices=['tune_loss','tune_recall'],default='tune_loss')
     ap.add_argument('--need-queries',type=Path)
+    ap.add_argument('--term-frequency',choices=('count','sublinear','binary'),default='count')
     args=ap.parse_args()
     if args.epochs<1:ap.error('positive fixed epoch budget required')
     torch.set_num_threads(1)
@@ -48,12 +49,12 @@ def main():
     corpus=tuple({c.case_id:c for t in tasks for c in t.cases}.values())
     banks={t.question_id:candidate_bank(t,corpus,size=64) for t in fit+tune}
     metric=GlocalFeatureWeight(args.dimensions,1)
-    models={t.question_id:core_bank(banks[t.question_id],dimensions=args.dimensions,metric=metric) for t in fit+tune}
+    models={t.question_id:core_bank(banks[t.question_id],dimensions=args.dimensions,metric=metric,term_frequency=args.term_frequency) for t in fit+tune}
     def evaluate(group):
         loss=top1=top2=0.
         with torch.no_grad():
             for task in group:
-                value,result=need_loss(models[task.question_id],queries[task.question_id],[c.case_id for c in task.cases],dimensions=args.dimensions,objective=args.objective)
+                value,result=need_loss(models[task.question_id],queries[task.question_id],[c.case_id for c in task.cases],dimensions=args.dimensions,objective=args.objective,term_frequency=args.term_frequency)
                 loss+=float(value)
                 ids=models[task.question_id].active_case_ids()
                 order=torch.argsort(result['distances'][0],stable=True)
@@ -68,7 +69,7 @@ def main():
         projection='clamp .05..20 then mean-normalize to1',selection=args.selection,need_objective=args.objective,
         selection_rules=dict(tune_loss='minimum tune loss,including epoch0',tune_recall='maximum tune recall@2,then@1,then minimum loss; including epoch0'),
         hard_negative_count=8,hard_negative_margin=.2,
-        representation='fixed SHA256 lexical count L2; encoder and case biases untrained',
+        representation=f'fixed SHA256 lexical {args.term_frequency} L2; encoder and case biases untrained',term_frequency=args.term_frequency,
         public_dev_annotations_used=False,global_promotion=False,query_binding=query_binding,
         query_source='actual frozen host request' if query_binding else 'original public question',query_texts=queries)
     (args.output/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
@@ -98,7 +99,7 @@ def main():
             order=list(fit);random_stream.shuffle(order)
             for task in order:
                 optimizer.zero_grad()
-                loss,result=need_loss(models[task.question_id],queries[task.question_id],[c.case_id for c in task.cases],dimensions=args.dimensions,objective=args.objective)
+                loss,result=need_loss(models[task.question_id],queries[task.question_id],[c.case_id for c in task.cases],dimensions=args.dimensions,objective=args.objective,term_frequency=args.term_frequency)
                 loss.backward()
                 grad=metric.feature_weights.grad
                 if grad is None or not bool(torch.isfinite(grad).all()):raise ValueError('missing/nonfinite actual need gradient')

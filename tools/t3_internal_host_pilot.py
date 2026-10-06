@@ -44,6 +44,7 @@ def main():
     from lmformatenforcer.integrations.transformers import build_token_enforcer_tokenizer_data,build_transformers_prefix_allowed_tokens_fn
     from model.t1.artifacts import source_fingerprint
     from model.t3.internal import ArtifactLogitMixture
+    from model.t3.metric_provenance import metric_provenance
     from model.t3.host_schema import decoder_schema,validate_decision
     from model.t3.retrieval import Case,Request,Access,Retriever
     from model.t3.lexical import core_bank,HashQuery
@@ -66,10 +67,11 @@ def main():
     for dataset,name,loader in [('squad','squad_dev_v11.json',load_squad),('hotpot','hotpot_dev_distractor_converted.json',load_hotpot)]:
         _,golds[dataset]=loader(args.data_root/name,expected_sha256=files[name]['sha256'],**(dict(allow_unaligned_support=True) if dataset=='hotpot' else {}))
     metric=torch.load(args.metric_checkpoint,weights_only=True,map_location='cpu')['selected_metric']['feature_weights']
+    metric_binding=metric_provenance(args.metric_checkpoint);tf=metric_binding['term_frequency']
     args.output.mkdir(parents=True,exist_ok=False)
     decode=dict(max_new_tokens=128,do_sample=False,temperature=None,top_p=None,top_k=None,use_cache=True)
     protocol=dict(source_fingerprint=source_fingerprint(Path(__file__).resolve().parents[1]),host=reference['host'],
-        metric_checkpoint_sha256=sha(args.metric_checkpoint),source_verification_sha256=sha(args.source_verification),
+        metric_checkpoint_sha256=sha(args.metric_checkpoint),metric_selection=metric_binding,source_verification_sha256=sha(args.source_verification),
         source_inputs=verification['input_artifacts'],data=reference['data'],conditions=['none','prompt','internal','combined'],alpha=args.alpha,
         decode=decode,format_backend=reference['format_backend'],trainable_host_parameters=0,trainable_retrieval_parameters=0,
         interface='artifact-token probability mixture after hard grammar masks',
@@ -93,8 +95,8 @@ def main():
             raise ValueError('source one-shot delivered retrieval required')
         original=source_events[0]
         bank=[Case(**c) for c in reference['case_pools'][dataset][qid]]
-        core=core_bank(bank);core.glocal_weightor.feature_weights.data.copy_(metric);core.eval().requires_grad_(False)
-        retriever=Retriever(core,bank,HashQuery(),model_version=original['audit']['model_version'],encoder_version='hash256-v1')
+        core=core_bank(bank,term_frequency=tf);core.glocal_weightor.feature_weights.data.copy_(metric);core.eval().requires_grad_(False)
+        retriever=Retriever(core,bank,HashQuery(term_frequency=tf),model_version=original['audit']['model_version'],encoder_version=original['audit']['encoder_version'])
         fresh=retriever.retrieve(Request(**original['audit']['request']),Access('public-benchmark','public-benchmark'),now=original['audit']['timestamp'])
         if fresh['evidence']!=original['evidence'] or fresh['audit']['selected_ids']!=original['audit']['selected_ids']:
             raise ValueError('fresh retrieval differs from source conditional set')

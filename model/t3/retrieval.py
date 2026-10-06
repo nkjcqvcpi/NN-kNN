@@ -117,6 +117,8 @@ class Retriever:
         if not all(isinstance(v, str) and v.strip() for v in (model_version, encoder_version)):
             raise ValueError("retrieval and representation versions are required")
         self.model, self.encoder = model, encoder
+        if (hasattr(encoder,'term_frequency') or 't3_term_frequency' in model.config) and getattr(encoder,'term_frequency',None)!=model.config.get('t3_term_frequency','count'):
+            raise ValueError('query/case term frequency mismatch')
         self.model_version, self.encoder_version = model_version, encoder_version
         self.sequence = 0
         self.event_namespace = uuid.uuid4().hex

@@ -34,12 +34,14 @@ def metric_provenance(checkpoint):
     if type(run['selected_epoch']) is not int or not 0<=run['selected_epoch']<=protocol['epochs']:
         raise ValueError('metric selected epoch outside recorded budget')
     binding=protocol.get('query_binding')
+    term_frequency=protocol.get('term_frequency','count')
+    if term_frequency not in ('count','sublinear','binary'):raise ValueError('unknown metric term frequency')
     query_source=protocol.get('query_source','original public question')
     if query_source not in ('original public question','actual frozen host request') or bool(binding)!=(query_source=='actual frozen host request'):
         raise ValueError('metric query source/binding mismatch')
     return dict(checkpoint_sha256=digest,seed=run['seed'],selected_epoch=run['selected_epoch'],
         selection=selection,recorded_selection=protocol['selection'],need_objective=protocol.get('need_objective','softmax'),
-        query_source=query_source,query_binding=binding,fit_ids=protocol['fit_ids'],tune_ids=protocol['tune_ids'],
+        query_source=query_source,query_binding=binding,term_frequency=term_frequency,fit_ids=protocol['fit_ids'],tune_ids=protocol['tune_ids'],
         data_source=protocol['data_source'],training_source_fingerprint=protocol['source_fingerprint'],
         artifacts={name:dict(path=str(path.resolve()),sha256=hashlib.sha256(path.read_bytes()).hexdigest())
                    for name,path in [('protocol',protocol_path),('summary',summary_path),('seed_summary',seed_path)]},
