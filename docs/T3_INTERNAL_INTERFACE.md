@@ -46,3 +46,32 @@ ceiling instead of the historical literal384,which would wrongly reject a
 legitimate request256 plus two128 continuations. Its request/answer ceilings
 remain unchanged. Existing frozen jobs are preserved;their outputs must be
 interpreted against the declared and actual budgets independently.
+
+## Real-case preflight and probability trace repair
+
+Sixteen actual fresh NN-kNN retrievals exactly reproduce the recorded source
+sets/state/bank bindings. Independent geometry verifies592 candidate distances
+and feature contributions. The actual Qwen tokenizer produces32 original-case
+histograms;32 full/masked synthetic-logit probability checks pass. This is real
+case/geometry/tokenizer evidence,not a fresh host answer result.
+
+The initial151,936-token float32 softmax recomputation differed by up to6.03e-7
+in the first preflight;float64 normalization and direct exponentiation of the
+composed log probabilities agree with the independent mixture to roughly1e-9.
+A separate large-vocabulary regression reproduced a2.89e-6 error in the stored
+chosen-token diagnostic. The trace now records the composed probability directly
+instead of performing a second large float32 softmax. The old failure logs remain.
+Greedy returned logits are unchanged by this trace correction. All66 T3 tests
+pass,including the large-vocabulary regression.
+
+Each internal step now records permitted artifact token IDs,actual permitted
+mass,chosen host/mixture probabilities and hard-mask preservation. This permits
+independent reconstruction from original-case token counts and activations,with
+actual generated token IDs tied to the recorded greedy selections. Interface
+preparation time is reported separately from generation. Task evidence:
+`outputs/neural-cbr-t3-internal-preflight-verification.json`,
+`work/t3_internal_preflight_float32_failure.log`,
+`work/t3_internal_large_before_fix.log`,
+`work/audit_t3_internal_host.py`. A fresh64-call host run and its full independent
+audit remain necessary. No internal quality benefit or empirical architecture
+selection is established by this preflight.

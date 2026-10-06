@@ -1,5 +1,10 @@
 # Continuous execution ledger — 2026-10-04
 
+October6 internal preflight uses16 actual core retrievals/592 manual candidates/
+32 actual Qwen histograms/32 independent synthetic probability checks. Diagnostic
+large-vocabulary float32 renormalization bug reproduced/fixed;66 T3 tests pass.
+Actual host answers not yet generated. Read `T3_INTERNAL_INTERFACE.md`.
+
 October6 internal output-interface candidate and four-arm mechanism driver
 implemented with original-case/token/activation lineage and hard-mask preservation;
 65 T3 tests pass. No internal quality result yet;bounded192 collection remains

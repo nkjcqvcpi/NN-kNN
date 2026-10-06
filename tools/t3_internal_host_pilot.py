@@ -108,10 +108,11 @@ def main():
                 'for plain passage artifacts,citations may be empty. Emit ONLY valid JSON.\nQuestion: '+question+'\nEvidence: '+json.dumps(visible,ensure_ascii=False)+
                 '\nReturn {"ready":true,"answer":string,"supporting_facts":list}; answer UNKNOWN if unresolved.')
             public=tokenizer.apply_chat_template([dict(role='user',content=prompt)],tokenize=False,add_generation_prompt=True,enable_thinking=False)
-            inputs=tokenizer(public,return_tensors='pt').to('xpu');mixture=None;extra={}
+            inputs=tokenizer(public,return_tensors='pt').to('xpu');mixture=None;extra={};preparation_start=time.perf_counter()
             if condition in ('internal','combined'):
                 mixture=ArtifactLogitMixture(fresh['evidence'],weights,tokenizer,vocabulary_size=host.config.vocab_size,alpha=args.alpha,tokenizer_version=tokenizer_version)
                 extra['logits_processor']=LogitsProcessorList([mixture])
+            mixture_preparation_seconds=time.perf_counter()-preparation_start
             fn=build_transformers_prefix_allowed_tokens_fn(token_data,JsonSchemaParser(decoder_schema('answer')))
             start=time.perf_counter()
             with torch.no_grad():output=host.generate(**inputs,**decode,**extra,prefix_allowed_tokens_fn=fn,pad_token_id=tokenizer.eos_token_id)
@@ -119,7 +120,8 @@ def main():
             ids=output[0,inputs['input_ids'].shape[1]:].tolist();text=tokenizer.decode(ids,skip_special_tokens=True)
             result=dict(dataset=dataset,question_id=qid,condition=condition,prompt=public,output=text,output_ids=ids,
                 input_tokens=inputs['input_ids'].shape[1],output_tokens=len(ids),seconds=time.perf_counter()-start,
-                mixture=mixture.metadata if mixture else None,mixture_events=mixture.events if mixture else [])
+                mixture=mixture.metadata if mixture else None,mixture_events=mixture.events if mixture else [],
+                mixture_preparation_seconds=mixture_preparation_seconds)
             append('host_calls.jsonl',result)
             try:
                 decision=validate_decision(json.loads(text.strip()),'answer')
