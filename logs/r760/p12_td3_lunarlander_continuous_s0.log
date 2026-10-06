@@ -1,0 +1,147 @@
+[td3] step=75 episode=1 return=-159.7 length=75 critic_loss=None actor_loss=None
+[td3] step=277 episode=2 return=-241.8 length=202 critic_loss=None actor_loss=None
+[td3] step=402 episode=3 return=-505.4 length=125 critic_loss=None actor_loss=None
+[td3] step=540 episode=4 return=-64.7 length=138 critic_loss=None actor_loss=None
+[td3] step=673 episode=5 return=-223.8 length=133 critic_loss=None actor_loss=None
+[td3] step=1494 episode=10 return=-339.9 length=152 critic_loss=70.0973 actor_loss=2.5068
+[td3][eval] step=5000 mean_return=-169.57 max_return=-10.68
+[td3] step=5835 episode=20 return=-142.6 length=329 critic_loss=23.5807 actor_loss=-1.1364
+[td3] step=7852 episode=30 return=-92.1 length=185 critic_loss=11.6529 actor_loss=-1.0169
+[td3][eval] step=10000 mean_return=-92.58 max_return=261.73
+[td3] step=10743 episode=40 return=-66.9 length=305 critic_loss=5.253 actor_loss=1.2163
+[td3][eval] step=15000 mean_return=-130.45 max_return=205.26
+[td3] step=15746 episode=50 return=-203.1 length=455 critic_loss=6.403 actor_loss=9.5849
+[td3] step=17383 episode=60 return=-208.5 length=121 critic_loss=21.2486 actor_loss=9.3855
+[td3] step=19354 episode=70 return=-144.6 length=150 critic_loss=183.4034 actor_loss=11.8789
+[td3][eval] step=20000 mean_return=-97.38 max_return=-17.09
+[td3] step=21411 episode=80 return=-37.2 length=127 critic_loss=7.4425 actor_loss=10.3994
+[td3] step=24064 episode=90 return=-101.2 length=201 critic_loss=19.2507 actor_loss=11.3992
+[td3][eval] step=25000 mean_return=-63.54 max_return=218.34
+[td3] step=27562 episode=100 return=188.0 length=345 critic_loss=9.8383 actor_loss=14.4954
+[td3][eval] step=30000 mean_return=26.19 max_return=252.82
+[td3] step=30965 episode=110 return=228.1 length=435 critic_loss=12.0013 actor_loss=14.5312
+[td3] step=34570 episode=120 return=222.9 length=300 critic_loss=24.4139 actor_loss=13.0358
+[td3][eval] step=35000 mean_return=59.30 max_return=289.12
+[td3] step=39225 episode=130 return=243.6 length=526 critic_loss=148.1562 actor_loss=11.4247
+[td3][eval] step=40000 mean_return=108.29 max_return=246.04
+[td3][eval] step=45000 mean_return=67.36 max_return=232.90
+[td3] step=45250 episode=140 return=183.2 length=671 critic_loss=11.3035 actor_loss=14.1505
+[td3][eval] step=50000 mean_return=121.57 max_return=282.37
+[td3] step=50598 episode=150 return=235.0 length=359 critic_loss=38.4907 actor_loss=8.4026
+[td3][eval] step=55000 mean_return=25.37 max_return=280.87
+[td3] step=58246 episode=160 return=-217.7 length=542 critic_loss=10.1624 actor_loss=4.2411
+[td3][eval] step=60000 mean_return=-65.78 max_return=233.12
+[td3] step=63184 episode=170 return=23.2 length=1000 critic_loss=135.3362 actor_loss=10.2291
+[td3][eval] step=65000 mean_return=75.84 max_return=254.61
+[td3][eval] step=70000 mean_return=-65.20 max_return=220.01
+[td3] step=70336 episode=180 return=165.9 length=677 critic_loss=12.3656 actor_loss=6.2845
+[td3][eval] step=75000 mean_return=-91.79 max_return=218.34
+[td3] step=75717 episode=190 return=-353.6 length=692 critic_loss=7.6008 actor_loss=1.6196
+[td3][eval] step=80000 mean_return=-11.65 max_return=241.22
+[td3] step=82172 episode=200 return=168.0 length=795 critic_loss=7.9298 actor_loss=2.7543
+[td3][eval] step=85000 mean_return=-6.01 max_return=219.82
+[td3][eval] step=90000 mean_return=-62.30 max_return=185.84
+[td3] step=90291 episode=210 return=59.5 length=1000 critic_loss=96.6226 actor_loss=1.1181
+[td3][eval] step=95000 mean_return=-40.66 max_return=-11.72
+[td3] step=99667 episode=220 return=34.4 length=1000 critic_loss=16.2254 actor_loss=0.1225
+[td3][eval] step=100000 mean_return=-29.38 max_return=186.53
+[td3][eval] step=105000 mean_return=-59.75 max_return=144.07
+[td3] step=109266 episode=230 return=130.8 length=799 critic_loss=10.161 actor_loss=-1.9483
+[td3][eval] step=110000 mean_return=50.58 max_return=229.63
+[td3][eval] step=115000 mean_return=107.17 max_return=279.99
+[td3] step=117216 episode=240 return=-27.1 length=1000 critic_loss=4.914 actor_loss=-1.7033
+[td3][eval] step=120000 mean_return=-46.72 max_return=-14.22
+[td3][eval] step=125000 mean_return=42.74 max_return=306.77
+[td3] step=126084 episode=250 return=-36.8 length=1000 critic_loss=5.4695 actor_loss=-1.1578
+[td3][eval] step=130000 mean_return=-82.08 max_return=277.95
+[td3] step=133765 episode=260 return=-24.0 length=434 critic_loss=5.2568 actor_loss=3.6994
+[td3][eval] step=135000 mean_return=123.17 max_return=284.10
+[td3] step=139671 episode=270 return=-149.5 length=498 critic_loss=17.0428 actor_loss=3.3153
+[td3][eval] step=140000 mean_return=120.09 max_return=270.84
+[td3][eval] step=145000 mean_return=183.10 max_return=271.63
+[td3] step=145021 episode=280 return=97.6 length=915 critic_loss=4.2285 actor_loss=2.8228
+[td3][eval] step=150000 mean_return=32.28 max_return=282.70
+[td3] finished profile=fast mean_eval_return=183.10 passed=False run_dir=results/rl/td3_lunarlander_continuous_20260828_012324_480587
+{
+  "task": "lunarlander_continuous",
+  "env_id": "LunarLander-v3",
+  "algorithm": "td3_twin_delayed_ddpg",
+  "profile": "fast",
+  "seed": 0,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "critic_updates": 149001,
+  "policy_updates": 74501,
+  "action_kind": "continuous",
+  "action_dim": 2,
+  "eval_episodes": 20,
+  "success_threshold": 200.0,
+  "passed": false,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 183.0997314453125,
+    "std_return": 91.41326141357422,
+    "min_return": -13.836651802062988,
+    "max_return": 271.6302490234375,
+    "mean_length": 492.8999938964844
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 32.284912109375,
+    "std_return": 202.09519958496094,
+    "min_return": -209.27122497558594,
+    "max_return": 282.6976318359375,
+    "mean_length": 754.6500244140625
+  },
+  "selected_step": 145000,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 145000,
+    "best_model_training_fraction": 0.9666666666666667,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 150.8148193359375,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 280.0,
+    "best_mean_return": 183.0997314453125,
+    "evaluations": 30,
+    "evaluations_without_improvement": 1,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "run_dir": "results/rl/td3_lunarlander_continuous_20260828_012324_480587"
+}
+Checkpoint: results/rl/td3_lunarlander_continuous_20260828_012324_480587/checkpoint.pt
+	Command being timed: ".venv/bin/python tools/run_rl_td3.py lunarlander_continuous --profile fast --seed 0 --device cpu --no-early-stopping --total-timesteps 150000"
+	User time (seconds): 1656.14
+	System time (seconds): 4.76
+	Percent of CPU this job got: 199%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 13:54.04
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 826780
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 11
+	Minor (reclaiming a frame) page faults: 365281
+	Voluntary context switches: 512
+	Involuntary context switches: 6102
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 46832
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

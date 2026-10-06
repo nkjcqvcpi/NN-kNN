@@ -1,0 +1,3007 @@
+{
+  "status": "exploratory_current_core_not_stage_a_gate",
+  "roles": [
+    {
+      "role": "cartpole/mlp_mlp__ema__reset/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "actor_type": "mlp",
+      "critic_type": "mlp",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 0,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_mlp__ema__reset\\s8",
+      "training_seconds": 1.7808421000372618,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 8,
+        "total_timesteps": 512,
+        "configured_total_timesteps": 512,
+        "actual_timesteps": 512,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "mlp",
+        "critic_type": "mlp",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": false,
+          "critic_target_shared_case_store": false,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "standard_stochastic_policy",
+          "applies_to_actor": false,
+          "initial_epsilon": 0.0,
+          "final_epsilon": 0.0,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.0,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 376.3333435058594,
+          "std_return": 88.47724151611328,
+          "min_return": 298.0,
+          "max_return": 500.0,
+          "mean_length": 376.3333435058594
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 376.3333435058594,
+          "std_return": 88.47724151611328,
+          "min_return": 298.0,
+          "max_return": 500.0,
+          "mean_length": 376.3333435058594
+        },
+        "selected_step": 512,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 512,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": 364.6666564941406,
+          "evaluations": 4,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 512
+        },
+        "case_entries": null,
+        "critic_case_entries": null,
+        "action_counts": null,
+        "cases_pruned": 0,
+        "cases_replaced": 0,
+        "actor_cases_pruned": 0,
+        "actor_cases_replaced": 0,
+        "critic_cases_pruned": 0,
+        "critic_cases_replaced": 0,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 18,
+        "critic_target_enabled": false,
+        "critic_target_value_mode": "none",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 0,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_mlp__ema__reset\\s8\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_mlp__ema__reset\\s8"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 231.1453094482422,
+        "critic_holdout_explained_variance": -0.01283884048461914,
+        "critic_holdout_value_mean": 0.7456304430961609,
+        "critic_holdout_target_mean": 13.895925521850586,
+        "critic_holdout_samples": 58,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 58,
+        "critic_holdout_mean_episode_return": 29.0,
+        "critic_holdout_mean_episode_length": 29.0,
+        "critic_holdout_behavior_epsilon": 0.0,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "online_value_model",
+        "critic_holdout_seed": 40016
+      },
+      "audit_events": 0,
+      "interventions": 0,
+      "credit": [],
+      "checkpoint_sha256": "35a736c5cf8579bacf23c8919300890bbf230793b6102b3559428cadf5ee412f"
+    },
+    {
+      "role": "cartpole/nnknn_mlp__ema__reset/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "actor_type": "nnknn",
+      "critic_type": "mlp",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 0,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_mlp__ema__reset\\s8",
+      "training_seconds": 0.9764423000160605,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 8,
+        "total_timesteps": 512,
+        "configured_total_timesteps": 512,
+        "actual_timesteps": 512,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "mlp",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": false,
+          "critic_target_shared_case_store": false,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 100.66666412353516,
+          "std_return": 38.177947998046875,
+          "min_return": 57.0,
+          "max_return": 150.0,
+          "mean_length": 100.66666412353516
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 100.66666412353516,
+          "std_return": 38.177947998046875,
+          "min_return": 57.0,
+          "max_return": 150.0,
+          "mean_length": 100.66666412353516
+        },
+        "selected_step": 512,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 512,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": 99.33333587646484,
+          "evaluations": 4,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 512
+        },
+        "case_entries": 128,
+        "critic_case_entries": null,
+        "action_counts": [
+          72,
+          56
+        ],
+        "cases_pruned": 138,
+        "cases_replaced": 246,
+        "actor_cases_pruned": 138,
+        "actor_cases_replaced": 246,
+        "critic_cases_pruned": 0,
+        "critic_cases_replaced": 0,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 8,
+        "critic_target_enabled": false,
+        "critic_target_value_mode": "none",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 0,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_mlp__ema__reset\\s8\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_mlp__ema__reset\\s8"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 473.71612548828125,
+        "critic_holdout_explained_variance": -0.008306503295898438,
+        "critic_holdout_value_mean": 0.6255362629890442,
+        "critic_holdout_target_mean": 19.704465866088867,
+        "critic_holdout_samples": 88,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 88,
+        "critic_holdout_mean_episode_return": 44.0,
+        "critic_holdout_mean_episode_length": 44.0,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "online_value_model",
+        "critic_holdout_seed": 40016
+      },
+      "audit_events": 0,
+      "interventions": 0,
+      "credit": [],
+      "checkpoint_sha256": "3d81927245c413d3c5bcff25020a3d5b9db37d31c415d4b2ae3d69e8db8aa1e3"
+    },
+    {
+      "role": "cartpole/mlp_nnknn__ema__reset/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "actor_type": "mlp",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 0,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_nnknn__ema__reset\\s8",
+      "training_seconds": 0.2875607998576015,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 8,
+        "total_timesteps": 512,
+        "configured_total_timesteps": 512,
+        "actual_timesteps": 512,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "mlp",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": false,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "standard_stochastic_policy",
+          "applies_to_actor": false,
+          "initial_epsilon": 0.0,
+          "final_epsilon": 0.0,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.0,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 9.0,
+          "std_return": 0.0,
+          "min_return": 9.0,
+          "max_return": 9.0,
+          "mean_length": 9.0
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 9.0,
+          "std_return": 0.0,
+          "min_return": 9.0,
+          "max_return": 9.0,
+          "mean_length": 9.0
+        },
+        "selected_step": 512,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 512,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": 9.0,
+          "evaluations": 4,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 512
+        },
+        "case_entries": null,
+        "critic_case_entries": 128,
+        "action_counts": null,
+        "cases_pruned": 192,
+        "cases_replaced": 192,
+        "actor_cases_pruned": 0,
+        "actor_cases_replaced": 0,
+        "critic_cases_pruned": 192,
+        "critic_cases_replaced": 192,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 10,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 4,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_nnknn__ema__reset\\s8\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_nnknn__ema__reset\\s8"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 9.605443954467773,
+        "critic_holdout_explained_variance": 0.6446773409843445,
+        "critic_holdout_value_mean": 10.220464706420898,
+        "critic_holdout_target_mean": 9.005748748779297,
+        "critic_holdout_samples": 36,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 36,
+        "critic_holdout_mean_episode_return": 18.0,
+        "critic_holdout_mean_episode_length": 18.0,
+        "critic_holdout_behavior_epsilon": 0.0,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40016
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "129": {
+              "C": 1.3696800470352173,
+              "H": 1.8008896112442017,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.458301541927928
+            },
+            "158": {
+              "C": 0.623761773109436,
+              "H": 0.9759349673986435,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.45108293563647534
+            },
+            "162": {
+              "C": 0.9475415050983429,
+              "H": 0.44097042083740234,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.5747483106645773
+            },
+            "231": {
+              "C": 0.07768011093139648,
+              "H": 0.14215821772813797,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.4854768462269779
+            },
+            "248": {
+              "C": 0.6393837779760361,
+              "H": 0.30792248249053955,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.5562312271261936
+            },
+            "324": {
+              "C": 0.0304030179977417,
+              "H": 0.05517345666885376,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.49406148876054234
+            },
+            "382": {
+              "C": 0.25098350644111633,
+              "H": 0.12672114372253418,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.5261307397262376
+            },
+            "502": {
+              "C": 1.98789381980896,
+              "H": 0.8011724948883057,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.6238990282175358
+            },
+            "18": {
+              "C": 0.0,
+              "H": 0.5822951793670654,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.3872523977855643
+            },
+            "130": {
+              "C": 0.9301643967628479,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.6587222201236326
+            },
+            "134": {
+              "C": 0.013783693313598633,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.5034223371058583
+            },
+            "161": {
+              "C": 0.008709728717803955,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.5021679908732666
+            },
+            "230": {
+              "C": 0.44231265783309937,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.5905520135627381
+            },
+            "232": {
+              "C": 0.0,
+              "H": 0.07986575365066528,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.4808002623461438
+            },
+            "381": {
+              "C": 0.23611003160476685,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.5527948151628568
+            },
+            "489": {
+              "C": 0.0,
+              "H": 0.47260531783103943,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.40443171127577954
+            },
+            "236": {
+              "C": 0.0,
+              "H": 0.8919709920883179,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.34578493447401115
+            },
+            "251": {
+              "C": 1.0890593528747559,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.6762768578501495
+            },
+            "301": {
+              "C": 0.0,
+              "H": 0.3456306457519531,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.42632458004888657
+            },
+            "325": {
+              "C": 3.568187952041626,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.820408361101866
+            },
+            "383": {
+              "C": 3.1379077434539795,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.8053682452212063
+            },
+            "503": {
+              "C": 0.45601630210876465,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.5928365788364727
+            },
+            "505": {
+              "C": 0.0,
+              "H": 1.1860830783843994,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.31386501086063345
+            },
+            "507": {
+              "C": 0.0,
+              "H": 2.727622389793396,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.2115228158151822
+            },
+            "509": {
+              "C": 0.0,
+              "H": 1.2578036785125732,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.30695526762268666
+            },
+            "4": {
+              "C": 0.0,
+              "H": 1.0056681632995605,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.33270472509587373
+            },
+            "315": {
+              "C": 0.0,
+              "H": 0.6644511222839355,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.3753118199979634
+            },
+            "332": {
+              "C": 0.0,
+              "H": 1.0205693244934082,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.3310634163868144
+            },
+            "386": {
+              "C": 2.4999098777770996,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.7777733272085022
+            },
+            "388": {
+              "C": 1.484083652496338,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.7129804850456153
+            },
+            "504": {
+              "C": 1.7325043678283691,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.7320833677733066
+            },
+            "506": {
+              "C": 0.38709259033203125,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.5810803468411313
+            },
+            "510": {
+              "C": 0.0,
+              "H": 2.518038749694824,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.2213349763915916
+            },
+            "7": {
+              "C": 0.0,
+              "H": 0.3391532897949219,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.42750511664315594
+            },
+            "9": {
+              "C": 0.0,
+              "H": 2.11773681640625,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.24285184910694435
+            },
+            "80": {
+              "C": 9.652885437011719,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.914184344692533
+            },
+            "86": {
+              "C": 5.071443557739258,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8585861582808559
+            },
+            "104": {
+              "C": 0.0,
+              "H": 2.5858211517333984,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.21806345404944744
+            },
+            "243": {
+              "C": 0.0,
+              "H": 1.0783863067626953,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.3248455198111974
+            },
+            "337": {
+              "C": 0.0,
+              "H": 4.130287170410156,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.16312449518300354
+            },
+            "511": {
+              "C": 0.0,
+              "H": 2.9739913940429688,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.20104578411567742
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "5a86706415769f6f29721f573fe0c6e4de49d1f0ac2965d4e0134fd7eb065779"
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 0,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_nnknn__ema__reset\\s8",
+      "training_seconds": 0.9131539999507368,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 8,
+        "total_timesteps": 512,
+        "configured_total_timesteps": 512,
+        "actual_timesteps": 512,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 73.66666412353516,
+          "std_return": 20.28683090209961,
+          "min_return": 45.0,
+          "max_return": 89.0,
+          "mean_length": 73.66666412353516
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 44.0,
+          "std_return": 4.242640495300293,
+          "min_return": 41.0,
+          "max_return": 50.0,
+          "mean_length": 44.0
+        },
+        "selected_step": 256,
+        "selected_source": "best_eval",
+        "training_efficiency": {
+          "best_model_step": 256,
+          "best_model_training_fraction": 0.5,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 29.666664123535156,
+          "budget_interpretation": "regressed_after_best"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": 73.66666412353516,
+          "evaluations": 4,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 512
+        },
+        "case_entries": 121,
+        "critic_case_entries": 128,
+        "action_counts": [
+          56,
+          65
+        ],
+        "cases_pruned": 229,
+        "cases_replaced": 427,
+        "actor_cases_pruned": 118,
+        "actor_cases_replaced": 154,
+        "critic_cases_pruned": 111,
+        "critic_cases_replaced": 273,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 8,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 2,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_nnknn__ema__reset\\s8\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_nnknn__ema__reset\\s8"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 351.9256591796875,
+        "critic_holdout_explained_variance": 0.16410166025161743,
+        "critic_holdout_value_mean": 15.977184295654297,
+        "critic_holdout_target_mean": 28.244558334350586,
+        "critic_holdout_samples": 130,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 130,
+        "critic_holdout_mean_episode_return": 65.0,
+        "critic_holdout_mean_episode_length": 65.0,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40016
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "27": {
+              "C": 0.0,
+              "H": 27.502532958984375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.03389539472391204
+            },
+            "54": {
+              "C": 0.0,
+              "H": 28.900634765625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.03236179475226951
+            },
+            "72": {
+              "C": 0.0,
+              "H": 5.6909637451171875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.1300227166764213
+            },
+            "74": {
+              "C": 0.0,
+              "H": 16.071868896484375,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.055334620106420526
+            },
+            "76": {
+              "C": 0.0,
+              "H": 27.843292236328125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.033508367377199214
+            },
+            "116": {
+              "C": 25.674591064453125,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.963865771397632
+            },
+            "118": {
+              "C": 38.20501708984375,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.975127482280001
+            },
+            "120": {
+              "C": 31.220352172851562,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9698979711353806
+            },
+            "55": {
+              "C": 0.0,
+              "H": 44.26947021484375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.021612523233066738
+            },
+            "57": {
+              "C": 0.0,
+              "H": 46.51202392578125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.020613446297971492
+            },
+            "73": {
+              "C": 0.0,
+              "H": 15.55999755859375,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.05694761611801059
+            },
+            "75": {
+              "C": 0.0,
+              "H": 36.12178039550781,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.026231723430153273
+            },
+            "77": {
+              "C": 0.0,
+              "H": 59.42402648925781,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.016280274302351145
+            },
+            "117": {
+              "C": 45.3992919921875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9789026384578735
+            },
+            "119": {
+              "C": 70.12223815917969,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9861346510379653
+            },
+            "121": {
+              "C": 56.26210021972656,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9828361834498129
+            },
+            "10": {
+              "C": 0.0,
+              "H": 62.520477294921875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.015498955400299025
+            },
+            "31": {
+              "C": 0.0,
+              "H": 43.678253173828125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.02189225573479157
+            },
+            "56": {
+              "C": 0.0,
+              "H": 24.01416015625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.03844060288679918
+            },
+            "78": {
+              "C": 0.0,
+              "H": 22.54638671875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.040739193570846016
+            },
+            "80": {
+              "C": 0.0,
+              "H": 38.7674560546875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.024529369668260637
+            },
+            "110": {
+              "C": 41.627288818359375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9770785664870567
+            },
+            "155": {
+              "C": 70.36843872070312,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9861818215553969
+            },
+            "157": {
+              "C": 65.69198608398438,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9852272025412385
+            },
+            "123": {
+              "C": 26.635757446289062,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9650786258447795
+            },
+            "122": {
+              "C": 9.016433715820312,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9092265223214718
+            },
+            "124": {
+              "C": 4.7988128662109375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.852915498679211
+            },
+            "125": {
+              "C": 9.361221313476562,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9119812938760544
+            },
+            "165": {
+              "C": 21.213409423828125,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9569214507984545
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "ff3fa762b8058dec9a78b452a81fb259b83d3704d28e3c19c39d9de86767668b"
+    },
+    {
+      "role": "cartpole/mlp_mlp__ema__reset/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "actor_type": "mlp",
+      "critic_type": "mlp",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 0,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_mlp__ema__reset\\s9",
+      "training_seconds": 0.20406179991550744,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 9,
+        "total_timesteps": 512,
+        "configured_total_timesteps": 512,
+        "actual_timesteps": 512,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "mlp",
+        "critic_type": "mlp",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": false,
+          "critic_target_shared_case_store": false,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "standard_stochastic_policy",
+          "applies_to_actor": false,
+          "initial_epsilon": 0.0,
+          "final_epsilon": 0.0,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.0,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 60.33333206176758,
+          "std_return": 3.399346351623535,
+          "min_return": 57.0,
+          "max_return": 65.0,
+          "mean_length": 60.33333206176758
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 45.33333206176758,
+          "std_return": 4.9888763427734375,
+          "min_return": 40.0,
+          "max_return": 52.0,
+          "mean_length": 45.33333206176758
+        },
+        "selected_step": 256,
+        "selected_source": "best_eval",
+        "training_efficiency": {
+          "best_model_step": 256,
+          "best_model_training_fraction": 0.5,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 15.0,
+          "budget_interpretation": "regressed_after_best"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": 60.33333206176758,
+          "evaluations": 4,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 512
+        },
+        "case_entries": null,
+        "critic_case_entries": null,
+        "action_counts": null,
+        "cases_pruned": 0,
+        "cases_replaced": 0,
+        "actor_cases_pruned": 0,
+        "actor_cases_replaced": 0,
+        "critic_cases_pruned": 0,
+        "critic_cases_replaced": 0,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 27,
+        "critic_target_enabled": false,
+        "critic_target_value_mode": "none",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 0,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_mlp__ema__reset\\s9\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_mlp__ema__reset\\s9"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 102.3184585571289,
+        "critic_holdout_explained_variance": -0.007701516151428223,
+        "critic_holdout_value_mean": 0.3565119504928589,
+        "critic_holdout_target_mean": 9.209611892700195,
+        "critic_holdout_samples": 37,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 37,
+        "critic_holdout_mean_episode_return": 18.5,
+        "critic_holdout_mean_episode_length": 18.5,
+        "critic_holdout_behavior_epsilon": 0.0,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "online_value_model",
+        "critic_holdout_seed": 40018
+      },
+      "audit_events": 0,
+      "interventions": 0,
+      "credit": [],
+      "checkpoint_sha256": "b9a5bf13d9d606f20f7bb1f4c4a0883c351687c983d63b8d4a0d04b5a5d37028"
+    },
+    {
+      "role": "cartpole/nnknn_mlp__ema__reset/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "actor_type": "nnknn",
+      "critic_type": "mlp",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 0,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_mlp__ema__reset\\s9",
+      "training_seconds": 0.9898747000843287,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 9,
+        "total_timesteps": 512,
+        "configured_total_timesteps": 512,
+        "actual_timesteps": 512,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "mlp",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": false,
+          "critic_target_shared_case_store": false,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 94.0,
+          "std_return": 31.53833770751953,
+          "min_return": 60.0,
+          "max_return": 136.0,
+          "mean_length": 94.0
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 47.66666793823242,
+          "std_return": 2.8674418926239014,
+          "min_return": 44.0,
+          "max_return": 51.0,
+          "mean_length": 47.66666793823242
+        },
+        "selected_step": 256,
+        "selected_source": "best_eval",
+        "training_efficiency": {
+          "best_model_step": 256,
+          "best_model_training_fraction": 0.5,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 46.33333206176758,
+          "budget_interpretation": "regressed_after_best"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": 94.0,
+          "evaluations": 4,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 512
+        },
+        "case_entries": 128,
+        "critic_case_entries": null,
+        "action_counts": [
+          53,
+          75
+        ],
+        "cases_pruned": 182,
+        "cases_replaced": 202,
+        "actor_cases_pruned": 182,
+        "actor_cases_replaced": 202,
+        "critic_cases_pruned": 0,
+        "critic_cases_replaced": 0,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 28,
+        "critic_target_enabled": false,
+        "critic_target_value_mode": "none",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 0,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_mlp__ema__reset\\s9\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_mlp__ema__reset\\s9"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 597.66357421875,
+        "critic_holdout_explained_variance": -0.004885673522949219,
+        "critic_holdout_value_mean": 0.23780561983585358,
+        "critic_holdout_target_mean": 21.287643432617188,
+        "critic_holdout_samples": 89,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 89,
+        "critic_holdout_mean_episode_return": 44.5,
+        "critic_holdout_mean_episode_length": 44.5,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "online_value_model",
+        "critic_holdout_seed": 40018
+      },
+      "audit_events": 0,
+      "interventions": 0,
+      "credit": [],
+      "checkpoint_sha256": "d1f2c85c5fac0f226e0cd8f5115d7436ddfa5a0916016a7bd7012e1d05a1ea68"
+    },
+    {
+      "role": "cartpole/mlp_nnknn__ema__reset/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "actor_type": "mlp",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 0,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_nnknn__ema__reset\\s9",
+      "training_seconds": 0.28760979999788105,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 9,
+        "total_timesteps": 512,
+        "configured_total_timesteps": 512,
+        "actual_timesteps": 512,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "mlp",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": false,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "standard_stochastic_policy",
+          "applies_to_actor": false,
+          "initial_epsilon": 0.0,
+          "final_epsilon": 0.0,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.0,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 41.66666793823242,
+          "std_return": 3.858612298965454,
+          "min_return": 38.0,
+          "max_return": 47.0,
+          "mean_length": 41.66666793823242
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 41.0,
+          "std_return": 4.546060562133789,
+          "min_return": 36.0,
+          "max_return": 47.0,
+          "mean_length": 41.0
+        },
+        "selected_step": 512,
+        "selected_source": "best_eval",
+        "training_efficiency": {
+          "best_model_step": 512,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.6666679382324219,
+          "budget_interpretation": "regressed_after_best"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": 41.66666793823242,
+          "evaluations": 4,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 512
+        },
+        "case_entries": null,
+        "critic_case_entries": 128,
+        "action_counts": null,
+        "cases_pruned": 200,
+        "cases_replaced": 186,
+        "actor_cases_pruned": 0,
+        "actor_cases_replaced": 0,
+        "critic_cases_pruned": 200,
+        "critic_cases_replaced": 186,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 22,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 3,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_nnknn__ema__reset\\s9\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_nnknn__ema__reset\\s9"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 54.55585479736328,
+        "critic_holdout_explained_variance": 0.2372678518295288,
+        "critic_holdout_value_mean": 15.241065979003906,
+        "critic_holdout_target_mean": 9.344265937805176,
+        "critic_holdout_samples": 37,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 37,
+        "critic_holdout_mean_episode_return": 18.5,
+        "critic_holdout_mean_episode_length": 18.5,
+        "critic_holdout_behavior_epsilon": 0.0,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40018
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "46": {
+              "C": 30.986530303955078,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9696845957793839
+            },
+            "147": {
+              "C": 0.0,
+              "H": 17.880237579345703,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.05030120973196699
+            },
+            "272": {
+              "C": 0.0,
+              "H": 9.232666015625,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.08902606011867244
+            },
+            "274": {
+              "C": 0.0,
+              "H": 3.9408950805664062,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.16832480399648125
+            },
+            "323": {
+              "C": 0.0,
+              "H": 10.166828155517578,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.08219068990026841
+            },
+            "325": {
+              "C": 0.0,
+              "H": 3.2495079040527344,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.19049404597104774
+            },
+            "461": {
+              "C": 0.0,
+              "H": 3.068328857421875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.19730369282088644
+            },
+            "467": {
+              "C": 15.565353393554688,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9430697477246923
+            },
+            "96": {
+              "C": 0.0,
+              "H": 0.696533203125,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.3708465368945224
+            },
+            "98": {
+              "C": 1.5010476112365723,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.7143712079805737
+            },
+            "100": {
+              "C": 5.2013044357299805,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.8611362692794375
+            },
+            "102": {
+              "C": 9.003423690795898,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9091191952522489
+            },
+            "416": {
+              "C": 57.44194793701172,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9831768635667919
+            },
+            "462": {
+              "C": 0.0,
+              "H": 25.45883083343506,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.03641815655101953
+            },
+            "464": {
+              "C": 0.0,
+              "H": 21.26737928390503,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.042978626333380815
+            },
+            "466": {
+              "C": 0.0,
+              "H": 15.714396476745605,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.05645125992933148
+            },
+            "278": {
+              "C": 3.4426727294921875,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8162667406803087
+            },
+            "89": {
+              "C": 0.0,
+              "H": 2.4610939025878906,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.22416026692912644
+            },
+            "91": {
+              "C": 0.0,
+              "H": 2.234691619873047,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.23614470421106587
+            },
+            "93": {
+              "C": 0.0,
+              "H": 1.7312850952148438,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.2680041793864644
+            },
+            "97": {
+              "C": 0.0,
+              "H": 0.10187911987304688,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.4757647528561965
+            },
+            "280": {
+              "C": 0.0,
+              "H": 1.8291664123535156,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.26115344498317883
+            },
+            "292": {
+              "C": 26.727989196777344,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9651907415743467
+            },
+            "463": {
+              "C": 0.0,
+              "H": 8.229873657226562,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.0977529179251967
+            },
+            "465": {
+              "C": 0.0,
+              "H": 6.600391387939453,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.11627377812157774
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "040b0f81850a3615e30b57899ccfbc5fc1def4730107137c9c0ae8f50e470fc6"
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 0,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_nnknn__ema__reset\\s9",
+      "training_seconds": 1.0695211000274867,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 9,
+        "total_timesteps": 512,
+        "configured_total_timesteps": 512,
+        "actual_timesteps": 512,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 102.0,
+          "std_return": 4.320493698120117,
+          "min_return": 96.0,
+          "max_return": 106.0,
+          "mean_length": 102.0
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 102.0,
+          "std_return": 4.320493698120117,
+          "min_return": 96.0,
+          "max_return": 106.0,
+          "mean_length": 102.0
+        },
+        "selected_step": 512,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 512,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": 78.33333587646484,
+          "evaluations": 4,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 512
+        },
+        "case_entries": 128,
+        "critic_case_entries": 128,
+        "action_counts": [
+          58,
+          70
+        ],
+        "cases_pruned": 172,
+        "cases_replaced": 509,
+        "actor_cases_pruned": 76,
+        "actor_cases_replaced": 221,
+        "critic_cases_pruned": 96,
+        "critic_cases_replaced": 288,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 154,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 2,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_nnknn__ema__reset\\s9\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_nnknn__ema__reset\\s9"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 181.22134399414062,
+        "critic_holdout_explained_variance": 0.32166004180908203,
+        "critic_holdout_value_mean": 16.634031295776367,
+        "critic_holdout_target_mean": 24.527637481689453,
+        "critic_holdout_samples": 112,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 112,
+        "critic_holdout_mean_episode_return": 56.0,
+        "critic_holdout_mean_episode_length": 56.0,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40018
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "31": {
+              "C": 0.0,
+              "H": 71.46710205078125,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.013611534579229615
+            },
+            "153": {
+              "C": 45.08074951171875,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.978759896340412
+            },
+            "155": {
+              "C": 27.17724609375,
+              "H": 1.8280029296875,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9087895431012422
+            },
+            "188": {
+              "C": 98.86517333984375,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.990085775229566
+            },
+            "190": {
+              "C": 48.4959716796875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9801964400973739
+            },
+            "192": {
+              "C": 13.24554443359375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9344070653327088
+            },
+            "220": {
+              "C": 4.729248046875,
+              "H": 22.7327880859375,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.19446205350668938
+            },
+            "222": {
+              "C": 0.0,
+              "H": 64.68487548828125,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.01499590413385016
+            },
+            "32": {
+              "C": 0.0,
+              "H": 64.56439208984375,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.015023047136827646
+            },
+            "60": {
+              "C": 0.0,
+              "H": 125.05029296875,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.007870898812063074
+            },
+            "187": {
+              "C": 119.44207763671875,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.991765621772452
+            },
+            "189": {
+              "C": 149.58880615234375,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9934032068370865
+            },
+            "191": {
+              "C": 47.274658203125,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9797055923578871
+            },
+            "195": {
+              "C": 4.75103759765625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8518746214141706
+            },
+            "197": {
+              "C": 0.0,
+              "H": 4.4886474609375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.1541153231116546
+            },
+            "223": {
+              "C": 0.0,
+              "H": 72.42376708984375,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.013436567901659806
+            },
+            "224": {
+              "C": 0.0,
+              "H": 76.17315673828125,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.0127921148604493
+            },
+            "127": {
+              "C": 18.45941162109375,
+              "H": 2.43450927734375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.8499816046111108
+            },
+            "129": {
+              "C": 8.342041015625,
+              "H": 13.88372802734375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.3856241260723329
+            },
+            "124": {
+              "C": 24.332763671875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9620244949424712
+            },
+            "131": {
+              "C": 0.175537109375,
+              "H": 12.2266845703125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.08162192858293144
+            },
+            "134": {
+              "C": 0.0,
+              "H": 21.36163330078125,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.04280522629239961
+            },
+            "68": {
+              "C": 0.0,
+              "H": 45.8797607421875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.02088565156757115
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "ab84ccac57f7c1fad5beb39dad55a1f6224010bc973939c89dfdb82f022cee79"
+    },
+    {
+      "role": "cartpole/mlp_mlp__ema__reset/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "actor_type": "mlp",
+      "critic_type": "mlp",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 0,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_mlp__ema__reset\\s10",
+      "training_seconds": 0.18508700001984835,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 10,
+        "total_timesteps": 512,
+        "configured_total_timesteps": 512,
+        "actual_timesteps": 512,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "mlp",
+        "critic_type": "mlp",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": false,
+          "critic_target_shared_case_store": false,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "standard_stochastic_policy",
+          "applies_to_actor": false,
+          "initial_epsilon": 0.0,
+          "final_epsilon": 0.0,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.0,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 13.333333015441895,
+          "std_return": 0.471404492855072,
+          "min_return": 13.0,
+          "max_return": 14.0,
+          "mean_length": 13.333333015441895
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 13.333333015441895,
+          "std_return": 0.471404492855072,
+          "min_return": 13.0,
+          "max_return": 14.0,
+          "mean_length": 13.333333015441895
+        },
+        "selected_step": 512,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 512,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": 11.333333015441895,
+          "evaluations": 4,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 512
+        },
+        "case_entries": null,
+        "critic_case_entries": null,
+        "action_counts": null,
+        "cases_pruned": 0,
+        "cases_replaced": 0,
+        "actor_cases_pruned": 0,
+        "actor_cases_replaced": 0,
+        "critic_cases_pruned": 0,
+        "critic_cases_replaced": 0,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 17,
+        "critic_target_enabled": false,
+        "critic_target_value_mode": "none",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 0,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_mlp__ema__reset\\s10\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_mlp__ema__reset\\s10"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 109.33702087402344,
+        "critic_holdout_explained_variance": -0.027927160263061523,
+        "critic_holdout_value_mean": 0.7455615401268005,
+        "critic_holdout_target_mean": 9.485475540161133,
+        "critic_holdout_samples": 35,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 35,
+        "critic_holdout_mean_episode_return": 17.5,
+        "critic_holdout_mean_episode_length": 17.5,
+        "critic_holdout_behavior_epsilon": 0.0,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "online_value_model",
+        "critic_holdout_seed": 40020
+      },
+      "audit_events": 0,
+      "interventions": 0,
+      "credit": [],
+      "checkpoint_sha256": "bf0d47ffa65461b5951c6e91640cd92dee45c1024b393d5831385e8898090b29"
+    },
+    {
+      "role": "cartpole/nnknn_mlp__ema__reset/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "actor_type": "nnknn",
+      "critic_type": "mlp",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 0,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_mlp__ema__reset\\s10",
+      "training_seconds": 1.3097359000239521,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 10,
+        "total_timesteps": 512,
+        "configured_total_timesteps": 512,
+        "actual_timesteps": 512,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "mlp",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": false,
+          "critic_target_shared_case_store": false,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 277.3333435058594,
+          "std_return": 47.618858337402344,
+          "min_return": 210.0,
+          "max_return": 312.0,
+          "mean_length": 277.3333435058594
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 277.3333435058594,
+          "std_return": 47.618858337402344,
+          "min_return": 210.0,
+          "max_return": 312.0,
+          "mean_length": 277.3333435058594
+        },
+        "selected_step": 512,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 512,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": 184.6666717529297,
+          "evaluations": 4,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 512
+        },
+        "case_entries": 128,
+        "critic_case_entries": null,
+        "action_counts": [
+          81,
+          47
+        ],
+        "cases_pruned": 127,
+        "cases_replaced": 256,
+        "actor_cases_pruned": 127,
+        "actor_cases_replaced": 256,
+        "critic_cases_pruned": 0,
+        "critic_cases_replaced": 0,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 7,
+        "critic_target_enabled": false,
+        "critic_target_value_mode": "none",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 0,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_mlp__ema__reset\\s10\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_mlp__ema__reset\\s10"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 863.8182983398438,
+        "critic_holdout_explained_variance": -0.0037870407104492188,
+        "critic_holdout_value_mean": 0.3753865361213684,
+        "critic_holdout_target_mean": 26.46005630493164,
+        "critic_holdout_samples": 127,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 127,
+        "critic_holdout_mean_episode_return": 63.5,
+        "critic_holdout_mean_episode_length": 63.5,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "online_value_model",
+        "critic_holdout_seed": 40020
+      },
+      "audit_events": 0,
+      "interventions": 0,
+      "credit": [],
+      "checkpoint_sha256": "37307158080d6717db912281f8c4c7a02994d04a682a45c2e9c8e562cdfcd0cd"
+    },
+    {
+      "role": "cartpole/mlp_nnknn__ema__reset/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "actor_type": "mlp",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 0,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_nnknn__ema__reset\\s10",
+      "training_seconds": 0.30445139994844794,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 10,
+        "total_timesteps": 512,
+        "configured_total_timesteps": 512,
+        "actual_timesteps": 512,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "mlp",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": false,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "standard_stochastic_policy",
+          "applies_to_actor": false,
+          "initial_epsilon": 0.0,
+          "final_epsilon": 0.0,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.0,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 79.66666412353516,
+          "std_return": 4.109609603881836,
+          "min_return": 75.0,
+          "max_return": 85.0,
+          "mean_length": 79.66666412353516
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 49.66666793823242,
+          "std_return": 3.858612298965454,
+          "min_return": 46.0,
+          "max_return": 55.0,
+          "mean_length": 49.66666793823242
+        },
+        "selected_step": 128,
+        "selected_source": "best_eval",
+        "training_efficiency": {
+          "best_model_step": 128,
+          "best_model_training_fraction": 0.25,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 29.999996185302734,
+          "budget_interpretation": "regressed_after_best"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": 79.66666412353516,
+          "evaluations": 4,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 512
+        },
+        "case_entries": null,
+        "critic_case_entries": 119,
+        "action_counts": null,
+        "cases_pruned": 161,
+        "cases_replaced": 223,
+        "actor_cases_pruned": 0,
+        "actor_cases_replaced": 0,
+        "critic_cases_pruned": 161,
+        "critic_cases_replaced": 223,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 3,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 3,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_nnknn__ema__reset\\s10\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\mlp_nnknn__ema__reset\\s10"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 9.691107749938965,
+        "critic_holdout_explained_variance": 0.5409108400344849,
+        "critic_holdout_value_mean": 8.823624610900879,
+        "critic_holdout_target_mean": 7.0291829109191895,
+        "critic_holdout_samples": 27,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 27,
+        "critic_holdout_mean_episode_return": 13.5,
+        "critic_holdout_mean_episode_length": 13.5,
+        "critic_holdout_behavior_epsilon": 0.0,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40020
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "22": {
+              "C": 6.370719909667969,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8805359621643742
+            },
+            "26": {
+              "C": 7.831867218017578,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8982899201316072
+            },
+            "30": {
+              "C": 9.785833358764648,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9151523723813437
+            },
+            "46": {
+              "C": 0.0,
+              "H": 5.868593215942383,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.1270875202919274
+            },
+            "56": {
+              "C": 0.0,
+              "H": 3.6979455947875977,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.1755018512136701
+            },
+            "58": {
+              "C": 0.0,
+              "H": 3.0780696868896484,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.19692522191685533
+            },
+            "60": {
+              "C": 0.0,
+              "H": 2.415408134460449,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.22647962986601627
+            },
+            "89": {
+              "C": 0.0,
+              "H": 4.92153263092041,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.1444766720498755
+            },
+            "27": {
+              "C": 4.205289840698242,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8388471730294751
+            },
+            "29": {
+              "C": 4.9470319747924805,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8560536350446448
+            },
+            "31": {
+              "C": 26.9640531539917,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9654744453518521
+            },
+            "33": {
+              "C": 30.57846164703369,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9693048735439277
+            },
+            "59": {
+              "C": 0.0,
+              "H": 3.3613014221191406,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.18652187617623892
+            },
+            "90": {
+              "C": 0.0,
+              "H": 14.423187732696533,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.06088951890923854
+            },
+            "92": {
+              "C": 0.0,
+              "H": 13.667716026306152,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.06382551217554597
+            },
+            "94": {
+              "C": 0.0,
+              "H": 12.275362491607666,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.07005076057353285
+            },
+            "6": {
+              "C": 3.080332890152931,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.8031625049731933
+            },
+            "8": {
+              "C": 4.621981173753738,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.8489877917558108
+            },
+            "28": {
+              "C": 0.83560711145401,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.6473418352067711
+            },
+            "32": {
+              "C": 4.691592305898666,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.8505587378480163
+            },
+            "36": {
+              "C": 8.895135045051575,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9082159150974282
+            },
+            "38": {
+              "C": 11.50773024559021,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9259683172658513
+            },
+            "91": {
+              "C": 1.4953293800354004,
+              "H": 11.99270224571228,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.16111339648139045
+            },
+            "95": {
+              "C": 1.151292324066162,
+              "H": 11.466015577316284,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.1471743181836309
+            },
+            "9": {
+              "C": 3.5255067348480225,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.8190211236748217
+            },
+            "11": {
+              "C": 1.7872936725616455,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.7359592135025481
+            },
+            "17": {
+              "C": 0.0,
+              "H": 3.70752215385437,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.1752073794973684
+            },
+            "37": {
+              "C": 0.49677348136901855,
+              "H": 0.5550222396850586,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.4904566419839004
+            },
+            "39": {
+              "C": 0.0,
+              "H": 2.0109755992889404,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.24931590214043647
+            },
+            "41": {
+              "C": 0.0,
+              "H": 3.849831461906433,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.17094509585650602
+            },
+            "76": {
+              "C": 4.148453712463379,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8373574809593305
+            },
+            "78": {
+              "C": 2.756110191345215,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.7897441481024305
+            },
+            "96": {
+              "C": 0.0,
+              "H": 7.4134674072265625,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.10623078157495044
+            },
+            "98": {
+              "C": 0.0,
+              "H": 6.1092529296875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.12331592178350469
+            },
+            "104": {
+              "C": 0.0,
+              "H": 0.34267425537109375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.4268625899257146
+            },
+            "10": {
+              "C": 3.593745231628418,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8212288978865622
+            },
+            "43": {
+              "C": 0.0,
+              "H": 1.191573977470398,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.313325026165487
+            },
+            "82": {
+              "C": 0.15903687477111816,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.536830513788232
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "7ad3f3afaee4f8bdcc6c0b6419329513aad9a364152618bd7833dbebe7bb84f0"
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 0,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_nnknn__ema__reset\\s10",
+      "training_seconds": 1.5592827000655234,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 10,
+        "total_timesteps": 512,
+        "configured_total_timesteps": 512,
+        "actual_timesteps": 512,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 461.6666564941406,
+          "std_return": 54.21152114868164,
+          "min_return": 385.0,
+          "max_return": 500.0,
+          "mean_length": 461.6666564941406
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 461.6666564941406,
+          "std_return": 54.21152114868164,
+          "min_return": 385.0,
+          "max_return": 500.0,
+          "mean_length": 461.6666564941406
+        },
+        "selected_step": 512,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 512,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": 341.0,
+          "evaluations": 4,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 512
+        },
+        "case_entries": 128,
+        "critic_case_entries": 128,
+        "action_counts": [
+          77,
+          51
+        ],
+        "cases_pruned": 247,
+        "cases_replaced": 376,
+        "actor_cases_pruned": 141,
+        "actor_cases_replaced": 98,
+        "critic_cases_pruned": 106,
+        "critic_cases_replaced": 278,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 34,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 2,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_nnknn__ema__reset\\s10\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261005\\selected_checkpoint\\cartpole\\nnknn_nnknn__ema__reset\\s10"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 2262.612060546875,
+        "critic_holdout_explained_variance": 0.247134268283844,
+        "critic_holdout_value_mean": 22.702173233032227,
+        "critic_holdout_target_mean": 64.6690673828125,
+        "critic_holdout_samples": 509,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 509,
+        "critic_holdout_mean_episode_return": 254.5,
+        "critic_holdout_mean_episode_length": 254.5,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40020
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "121": {
+              "C": 0.0,
+              "H": 138.77490234375,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.0071035389359259404
+            },
+            "123": {
+              "C": 0.0,
+              "H": 161.2646484375,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.006125024673561307
+            },
+            "125": {
+              "C": 0.0,
+              "H": 180.837158203125,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.005469347750904325
+            },
+            "127": {
+              "C": 0.0,
+              "H": 84.376708984375,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.011577194960980669
+            },
+            "450": {
+              "C": 77.7587890625,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9874621968092271
+            },
+            "454": {
+              "C": 0.0,
+              "H": 51.4072265625,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.018724057854413136
+            },
+            "456": {
+              "C": 0.0,
+              "H": 116.702392578125,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.008424430024372435
+            },
+            "480": {
+              "C": 326.84765625,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9969590782205856
+            },
+            "39": {
+              "C": 0.0,
+              "H": 77.72705078125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.012542794323895616
+            },
+            "79": {
+              "C": 0.0,
+              "H": 285.0693359375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.0034834789885664326
+            },
+            "122": {
+              "C": 164.840087890625,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9940062366746321
+            },
+            "260": {
+              "C": 0.0,
+              "H": 62.548828125,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.01549214802263306
+            },
+            "378": {
+              "C": 102.825927734375,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.990460375389818
+            },
+            "380": {
+              "C": 6.542724609375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.882941327769998
+            },
+            "455": {
+              "C": 233.19921875,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.995748285197057
+            },
+            "457": {
+              "C": 176.677978515625,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9944033394136896
+            },
+            "478": {
+              "C": 334.714111328125,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9970301214996437
+            },
+            "83": {
+              "C": 0.0,
+              "H": 217.623779296875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.004553241016075298
+            },
+            "124": {
+              "C": 0.0,
+              "H": 58.4677734375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.016537734782538477
+            },
+            "126": {
+              "C": 0.0,
+              "H": 63.379638671875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.015295281838719916
+            },
+            "423": {
+              "C": 0.0,
+              "H": 3.785888671875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.1728342968057724
+            },
+            "425": {
+              "C": 0.0,
+              "H": 20.513916015625,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.044416973009314985
+            },
+            "451": {
+              "C": 0.0,
+              "H": 3.97998046875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.16722462643912794
+            },
+            "453": {
+              "C": 0.0,
+              "H": 21.470458984375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.04260675092318094
+            },
+            "483": {
+              "C": 90.65087890625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9892067942387048
+            },
+            "485": {
+              "C": 81.991943359375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.988094096171566
+            },
+            "262": {
+              "C": 0.0,
+              "H": 34.087158203125,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.027710688505070597
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "97fae8ee33cf17c9652ad953ea0a7f86513ca3865755f5a711c509d12bcaee91"
+    }
+  ],
+  "source_fingerprint": "91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980",
+  "versions": {
+    "torch": "2.14.0+xpu",
+    "gymnasium": "1.3.0"
+  }
+}

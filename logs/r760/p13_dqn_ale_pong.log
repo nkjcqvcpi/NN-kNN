@@ -1,0 +1,242 @@
+A.L.E: Arcade Learning Environment (version 0.12.1+8a8fafb)
+[Powered by Stella]
+[dqn] step=838 episode=1 return=-21.0 length=838 epsilon=0.998 loss=None
+[dqn] step=1667 episode=2 return=-21.0 length=829 epsilon=0.997 loss=0.007950928062200546
+[dqn] step=2575 episode=3 return=-21.0 length=908 epsilon=0.995 loss=0.00771194975823164
+[dqn] step=3707 episode=4 return=-20.0 length=1132 epsilon=0.993 loss=0.011399403214454651
+[dqn] step=4611 episode=5 return=-20.0 length=904 epsilon=0.991 loss=0.015237906947731972
+[dqn] step=9130 episode=10 return=-19.0 length=1189 epsilon=0.983 loss=0.0001776826975401491
+[dqn] step=18666 episode=20 return=-19.0 length=1062 epsilon=0.965 loss=0.007794829085469246
+[dqn][eval] step=25000 mean_return=-21.00 max_return=-21.00
+[dqn] step=27425 episode=30 return=-21.0 length=931 epsilon=0.948 loss=0.008037904277443886
+[dqn] step=36535 episode=40 return=-20.0 length=916 epsilon=0.931 loss=0.004087373614311218
+[dqn] step=45479 episode=50 return=-20.0 length=837 epsilon=0.914 loss=0.00775500014424324
+[dqn][eval] step=50000 mean_return=-21.00 max_return=-21.00
+[dqn] step=54414 episode=60 return=-21.0 length=824 epsilon=0.897 loss=0.003976562060415745
+[dqn] step=63320 episode=70 return=-20.0 length=929 epsilon=0.880 loss=0.007808299735188484
+[dqn] step=73133 episode=80 return=-21.0 length=822 epsilon=0.861 loss=0.015599628910422325
+[dqn][eval] step=75000 mean_return=-21.00 max_return=-21.00
+[dqn] step=82269 episode=90 return=-21.0 length=905 epsilon=0.844 loss=0.018791286274790764
+[dqn] step=91688 episode=100 return=-21.0 length=910 epsilon=0.826 loss=0.011505559086799622
+[dqn][eval] step=100000 mean_return=-21.00 max_return=-21.00
+[dqn] step=101151 episode=110 return=-20.0 length=955 epsilon=0.808 loss=0.007963381707668304
+[dqn] step=110237 episode=120 return=-21.0 length=847 epsilon=0.791 loss=0.003834776347503066
+[dqn] step=119323 episode=130 return=-20.0 length=901 epsilon=0.773 loss=0.026307132095098495
+[dqn][eval] step=125000 mean_return=-21.00 max_return=-21.00
+[dqn] step=127921 episode=140 return=-21.0 length=776 epsilon=0.757 loss=0.007815543562173843
+[dqn] step=136603 episode=150 return=-21.0 length=823 epsilon=0.740 loss=0.01140449196100235
+[dqn] step=145504 episode=160 return=-20.0 length=956 epsilon=0.724 loss=0.008065786212682724
+[dqn][eval] step=150000 mean_return=-21.00 max_return=-21.00
+[dqn] step=154538 episode=170 return=-21.0 length=819 epsilon=0.706 loss=0.011452262289822102
+[dqn] step=163733 episode=180 return=-20.0 length=1132 epsilon=0.689 loss=0.007843025028705597
+[dqn] step=173533 episode=190 return=-20.0 length=896 epsilon=0.670 loss=0.015290137380361557
+[dqn][eval] step=175000 mean_return=-21.00 max_return=-21.00
+[dqn] step=182487 episode=200 return=-21.0 length=929 epsilon=0.653 loss=0.007747712079435587
+[dqn] step=192277 episode=210 return=-20.0 length=920 epsilon=0.635 loss=0.015287036076188087
+[dqn][eval] step=200000 mean_return=-21.00 max_return=-21.00
+[dqn] step=201342 episode=220 return=-20.0 length=836 epsilon=0.617 loss=0.00784987397491932
+[dqn] step=210676 episode=230 return=-19.0 length=934 epsilon=0.600 loss=0.023090729489922523
+[dqn] step=219762 episode=240 return=-21.0 length=894 epsilon=0.582 loss=0.007752337493002415
+[dqn][eval] step=225000 mean_return=-21.00 max_return=-21.00
+[dqn] step=229192 episode=250 return=-20.0 length=901 epsilon=0.565 loss=0.011562494561076164
+[dqn] step=238199 episode=260 return=-20.0 length=1060 epsilon=0.547 loss=0.007643330376595259
+[dqn] step=246689 episode=270 return=-20.0 length=956 epsilon=0.531 loss=0.033736370503902435
+[dqn][eval] step=250000 mean_return=-21.00 max_return=-21.00
+[dqn] step=255639 episode=280 return=-21.0 length=819 epsilon=0.514 loss=0.01504597719758749
+[dqn] step=265205 episode=290 return=-20.0 length=979 epsilon=0.496 loss=0.007715328596532345
+[dqn] step=274357 episode=300 return=-20.0 length=1050 epsilon=0.479 loss=0.0001401825575158
+[dqn][eval] step=275000 mean_return=-21.00 max_return=-21.00
+[dqn] step=282735 episode=310 return=-21.0 length=788 epsilon=0.463 loss=0.026150504127144814
+[dqn] step=292083 episode=320 return=-20.0 length=868 epsilon=0.445 loss=0.011485500261187553
+[dqn][eval] step=300000 mean_return=-21.00 max_return=-21.00
+[dqn] step=301139 episode=330 return=-20.0 length=931 epsilon=0.428 loss=0.01879757083952427
+[dqn] step=309906 episode=340 return=-20.0 length=881 epsilon=0.411 loss=0.011439747177064419
+[dqn] step=318952 episode=350 return=-20.0 length=1066 epsilon=0.394 loss=0.01567229814827442
+[dqn][eval] step=325000 mean_return=-21.00 max_return=-21.00
+[dqn] step=328446 episode=360 return=-21.0 length=842 epsilon=0.376 loss=0.022577136754989624
+[dqn] step=337281 episode=370 return=-21.0 length=779 epsilon=0.359 loss=0.00778418080881238
+[dqn] step=345390 episode=380 return=-21.0 length=758 epsilon=0.344 loss=0.022443488240242004
+[dqn][eval] step=350000 mean_return=-21.00 max_return=-21.00
+[dqn] step=353708 episode=390 return=-21.0 length=792 epsilon=0.328 loss=0.007802499458193779
+[dqn] step=362642 episode=400 return=-20.0 length=856 epsilon=0.311 loss=0.004098363686352968
+[dqn] step=371402 episode=410 return=-21.0 length=846 epsilon=0.294 loss=0.015496978536248207
+[dqn][eval] step=375000 mean_return=-21.00 max_return=-21.00
+[dqn] step=379373 episode=420 return=-21.0 length=913 epsilon=0.279 loss=0.0076554156839847565
+[dqn] step=388604 episode=430 return=-20.0 length=869 epsilon=0.262 loss=0.015124798752367496
+[dqn] step=397417 episode=440 return=-20.0 length=918 epsilon=0.245 loss=0.015422344207763672
+[dqn][eval] step=400000 mean_return=-21.00 max_return=-21.00
+[dqn] step=406032 episode=450 return=-21.0 length=844 epsilon=0.229 loss=0.01531047374010086
+[dqn] step=414563 episode=460 return=-21.0 length=822 epsilon=0.212 loss=0.030180171132087708
+[dqn] step=423022 episode=470 return=-21.0 length=879 epsilon=0.196 loss=0.00038670451613143086
+[dqn][eval] step=425000 mean_return=-21.00 max_return=-21.00
+[dqn] step=431480 episode=480 return=-21.0 length=817 epsilon=0.180 loss=0.015293118543922901
+[dqn] step=440271 episode=490 return=-21.0 length=823 epsilon=0.163 loss=0.003887047292664647
+[dqn] step=448806 episode=500 return=-20.0 length=833 epsilon=0.147 loss=0.00022436334984377027
+[dqn][eval] step=450000 mean_return=-21.00 max_return=-21.00
+[dqn] step=457354 episode=510 return=-21.0 length=880 epsilon=0.131 loss=0.011614146642386913
+[dqn] step=465834 episode=520 return=-21.0 length=826 epsilon=0.115 loss=0.030074432492256165
+[dqn] step=474208 episode=530 return=-21.0 length=791 epsilon=0.099 loss=0.01141809206455946
+[dqn][eval] step=475000 mean_return=-21.00 max_return=-21.00
+[dqn] step=482737 episode=540 return=-20.0 length=978 epsilon=0.083 loss=0.015262446366250515
+[dqn] step=491294 episode=550 return=-21.0 length=943 epsilon=0.067 loss=0.0039497241377830505
+[dqn] step=499478 episode=560 return=-21.0 length=785 epsilon=0.051 loss=0.0077776615507900715
+[dqn][eval] step=500000 mean_return=-21.00 max_return=-21.00
+[dqn] step=507716 episode=570 return=-21.0 length=758 epsilon=0.050 loss=0.0150750782340765
+[dqn] step=516019 episode=580 return=-21.0 length=760 epsilon=0.050 loss=0.011450438760221004
+[dqn] step=524502 episode=590 return=-21.0 length=879 epsilon=0.050 loss=0.00765981012955308
+[dqn][eval] step=525000 mean_return=-21.00 max_return=-21.00
+[dqn] step=532459 episode=600 return=-21.0 length=762 epsilon=0.050 loss=0.015132790431380272
+[dqn] step=541045 episode=610 return=-21.0 length=792 epsilon=0.050 loss=0.007699775509536266
+[dqn] step=549081 episode=620 return=-20.0 length=903 epsilon=0.050 loss=0.011459441855549812
+[dqn][eval] step=550000 mean_return=-21.00 max_return=-21.00
+[dqn] step=558113 episode=630 return=-20.0 length=886 epsilon=0.050 loss=0.011494319885969162
+[dqn] step=566129 episode=640 return=-21.0 length=779 epsilon=0.050 loss=0.003929846454411745
+[dqn] step=574375 episode=650 return=-21.0 length=780 epsilon=0.050 loss=0.003972955048084259
+[dqn][eval] step=575000 mean_return=-21.00 max_return=-21.00
+[dqn] step=582685 episode=660 return=-21.0 length=818 epsilon=0.050 loss=0.015228436328470707
+[dqn] step=591253 episode=670 return=-20.0 length=899 epsilon=0.050 loss=0.00774262985214591
+[dqn] step=599675 episode=680 return=-20.0 length=840 epsilon=0.050 loss=0.011640635319054127
+[dqn][eval] step=600000 mean_return=-21.00 max_return=-21.00
+[dqn] step=608357 episode=690 return=-20.0 length=901 epsilon=0.050 loss=0.013193967752158642
+[dqn] step=616751 episode=700 return=-21.0 length=881 epsilon=0.050 loss=0.015305501408874989
+[dqn][eval] step=625000 mean_return=-21.00 max_return=-21.00
+[dqn] step=625144 episode=710 return=-21.0 length=783 epsilon=0.050 loss=0.018871458247303963
+[dqn] step=633254 episode=720 return=-21.0 length=818 epsilon=0.050 loss=0.011508235707879066
+[dqn] step=641187 episode=730 return=-21.0 length=823 epsilon=0.050 loss=0.0040139672346413136
+[dqn] step=649207 episode=740 return=-21.0 length=762 epsilon=0.050 loss=0.007632480468600988
+[dqn][eval] step=650000 mean_return=-21.00 max_return=-21.00
+[dqn] step=657270 episode=750 return=-21.0 length=886 epsilon=0.050 loss=0.015076004900038242
+[dqn] step=665320 episode=760 return=-21.0 length=791 epsilon=0.050 loss=0.01647527888417244
+[dqn] step=673605 episode=770 return=-20.0 length=830 epsilon=0.050 loss=0.003935506101697683
+[dqn][eval] step=675000 mean_return=-21.00 max_return=-21.00
+[dqn] step=681592 episode=780 return=-21.0 length=822 epsilon=0.050 loss=0.018873389810323715
+[dqn] step=689582 episode=790 return=-21.0 length=819 epsilon=0.050 loss=0.003982272930443287
+[dqn] step=697456 episode=800 return=-21.0 length=821 epsilon=0.050 loss=0.011399679817259312
+[dqn][eval] step=700000 mean_return=-21.00 max_return=-21.00
+[dqn] step=705890 episode=810 return=-20.0 length=850 epsilon=0.050 loss=0.01856008544564247
+[dqn] step=713644 episode=820 return=-21.0 length=761 epsilon=0.050 loss=0.016850681975483894
+[dqn] step=721839 episode=830 return=-21.0 length=823 epsilon=0.050 loss=0.019174685701727867
+[dqn][eval] step=725000 mean_return=-21.00 max_return=-21.00
+[dqn] step=729909 episode=840 return=-21.0 length=840 epsilon=0.050 loss=0.01155022531747818
+[dqn] step=738232 episode=850 return=-21.0 length=762 epsilon=0.050 loss=0.02270396240055561
+[dqn] step=746436 episode=860 return=-20.0 length=837 epsilon=0.050 loss=0.007699332199990749
+[dqn][eval] step=750000 mean_return=-21.00 max_return=-21.00
+[dqn] step=754873 episode=870 return=-21.0 length=877 epsilon=0.050 loss=0.011339095421135426
+[dqn] step=763442 episode=880 return=-19.0 length=977 epsilon=0.050 loss=0.007558855228126049
+[dqn] step=771639 episode=890 return=-21.0 length=760 epsilon=0.050 loss=0.007866925559937954
+[dqn][eval] step=775000 mean_return=-21.00 max_return=-21.00
+[dqn] step=780028 episode=900 return=-19.0 length=991 epsilon=0.050 loss=0.015258993953466415
+[dqn] step=788310 episode=910 return=-21.0 length=764 epsilon=0.050 loss=0.003084954572841525
+[dqn] step=796740 episode=920 return=-21.0 length=810 epsilon=0.050 loss=0.016527090221643448
+[dqn][eval] step=800000 mean_return=-21.00 max_return=-21.00
+[dqn] step=805139 episode=930 return=-20.0 length=944 epsilon=0.050 loss=0.019034534692764282
+[dqn] step=813270 episode=940 return=-21.0 length=792 epsilon=0.050 loss=0.009173372760415077
+[dqn] step=821630 episode=950 return=-21.0 length=825 epsilon=0.050 loss=0.011373693123459816
+[dqn][eval] step=825000 mean_return=-21.00 max_return=-21.00
+[dqn] step=830031 episode=960 return=-20.0 length=872 epsilon=0.050 loss=0.005229949951171875
+[dqn] step=838396 episode=970 return=-21.0 length=819 epsilon=0.050 loss=0.003940490074455738
+[dqn] step=846933 episode=980 return=-21.0 length=820 epsilon=0.050 loss=0.01880655810236931
+[dqn][eval] step=850000 mean_return=-21.00 max_return=-21.00
+[dqn] step=855181 episode=990 return=-21.0 length=876 epsilon=0.050 loss=0.022565148770809174
+[dqn] step=863152 episode=1000 return=-21.0 length=762 epsilon=0.050 loss=0.015205703675746918
+[dqn] step=871735 episode=1010 return=-20.0 length=962 epsilon=0.050 loss=0.011352059431374073
+[dqn][eval] step=875000 mean_return=-21.00 max_return=-21.00
+[dqn] step=880249 episode=1020 return=-20.0 length=890 epsilon=0.050 loss=0.00399057986214757
+[dqn] step=888143 episode=1030 return=-20.0 length=837 epsilon=0.050 loss=0.011397137306630611
+[dqn] step=896692 episode=1040 return=-21.0 length=759 epsilon=0.050 loss=0.004048554692417383
+[dqn][eval] step=900000 mean_return=-21.00 max_return=-21.00
+[dqn] step=904894 episode=1050 return=-21.0 length=763 epsilon=0.050 loss=0.015336242504417896
+[dqn] step=913047 episode=1060 return=-21.0 length=764 epsilon=0.050 loss=0.015232610516250134
+[dqn] step=921128 episode=1070 return=-21.0 length=776 epsilon=0.050 loss=0.030116621404886246
+[dqn][eval] step=925000 mean_return=-21.00 max_return=-21.00
+[dqn] step=929419 episode=1080 return=-21.0 length=787 epsilon=0.050 loss=0.015530355274677277
+[dqn] step=937671 episode=1090 return=-21.0 length=761 epsilon=0.050 loss=0.01883448287844658
+[dqn] step=946224 episode=1100 return=-20.0 length=836 epsilon=0.050 loss=0.015215776860713959
+[dqn][eval] step=950000 mean_return=-21.00 max_return=-21.00
+[dqn] step=954116 episode=1110 return=-21.0 length=843 epsilon=0.050 loss=0.0076867397874593735
+[dqn] step=962750 episode=1120 return=-21.0 length=880 epsilon=0.050 loss=0.00023697323922533542
+[dqn] step=971163 episode=1130 return=-21.0 length=762 epsilon=0.050 loss=0.026316484436392784
+[dqn][eval] step=975000 mean_return=-21.00 max_return=-21.00
+[dqn] step=979428 episode=1140 return=-21.0 length=760 epsilon=0.050 loss=0.01528165489435196
+[dqn] step=987309 episode=1150 return=-21.0 length=882 epsilon=0.050 loss=0.011534357443451881
+[dqn] step=995527 episode=1160 return=-21.0 length=761 epsilon=0.050 loss=0.013009783811867237
+[dqn][eval] step=1000000 mean_return=-21.00 max_return=-21.00
+[dqn] finished profile=fast mean_eval_return=-21.00 passed=False run_dir=results/rl/dqn_ale_pong_20260828_013556_235637
+{
+  "task": "ale_pong",
+  "env_id": "ALE/Pong-v5",
+  "profile": "fast",
+  "seed": 0,
+  "total_timesteps": 1000000,
+  "configured_total_timesteps": 1000000,
+  "actual_timesteps": 1000000,
+  "eval_episodes": 5,
+  "success_threshold": 0.0,
+  "passed": false,
+  "final_eval": {
+    "episodes": 5,
+    "seed": 10000,
+    "mean_return": -21.0,
+    "std_return": 0.0,
+    "min_return": -21.0,
+    "max_return": -21.0,
+    "mean_length": 760.2000122070312
+  },
+  "last_eval": {
+    "episodes": 5,
+    "seed": 10000,
+    "mean_return": -21.0,
+    "std_return": 0.0,
+    "min_return": -21.0,
+    "max_return": -21.0,
+    "mean_length": 760.2000122070312
+  },
+  "selected_step": 1000000,
+  "selected_source": "final",
+  "training_efficiency": {
+    "best_model_step": 1000000,
+    "best_model_training_fraction": 1.0,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 0.0,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 18.0,
+    "best_mean_return": -21.0,
+    "evaluations": 40,
+    "evaluations_without_improvement": 39,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 1000000
+  },
+  "run_dir": "results/rl/dqn_ale_pong_20260828_013556_235637"
+}
+Checkpoint: results/rl/dqn_ale_pong_20260828_013556_235637/checkpoint.pt
+	Command being timed: ".venv/bin/python tools/run_rl_dqn.py ale_pong --profile fast --seed 0 --device cuda --no-early-stopping --eval-frequency 25000 --total-timesteps 1000000"
+	User time (seconds): 11653.84
+	System time (seconds): 32.15
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:14:59
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2417784
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 4104466
+	Voluntary context switches: 2237700
+	Involuntary context switches: 870246
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 142344
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

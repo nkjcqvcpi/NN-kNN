@@ -1,0 +1,25 @@
+[driver] starting algo=td3 task=pendulum seed=0 -> p12_td3_pendulum_s0.log
+[driver] starting algo=td3 task=pendulum seed=1 -> p12_td3_pendulum_s1.log
+[driver] starting algo=td3 task=pendulum seed=2 -> p12_td3_pendulum_s2.log
+[driver] starting algo=td3 task=lunarlander_continuous seed=0 -> p12_td3_lunarlander_continuous_s0.log
+[driver] finished algo=td3 task=pendulum seed=2 exit=0
+[driver] starting algo=td3 task=lunarlander_continuous seed=1 -> p12_td3_lunarlander_continuous_s1.log
+[driver] finished algo=td3 task=pendulum seed=0 exit=0
+[driver] starting algo=td3 task=lunarlander_continuous seed=2 -> p12_td3_lunarlander_continuous_s2.log
+[driver] finished algo=td3 task=pendulum seed=1 exit=0
+[driver] starting algo=ppo task=pendulum seed=0 -> p12_ppo_pendulum_s0.log
+[driver] finished algo=td3 task=lunarlander_continuous seed=0 exit=0
+[driver] starting algo=ppo task=pendulum seed=1 -> p12_ppo_pendulum_s1.log
+[driver] finished algo=ppo task=pendulum seed=0 exit=0
+[driver] starting algo=ppo task=pendulum seed=2 -> p12_ppo_pendulum_s2.log
+[driver] finished algo=ppo task=pendulum seed=1 exit=0
+[driver] starting algo=ppo task=lunarlander_continuous seed=0 -> p12_ppo_lunarlander_continuous_s0.log
+[driver] finished algo=ppo task=pendulum seed=2 exit=0
+[driver] starting algo=ppo task=lunarlander_continuous seed=1 -> p12_ppo_lunarlander_continuous_s1.log
+[driver] finished algo=ppo task=lunarlander_continuous seed=0 exit=0
+[driver] starting algo=ppo task=lunarlander_continuous seed=2 -> p12_ppo_lunarlander_continuous_s2.log
+[driver] finished algo=ppo task=lunarlander_continuous seed=1 exit=0
+[driver] finished algo=ppo task=lunarlander_continuous seed=2 exit=0
+[driver] finished algo=td3 task=lunarlander_continuous seed=1 exit=0
+[driver] finished algo=td3 task=lunarlander_continuous seed=2 exit=0
+[driver] all jobs complete

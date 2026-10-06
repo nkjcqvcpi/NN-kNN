@@ -1,0 +1,106 @@
+[dqn] step=820 episode=1 return=-21.0 length=820 epsilon=0.984 loss=None
+[dqn] step=1646 episode=2 return=-21.0 length=826 epsilon=0.969 loss=None
+[dqn] step=2463 episode=3 return=-21.0 length=817 epsilon=0.953 loss=None
+[dqn] step=3460 episode=4 return=-19.0 length=997 epsilon=0.934 loss=None
+[dqn] step=4377 episode=5 return=-20.0 length=917 epsilon=0.917 loss=None
+[dqn] step=8551 episode=10 return=-21.0 length=761 epsilon=0.838 loss=None
+[dqn] step=16145 episode=20 return=-21.0 length=762 epsilon=0.693 loss=None
+[dqn] step=24425 episode=30 return=-20.0 length=915 epsilon=0.536 loss=0.0038456644397228956
+[dqn][eval] step=25000 mean_return=-21.00 max_return=-21.00
+[dqn] step=33370 episode=40 return=-21.0 length=823 epsilon=0.366 loss=0.0013830887619405985
+[dqn] step=43106 episode=50 return=-20.0 length=980 epsilon=0.181 loss=0.002761772833764553
+[dqn][eval] step=50000 mean_return=-21.00 max_return=-21.00
+[dqn] step=51900 episode=60 return=-21.0 length=775 epsilon=0.050 loss=0.0022371909581124783
+[dqn] step=61461 episode=70 return=-21.0 length=1112 epsilon=0.050 loss=0.0048965211026370525
+[dqn] step=72110 episode=80 return=-20.0 length=1716 epsilon=0.050 loss=0.00106099434196949
+[dqn][eval] step=75000 mean_return=-20.20 max_return=-18.00
+[dqn] step=84631 episode=90 return=-21.0 length=1302 epsilon=0.050 loss=0.0030196718871593475
+[dqn] step=99141 episode=100 return=-19.0 length=1597 epsilon=0.050 loss=0.004040267784148455
+[dqn][eval] step=100000 mean_return=-19.00 max_return=-18.00
+[dqn] step=116904 episode=110 return=-19.0 length=1968 epsilon=0.050 loss=0.0019070045091211796
+[dqn][eval] step=125000 mean_return=-15.60 max_return=-9.00
+[dqn] step=136112 episode=120 return=-19.0 length=1708 epsilon=0.050 loss=0.0014159693382680416
+[dqn][eval] step=150000 mean_return=-17.20 max_return=-14.00
+[dqn] step=157924 episode=130 return=-19.0 length=2055 epsilon=0.050 loss=0.00221878569573164
+[dqn][eval] step=175000 mean_return=-11.80 max_return=-7.00
+[dqn] step=178392 episode=140 return=-18.0 length=2171 epsilon=0.050 loss=0.0029900853987783194
+[dqn][eval] step=200000 mean_return=-16.20 max_return=-14.00
+[dqn] step=200206 episode=150 return=-13.0 length=2559 epsilon=0.050 loss=0.002076611155644059
+[dqn][eval] step=225000 mean_return=-11.80 max_return=-5.00
+[dqn] step=227162 episode=160 return=-10.0 length=2753 epsilon=0.050 loss=0.0020077787339687347
+[dqn][eval] step=250000 mean_return=-14.00 max_return=-11.00
+[dqn] step=253805 episode=170 return=-13.0 length=3221 epsilon=0.050 loss=0.005430949851870537
+[dqn][eval] step=275000 mean_return=-12.60 max_return=-7.00
+[dqn] step=282970 episode=180 return=-13.0 length=3007 epsilon=0.050 loss=0.003059545299038291
+[dqn][eval] step=300000 mean_return=-14.00 max_return=-9.00
+[dqn] step=309179 episode=190 return=-14.0 length=2534 epsilon=0.050 loss=0.0020969444885849953
+[dqn][eval] step=325000 mean_return=-13.00 max_return=-5.00
+[dqn] step=337262 episode=200 return=-19.0 length=2484 epsilon=0.050 loss=0.003671998158097267
+[dqn][eval] step=350000 mean_return=-15.00 max_return=-9.00
+[dqn] step=365664 episode=210 return=-17.0 length=2677 epsilon=0.050 loss=0.0028230093885213137
+[dqn][eval] step=375000 mean_return=-14.80 max_return=-10.00
+[dqn] step=395179 episode=220 return=-10.0 length=3188 epsilon=0.050 loss=0.003099368652328849
+[dqn][eval] step=400000 mean_return=-8.20 max_return=-5.00
+[dqn][eval] step=425000 mean_return=-11.60 max_return=-4.00
+[dqn] step=428832 episode=230 return=-13.0 length=2834 epsilon=0.050 loss=0.0025644528213888407
+[dqn][eval] step=450000 mean_return=-5.00 max_return=-1.00
+[dqn] step=458541 episode=240 return=-4.0 length=3023 epsilon=0.050 loss=0.002197444438934326
+[dqn][eval] step=475000 mean_return=-1.20 max_return=5.00
+[dqn] step=489401 episode=250 return=-8.0 length=3253 epsilon=0.050 loss=0.0033882588613778353
+[dqn][eval] step=500000 mean_return=10.80 max_return=13.00
+[dqn] finished profile=fast mean_eval_return=10.80 passed=True run_dir=results\rl_ale_g234\dqn_ale_pong_20260905_173215_826432
+{
+  "task": "ale_pong",
+  "env_id": "ALE/Pong-v5",
+  "profile": "fast",
+  "seed": 3,
+  "total_timesteps": 500000,
+  "configured_total_timesteps": 500000,
+  "actual_timesteps": 500000,
+  "eval_episodes": 5,
+  "success_threshold": 0.0,
+  "passed": true,
+  "final_eval": {
+    "episodes": 5,
+    "seed": 10000,
+    "mean_return": 10.800000190734863,
+    "std_return": 2.0396077632904053,
+    "min_return": 8.0,
+    "max_return": 13.0,
+    "mean_length": 2995.39990234375
+  },
+  "last_eval": {
+    "episodes": 5,
+    "seed": 10000,
+    "mean_return": 10.800000190734863,
+    "std_return": 2.0396077632904053,
+    "min_return": 8.0,
+    "max_return": 13.0,
+    "mean_length": 2995.39990234375
+  },
+  "selected_step": 500000,
+  "selected_source": "final",
+  "training_efficiency": {
+    "best_model_step": 500000,
+    "best_model_training_fraction": 1.0,
+    "first_success_step": 500000,
+    "first_success_training_fraction": 1.0,
+    "best_minus_last_return": 0.0,
+    "budget_interpretation": "final_is_best_check_for_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 18.0,
+    "best_mean_return": 10.800000190734863,
+    "evaluations": 20,
+    "evaluations_without_improvement": 0,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 500000
+  },
+  "run_dir": "results\\rl_ale_g234\\dqn_ale_pong_20260905_173215_826432"
+}
+Checkpoint: results\rl_ale_g234\dqn_ale_pong_20260905_173215_826432\checkpoint.pt

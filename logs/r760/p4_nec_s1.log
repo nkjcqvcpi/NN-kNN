@@ -1,0 +1,231 @@
+[nec] step=29 episode=1 return=29.0 length=29 epsilon=1.000 loss=None entries=29
+[nec] step=40 episode=2 return=11.0 length=11 epsilon=1.000 loss=None entries=40
+[nec] step=52 episode=3 return=12.0 length=12 epsilon=0.999 loss=None entries=52
+[nec] step=72 episode=4 return=20.0 length=20 epsilon=0.999 loss=None entries=72
+[nec] step=106 episode=5 return=34.0 length=34 epsilon=0.999 loss=None entries=106
+[nec] step=231 episode=10 return=43.0 length=43 epsilon=0.997 loss=None entries=231
+[nec] step=439 episode=20 return=12.0 length=12 epsilon=0.994 loss=None entries=439
+[nec] step=662 episode=30 return=34.0 length=34 epsilon=0.992 loss=None entries=662
+[nec] step=949 episode=40 return=32.0 length=32 epsilon=0.988 loss=None entries=949
+[nec] step=1188 episode=50 return=22.0 length=22 epsilon=0.985 loss=3.8047099113464355 entries=1188
+[nec] step=1371 episode=60 return=15.0 length=15 epsilon=0.983 loss=3.514174461364746 entries=1371
+[nec] step=1625 episode=70 return=55.0 length=55 epsilon=0.979 loss=3.7412257194519043 entries=1625
+[nec] step=1821 episode=80 return=11.0 length=11 epsilon=0.977 loss=3.8175292015075684 entries=1821
+[nec] step=2038 episode=90 return=16.0 length=16 epsilon=0.974 loss=4.472293376922607 entries=2038
+[nec] step=2207 episode=100 return=11.0 length=11 epsilon=0.972 loss=3.4768452644348145 entries=2207
+[nec][eval] step=1469 episode=63 candidate_return=66.0 mean_return=229.10 max_return=500.00
+[nec] step=2378 episode=110 return=17.0 length=17 epsilon=0.970 loss=3.678718090057373 entries=2378
+[nec] step=2670 episode=120 return=31.0 length=31 epsilon=0.966 loss=4.230156898498535 entries=2670
+[nec] step=2876 episode=130 return=22.0 length=22 epsilon=0.964 loss=4.402899265289307 entries=2876
+[nec] step=3086 episode=140 return=17.0 length=17 epsilon=0.961 loss=2.9979615211486816 entries=3086
+[nec] step=3365 episode=150 return=35.0 length=35 epsilon=0.957 loss=3.3622329235076904 entries=3365
+[nec] step=3548 episode=160 return=22.0 length=22 epsilon=0.955 loss=3.9663126468658447 entries=3548
+[nec] step=3778 episode=170 return=20.0 length=20 epsilon=0.952 loss=3.7835378646850586 entries=3778
+[nec] step=3982 episode=180 return=33.0 length=33 epsilon=0.950 loss=3.257183074951172 entries=3982
+[nec] step=4243 episode=190 return=16.0 length=16 epsilon=0.946 loss=3.88710355758667 entries=4243
+[nec] step=4440 episode=200 return=12.0 length=12 epsilon=0.944 loss=4.642733573913574 entries=4440
+[nec][eval] step=2504 episode=112 candidate_return=111.0 mean_return=297.95 max_return=500.00
+[nec] step=4660 episode=210 return=12.0 length=12 epsilon=0.941 loss=3.2775332927703857 entries=4660
+[nec] step=4840 episode=220 return=14.0 length=14 epsilon=0.939 loss=3.5878140926361084 entries=4840
+[nec] step=5078 episode=230 return=19.0 length=19 epsilon=0.936 loss=3.798191785812378 entries=5078
+[nec] step=5327 episode=240 return=13.0 length=13 epsilon=0.933 loss=3.2838993072509766 entries=5327
+[nec] step=5623 episode=250 return=40.0 length=40 epsilon=0.929 loss=5.171436309814453 entries=5623
+[nec] step=5921 episode=260 return=15.0 length=15 epsilon=0.925 loss=3.554070472717285 entries=5921
+[nec] step=6157 episode=270 return=33.0 length=33 epsilon=0.922 loss=3.8162455558776855 entries=6157
+[nec] step=6369 episode=280 return=30.0 length=30 epsilon=0.919 loss=4.938868522644043 entries=6369
+[nec] step=6575 episode=290 return=10.0 length=10 epsilon=0.917 loss=4.548186302185059 entries=6575
+[nec] step=6923 episode=300 return=33.0 length=33 epsilon=0.912 loss=4.575743675231934 entries=6923
+[nec][eval] step=2504 episode=112 candidate_return=111.0 mean_return=297.95 max_return=500.00
+[nec] step=7128 episode=310 return=11.0 length=11 epsilon=0.910 loss=3.947082281112671 entries=7128
+[nec] step=7444 episode=320 return=29.0 length=29 epsilon=0.906 loss=4.1269307136535645 entries=7444
+[nec] step=7722 episode=330 return=18.0 length=18 epsilon=0.902 loss=3.842637777328491 entries=7722
+[nec] step=8026 episode=340 return=22.0 length=22 epsilon=0.898 loss=4.206188201904297 entries=8026
+[nec] step=8442 episode=350 return=78.0 length=78 epsilon=0.893 loss=5.216907501220703 entries=8442
+[nec] step=8666 episode=360 return=14.0 length=14 epsilon=0.890 loss=5.491870403289795 entries=8666
+[nec] step=8991 episode=370 return=43.0 length=43 epsilon=0.886 loss=4.241208076477051 entries=8991
+[nec] step=9337 episode=380 return=41.0 length=41 epsilon=0.882 loss=4.188127517700195 entries=9337
+[nec] step=9555 episode=390 return=53.0 length=53 epsilon=0.879 loss=3.940614700317383 entries=9555
+[nec] step=9807 episode=400 return=16.0 length=16 epsilon=0.876 loss=5.935249328613281 entries=9807
+[nec][eval] step=9231 episode=376 candidate_return=122.0 mean_return=385.75 max_return=500.00
+[nec] step=10142 episode=410 return=23.0 length=23 epsilon=0.872 loss=4.870542526245117 entries=10142
+[nec] step=10418 episode=420 return=23.0 length=23 epsilon=0.868 loss=5.082298278808594 entries=10418
+[nec] step=10709 episode=430 return=36.0 length=36 epsilon=0.864 loss=4.979071617126465 entries=10709
+[nec] step=10970 episode=440 return=38.0 length=38 epsilon=0.861 loss=4.411411285400391 entries=10970
+[nec] step=11242 episode=450 return=23.0 length=23 epsilon=0.858 loss=3.854267120361328 entries=11242
+[nec] step=11555 episode=460 return=35.0 length=35 epsilon=0.854 loss=4.8342204093933105 entries=11555
+[nec] step=11837 episode=470 return=34.0 length=34 epsilon=0.850 loss=6.06142520904541 entries=11837
+[nec] step=12090 episode=480 return=16.0 length=16 epsilon=0.847 loss=4.794878005981445 entries=12090
+[nec] step=12377 episode=490 return=22.0 length=22 epsilon=0.843 loss=6.299407482147217 entries=12377
+[nec] step=12668 episode=500 return=35.0 length=35 epsilon=0.840 loss=4.507020473480225 entries=12668
+[nec][eval] step=9231 episode=376 candidate_return=122.0 mean_return=385.75 max_return=500.00
+[nec] step=13024 episode=510 return=29.0 length=29 epsilon=0.835 loss=6.332852363586426 entries=13024
+[nec] step=13332 episode=520 return=11.0 length=11 epsilon=0.831 loss=5.005843639373779 entries=13332
+[nec] step=13614 episode=530 return=24.0 length=24 epsilon=0.828 loss=5.261931896209717 entries=13614
+[nec] step=13867 episode=540 return=39.0 length=39 epsilon=0.824 loss=5.014745235443115 entries=13867
+[nec] step=14238 episode=550 return=86.0 length=86 epsilon=0.820 loss=5.97719669342041 entries=14238
+[nec] step=14520 episode=560 return=23.0 length=23 epsilon=0.816 loss=4.772202968597412 entries=14520
+[nec] step=14845 episode=570 return=24.0 length=24 epsilon=0.812 loss=5.271617889404297 entries=14845
+[nec] step=15208 episode=580 return=44.0 length=44 epsilon=0.807 loss=5.901810646057129 entries=15208
+[nec] step=15567 episode=590 return=11.0 length=11 epsilon=0.803 loss=5.717100143432617 entries=15567
+[nec] step=16041 episode=600 return=115.0 length=115 epsilon=0.797 loss=6.298705577850342 entries=16041
+[nec][eval] step=9231 episode=376 candidate_return=122.0 mean_return=385.75 max_return=500.00
+[nec] step=16296 episode=610 return=9.0 length=9 epsilon=0.794 loss=6.195991516113281 entries=16296
+[nec] step=16631 episode=620 return=36.0 length=36 epsilon=0.789 loss=5.242978096008301 entries=16631
+[nec] step=16946 episode=630 return=51.0 length=51 epsilon=0.785 loss=5.31546688079834 entries=16946
+[nec] step=17226 episode=640 return=33.0 length=33 epsilon=0.782 loss=5.131158351898193 entries=17226
+[nec] step=17706 episode=650 return=10.0 length=10 epsilon=0.776 loss=7.17609977722168 entries=17706
+[nec] step=18043 episode=660 return=30.0 length=30 epsilon=0.771 loss=7.572827339172363 entries=18043
+[nec] step=18461 episode=670 return=111.0 length=111 epsilon=0.766 loss=6.190891742706299 entries=18461
+[nec] step=18989 episode=680 return=85.0 length=85 epsilon=0.759 loss=5.750418663024902 entries=18989
+[nec] step=19266 episode=690 return=31.0 length=31 epsilon=0.756 loss=9.059947967529297 entries=19266
+[nec] step=19624 episode=700 return=38.0 length=38 epsilon=0.751 loss=6.21466588973999 entries=19624
+[nec][eval] step=18773 episode=674 candidate_return=165.0 mean_return=197.10 max_return=321.00
+[nec] step=19960 episode=710 return=26.0 length=26 epsilon=0.747 loss=6.367988586425781 entries=19923
+[nec] step=20219 episode=720 return=16.0 length=16 epsilon=0.744 loss=5.935233116149902 entries=20000
+[nec] step=20596 episode=730 return=21.0 length=21 epsilon=0.739 loss=6.6967315673828125 entries=20000
+[nec] step=20987 episode=740 return=16.0 length=16 epsilon=0.734 loss=6.3332014083862305 entries=20000
+[nec] step=21311 episode=750 return=57.0 length=57 epsilon=0.730 loss=7.675121307373047 entries=20000
+[nec] step=21768 episode=760 return=131.0 length=131 epsilon=0.724 loss=5.898053169250488 entries=20000
+[nec] step=22157 episode=770 return=26.0 length=26 epsilon=0.719 loss=6.315540790557861 entries=20000
+[nec] step=22494 episode=780 return=38.0 length=38 epsilon=0.715 loss=7.352046012878418 entries=20000
+[nec] step=22908 episode=790 return=14.0 length=14 epsilon=0.710 loss=6.391373157501221 entries=20000
+[nec] step=23349 episode=800 return=20.0 length=20 epsilon=0.704 loss=6.857969760894775 entries=20000
+[nec][eval] step=18773 episode=674 candidate_return=165.0 mean_return=197.10 max_return=321.00
+[nec] step=23799 episode=810 return=45.0 length=45 epsilon=0.699 loss=6.300376892089844 entries=20000
+[nec] step=24228 episode=820 return=48.0 length=48 epsilon=0.693 loss=7.059234142303467 entries=20000
+[nec] step=24658 episode=830 return=32.0 length=32 epsilon=0.688 loss=7.135434150695801 entries=20000
+[nec] step=25350 episode=840 return=50.0 length=50 epsilon=0.679 loss=7.715708255767822 entries=20000
+[nec] step=25755 episode=850 return=23.0 length=23 epsilon=0.674 loss=8.693352699279785 entries=20000
+[nec] step=26093 episode=860 return=21.0 length=21 epsilon=0.670 loss=9.182168960571289 entries=20000
+[nec] step=26745 episode=870 return=87.0 length=87 epsilon=0.661 loss=8.52192497253418 entries=20000
+[nec] step=27347 episode=880 return=27.0 length=27 epsilon=0.654 loss=8.693159103393555 entries=20000
+[nec] step=27921 episode=890 return=79.0 length=79 epsilon=0.646 loss=7.533130645751953 entries=20000
+[nec] step=28410 episode=900 return=21.0 length=21 epsilon=0.640 loss=9.569440841674805 entries=20000
+[nec][eval] step=26260 episode=861 candidate_return=167.0 mean_return=173.15 max_return=236.00
+[nec] step=29010 episode=910 return=69.0 length=69 epsilon=0.633 loss=8.989082336425781 entries=20000
+[nec] step=29601 episode=920 return=60.0 length=60 epsilon=0.625 loss=9.217789649963379 entries=20000
+[nec] step=30252 episode=930 return=179.0 length=179 epsilon=0.617 loss=10.10306167602539 entries=20000
+[nec] step=30600 episode=940 return=25.0 length=25 epsilon=0.612 loss=9.001607894897461 entries=20000
+[nec] step=30999 episode=950 return=42.0 length=42 epsilon=0.607 loss=8.757128715515137 entries=20000
+[nec] step=31708 episode=960 return=126.0 length=126 epsilon=0.598 loss=10.129232406616211 entries=20000
+[nec] step=32303 episode=970 return=48.0 length=48 epsilon=0.591 loss=11.605990409851074 entries=20000
+[nec] step=32785 episode=980 return=37.0 length=37 epsilon=0.585 loss=8.944173812866211 entries=20000
+[nec] step=33388 episode=990 return=14.0 length=14 epsilon=0.577 loss=9.016304016113281 entries=20000
+[nec] step=33938 episode=1000 return=109.0 length=109 epsilon=0.570 loss=10.416034698486328 entries=20000
+[nec][eval] step=33689 episode=994 candidate_return=199.0 mean_return=186.00 max_return=292.00
+[nec] step=34794 episode=1010 return=154.0 length=154 epsilon=0.559 loss=9.79609489440918 entries=20000
+[nec] step=35283 episode=1020 return=69.0 length=69 epsilon=0.553 loss=10.508014678955078 entries=20000
+[nec] step=35783 episode=1030 return=108.0 length=108 epsilon=0.547 loss=10.52035903930664 entries=20000
+[nec] step=36500 episode=1040 return=105.0 length=105 epsilon=0.538 loss=9.425911903381348 entries=20000
+[nec] step=37327 episode=1050 return=80.0 length=80 epsilon=0.527 loss=9.99822998046875 entries=20000
+[nec] step=38323 episode=1060 return=113.0 length=113 epsilon=0.515 loss=8.444337844848633 entries=20000
+[nec] step=39203 episode=1070 return=111.0 length=111 epsilon=0.503 loss=11.028777122497559 entries=20000
+[nec] step=39688 episode=1080 return=37.0 length=37 epsilon=0.497 loss=12.140888214111328 entries=20000
+[nec] step=40319 episode=1090 return=26.0 length=26 epsilon=0.489 loss=10.2476224899292 entries=20000
+[nec] step=40934 episode=1100 return=53.0 length=53 epsilon=0.482 loss=11.734697341918945 entries=20000
+[nec][eval] step=34242 episode=1002 candidate_return=270.0 mean_return=197.80 max_return=418.00
+[nec] step=41946 episode=1110 return=126.0 length=126 epsilon=0.469 loss=10.43613052368164 entries=20000
+[nec] step=42797 episode=1120 return=41.0 length=41 epsilon=0.458 loss=9.633421897888184 entries=20000
+[nec] step=43527 episode=1130 return=19.0 length=19 epsilon=0.449 loss=9.583261489868164 entries=20000
+[nec] step=44522 episode=1140 return=107.0 length=107 epsilon=0.436 loss=11.909570693969727 entries=20000
+[nec] step=45701 episode=1150 return=86.0 length=86 epsilon=0.421 loss=10.505763053894043 entries=20000
+[nec] step=47098 episode=1160 return=137.0 length=137 epsilon=0.403 loss=12.880075454711914 entries=20000
+[nec] step=48098 episode=1170 return=76.0 length=76 epsilon=0.391 loss=11.045663833618164 entries=20000
+[nec] step=49044 episode=1180 return=235.0 length=235 epsilon=0.379 loss=11.608705520629883 entries=20000
+[nec] step=50306 episode=1190 return=109.0 length=109 epsilon=0.363 loss=10.641037940979004 entries=20000
+[nec] step=51150 episode=1200 return=60.0 length=60 epsilon=0.352 loss=11.823234558105469 entries=20000
+[nec][eval] step=45318 episode=1146 candidate_return=367.0 mean_return=261.20 max_return=500.00
+[nec] step=52264 episode=1210 return=184.0 length=184 epsilon=0.338 loss=11.363469123840332 entries=20000
+[nec] step=53606 episode=1220 return=145.0 length=145 epsilon=0.321 loss=10.628900527954102 entries=20000
+[nec] step=54336 episode=1230 return=63.0 length=63 epsilon=0.312 loss=11.348328590393066 entries=20000
+[nec] step=55465 episode=1240 return=144.0 length=144 epsilon=0.297 loss=11.900276184082031 entries=20000
+[nec] step=57065 episode=1250 return=109.0 length=109 epsilon=0.277 loss=11.345721244812012 entries=20000
+[nec] step=58593 episode=1260 return=271.0 length=271 epsilon=0.258 loss=10.698907852172852 entries=20000
+[nec] step=60649 episode=1270 return=79.0 length=79 epsilon=0.232 loss=11.257783889770508 entries=20000
+[nec] step=62672 episode=1280 return=115.0 length=115 epsilon=0.206 loss=12.155219078063965 entries=20000
+[nec] step=64400 episode=1290 return=192.0 length=192 epsilon=0.184 loss=11.614692687988281 entries=20000
+[nec] step=66773 episode=1300 return=150.0 length=150 epsilon=0.154 loss=10.085920333862305 entries=20000
+[nec][eval] step=64208 episode=1289 candidate_return=458.0 mean_return=305.55 max_return=500.00
+[nec] step=69125 episode=1310 return=190.0 length=190 epsilon=0.124 loss=8.67449951171875 entries=20000
+[nec] step=71417 episode=1320 return=172.0 length=172 epsilon=0.095 loss=9.253996849060059 entries=20000
+[nec] step=74012 episode=1330 return=337.0 length=337 epsilon=0.063 loss=8.999717712402344 entries=20000
+[nec] step=76679 episode=1340 return=259.0 length=259 epsilon=0.050 loss=7.749872207641602 entries=20000
+[nec] step=79452 episode=1350 return=107.0 length=107 epsilon=0.050 loss=6.335981369018555 entries=20000
+[nec] step=82790 episode=1360 return=450.0 length=450 epsilon=0.050 loss=6.866035461425781 entries=20000
+[nec] step=85628 episode=1370 return=299.0 length=299 epsilon=0.050 loss=6.726397514343262 entries=20000
+[nec] step=88622 episode=1380 return=240.0 length=240 epsilon=0.050 loss=7.012091636657715 entries=20000
+[nec] step=92705 episode=1390 return=500.0 length=500 epsilon=0.050 loss=7.48626708984375 entries=20000
+[nec] step=96402 episode=1400 return=470.0 length=470 epsilon=0.050 loss=7.542602062225342 entries=20000
+[nec][eval] step=95932 episode=1399 candidate_return=500.0 mean_return=413.85 max_return=500.00
+[nec] step=99535 episode=1410 return=238.0 length=238 epsilon=0.050 loss=7.946258544921875 entries=20000
+[nec] step=103091 episode=1420 return=500.0 length=500 epsilon=0.050 loss=8.31610107421875 entries=20000
+[nec] step=107210 episode=1430 return=360.0 length=360 epsilon=0.050 loss=7.783116340637207 entries=20000
+[nec] step=110857 episode=1440 return=291.0 length=291 epsilon=0.050 loss=7.541866302490234 entries=20000
+[nec] step=113924 episode=1450 return=416.0 length=416 epsilon=0.050 loss=6.157491207122803 entries=20000
+[nec] step=118245 episode=1460 return=469.0 length=469 epsilon=0.050 loss=7.4107985496521 entries=20000
+[nec] step=122504 episode=1470 return=421.0 length=421 epsilon=0.050 loss=6.192598342895508 entries=20000
+[nec] step=126471 episode=1480 return=215.0 length=215 epsilon=0.050 loss=8.075608253479004 entries=20000
+[nec] step=130162 episode=1490 return=114.0 length=114 epsilon=0.050 loss=6.869746685028076 entries=20000
+[nec] step=134005 episode=1500 return=500.0 length=500 epsilon=0.050 loss=6.013338565826416 entries=20000
+[nec][eval] step=134005 episode=1500 candidate_return=500.0 mean_return=414.95 max_return=500.00
+[nec] step=137421 episode=1510 return=154.0 length=154 epsilon=0.050 loss=5.73983097076416 entries=20000
+[nec] step=140499 episode=1520 return=338.0 length=338 epsilon=0.050 loss=4.540551662445068 entries=20000
+[nec] step=145059 episode=1530 return=500.0 length=500 epsilon=0.050 loss=7.090819358825684 entries=20000
+[nec] step=149189 episode=1540 return=184.0 length=184 epsilon=0.050 loss=7.519791603088379 entries=20000
+[nec] finished profile=fast mean_eval_return=419.35 passed=False run_dir=results/rl/nec_cartpole_20260801_100616_232715
+{
+  "task": "cartpole",
+  "env_id": "CartPole-v1",
+  "profile": "fast",
+  "seed": 1,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "eval_episodes": 20,
+  "success_threshold": 475.0,
+  "passed": false,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 419.3500061035156,
+    "std_return": 108.74891662597656,
+    "min_return": 198.0,
+    "max_return": 500.0,
+    "mean_length": 419.3500061035156
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 419.3500061035156,
+    "std_return": 108.74891662597656,
+    "min_return": 198.0,
+    "max_return": 500.0,
+    "mean_length": 419.3500061035156
+  },
+  "selected_step": 150000,
+  "selected_source": "final",
+  "training_efficiency": {
+    "best_model_step": 150000,
+    "best_model_training_fraction": 1.0,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 0.0,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 500.0,
+    "best_mean_return": 414.95001220703125,
+    "evaluations": 15,
+    "evaluations_without_improvement": 0,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "dictionary_entries": 20000,
+  "run_dir": "results/rl/nec_cartpole_20260801_100616_232715"
+}
+Checkpoint: results/rl/nec_cartpole_20260801_100616_232715/checkpoint.pt

@@ -1,0 +1,12 @@
+3347233 p7_probe_s1_300k
+3347234 p7_knobA_expl02
+3347235 p7_knobB_clr1e3
+3347236 p7_knobC_caselr1e2(chained)
+3347237 p7_lbl_trn_s1
+3347238 p7_lbl_fix_s1
+3347239 p7_lbl_trn_s2
+3347240 p7_lbl_fix_s2
+3347241 p7_lbl_trn_s3
+3347242 p7_lbl_fix_s3
+3347243 p7_lbl_trn_s4
+3347244 p7_lbl_fix_s4

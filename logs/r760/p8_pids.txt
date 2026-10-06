@@ -1,0 +1,9 @@
+3348601 p8_dqn_lunarlander
+3348602 p8_nec_lunarlander
+3348603 p8_mlpac_lunarlander
+3348604 p8_mlphyb_lunarlander
+3348605 p8_dqn_minatar_breakout
+3348606 p8_nec_minatar_breakout
+3348607 p8_mlpac_minatar_breakout
+3348608 p8_mlphyb_minatar_breakout
+3348609 p8_gpu_chain

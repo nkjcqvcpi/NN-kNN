@@ -1,0 +1,527 @@
+[ppo] step=26 episode=1 return=2.0 length=26 lr=3.00e-04 entropy=None
+[ppo] step=42 episode=2 return=1.0 length=16 lr=3.00e-04 entropy=None
+[ppo] step=58 episode=3 return=1.0 length=16 lr=3.00e-04 entropy=None
+[ppo] step=64 episode=4 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=90 episode=5 return=2.0 length=26 lr=3.00e-04 entropy=None
+[ppo] step=130 episode=10 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=230 episode=20 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=320 episode=30 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=470 episode=40 return=1.0 length=16 lr=3.00e-04 entropy=None
+[ppo] step=560 episode=50 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=680 episode=60 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=792 episode=70 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=884 episode=80 return=1.0 length=16 lr=3.00e-04 entropy=None
+[ppo] step=994 episode=90 return=1.0 length=16 lr=3.00e-04 entropy=None
+[ppo] step=1136 episode=100 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=1236 episode=110 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=1356 episode=120 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=1436 episode=130 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=1536 episode=140 return=1.0 length=16 lr=3.00e-04 entropy=None
+[ppo] step=1636 episode=150 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=1750 episode=160 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=1860 episode=170 return=1.0 length=16 lr=3.00e-04 entropy=None
+[ppo] step=1930 episode=180 return=0.0 length=6 lr=3.00e-04 entropy=None
+[ppo] step=2052 episode=190 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=2142 episode=200 return=1.0 length=16 lr=2.96e-04 entropy=1.0954
+[ppo] step=2232 episode=210 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=2332 episode=220 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=2412 episode=230 return=1.0 length=16 lr=2.96e-04 entropy=1.0954
+[ppo] step=2512 episode=240 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=2644 episode=250 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=2786 episode=260 return=4.0 length=48 lr=2.96e-04 entropy=1.0954
+[ppo] step=2876 episode=270 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=3008 episode=280 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=3140 episode=290 return=1.0 length=16 lr=2.96e-04 entropy=1.0954
+[ppo] step=3240 episode=300 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=3300 episode=310 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=3432 episode=320 return=1.0 length=16 lr=2.96e-04 entropy=1.0954
+[ppo] step=3534 episode=330 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=3624 episode=340 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=3726 episode=350 return=2.0 length=28 lr=2.96e-04 entropy=1.0954
+[ppo] step=3796 episode=360 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=3916 episode=370 return=1.0 length=16 lr=2.96e-04 entropy=1.0954
+[ppo] step=4016 episode=380 return=0.0 length=6 lr=2.96e-04 entropy=1.0954
+[ppo] step=4128 episode=390 return=0.0 length=6 lr=2.92e-04 entropy=1.0804
+[ppo] step=4188 episode=400 return=0.0 length=6 lr=2.92e-04 entropy=1.0804
+[ppo] step=4366 episode=410 return=1.0 length=16 lr=2.92e-04 entropy=1.0804
+[ppo] step=4466 episode=420 return=1.0 length=16 lr=2.92e-04 entropy=1.0804
+[ppo] step=4606 episode=430 return=0.0 length=6 lr=2.92e-04 entropy=1.0804
+[ppo] step=4726 episode=440 return=1.0 length=16 lr=2.92e-04 entropy=1.0804
+[ppo] step=4816 episode=450 return=0.0 length=6 lr=2.92e-04 entropy=1.0804
+[ppo] step=4916 episode=460 return=1.0 length=16 lr=2.92e-04 entropy=1.0804
+[ppo][eval] step=5000 mean_return=1.40 max_return=3.00
+[ppo] step=5016 episode=470 return=0.0 length=6 lr=2.92e-04 entropy=1.0804
+[ppo] step=5140 episode=480 return=1.0 length=16 lr=2.92e-04 entropy=1.0804
+[ppo] step=5346 episode=490 return=2.0 length=26 lr=2.92e-04 entropy=1.0804
+[ppo] step=5456 episode=500 return=0.0 length=6 lr=2.92e-04 entropy=1.0804
+[ppo] step=5516 episode=510 return=0.0 length=6 lr=2.92e-04 entropy=1.0804
+[ppo] step=5606 episode=520 return=0.0 length=6 lr=2.92e-04 entropy=1.0804
+[ppo] step=5768 episode=530 return=1.0 length=16 lr=2.92e-04 entropy=1.0804
+[ppo] step=5868 episode=540 return=1.0 length=16 lr=2.92e-04 entropy=1.0804
+[ppo] step=6010 episode=550 return=0.0 length=6 lr=2.92e-04 entropy=1.0804
+[ppo] step=6144 episode=560 return=1.0 length=16 lr=2.92e-04 entropy=1.0804
+[ppo] step=6300 episode=570 return=1.0 length=16 lr=2.88e-04 entropy=1.0564
+[ppo] step=6452 episode=580 return=1.0 length=16 lr=2.88e-04 entropy=1.0564
+[ppo] step=6542 episode=590 return=0.0 length=6 lr=2.88e-04 entropy=1.0564
+[ppo] step=6694 episode=600 return=1.0 length=16 lr=2.88e-04 entropy=1.0564
+[ppo] step=6848 episode=610 return=0.0 length=6 lr=2.88e-04 entropy=1.0564
+[ppo] step=7034 episode=620 return=1.0 length=16 lr=2.88e-04 entropy=1.0564
+[ppo] step=7166 episode=630 return=4.0 length=48 lr=2.88e-04 entropy=1.0564
+[ppo] step=7256 episode=640 return=0.0 length=6 lr=2.88e-04 entropy=1.0564
+[ppo] step=7378 episode=650 return=0.0 length=6 lr=2.88e-04 entropy=1.0564
+[ppo] step=7490 episode=660 return=0.0 length=6 lr=2.88e-04 entropy=1.0564
+[ppo] step=7590 episode=670 return=0.0 length=6 lr=2.88e-04 entropy=1.0564
+[ppo] step=7710 episode=680 return=0.0 length=6 lr=2.88e-04 entropy=1.0564
+[ppo] step=7820 episode=690 return=1.0 length=16 lr=2.88e-04 entropy=1.0564
+[ppo] step=7942 episode=700 return=1.0 length=16 lr=2.88e-04 entropy=1.0564
+[ppo] step=8088 episode=710 return=0.0 length=6 lr=2.88e-04 entropy=1.0564
+[ppo] step=8208 episode=720 return=1.0 length=16 lr=2.84e-04 entropy=1.0066
+[ppo] step=8404 episode=730 return=1.0 length=16 lr=2.84e-04 entropy=1.0066
+[ppo] step=8568 episode=740 return=1.0 length=16 lr=2.84e-04 entropy=1.0066
+[ppo] step=8688 episode=750 return=0.0 length=6 lr=2.84e-04 entropy=1.0066
+[ppo] step=8788 episode=760 return=0.0 length=6 lr=2.84e-04 entropy=1.0066
+[ppo] step=8952 episode=770 return=0.0 length=6 lr=2.84e-04 entropy=1.0066
+[ppo] step=9072 episode=780 return=1.0 length=16 lr=2.84e-04 entropy=1.0066
+[ppo] step=9216 episode=790 return=0.0 length=6 lr=2.84e-04 entropy=1.0066
+[ppo] step=9380 episode=800 return=1.0 length=16 lr=2.84e-04 entropy=1.0066
+[ppo] step=9576 episode=810 return=0.0 length=6 lr=2.84e-04 entropy=1.0066
+[ppo] step=9750 episode=820 return=1.0 length=16 lr=2.84e-04 entropy=1.0066
+[ppo] step=9904 episode=830 return=0.0 length=6 lr=2.84e-04 entropy=1.0066
+[ppo][eval] step=10000 mean_return=2.30 max_return=3.00
+[ppo] step=10056 episode=840 return=0.0 length=6 lr=2.84e-04 entropy=1.0066
+[ppo] step=10240 episode=850 return=2.0 length=26 lr=2.84e-04 entropy=1.0066
+[ppo] step=10392 episode=860 return=0.0 length=6 lr=2.80e-04 entropy=0.9537
+[ppo] step=10588 episode=870 return=1.0 length=16 lr=2.80e-04 entropy=0.9537
+[ppo] step=10710 episode=880 return=3.0 length=38 lr=2.80e-04 entropy=0.9537
+[ppo] step=10898 episode=890 return=0.0 length=6 lr=2.80e-04 entropy=0.9537
+[ppo] step=11020 episode=900 return=0.0 length=6 lr=2.80e-04 entropy=0.9537
+[ppo] step=11208 episode=910 return=2.0 length=28 lr=2.80e-04 entropy=0.9537
+[ppo] step=11320 episode=920 return=0.0 length=6 lr=2.80e-04 entropy=0.9537
+[ppo] step=11484 episode=930 return=0.0 length=6 lr=2.80e-04 entropy=0.9537
+[ppo] step=11596 episode=940 return=0.0 length=6 lr=2.80e-04 entropy=0.9537
+[ppo] step=11756 episode=950 return=1.0 length=16 lr=2.80e-04 entropy=0.9537
+[ppo] step=11912 episode=960 return=1.0 length=16 lr=2.80e-04 entropy=0.9537
+[ppo] step=12066 episode=970 return=3.0 length=38 lr=2.80e-04 entropy=0.9537
+[ppo] step=12286 episode=980 return=1.0 length=16 lr=2.80e-04 entropy=0.9537
+[ppo] step=12592 episode=990 return=0.0 length=6 lr=2.75e-04 entropy=0.892
+[ppo] step=12792 episode=1000 return=0.0 length=6 lr=2.75e-04 entropy=0.892
+[ppo] step=12968 episode=1010 return=1.0 length=16 lr=2.75e-04 entropy=0.892
+[ppo] step=13134 episode=1020 return=1.0 length=16 lr=2.75e-04 entropy=0.892
+[ppo] step=13366 episode=1030 return=3.0 length=38 lr=2.75e-04 entropy=0.892
+[ppo] step=13594 episode=1040 return=1.0 length=16 lr=2.75e-04 entropy=0.892
+[ppo] step=13748 episode=1050 return=0.0 length=6 lr=2.75e-04 entropy=0.892
+[ppo] step=13912 episode=1060 return=0.0 length=6 lr=2.75e-04 entropy=0.892
+[ppo] step=14108 episode=1070 return=2.0 length=28 lr=2.75e-04 entropy=0.892
+[ppo] step=14350 episode=1080 return=2.0 length=28 lr=2.71e-04 entropy=0.8366
+[ppo] step=14572 episode=1090 return=2.0 length=28 lr=2.71e-04 entropy=0.8366
+[ppo] step=14800 episode=1100 return=2.0 length=28 lr=2.71e-04 entropy=0.8366
+[ppo][eval] step=15000 mean_return=2.20 max_return=3.00
+[ppo] step=15090 episode=1110 return=6.0 length=70 lr=2.71e-04 entropy=0.8366
+[ppo] step=15362 episode=1120 return=2.0 length=26 lr=2.71e-04 entropy=0.8366
+[ppo] step=15570 episode=1130 return=1.0 length=16 lr=2.71e-04 entropy=0.8366
+[ppo] step=15776 episode=1140 return=1.0 length=16 lr=2.71e-04 entropy=0.8366
+[ppo] step=15960 episode=1150 return=1.0 length=16 lr=2.71e-04 entropy=0.8366
+[ppo] step=16198 episode=1160 return=1.0 length=16 lr=2.71e-04 entropy=0.8366
+[ppo] step=16426 episode=1170 return=0.0 length=6 lr=2.67e-04 entropy=0.8041
+[ppo] step=16688 episode=1180 return=0.0 length=6 lr=2.67e-04 entropy=0.8041
+[ppo] step=17050 episode=1190 return=2.0 length=28 lr=2.67e-04 entropy=0.8041
+[ppo] step=17346 episode=1200 return=3.0 length=38 lr=2.67e-04 entropy=0.8041
+[ppo] step=17618 episode=1210 return=2.0 length=26 lr=2.67e-04 entropy=0.8041
+[ppo] step=17880 episode=1220 return=3.0 length=38 lr=2.67e-04 entropy=0.8041
+[ppo] step=18120 episode=1230 return=0.0 length=6 lr=2.67e-04 entropy=0.8041
+[ppo] step=18438 episode=1240 return=5.0 length=60 lr=2.63e-04 entropy=0.789
+[ppo] step=18636 episode=1250 return=1.0 length=16 lr=2.63e-04 entropy=0.789
+[ppo] step=18924 episode=1260 return=2.0 length=28 lr=2.63e-04 entropy=0.789
+[ppo] step=19224 episode=1270 return=4.0 length=48 lr=2.63e-04 entropy=0.789
+[ppo] step=19520 episode=1280 return=1.0 length=16 lr=2.63e-04 entropy=0.789
+[ppo] step=19810 episode=1290 return=0.0 length=6 lr=2.63e-04 entropy=0.789
+[ppo][eval] step=20000 mean_return=2.25 max_return=4.00
+[ppo] step=20160 episode=1300 return=3.0 length=38 lr=2.63e-04 entropy=0.789
+[ppo] step=20466 episode=1310 return=4.0 length=50 lr=2.63e-04 entropy=0.789
+[ppo] step=20718 episode=1320 return=2.0 length=28 lr=2.59e-04 entropy=0.7756
+[ppo] step=21002 episode=1330 return=3.0 length=38 lr=2.59e-04 entropy=0.7756
+[ppo] step=21236 episode=1340 return=2.0 length=28 lr=2.59e-04 entropy=0.7756
+[ppo] step=21542 episode=1350 return=3.0 length=38 lr=2.59e-04 entropy=0.7756
+[ppo] step=21826 episode=1360 return=2.0 length=28 lr=2.59e-04 entropy=0.7756
+[ppo] step=22100 episode=1370 return=6.0 length=72 lr=2.59e-04 entropy=0.7756
+[ppo] step=22332 episode=1380 return=2.0 length=28 lr=2.59e-04 entropy=0.7756
+[ppo] step=22582 episode=1390 return=1.0 length=16 lr=2.55e-04 entropy=0.7406
+[ppo] step=22858 episode=1400 return=3.0 length=38 lr=2.55e-04 entropy=0.7406
+[ppo] step=23058 episode=1410 return=3.0 length=38 lr=2.55e-04 entropy=0.7406
+[ppo] step=23364 episode=1420 return=3.0 length=38 lr=2.55e-04 entropy=0.7406
+[ppo] step=23618 episode=1430 return=2.0 length=28 lr=2.55e-04 entropy=0.7406
+[ppo] step=23918 episode=1440 return=1.0 length=16 lr=2.55e-04 entropy=0.7406
+[ppo] step=24268 episode=1450 return=5.0 length=58 lr=2.55e-04 entropy=0.7406
+[ppo] step=24644 episode=1460 return=2.0 length=28 lr=2.51e-04 entropy=0.7271
+[ppo][eval] step=25000 mean_return=3.30 max_return=6.00
+[ppo] step=25028 episode=1470 return=2.0 length=28 lr=2.51e-04 entropy=0.7271
+[ppo] step=25260 episode=1480 return=2.0 length=28 lr=2.51e-04 entropy=0.7271
+[ppo] step=25610 episode=1490 return=5.0 length=62 lr=2.51e-04 entropy=0.7271
+[ppo] step=25898 episode=1500 return=2.0 length=28 lr=2.51e-04 entropy=0.7271
+[ppo] step=26234 episode=1510 return=2.0 length=28 lr=2.51e-04 entropy=0.7271
+[ppo] step=26584 episode=1520 return=3.0 length=38 lr=2.51e-04 entropy=0.7271
+[ppo] step=26980 episode=1530 return=5.0 length=60 lr=2.47e-04 entropy=0.7128
+[ppo] step=27376 episode=1540 return=5.0 length=60 lr=2.47e-04 entropy=0.7128
+[ppo] step=27720 episode=1550 return=5.0 length=62 lr=2.47e-04 entropy=0.7128
+[ppo] step=28158 episode=1560 return=2.0 length=28 lr=2.47e-04 entropy=0.7128
+[ppo] step=28568 episode=1570 return=2.0 length=28 lr=2.47e-04 entropy=0.7128
+[ppo] step=28880 episode=1580 return=0.0 length=6 lr=2.43e-04 entropy=0.7181
+[ppo] step=29264 episode=1590 return=2.0 length=28 lr=2.43e-04 entropy=0.7181
+[ppo] step=29548 episode=1600 return=2.0 length=28 lr=2.43e-04 entropy=0.7181
+[ppo] step=29814 episode=1610 return=2.0 length=28 lr=2.43e-04 entropy=0.7181
+[ppo][eval] step=30000 mean_return=2.50 max_return=5.00
+[ppo] step=30120 episode=1620 return=1.0 length=16 lr=2.43e-04 entropy=0.7181
+[ppo] step=30418 episode=1630 return=4.0 length=48 lr=2.43e-04 entropy=0.7181
+[ppo] step=30736 episode=1640 return=3.0 length=38 lr=2.39e-04 entropy=0.6883
+[ppo] step=30980 episode=1650 return=3.0 length=38 lr=2.39e-04 entropy=0.6883
+[ppo] step=31300 episode=1660 return=4.0 length=48 lr=2.39e-04 entropy=0.6883
+[ppo] step=31608 episode=1670 return=3.0 length=38 lr=2.39e-04 entropy=0.6883
+[ppo] step=31912 episode=1680 return=2.0 length=28 lr=2.39e-04 entropy=0.6883
+[ppo] step=32254 episode=1690 return=5.0 length=62 lr=2.39e-04 entropy=0.6883
+[ppo] step=32550 episode=1700 return=1.0 length=16 lr=2.39e-04 entropy=0.6883
+[ppo] step=32984 episode=1710 return=5.0 length=62 lr=2.34e-04 entropy=0.6851
+[ppo] step=33374 episode=1720 return=6.0 length=72 lr=2.34e-04 entropy=0.6851
+[ppo] step=33690 episode=1730 return=3.0 length=38 lr=2.34e-04 entropy=0.6851
+[ppo] step=34104 episode=1740 return=6.0 length=72 lr=2.34e-04 entropy=0.6851
+[ppo] step=34374 episode=1750 return=1.0 length=16 lr=2.34e-04 entropy=0.6851
+[ppo] step=34748 episode=1760 return=3.0 length=38 lr=2.34e-04 entropy=0.6851
+[ppo][eval] step=35000 mean_return=3.05 max_return=6.00
+[ppo] step=35078 episode=1770 return=5.0 length=62 lr=2.30e-04 entropy=0.676
+[ppo] step=35406 episode=1780 return=3.0 length=38 lr=2.30e-04 entropy=0.676
+[ppo] step=35776 episode=1790 return=3.0 length=38 lr=2.30e-04 entropy=0.676
+[ppo] step=36160 episode=1800 return=3.0 length=38 lr=2.30e-04 entropy=0.676
+[ppo] step=36472 episode=1810 return=1.0 length=16 lr=2.30e-04 entropy=0.676
+[ppo] step=36864 episode=1820 return=3.0 length=38 lr=2.30e-04 entropy=0.676
+[ppo] step=37160 episode=1830 return=3.0 length=38 lr=2.26e-04 entropy=0.6571
+[ppo] step=37500 episode=1840 return=6.0 length=72 lr=2.26e-04 entropy=0.6571
+[ppo] step=37926 episode=1850 return=2.0 length=28 lr=2.26e-04 entropy=0.6571
+[ppo] step=38284 episode=1860 return=2.0 length=28 lr=2.26e-04 entropy=0.6571
+[ppo] step=38614 episode=1870 return=2.0 length=28 lr=2.26e-04 entropy=0.6571
+[ppo] step=38944 episode=1880 return=5.0 length=60 lr=2.22e-04 entropy=0.638
+[ppo] step=39318 episode=1890 return=2.0 length=28 lr=2.22e-04 entropy=0.638
+[ppo] step=39692 episode=1900 return=0.0 length=6 lr=2.22e-04 entropy=0.638
+[ppo][eval] step=40000 mean_return=3.65 max_return=6.00
+[ppo] step=40056 episode=1910 return=2.0 length=28 lr=2.22e-04 entropy=0.638
+[ppo] step=40462 episode=1920 return=6.0 length=72 lr=2.22e-04 entropy=0.638
+[ppo] step=40760 episode=1930 return=2.0 length=28 lr=2.22e-04 entropy=0.638
+[ppo] step=41158 episode=1940 return=6.0 length=72 lr=2.18e-04 entropy=0.6171
+[ppo] step=41522 episode=1950 return=2.0 length=28 lr=2.18e-04 entropy=0.6171
+[ppo] step=41848 episode=1960 return=2.0 length=28 lr=2.18e-04 entropy=0.6171
+[ppo] step=42118 episode=1970 return=2.0 length=26 lr=2.18e-04 entropy=0.6171
+[ppo] step=42436 episode=1980 return=0.0 length=6 lr=2.18e-04 entropy=0.6171
+[ppo] step=42852 episode=1990 return=2.0 length=28 lr=2.18e-04 entropy=0.6171
+[ppo] step=43192 episode=2000 return=6.0 length=72 lr=2.14e-04 entropy=0.577
+[ppo] step=43508 episode=2010 return=1.0 length=16 lr=2.14e-04 entropy=0.577
+[ppo] step=43816 episode=2020 return=2.0 length=28 lr=2.14e-04 entropy=0.577
+[ppo] step=44170 episode=2030 return=5.0 length=58 lr=2.14e-04 entropy=0.577
+[ppo] step=44562 episode=2040 return=2.0 length=28 lr=2.14e-04 entropy=0.577
+[ppo] step=44870 episode=2050 return=3.0 length=38 lr=2.14e-04 entropy=0.577
+[ppo][eval] step=45000 mean_return=3.40 max_return=6.00
+[ppo] step=45234 episode=2060 return=6.0 length=74 lr=2.10e-04 entropy=0.5625
+[ppo] step=45614 episode=2070 return=2.0 length=28 lr=2.10e-04 entropy=0.5625
+[ppo] step=45920 episode=2080 return=4.0 length=48 lr=2.10e-04 entropy=0.5625
+[ppo] step=46344 episode=2090 return=3.0 length=38 lr=2.10e-04 entropy=0.5625
+[ppo] step=46696 episode=2100 return=6.0 length=72 lr=2.10e-04 entropy=0.5625
+[ppo] step=47126 episode=2110 return=5.0 length=60 lr=2.06e-04 entropy=0.5557
+[ppo] step=47502 episode=2120 return=2.0 length=28 lr=2.06e-04 entropy=0.5557
+[ppo] step=47830 episode=2130 return=3.0 length=38 lr=2.06e-04 entropy=0.5557
+[ppo] step=48268 episode=2140 return=4.0 length=50 lr=2.06e-04 entropy=0.5557
+[ppo] step=48710 episode=2150 return=6.0 length=72 lr=2.06e-04 entropy=0.5557
+[ppo] step=49132 episode=2160 return=3.0 length=38 lr=2.06e-04 entropy=0.5557
+[ppo] step=49430 episode=2170 return=2.0 length=28 lr=2.02e-04 entropy=0.5497
+[ppo] step=49744 episode=2180 return=3.0 length=38 lr=2.02e-04 entropy=0.5497
+[ppo][eval] step=50000 mean_return=4.20 max_return=6.00
+[ppo] step=50090 episode=2190 return=3.0 length=38 lr=2.02e-04 entropy=0.5497
+[ppo] step=50482 episode=2200 return=2.0 length=26 lr=2.02e-04 entropy=0.5497
+[ppo] step=50932 episode=2210 return=6.0 length=72 lr=2.02e-04 entropy=0.5497
+[ppo] step=51368 episode=2220 return=4.0 length=48 lr=1.98e-04 entropy=0.5443
+[ppo] step=51770 episode=2230 return=3.0 length=38 lr=1.98e-04 entropy=0.5443
+[ppo] step=52192 episode=2240 return=3.0 length=38 lr=1.98e-04 entropy=0.5443
+[ppo] step=52660 episode=2250 return=3.0 length=38 lr=1.98e-04 entropy=0.5443
+[ppo] step=53098 episode=2260 return=5.0 length=60 lr=1.98e-04 entropy=0.5443
+[ppo] step=53448 episode=2270 return=3.0 length=38 lr=1.94e-04 entropy=0.5286
+[ppo] step=53844 episode=2280 return=3.0 length=38 lr=1.94e-04 entropy=0.5286
+[ppo] step=54244 episode=2290 return=2.0 length=28 lr=1.94e-04 entropy=0.5286
+[ppo] step=54734 episode=2300 return=3.0 length=38 lr=1.94e-04 entropy=0.5286
+[ppo][eval] step=55000 mean_return=3.90 max_return=6.00
+[ppo] step=55152 episode=2310 return=2.0 length=28 lr=1.94e-04 entropy=0.5286
+[ppo] step=55474 episode=2320 return=0.0 length=6 lr=1.89e-04 entropy=0.5259
+[ppo] step=55860 episode=2330 return=3.0 length=38 lr=1.89e-04 entropy=0.5259
+[ppo] step=56398 episode=2340 return=1.0 length=16 lr=1.89e-04 entropy=0.5259
+[ppo] step=56960 episode=2350 return=1.0 length=16 lr=1.89e-04 entropy=0.5259
+[ppo] step=57418 episode=2360 return=6.0 length=72 lr=1.85e-04 entropy=0.5291
+[ppo] step=58044 episode=2370 return=0.0 length=6 lr=1.85e-04 entropy=0.5291
+[ppo] step=58534 episode=2380 return=6.0 length=70 lr=1.85e-04 entropy=0.5291
+[ppo] step=58972 episode=2390 return=6.0 length=72 lr=1.85e-04 entropy=0.5291
+[ppo] step=59524 episode=2400 return=5.0 length=60 lr=1.81e-04 entropy=0.5157
+[ppo] step=59968 episode=2410 return=2.0 length=28 lr=1.81e-04 entropy=0.5157
+[ppo][eval] step=60000 mean_return=3.95 max_return=6.00
+[ppo] step=60338 episode=2420 return=3.0 length=38 lr=1.81e-04 entropy=0.5157
+[ppo] step=60902 episode=2430 return=5.0 length=60 lr=1.81e-04 entropy=0.5157
+[ppo] step=61354 episode=2440 return=3.0 length=38 lr=1.81e-04 entropy=0.5157
+[ppo] step=61716 episode=2450 return=1.0 length=16 lr=1.77e-04 entropy=0.5037
+[ppo] step=62238 episode=2460 return=6.0 length=70 lr=1.77e-04 entropy=0.5037
+[ppo] step=62646 episode=2470 return=4.0 length=50 lr=1.77e-04 entropy=0.5037
+[ppo] step=63030 episode=2480 return=0.0 length=6 lr=1.77e-04 entropy=0.5037
+[ppo] step=63582 episode=2490 return=2.0 length=28 lr=1.73e-04 entropy=0.5083
+[ppo] step=64032 episode=2500 return=5.0 length=60 lr=1.73e-04 entropy=0.5083
+[ppo] step=64516 episode=2510 return=6.0 length=74 lr=1.73e-04 entropy=0.5083
+[ppo] step=64960 episode=2520 return=3.0 length=38 lr=1.73e-04 entropy=0.5083
+[ppo][eval] step=65000 mean_return=3.80 max_return=6.00
+[ppo] step=65408 episode=2530 return=6.0 length=72 lr=1.73e-04 entropy=0.5083
+[ppo] step=65976 episode=2540 return=3.0 length=38 lr=1.69e-04 entropy=0.5049
+[ppo] step=66334 episode=2550 return=3.0 length=38 lr=1.69e-04 entropy=0.5049
+[ppo] step=66910 episode=2560 return=3.0 length=38 lr=1.69e-04 entropy=0.5049
+[ppo] step=67334 episode=2570 return=5.0 length=60 lr=1.69e-04 entropy=0.5049
+[ppo] step=67810 episode=2580 return=3.0 length=38 lr=1.65e-04 entropy=0.4944
+[ppo] step=68280 episode=2590 return=6.0 length=72 lr=1.65e-04 entropy=0.4944
+[ppo] step=68708 episode=2600 return=2.0 length=28 lr=1.65e-04 entropy=0.4944
+[ppo] step=69136 episode=2610 return=6.0 length=72 lr=1.65e-04 entropy=0.4944
+[ppo] step=69618 episode=2620 return=6.0 length=74 lr=1.65e-04 entropy=0.4944
+[ppo][eval] step=70000 mean_return=4.80 max_return=7.00
+[ppo] step=70180 episode=2630 return=5.0 length=62 lr=1.61e-04 entropy=0.5046
+[ppo] step=70744 episode=2640 return=4.0 length=48 lr=1.61e-04 entropy=0.5046
+[ppo] step=71246 episode=2650 return=3.0 length=38 lr=1.61e-04 entropy=0.5046
+[ppo] step=71738 episode=2660 return=3.0 length=38 lr=1.57e-04 entropy=0.4956
+[ppo] step=72276 episode=2670 return=4.0 length=48 lr=1.57e-04 entropy=0.4956
+[ppo] step=72712 episode=2680 return=2.0 length=28 lr=1.57e-04 entropy=0.4956
+[ppo] step=73170 episode=2690 return=2.0 length=28 lr=1.57e-04 entropy=0.4956
+[ppo] step=73704 episode=2700 return=4.0 length=48 lr=1.57e-04 entropy=0.4956
+[ppo] step=74254 episode=2710 return=6.0 length=74 lr=1.53e-04 entropy=0.495
+[ppo] step=74692 episode=2720 return=6.0 length=72 lr=1.53e-04 entropy=0.495
+[ppo][eval] step=75000 mean_return=4.65 max_return=6.00
+[ppo] step=75340 episode=2730 return=6.0 length=72 lr=1.53e-04 entropy=0.495
+[ppo] step=75788 episode=2740 return=0.0 length=6 lr=1.48e-04 entropy=0.4811
+[ppo] step=76168 episode=2750 return=5.0 length=60 lr=1.48e-04 entropy=0.4811
+[ppo] step=76646 episode=2760 return=3.0 length=38 lr=1.48e-04 entropy=0.4811
+[ppo] step=77072 episode=2770 return=6.0 length=72 lr=1.48e-04 entropy=0.4811
+[ppo] step=77594 episode=2780 return=7.0 length=80 lr=1.48e-04 entropy=0.4811
+[ppo] step=78142 episode=2790 return=5.0 length=62 lr=1.44e-04 entropy=0.4791
+[ppo] step=78556 episode=2800 return=3.0 length=38 lr=1.44e-04 entropy=0.4791
+[ppo] step=79036 episode=2810 return=7.0 length=80 lr=1.44e-04 entropy=0.4791
+[ppo] step=79520 episode=2820 return=1.0 length=16 lr=1.44e-04 entropy=0.4791
+[ppo][eval] step=80000 mean_return=5.00 max_return=7.00
+[ppo] step=80010 episode=2830 return=2.0 length=28 lr=1.40e-04 entropy=0.4739
+[ppo] step=80570 episode=2840 return=5.0 length=60 lr=1.40e-04 entropy=0.4739
+[ppo] step=81182 episode=2850 return=1.0 length=16 lr=1.40e-04 entropy=0.4739
+[ppo] step=81628 episode=2860 return=5.0 length=60 lr=1.40e-04 entropy=0.4739
+[ppo] step=82084 episode=2870 return=2.0 length=26 lr=1.36e-04 entropy=0.4572
+[ppo] step=82624 episode=2880 return=3.0 length=38 lr=1.36e-04 entropy=0.4572
+[ppo] step=83202 episode=2890 return=6.0 length=72 lr=1.36e-04 entropy=0.4572
+[ppo] step=83766 episode=2900 return=5.0 length=58 lr=1.36e-04 entropy=0.4572
+[ppo] step=84348 episode=2910 return=4.0 length=48 lr=1.32e-04 entropy=0.4595
+[ppo] step=84772 episode=2920 return=2.0 length=28 lr=1.32e-04 entropy=0.4595
+[ppo][eval] step=85000 mean_return=4.75 max_return=7.00
+[ppo] step=85406 episode=2930 return=6.0 length=72 lr=1.32e-04 entropy=0.4595
+[ppo] step=85920 episode=2940 return=3.0 length=38 lr=1.32e-04 entropy=0.4595
+[ppo] step=86440 episode=2950 return=6.0 length=72 lr=1.28e-04 entropy=0.45
+[ppo] step=86842 episode=2960 return=0.0 length=6 lr=1.28e-04 entropy=0.45
+[ppo] step=87356 episode=2970 return=0.0 length=6 lr=1.28e-04 entropy=0.45
+[ppo] step=87804 episode=2980 return=7.0 length=80 lr=1.28e-04 entropy=0.45
+[ppo] step=88336 episode=2990 return=6.0 length=72 lr=1.24e-04 entropy=0.4454
+[ppo] step=88916 episode=3000 return=2.0 length=26 lr=1.24e-04 entropy=0.4454
+[ppo] step=89494 episode=3010 return=6.0 length=72 lr=1.24e-04 entropy=0.4454
+[ppo][eval] step=90000 mean_return=4.70 max_return=7.00
+[ppo] step=90016 episode=3020 return=2.0 length=28 lr=1.24e-04 entropy=0.4454
+[ppo] step=90462 episode=3030 return=2.0 length=26 lr=1.20e-04 entropy=0.4427
+[ppo] step=90926 episode=3040 return=0.0 length=6 lr=1.20e-04 entropy=0.4427
+[ppo] step=91418 episode=3050 return=3.0 length=38 lr=1.20e-04 entropy=0.4427
+[ppo] step=91964 episode=3060 return=6.0 length=72 lr=1.20e-04 entropy=0.4427
+[ppo] step=92384 episode=3070 return=3.0 length=38 lr=1.16e-04 entropy=0.4424
+[ppo] step=92946 episode=3080 return=3.0 length=38 lr=1.16e-04 entropy=0.4424
+[ppo] step=93568 episode=3090 return=6.0 length=72 lr=1.16e-04 entropy=0.4424
+[ppo] step=94202 episode=3100 return=6.0 length=74 lr=1.16e-04 entropy=0.4424
+[ppo] step=94660 episode=3110 return=2.0 length=28 lr=1.12e-04 entropy=0.4249
+[ppo][eval] step=95000 mean_return=4.85 max_return=7.00
+[ppo] step=95236 episode=3120 return=2.0 length=28 lr=1.12e-04 entropy=0.4249
+[ppo] step=95728 episode=3130 return=5.0 length=62 lr=1.12e-04 entropy=0.4249
+[ppo] step=96236 episode=3140 return=6.0 length=72 lr=1.12e-04 entropy=0.4249
+[ppo] step=96722 episode=3150 return=6.0 length=70 lr=1.07e-04 entropy=0.4289
+[ppo] step=97180 episode=3160 return=2.0 length=28 lr=1.07e-04 entropy=0.4289
+[ppo] step=97690 episode=3170 return=2.0 length=26 lr=1.07e-04 entropy=0.4289
+[ppo] step=98302 episode=3180 return=6.0 length=74 lr=1.07e-04 entropy=0.4289
+[ppo] step=98690 episode=3190 return=4.0 length=48 lr=1.03e-04 entropy=0.45
+[ppo] step=99148 episode=3200 return=5.0 length=60 lr=1.03e-04 entropy=0.45
+[ppo] step=99764 episode=3210 return=6.0 length=72 lr=1.03e-04 entropy=0.45
+[ppo][eval] step=100000 mean_return=4.90 max_return=7.00
+[ppo] step=100288 episode=3220 return=5.0 length=60 lr=1.03e-04 entropy=0.45
+[ppo] step=100938 episode=3230 return=6.0 length=72 lr=9.93e-05 entropy=0.4356
+[ppo] step=101538 episode=3240 return=6.0 length=72 lr=9.93e-05 entropy=0.4356
+[ppo] step=102094 episode=3250 return=6.0 length=72 lr=9.93e-05 entropy=0.4356
+[ppo] step=102706 episode=3260 return=6.0 length=70 lr=9.52e-05 entropy=0.4268
+[ppo] step=103338 episode=3270 return=6.0 length=72 lr=9.52e-05 entropy=0.4268
+[ppo] step=103876 episode=3280 return=2.0 length=28 lr=9.52e-05 entropy=0.4268
+[ppo] step=104374 episode=3290 return=5.0 length=62 lr=9.52e-05 entropy=0.4268
+[ppo] step=104722 episode=3300 return=6.0 length=72 lr=9.11e-05 entropy=0.4241
+[ppo][eval] step=105000 mean_return=4.75 max_return=7.00
+[ppo] step=105290 episode=3310 return=3.0 length=38 lr=9.11e-05 entropy=0.4241
+[ppo] step=105880 episode=3320 return=4.0 length=48 lr=9.11e-05 entropy=0.4241
+[ppo] step=106452 episode=3330 return=3.0 length=38 lr=9.11e-05 entropy=0.4241
+[ppo] step=106912 episode=3340 return=1.0 length=16 lr=8.70e-05 entropy=0.4354
+[ppo] step=107508 episode=3350 return=6.0 length=72 lr=8.70e-05 entropy=0.4354
+[ppo] step=108030 episode=3360 return=2.0 length=28 lr=8.70e-05 entropy=0.4354
+[ppo] step=108558 episode=3370 return=2.0 length=28 lr=8.29e-05 entropy=0.4371
+[ppo] step=109146 episode=3380 return=2.0 length=26 lr=8.29e-05 entropy=0.4371
+[ppo] step=109748 episode=3390 return=5.0 length=60 lr=8.29e-05 entropy=0.4371
+[ppo][eval] step=110000 mean_return=5.40 max_return=7.00
+[ppo] step=110336 episode=3400 return=4.0 length=50 lr=8.29e-05 entropy=0.4371
+[ppo] step=110874 episode=3410 return=2.0 length=28 lr=7.88e-05 entropy=0.4406
+[ppo] step=111366 episode=3420 return=3.0 length=38 lr=7.88e-05 entropy=0.4406
+[ppo] step=111966 episode=3430 return=6.0 length=72 lr=7.88e-05 entropy=0.4406
+[ppo] step=112524 episode=3440 return=6.0 length=70 lr=7.88e-05 entropy=0.4406
+[ppo] step=113024 episode=3450 return=7.0 length=80 lr=7.47e-05 entropy=0.4442
+[ppo] step=113526 episode=3460 return=3.0 length=38 lr=7.47e-05 entropy=0.4442
+[ppo] step=114122 episode=3470 return=2.0 length=28 lr=7.47e-05 entropy=0.4442
+[ppo] step=114700 episode=3480 return=3.0 length=38 lr=7.06e-05 entropy=0.4332
+[ppo][eval] step=115000 mean_return=4.50 max_return=7.00
+[ppo] step=115340 episode=3490 return=6.0 length=72 lr=7.06e-05 entropy=0.4332
+[ppo] step=115926 episode=3500 return=6.0 length=72 lr=7.06e-05 entropy=0.4332
+[ppo] step=116372 episode=3510 return=6.0 length=70 lr=7.06e-05 entropy=0.4332
+[ppo] step=116950 episode=3520 return=6.0 length=72 lr=6.65e-05 entropy=0.4391
+[ppo] step=117386 episode=3530 return=3.0 length=38 lr=6.65e-05 entropy=0.4391
+[ppo] step=117990 episode=3540 return=5.0 length=60 lr=6.65e-05 entropy=0.4391
+[ppo] step=118580 episode=3550 return=3.0 length=38 lr=6.65e-05 entropy=0.4391
+[ppo] step=119068 episode=3560 return=2.0 length=28 lr=6.24e-05 entropy=0.4256
+[ppo] step=119566 episode=3570 return=6.0 length=72 lr=6.24e-05 entropy=0.4256
+[ppo][eval] step=120000 mean_return=4.90 max_return=7.00
+[ppo] step=120128 episode=3580 return=2.0 length=28 lr=6.24e-05 entropy=0.4256
+[ppo] step=120722 episode=3590 return=6.0 length=74 lr=6.24e-05 entropy=0.4256
+[ppo] step=121314 episode=3600 return=6.0 length=72 lr=5.83e-05 entropy=0.4197
+[ppo] step=121964 episode=3610 return=2.0 length=28 lr=5.83e-05 entropy=0.4197
+[ppo] step=122516 episode=3620 return=6.0 length=72 lr=5.83e-05 entropy=0.4197
+[ppo] step=123166 episode=3630 return=5.0 length=62 lr=5.42e-05 entropy=0.3995
+[ppo] step=123746 episode=3640 return=6.0 length=70 lr=5.42e-05 entropy=0.3995
+[ppo] step=124440 episode=3650 return=6.0 length=70 lr=5.42e-05 entropy=0.3995
+[ppo][eval] step=125000 mean_return=4.65 max_return=7.00
+[ppo] step=125072 episode=3660 return=1.0 length=16 lr=5.01e-05 entropy=0.4062
+[ppo] step=125666 episode=3670 return=3.0 length=38 lr=5.01e-05 entropy=0.4062
+[ppo] step=126232 episode=3680 return=6.0 length=70 lr=5.01e-05 entropy=0.4062
+[ppo] step=126672 episode=3690 return=7.0 length=80 lr=5.01e-05 entropy=0.4062
+[ppo] step=127180 episode=3700 return=1.0 length=16 lr=4.60e-05 entropy=0.4114
+[ppo] step=127808 episode=3710 return=6.0 length=70 lr=4.60e-05 entropy=0.4114
+[ppo] step=128440 episode=3720 return=7.0 length=80 lr=4.60e-05 entropy=0.4114
+[ppo] step=129112 episode=3730 return=6.0 length=74 lr=4.20e-05 entropy=0.4028
+[ppo] step=129696 episode=3740 return=2.0 length=28 lr=4.20e-05 entropy=0.4028
+[ppo][eval] step=130000 mean_return=4.60 max_return=7.00
+[ppo] step=130184 episode=3750 return=2.0 length=28 lr=4.20e-05 entropy=0.4028
+[ppo] step=130782 episode=3760 return=7.0 length=80 lr=4.20e-05 entropy=0.4028
+[ppo] step=131270 episode=3770 return=5.0 length=60 lr=3.79e-05 entropy=0.4102
+[ppo] step=131708 episode=3780 return=4.0 length=48 lr=3.79e-05 entropy=0.4102
+[ppo] step=132230 episode=3790 return=2.0 length=28 lr=3.79e-05 entropy=0.4102
+[ppo] step=132798 episode=3800 return=7.0 length=80 lr=3.79e-05 entropy=0.4102
+[ppo] step=133328 episode=3810 return=5.0 length=58 lr=3.38e-05 entropy=0.4082
+[ppo] step=133842 episode=3820 return=6.0 length=72 lr=3.38e-05 entropy=0.4082
+[ppo] step=134400 episode=3830 return=6.0 length=74 lr=3.38e-05 entropy=0.4082
+[ppo][eval] step=135000 mean_return=4.50 max_return=7.00
+[ppo] step=135022 episode=3840 return=7.0 length=80 lr=3.38e-05 entropy=0.4082
+[ppo] step=135640 episode=3850 return=7.0 length=80 lr=2.97e-05 entropy=0.4032
+[ppo] step=136274 episode=3860 return=7.0 length=80 lr=2.97e-05 entropy=0.4032
+[ppo] step=136806 episode=3870 return=2.0 length=28 lr=2.97e-05 entropy=0.4032
+[ppo] step=137326 episode=3880 return=4.0 length=50 lr=2.56e-05 entropy=0.4106
+[ppo] step=137844 episode=3890 return=6.0 length=74 lr=2.56e-05 entropy=0.4106
+[ppo] step=138478 episode=3900 return=4.0 length=48 lr=2.56e-05 entropy=0.4106
+[ppo] step=139046 episode=3910 return=5.0 length=60 lr=2.56e-05 entropy=0.4106
+[ppo] step=139574 episode=3920 return=7.0 length=84 lr=2.15e-05 entropy=0.4114
+[ppo][eval] step=140000 mean_return=4.50 max_return=7.00
+[ppo] step=140088 episode=3930 return=2.0 length=28 lr=2.15e-05 entropy=0.4114
+[ppo] step=140708 episode=3940 return=5.0 length=62 lr=2.15e-05 entropy=0.4114
+[ppo] step=141310 episode=3950 return=2.0 length=28 lr=2.15e-05 entropy=0.4114
+[ppo] step=141872 episode=3960 return=0.0 length=6 lr=1.74e-05 entropy=0.3987
+[ppo] step=142462 episode=3970 return=6.0 length=72 lr=1.74e-05 entropy=0.3987
+[ppo] step=142998 episode=3980 return=6.0 length=72 lr=1.74e-05 entropy=0.3987
+[ppo] step=143588 episode=3990 return=1.0 length=16 lr=1.33e-05 entropy=0.407
+[ppo] step=144128 episode=4000 return=7.0 length=80 lr=1.33e-05 entropy=0.407
+[ppo] step=144642 episode=4010 return=4.0 length=48 lr=1.33e-05 entropy=0.407
+[ppo][eval] step=145000 mean_return=4.75 max_return=7.00
+[ppo] step=145272 episode=4020 return=1.0 length=16 lr=1.33e-05 entropy=0.407
+[ppo] step=145904 episode=4030 return=6.0 length=74 lr=9.18e-06 entropy=0.3974
+[ppo] step=146524 episode=4040 return=5.0 length=60 lr=9.18e-06 entropy=0.3974
+[ppo] step=147102 episode=4050 return=2.0 length=26 lr=9.18e-06 entropy=0.3974
+[ppo] step=147638 episode=4060 return=6.0 length=70 lr=5.09e-06 entropy=0.3951
+[ppo] step=148286 episode=4070 return=6.0 length=74 lr=5.09e-06 entropy=0.3951
+[ppo] step=148918 episode=4080 return=3.0 length=38 lr=5.09e-06 entropy=0.3951
+[ppo] step=149564 episode=4090 return=7.0 length=80 lr=9.92e-07 entropy=0.3961
+[ppo][eval] step=150000 mean_return=4.75 max_return=7.00
+[ppo] finished profile=fast mean_eval_return=5.40 passed=False run_dir=results/rl/ppo_minatar_breakout_20260828_012442_373731
+{
+  "task": "minatar_breakout",
+  "env_id": "MinAtar/Breakout-v1",
+  "algorithm": "ppo_clipped_surrogate_gae",
+  "profile": "fast",
+  "seed": 0,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "updates": 74,
+  "rollout_length": 2048,
+  "action_kind": "discrete",
+  "eval_episodes": 20,
+  "success_threshold": 10.0,
+  "passed": false,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 5.400000095367432,
+    "std_return": 1.496662974357605,
+    "min_return": 1.0,
+    "max_return": 7.0,
+    "mean_length": 64.5999984741211
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 4.800000190734863,
+    "std_return": 2.0396080017089844,
+    "min_return": 1.0,
+    "max_return": 7.0,
+    "mean_length": 58.29999923706055
+  },
+  "selected_step": 110000,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 110000,
+    "best_model_training_fraction": 0.7333333333333333,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 0.5999999046325684,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 50.0,
+    "best_mean_return": 4.800000190734863,
+    "evaluations": 30,
+    "evaluations_without_improvement": 16,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "run_dir": "results/rl/ppo_minatar_breakout_20260828_012442_373731"
+}
+Checkpoint: results/rl/ppo_minatar_breakout_20260828_012442_373731/checkpoint.pt
+	Command being timed: ".venv/bin/python tools/run_rl_ppo.py minatar_breakout --profile fast --seed 0 --device cpu --no-early-stopping --total-timesteps 150000"
+	User time (seconds): 193.83
+	System time (seconds): 1.37
+	Percent of CPU this job got: 191%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:41.99
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 960264
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 558153
+	Voluntary context switches: 239
+	Involuntary context switches: 683
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 1752
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

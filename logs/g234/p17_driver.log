@@ -1,0 +1,15 @@
+==== batch seed=0 : launching caps 100,500,1000,2000 concurrently ====
+   launched cap=100 seed=0 pid=6152
+   launched cap=500 seed=0 pid=28760
+   launched cap=1000 seed=0 pid=27240
+   launched cap=2000 seed=0 pid=22124
+   done cap=100 seed=0 exit= elapsed=248.3s
+   done cap=500 seed=0 exit= elapsed=1,498.8s
+   done cap=1000 seed=0 exit= elapsed=1,498.8s
+   done cap=2000 seed=0 exit= elapsed=9,596.8s
+==== batch seed=0 complete ====
+==== batch seed=1 : launching caps 100,500,1000,2000 concurrently ====
+   launched cap=100 seed=1 pid=27612
+   launched cap=500 seed=1 pid=24768
+   launched cap=1000 seed=1 pid=31468
+   launched cap=2000 seed=1 pid=20700

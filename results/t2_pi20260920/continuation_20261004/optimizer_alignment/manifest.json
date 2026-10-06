@@ -1,0 +1,3836 @@
+{
+  "status": "exploratory_current_core_not_stage_a_gate",
+  "roles": [
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 2,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__reset\\s8",
+      "training_seconds": 5.12018910003826,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 8,
+        "total_timesteps": 2048,
+        "configured_total_timesteps": 2048,
+        "actual_timesteps": 2048,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 103.33333587646484,
+          "std_return": 5.792716026306152,
+          "min_return": 97.0,
+          "max_return": 111.0,
+          "mean_length": 103.33333587646484
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 103.33333587646484,
+          "std_return": 5.792716026306152,
+          "min_return": 97.0,
+          "max_return": 111.0,
+          "mean_length": 103.33333587646484
+        },
+        "selected_step": 2048,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 2048,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": null,
+          "evaluations": 0,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 2048
+        },
+        "case_entries": 128,
+        "critic_case_entries": 128,
+        "action_counts": [
+          47,
+          81
+        ],
+        "cases_pruned": 669,
+        "cases_replaced": 2728,
+        "actor_cases_pruned": 320,
+        "actor_cases_replaced": 1157,
+        "critic_cases_pruned": 349,
+        "critic_cases_replaced": 1571,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 49,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 5,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__reset\\s8\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__reset\\s8"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 857.0075073242188,
+        "critic_holdout_explained_variance": 0.29178524017333984,
+        "critic_holdout_value_mean": 23.99384117126465,
+        "critic_holdout_target_mean": 46.15387725830078,
+        "critic_holdout_samples": 260,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 260,
+        "critic_holdout_mean_episode_return": 130.0,
+        "critic_holdout_mean_episode_length": 130.0,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40016
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "245": {
+              "C": 0.0,
+              "H": 67.10284423828125,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.01447118437776292
+            },
+            "461": {
+              "C": 8.29010009765625,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9028192155071681
+            },
+            "463": {
+              "C": 0.0,
+              "H": 7.77569580078125,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.10229450878781257
+            },
+            "465": {
+              "C": 0.0,
+              "H": 25.53076171875,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.03632300516113013
+            },
+            "467": {
+              "C": 0.0,
+              "H": 39.11285400390625,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.024323293145861076
+            },
+            "571": {
+              "C": 66.46771240234375,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9853945755610528
+            },
+            "573": {
+              "C": 44.9605712890625,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9787055401467634
+            },
+            "575": {
+              "C": 21.1812744140625,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9568617332188878
+            },
+            "462": {
+              "C": 0.0,
+              "H": 17.818359375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.05045826352616537
+            },
+            "464": {
+              "C": 0.0,
+              "H": 22.85784912109375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.04022874204153991
+            },
+            "572": {
+              "C": 0.35260009765625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.5749383837073551
+            },
+            "574": {
+              "C": 0.0,
+              "H": 7.0042724609375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.11105838970757696
+            },
+            "576": {
+              "C": 0.0,
+              "H": 14.94744873046875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.059005931565508325
+            },
+            "578": {
+              "C": 0.0,
+              "H": 20.9932861328125,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.04349095619581548
+            },
+            "1223": {
+              "C": 16.543212890625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9460719128934999
+            },
+            "2014": {
+              "C": 67.6884765625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.985650425302336
+            },
+            "199": {
+              "C": 0.0,
+              "H": 123.7877197265625,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.007949901645198761
+            },
+            "250": {
+              "C": 0.0,
+              "H": 218.35308837890625,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.004538171020686847
+            },
+            "466": {
+              "C": 0.0,
+              "H": 110.5240478515625,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.00888698921779958
+            },
+            "582": {
+              "C": 0.0,
+              "H": 136.33294677734375,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.007228935863049081
+            },
+            "1226": {
+              "C": 20.4071044921875,
+              "H": 0.40740966796875,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9383107762852702
+            },
+            "1228": {
+              "C": 2.03009033203125,
+              "H": 8.85888671875,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.23509160735510695
+            },
+            "2016": {
+              "C": 258.285400390625,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9961580634238446
+            },
+            "2018": {
+              "C": 247.45989990234375,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9959913396886976
+            },
+            "1387": {
+              "C": 0.0,
+              "H": 22.3441162109375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.04107768757490209
+            },
+            "2017": {
+              "C": 75.15301513671875,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9870387437454266
+            },
+            "2025": {
+              "C": 36.5264892578125,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9740438327170645
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "d7386499f24bf621a9860c108a7b66744bf7b6ca0a37cc6905bae720038f1fb5"
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 2,
+      "case_optimizer_maintenance": "preserve_by_id",
+      "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "training_seconds": 3.9195847001392394,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 8,
+        "total_timesteps": 2048,
+        "configured_total_timesteps": 2048,
+        "actual_timesteps": 2048,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 287.3333435058594,
+          "std_return": 6.9442219734191895,
+          "min_return": 281.0,
+          "max_return": 297.0,
+          "mean_length": 287.3333435058594
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 287.3333435058594,
+          "std_return": 6.9442219734191895,
+          "min_return": 281.0,
+          "max_return": 297.0,
+          "mean_length": 287.3333435058594
+        },
+        "selected_step": 2048,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 2048,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": null,
+          "evaluations": 0,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 2048
+        },
+        "case_entries": 117,
+        "critic_case_entries": 128,
+        "action_counts": [
+          55,
+          62
+        ],
+        "cases_pruned": 828,
+        "cases_replaced": 2693,
+        "actor_cases_pruned": 618,
+        "actor_cases_replaced": 983,
+        "critic_cases_pruned": 210,
+        "critic_cases_replaced": 1710,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 108,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 5,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s8\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s8"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 975.3072509765625,
+        "critic_holdout_explained_variance": 0.0790867805480957,
+        "critic_holdout_value_mean": 19.161569595336914,
+        "critic_holdout_target_mean": 43.46284866333008,
+        "critic_holdout_samples": 250,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 250,
+        "critic_holdout_mean_episode_return": 125.0,
+        "critic_holdout_mean_episode_length": 125.0,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40016
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "99": {
+              "C": 0.0,
+              "H": 115.049072265625,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.00854342525441511
+            },
+            "101": {
+              "C": 0.0,
+              "H": 168.3359375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.0058707517314131085
+            },
+            "132": {
+              "C": 33.136474609375,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9715395465504902
+            },
+            "134": {
+              "C": 0.0,
+              "H": 7.703369140625,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.10305698830041515
+            },
+            "136": {
+              "C": 0.0,
+              "H": 53.007080078125,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.018179477961377487
+            },
+            "312": {
+              "C": 148.876220703125,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9933720503115752
+            },
+            "314": {
+              "C": 107.27294921875,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9908486042780987
+            },
+            "316": {
+              "C": 59.589111328125,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9837633637109593
+            },
+            "100": {
+              "C": 0.0,
+              "H": 210.503662109375,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.004705801255722845
+            },
+            "133": {
+              "C": 0.0,
+              "H": 10.625732421875,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.0792033259209127
+            },
+            "135": {
+              "C": 0.0,
+              "H": 66.485107421875,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.014601714703313548
+            },
+            "137": {
+              "C": 0.0,
+              "H": 128.447265625,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.00766593301292129
+            },
+            "311": {
+              "C": 186.20458984375,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9946866333024598
+            },
+            "313": {
+              "C": 138.8212890625,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9928988009791888
+            },
+            "315": {
+              "C": 80.7177734375,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9879106997390883
+            },
+            "317": {
+              "C": 15.783447265625,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9437679328949355
+            },
+            "142": {
+              "C": 0.0,
+              "H": 73.92919921875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.013170163919667145
+            },
+            "222": {
+              "C": 0.0,
+              "H": 10.256103515625,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.08159200015935937
+            },
+            "269": {
+              "C": 45.25244140625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9788370723238919
+            },
+            "318": {
+              "C": 12.6123046875,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9315645258303816
+            },
+            "320": {
+              "C": 0.5634765625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.609904761904762
+            },
+            "322": {
+              "C": 0.0,
+              "H": 12.55029296875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.06872713849458036
+            },
+            "1586": {
+              "C": 28.806640625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9675394661763773
+            },
+            "1588": {
+              "C": 9.433837890625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9125403027779557
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "a2d66caf39052ecc112d572172902c27972df1a8f39483017b93c999557a021a"
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 2,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__reset\\s9",
+      "training_seconds": 3.734549199929461,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 9,
+        "total_timesteps": 2048,
+        "configured_total_timesteps": 2048,
+        "actual_timesteps": 2048,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 86.0,
+          "std_return": 0.8164966106414795,
+          "min_return": 85.0,
+          "max_return": 87.0,
+          "mean_length": 86.0
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 86.0,
+          "std_return": 0.8164966106414795,
+          "min_return": 85.0,
+          "max_return": 87.0,
+          "mean_length": 86.0
+        },
+        "selected_step": 2048,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 2048,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": null,
+          "evaluations": 0,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 2048
+        },
+        "case_entries": 128,
+        "critic_case_entries": 128,
+        "action_counts": [
+          65,
+          63
+        ],
+        "cases_pruned": 653,
+        "cases_replaced": 2714,
+        "actor_cases_pruned": 274,
+        "actor_cases_replaced": 1173,
+        "critic_cases_pruned": 379,
+        "critic_cases_replaced": 1541,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 37,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 5,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__reset\\s9\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__reset\\s9"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 768.9697875976562,
+        "critic_holdout_explained_variance": 0.15635013580322266,
+        "critic_holdout_value_mean": 25.992206573486328,
+        "critic_holdout_target_mean": 45.13645935058594,
+        "critic_holdout_samples": 257,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 257,
+        "critic_holdout_mean_episode_return": 128.5,
+        "critic_holdout_mean_episode_length": 128.5,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40018
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "215": {
+              "C": 0.0,
+              "H": 134.69732666015625,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.0073154320163561345
+            },
+            "457": {
+              "C": 0.0,
+              "H": 39.45660400390625,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.024121609186941
+            },
+            "461": {
+              "C": 0.0,
+              "H": 76.4466552734375,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.012747516086114201
+            },
+            "659": {
+              "C": 29.9327392578125,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9686841773289041
+            },
+            "1129": {
+              "C": 75.82525634765625,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9871507008530385
+            },
+            "1136": {
+              "C": 0.0,
+              "H": 30.55511474609375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.030717139466387194
+            },
+            "2023": {
+              "C": 93.6541748046875,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9895456732333757
+            },
+            "2025": {
+              "C": 58.13018798828125,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9833694183661144
+            },
+            "216": {
+              "C": 0.0,
+              "H": 67.10211181640625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.014471337759645424
+            },
+            "458": {
+              "C": 0.0,
+              "H": 15.088623046875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.05851846560468605
+            },
+            "460": {
+              "C": 0.0,
+              "H": 23.38507080078125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.0393932326542585
+            },
+            "1130": {
+              "C": 37.11907958984375,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9744370263696177
+            },
+            "1133": {
+              "C": 9.1307373046875,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9101586918614215
+            },
+            "1135": {
+              "C": 0.0,
+              "H": 0.2718505859375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.4401697920584601
+            },
+            "1137": {
+              "C": 0.0,
+              "H": 24.68499755859375,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.03747423989094411
+            },
+            "2022": {
+              "C": 64.4937744140625,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9849609980962591
+            },
+            "375": {
+              "C": 0.0,
+              "H": 20.53607177734375,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.044373305600017336
+            },
+            "384": {
+              "C": 0.0,
+              "H": 49.9554443359375,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.019247261048026522
+            },
+            "462": {
+              "C": 0.0,
+              "H": 22.1790771484375,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.041358071437586776
+            },
+            "464": {
+              "C": 0.0,
+              "H": 32.44488525390625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.029031886523314638
+            },
+            "670": {
+              "C": 0.0,
+              "H": 27.83819580078125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.033514090686871126
+            },
+            "862": {
+              "C": 66.29205322265625,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.98535700783897
+            },
+            "2024": {
+              "C": 66.57659912109375,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9854177662232246
+            },
+            "2028": {
+              "C": 21.44781494140625,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9573521028505684
+            },
+            "1131": {
+              "C": 22.6259765625,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9593924733314827
+            },
+            "2027": {
+              "C": 2.34033203125,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.7696028799640005
+            },
+            "1132": {
+              "C": 9.779541015625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9151070488507533
+            },
+            "2026": {
+              "C": 11.19775390625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9242295312442191
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "6f4488bfa9f3ae8ca966030713685794e7030ac0408cd67132729fa27c1ca50c"
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 2,
+      "case_optimizer_maintenance": "preserve_by_id",
+      "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "training_seconds": 3.982399499975145,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 9,
+        "total_timesteps": 2048,
+        "configured_total_timesteps": 2048,
+        "actual_timesteps": 2048,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 153.0,
+          "std_return": 58.32666778564453,
+          "min_return": 99.0,
+          "max_return": 234.0,
+          "mean_length": 153.0
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 153.0,
+          "std_return": 58.32666778564453,
+          "min_return": 99.0,
+          "max_return": 234.0,
+          "mean_length": 153.0
+        },
+        "selected_step": 2048,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 2048,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": null,
+          "evaluations": 0,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 2048
+        },
+        "case_entries": 128,
+        "critic_case_entries": 128,
+        "action_counts": [
+          68,
+          60
+        ],
+        "cases_pruned": 665,
+        "cases_replaced": 2858,
+        "actor_cases_pruned": 401,
+        "actor_cases_replaced": 1202,
+        "critic_cases_pruned": 264,
+        "critic_cases_replaced": 1656,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 11,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 5,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s9\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s9"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 2187.9384765625,
+        "critic_holdout_explained_variance": 0.09380066394805908,
+        "critic_holdout_value_mean": 17.600690841674805,
+        "critic_holdout_target_mean": 57.6348762512207,
+        "critic_holdout_samples": 389,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 389,
+        "critic_holdout_mean_episode_return": 194.5,
+        "critic_holdout_mean_episode_length": 194.5,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40018
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "31": {
+              "C": 0.0,
+              "H": 108.779296875,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.009026957456936829
+            },
+            "114": {
+              "C": 123.3369140625,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9920215045385484
+            },
+            "116": {
+              "C": 61.04150390625,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9841374342609733
+            },
+            "141": {
+              "C": 138.0673828125,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9928605791018553
+            },
+            "169": {
+              "C": 0.4833984375,
+              "H": 11.408203125,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.10678383128295255
+            },
+            "171": {
+              "C": 0.0,
+              "H": 81.41650390625,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.011988035378752846
+            },
+            "191": {
+              "C": 38.2880859375,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9751787662101563
+            },
+            "472": {
+              "C": 0.0,
+              "H": 101.18310546875,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.009691509045566182
+            },
+            "32": {
+              "C": 58.7314453125,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9835340655099777
+            },
+            "36": {
+              "C": 0.0,
+              "H": 13.177734375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.06588598635954189
+            },
+            "38": {
+              "C": 0.0,
+              "H": 66.22021484375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.014658411766811008
+            },
+            "94": {
+              "C": 32.53857421875,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9710468650597299
+            },
+            "285": {
+              "C": 0.0,
+              "H": 31.35107421875,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.029984041696557984
+            },
+            "301": {
+              "C": 0.0,
+              "H": 83.40185546875,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.011709347466881643
+            },
+            "396": {
+              "C": 0.0,
+              "H": 14.37939453125,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.06105231778208377
+            },
+            "2044": {
+              "C": 299.55224609375,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9966838250652953
+            },
+            "45": {
+              "C": 0.0,
+              "H": 177.138671875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.005582267578146295
+            },
+            "37": {
+              "C": 0.0,
+              "H": 57.46826171875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.016815692456749676
+            },
+            "115": {
+              "C": 20.99169921875,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9565060420073481
+            },
+            "117": {
+              "C": 4.12744140625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8367997449996015
+            },
+            "170": {
+              "C": 0.0,
+              "H": 16.3232421875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.0545754943239354
+            },
+            "172": {
+              "C": 0.0,
+              "H": 42.19091796875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.022629084118758493
+            },
+            "192": {
+              "C": 0.0,
+              "H": 5.82568359375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.12778436388594247
+            },
+            "196": {
+              "C": 0.0,
+              "H": 41.28173828125,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.0231044324860956
+            },
+            "2042": {
+              "C": 65.02783203125,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9850808243427331
+            },
+            "2046": {
+              "C": 15.60498046875,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9431978921092775
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "a62b6290c8495857d719504de1143fcb38fe52c732b2511260989e65bdab09a3"
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 2,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__reset\\s10",
+      "training_seconds": 4.001601600088179,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 10,
+        "total_timesteps": 2048,
+        "configured_total_timesteps": 2048,
+        "actual_timesteps": 2048,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 246.0,
+          "std_return": 37.665191650390625,
+          "min_return": 210.0,
+          "max_return": 298.0,
+          "mean_length": 246.0
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 246.0,
+          "std_return": 37.665191650390625,
+          "min_return": 210.0,
+          "max_return": 298.0,
+          "mean_length": 246.0
+        },
+        "selected_step": 2048,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 2048,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": null,
+          "evaluations": 0,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 2048
+        },
+        "case_entries": 128,
+        "critic_case_entries": 128,
+        "action_counts": [
+          60,
+          68
+        ],
+        "cases_pruned": 469,
+        "cases_replaced": 3094,
+        "actor_cases_pruned": 213,
+        "actor_cases_replaced": 1430,
+        "critic_cases_pruned": 256,
+        "critic_cases_replaced": 1664,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 358,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 4,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__reset\\s10\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__reset\\s10"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 1414.195556640625,
+        "critic_holdout_explained_variance": -0.13184189796447754,
+        "critic_holdout_value_mean": 24.01238441467285,
+        "critic_holdout_target_mean": 52.32724380493164,
+        "critic_holdout_samples": 337,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 337,
+        "critic_holdout_mean_episode_return": 168.5,
+        "critic_holdout_mean_episode_length": 168.5,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40020
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "38": {
+              "C": 0.0,
+              "H": 190.043212890625,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.00520716137242264
+            },
+            "75": {
+              "C": 0.0,
+              "H": 305.23974609375,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.0032547872230530477
+            },
+            "103": {
+              "C": 0.0,
+              "H": 149.755859375,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.006589531396800474
+            },
+            "151": {
+              "C": 0.0,
+              "H": 75.836181640625,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.01284749558524169
+            },
+            "419": {
+              "C": 252.17041015625,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9960656317177705
+            },
+            "421": {
+              "C": 203.427001953125,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9951320907646397
+            },
+            "423": {
+              "C": 149.330078125,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.993391928343723
+            },
+            "451": {
+              "C": 120.076416015625,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.991808409579521
+            },
+            "39": {
+              "C": 2.17236328125,
+              "H": 20.60546875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.1280323184550202
+            },
+            "41": {
+              "C": 0.0,
+              "H": 40.123291015625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.023739835513542022
+            },
+            "43": {
+              "C": 0.0,
+              "H": 21.4375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.042666666666666665
+            },
+            "66": {
+              "C": 36.709716796875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9741666929456655
+            },
+            "68": {
+              "C": 20.630615234375,
+              "H": 4.011962890625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.8118814603034968
+            },
+            "104": {
+              "C": 7.755615234375,
+              "H": 15.470703125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.3470825631248367
+            },
+            "108": {
+              "C": 0.0,
+              "H": 80.583251953125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.0121089927600285
+            },
+            "242": {
+              "C": 0.88330078125,
+              "H": 21.953369140625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.0758274272345696
+            },
+            "129": {
+              "C": 0.0,
+              "H": 44.1669921875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.021660497091485986
+            },
+            "152": {
+              "C": 0.0,
+              "H": 6.70654296875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.1148561494027256
+            },
+            "221": {
+              "C": 0.0,
+              "H": 69.4833984375,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.013989262148390006
+            },
+            "452": {
+              "C": 85.8115234375,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9886119729979204
+            },
+            "454": {
+              "C": 34.70849609375,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9727583500711635
+            },
+            "456": {
+              "C": 0.0,
+              "H": 22.15576171875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.041397990742050896
+            },
+            "479": {
+              "C": 39.018310546875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9756206438864122
+            },
+            "481": {
+              "C": 0.0,
+              "H": 16.35595703125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.05447822732955603
+            },
+            "892": {
+              "C": 138.16748046875,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9928656775690353
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "dc18255b9d768e26bb298d7c90b2efac5bf102fd22f6de70eebcf8f28e916d79"
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 2,
+      "case_optimizer_maintenance": "preserve_by_id",
+      "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "training_seconds": 3.905566400149837,
+      "summary": {
+        "task": "cartpole",
+        "env_id": "CartPole-v1",
+        "profile": "smoke",
+        "seed": 10,
+        "total_timesteps": 2048,
+        "configured_total_timesteps": 2048,
+        "actual_timesteps": 2048,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 462.6666564941406,
+          "std_return": 27.88468360900879,
+          "min_return": 433.0,
+          "max_return": 500.0,
+          "mean_length": 462.6666564941406
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": 462.6666564941406,
+          "std_return": 27.88468360900879,
+          "min_return": 433.0,
+          "max_return": 500.0,
+          "mean_length": 462.6666564941406
+        },
+        "selected_step": 2048,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 2048,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 500.0,
+          "best_mean_return": null,
+          "evaluations": 0,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 2048
+        },
+        "case_entries": 128,
+        "critic_case_entries": 128,
+        "action_counts": [
+          63,
+          65
+        ],
+        "cases_pruned": 1017,
+        "cases_replaced": 2485,
+        "actor_cases_pruned": 786,
+        "actor_cases_replaced": 796,
+        "critic_cases_pruned": 231,
+        "critic_cases_replaced": 1689,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 242,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 5,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s10\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s10"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 3580.4228515625,
+        "critic_holdout_explained_variance": -0.06570470333099365,
+        "critic_holdout_value_mean": 18.829679489135742,
+        "critic_holdout_target_mean": 72.5331802368164,
+        "critic_holdout_samples": 699,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 699,
+        "critic_holdout_mean_episode_return": 349.5,
+        "critic_holdout_mean_episode_length": 349.5,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 0,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40020
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "0": {
+              "C": 0.0,
+              "H": 377.701171875,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.002633650022890122
+            },
+            "38": {
+              "C": 255.84765625,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9961217409747156
+            },
+            "103": {
+              "C": 317.6376953125,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9968714578578652
+            },
+            "159": {
+              "C": 0.0,
+              "H": 84.7275390625,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.01153036291366866
+            },
+            "243": {
+              "C": 29.82275390625,
+              "H": 4.873046875,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.8399531622157466
+            },
+            "245": {
+              "C": 0.0,
+              "H": 114.7275390625,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.008566958646018958
+            },
+            "314": {
+              "C": 98.86669921875,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9900859252087619
+            },
+            "373": {
+              "C": 0.0,
+              "H": 64.37939453125,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.015064915958659752
+            },
+            "1": {
+              "C": 0.0,
+              "H": 355.70068359375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.002795633460784006
+            },
+            "39": {
+              "C": 100.36083984375,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9902306389677297
+            },
+            "41": {
+              "C": 16.0751953125,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9446755632395051
+            },
+            "66": {
+              "C": 223.8056640625,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9955714131257434
+            },
+            "68": {
+              "C": 181.64453125,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9945546976368238
+            },
+            "104": {
+              "C": 123.2470703125,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9920157813072599
+            },
+            "244": {
+              "C": 0.0,
+              "H": 102.90087890625,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.009532808594422749
+            },
+            "272": {
+              "C": 0.0,
+              "H": 191.1435546875,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.005177496094125261
+            },
+            "271": {
+              "C": 0.0,
+              "H": 63.99462890625,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.015152748285327434
+            },
+            "74": {
+              "C": 12.28857421875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9300140108669651
+            },
+            "45": {
+              "C": 0.0,
+              "H": 35.60986328125,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.02658876987990912
+            },
+            "84": {
+              "C": 0.0,
+              "H": 143.3056640625,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.00688204418218599
+            },
+            "110": {
+              "C": 0.0,
+              "H": 63.982421875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.015155551608797325
+            },
+            "129": {
+              "C": 31.859375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.970466082141209
+            },
+            "133": {
+              "C": 0.0,
+              "H": 18.189453125,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.049530811647479925
+            },
+            "315": {
+              "C": 68.85302734375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9858862770231622
+            },
+            "481": {
+              "C": 0.0,
+              "H": 46.205078125,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.020744702402657914
+            },
+            "2024": {
+              "C": 212.04150390625,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.995328008905983
+            },
+            "75": {
+              "C": 14.24951171875,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9384596892935485
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "d3b439587c472406c754708346989ba42b04a4e141e41581c87620cbf92043cc"
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__reset/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 2,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__reset\\s8",
+      "training_seconds": 0.8429992999881506,
+      "summary": {
+        "task": "acrobot",
+        "env_id": "Acrobot-v1",
+        "profile": "smoke",
+        "seed": 8,
+        "total_timesteps": 2048,
+        "configured_total_timesteps": 2048,
+        "actual_timesteps": 2048,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": -458.0,
+          "std_return": 59.396968841552734,
+          "min_return": -500.0,
+          "max_return": -374.0,
+          "mean_length": 458.3333435058594
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": -458.0,
+          "std_return": 59.396968841552734,
+          "min_return": -500.0,
+          "max_return": -374.0,
+          "mean_length": 458.3333435058594
+        },
+        "selected_step": 2048,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 2048,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 0.0,
+          "best_mean_return": null,
+          "evaluations": 0,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 2048
+        },
+        "case_entries": 0,
+        "critic_case_entries": 128,
+        "action_counts": [
+          0,
+          0,
+          0
+        ],
+        "cases_pruned": 20,
+        "cases_replaced": 1900,
+        "actor_cases_pruned": 0,
+        "actor_cases_replaced": 0,
+        "critic_cases_pruned": 20,
+        "critic_cases_replaced": 1900,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 48,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 1,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__reset\\s8\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__reset\\s8"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 4464.02685546875,
+        "critic_holdout_explained_variance": 0.06854361295700073,
+        "critic_holdout_value_mean": -20.061756134033203,
+        "critic_holdout_target_mean": -84.0820541381836,
+        "critic_holdout_samples": 1000,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 1000,
+        "critic_holdout_mean_episode_return": -500.0,
+        "critic_holdout_mean_episode_length": 500.0,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 2,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40016
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "2019": {
+              "C": 249.84228515625,
+              "H": 0.0,
+              "exposure": 5,
+              "smoothing": 1.0,
+              "Q": 0.9960292609345585
+            },
+            "2020": {
+              "C": 316.4228515625,
+              "H": 0.0,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.9968595218744729
+            },
+            "2024": {
+              "C": 184.2861328125,
+              "H": 0.0,
+              "exposure": 5,
+              "smoothing": 1.0,
+              "Q": 0.9946319139009315
+            },
+            "2025": {
+              "C": 295.859375,
+              "H": 0.0,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.9966427110108588
+            },
+            "2026": {
+              "C": 157.93603515625,
+              "H": 0.0,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.9937475003739898
+            },
+            "2030": {
+              "C": 39.38427734375,
+              "H": 14.234375,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.7260923384866602
+            },
+            "2036": {
+              "C": 0.0,
+              "H": 201.3134765625,
+              "exposure": 5,
+              "smoothing": 1.0,
+              "Q": 0.004918513110431186
+            },
+            "2047": {
+              "C": 0.0,
+              "H": 849.54296875,
+              "exposure": 5,
+              "smoothing": 1.0,
+              "Q": 0.00117433886098305
+            },
+            "2021": {
+              "C": 82.99365234375,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9882344154836931
+            },
+            "2023": {
+              "C": 67.30029296875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9855700465732383
+            },
+            "2031": {
+              "C": 8.9326171875,
+              "H": 0.03271484375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9058200115776818
+            },
+            "2035": {
+              "C": 0.0,
+              "H": 67.58740234375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.014370417149072027
+            },
+            "2015": {
+              "C": 40.57958984375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9765145694528858
+            },
+            "2016": {
+              "C": 37.96533203125,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9749783137240529
+            },
+            "2029": {
+              "C": 0.0,
+              "H": 3.71533203125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.17496796240922682
+            },
+            "2037": {
+              "C": 0.0,
+              "H": 124.837890625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.007884079395143283
+            },
+            "2018": {
+              "C": 37.021484375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9743730917463337
+            },
+            "2028": {
+              "C": 4.1943359375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8385621945451679
+            },
+            "893": {
+              "C": 0.0,
+              "H": 154.54833984375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.00638780328809679
+            },
+            "2042": {
+              "C": 0.0,
+              "H": 78.73828125,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.012385698388891577
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "1445b31ea8648272b688bdd71443fe55efa0112a466dcd1acf8db187bc48828f"
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 2,
+      "case_optimizer_maintenance": "preserve_by_id",
+      "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "training_seconds": 0.8775911000557244,
+      "summary": {
+        "task": "acrobot",
+        "env_id": "Acrobot-v1",
+        "profile": "smoke",
+        "seed": 8,
+        "total_timesteps": 2048,
+        "configured_total_timesteps": 2048,
+        "actual_timesteps": 2048,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": -458.0,
+          "std_return": 59.396968841552734,
+          "min_return": -500.0,
+          "max_return": -374.0,
+          "mean_length": 458.3333435058594
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": -458.0,
+          "std_return": 59.396968841552734,
+          "min_return": -500.0,
+          "max_return": -374.0,
+          "mean_length": 458.3333435058594
+        },
+        "selected_step": 2048,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 2048,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 0.0,
+          "best_mean_return": null,
+          "evaluations": 0,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 2048
+        },
+        "case_entries": 0,
+        "critic_case_entries": 128,
+        "action_counts": [
+          0,
+          0,
+          0
+        ],
+        "cases_pruned": 20,
+        "cases_replaced": 1900,
+        "actor_cases_pruned": 0,
+        "actor_cases_replaced": 0,
+        "critic_cases_pruned": 20,
+        "critic_cases_replaced": 1900,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 48,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 1,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s8\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s8"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 4464.85693359375,
+        "critic_holdout_explained_variance": 0.06848418712615967,
+        "critic_holdout_value_mean": -20.055452346801758,
+        "critic_holdout_target_mean": -84.0820541381836,
+        "critic_holdout_samples": 1000,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 1000,
+        "critic_holdout_mean_episode_return": -500.0,
+        "critic_holdout_mean_episode_length": 500.0,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 2,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40016
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "2019": {
+              "C": 249.849609375,
+              "H": 0.0,
+              "exposure": 5,
+              "smoothing": 1.0,
+              "Q": 0.9960293764104632
+            },
+            "2020": {
+              "C": 316.42919921875,
+              "H": 0.0,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.9968595844776376
+            },
+            "2024": {
+              "C": 184.2861328125,
+              "H": 0.0,
+              "exposure": 5,
+              "smoothing": 1.0,
+              "Q": 0.9946319139009315
+            },
+            "2025": {
+              "C": 295.86767578125,
+              "H": 0.0,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.9966428045695889
+            },
+            "2026": {
+              "C": 157.94384765625,
+              "H": 0.0,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.9937478057790057
+            },
+            "2030": {
+              "C": 39.39306640625,
+              "H": 14.234375,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.7261356155365372
+            },
+            "2036": {
+              "C": 0.0,
+              "H": 201.3134765625,
+              "exposure": 5,
+              "smoothing": 1.0,
+              "Q": 0.004918513110431186
+            },
+            "2047": {
+              "C": 0.0,
+              "H": 849.54296875,
+              "exposure": 5,
+              "smoothing": 1.0,
+              "Q": 0.00117433886098305
+            },
+            "2021": {
+              "C": 82.99365234375,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9882344154836931
+            },
+            "2023": {
+              "C": 67.30029296875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9855700465732383
+            },
+            "2031": {
+              "C": 8.939453125,
+              "H": 0.03271484375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9058786880868676
+            },
+            "2035": {
+              "C": 0.0,
+              "H": 67.58740234375,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.014370417149072027
+            },
+            "2015": {
+              "C": 40.57958984375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9765145694528858
+            },
+            "2016": {
+              "C": 37.96533203125,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9749783137240529
+            },
+            "2029": {
+              "C": 0.0,
+              "H": 3.71533203125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.17496796240922682
+            },
+            "2037": {
+              "C": 0.0,
+              "H": 124.837890625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.007884079395143283
+            },
+            "2018": {
+              "C": 37.021484375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9743730917463337
+            },
+            "2028": {
+              "C": 4.1943359375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8385621945451679
+            },
+            "893": {
+              "C": 0.0,
+              "H": 154.6025390625,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.006385592506906293
+            },
+            "2042": {
+              "C": 0.0,
+              "H": 78.7275390625,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.012387346519083046
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "e06f07e6f612a70d24e6954918bd894ffa6a5531a829e81935f0c188ecc389f8"
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__reset/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 2,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__reset\\s9",
+      "training_seconds": 0.8663785001263022,
+      "summary": {
+        "task": "acrobot",
+        "env_id": "Acrobot-v1",
+        "profile": "smoke",
+        "seed": 9,
+        "total_timesteps": 2048,
+        "configured_total_timesteps": 2048,
+        "actual_timesteps": 2048,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": -458.0,
+          "std_return": 59.396968841552734,
+          "min_return": -500.0,
+          "max_return": -374.0,
+          "mean_length": 458.3333435058594
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": -458.0,
+          "std_return": 59.396968841552734,
+          "min_return": -500.0,
+          "max_return": -374.0,
+          "mean_length": 458.3333435058594
+        },
+        "selected_step": 2048,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 2048,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 0.0,
+          "best_mean_return": null,
+          "evaluations": 0,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 2048
+        },
+        "case_entries": 3,
+        "critic_case_entries": 128,
+        "action_counts": [
+          2,
+          1,
+          0
+        ],
+        "cases_pruned": 38,
+        "cases_replaced": 1882,
+        "actor_cases_pruned": 0,
+        "actor_cases_replaced": 0,
+        "critic_cases_pruned": 38,
+        "critic_cases_replaced": 1882,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 48,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 1,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__reset\\s9\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__reset\\s9"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 3551.03759765625,
+        "critic_holdout_explained_variance": 0.12382662296295166,
+        "critic_holdout_value_mean": -25.911277770996094,
+        "critic_holdout_target_mean": -81.79737854003906,
+        "critic_holdout_samples": 944,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 944,
+        "critic_holdout_mean_episode_return": -471.5,
+        "critic_holdout_mean_episode_length": 472.0,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 1,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40018
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "2020": {
+              "C": 80.48388671875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9878764199920675
+            },
+            "2021": {
+              "C": 194.73681640625,
+              "H": 0.0,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.994917067286811
+            },
+            "2026": {
+              "C": 122.99560546875,
+              "H": 1.5244140625,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.9800473152639968
+            },
+            "2027": {
+              "C": 103.9833984375,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9905645599712514
+            },
+            "2031": {
+              "C": 11.0166015625,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9231750318853628
+            },
+            "2036": {
+              "C": 0.0,
+              "H": 337.42041015625,
+              "exposure": 7,
+              "smoothing": 1.0,
+              "Q": 0.002946198784980716
+            },
+            "2037": {
+              "C": 0.0,
+              "H": 168.890625,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.005851696077534973
+            },
+            "2042": {
+              "C": 0.0,
+              "H": 82.671875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.011810297102786492
+            },
+            "2022": {
+              "C": 98.8330078125,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9900826126117401
+            },
+            "2024": {
+              "C": 118.08935546875,
+              "H": 0.0,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.9916728672903884
+            },
+            "2025": {
+              "C": 96.30078125,
+              "H": 0.0,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.9898271408702564
+            },
+            "2032": {
+              "C": 0.0,
+              "H": 59.35107421875,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.016299633099079166
+            },
+            "2023": {
+              "C": 58.86669921875,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9835706550078216
+            },
+            "2035": {
+              "C": 0.0,
+              "H": 169.6953125,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.005824270828593529
+            },
+            "1964": {
+              "C": 0.0,
+              "H": 54.1689453125,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.017803432028791488
+            },
+            "2028": {
+              "C": 33.93896484375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9721750472127495
+            },
+            "2029": {
+              "C": 21.2412109375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9569729820580697
+            },
+            "2030": {
+              "C": 15.4013671875,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9425332510241876
+            },
+            "2038": {
+              "C": 0.0,
+              "H": 35.4716796875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.026686820776106956
+            },
+            "2039": {
+              "C": 0.0,
+              "H": 37.53564453125,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.025293630895774927
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "762266c2b3dba3630596a2fd1acd39501935e5e9ccabd82623e9660e9b9bbb39"
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 2,
+      "case_optimizer_maintenance": "preserve_by_id",
+      "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "training_seconds": 0.8642140999436378,
+      "summary": {
+        "task": "acrobot",
+        "env_id": "Acrobot-v1",
+        "profile": "smoke",
+        "seed": 9,
+        "total_timesteps": 2048,
+        "configured_total_timesteps": 2048,
+        "actual_timesteps": 2048,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": -458.0,
+          "std_return": 59.396968841552734,
+          "min_return": -500.0,
+          "max_return": -374.0,
+          "mean_length": 458.3333435058594
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": -458.0,
+          "std_return": 59.396968841552734,
+          "min_return": -500.0,
+          "max_return": -374.0,
+          "mean_length": 458.3333435058594
+        },
+        "selected_step": 2048,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 2048,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 0.0,
+          "best_mean_return": null,
+          "evaluations": 0,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 2048
+        },
+        "case_entries": 3,
+        "critic_case_entries": 128,
+        "action_counts": [
+          2,
+          1,
+          0
+        ],
+        "cases_pruned": 36,
+        "cases_replaced": 1884,
+        "actor_cases_pruned": 0,
+        "actor_cases_replaced": 0,
+        "critic_cases_pruned": 36,
+        "critic_cases_replaced": 1884,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 48,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 1,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s9\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s9"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 3629.828125,
+        "critic_holdout_explained_variance": 0.11577904224395752,
+        "critic_holdout_value_mean": -25.2454776763916,
+        "critic_holdout_target_mean": -81.79737854003906,
+        "critic_holdout_samples": 944,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 944,
+        "critic_holdout_mean_episode_return": -471.5,
+        "critic_holdout_mean_episode_length": 472.0,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 1,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40018
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "2025": {
+              "C": 373.16357421875,
+              "H": 0.0,
+              "exposure": 7,
+              "smoothing": 1.0,
+              "Q": 0.997334496020616
+            },
+            "2026": {
+              "C": 308.68603515625,
+              "H": 0.0,
+              "exposure": 8,
+              "smoothing": 1.0,
+              "Q": 0.9967813165484021
+            },
+            "2027": {
+              "C": 188.47802734375,
+              "H": 0.0,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.9947500506281739
+            },
+            "2031": {
+              "C": 35.73583984375,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9734999935302718
+            },
+            "2032": {
+              "C": 82.49072265625,
+              "H": 0.0,
+              "exposure": 6,
+              "smoothing": 1.0,
+              "Q": 0.9881643810283349
+            },
+            "2036": {
+              "C": 0.0,
+              "H": 171.58251953125,
+              "exposure": 7,
+              "smoothing": 1.0,
+              "Q": 0.005760948756248295
+            },
+            "2037": {
+              "C": 0.0,
+              "H": 148.97998046875,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.006623394683820224
+            },
+            "2042": {
+              "C": 0.0,
+              "H": 75.8759765625,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.01284093046585993
+            },
+            "2035": {
+              "C": 0.40087890625,
+              "H": 54.72705078125,
+              "exposure": 5,
+              "smoothing": 1.0,
+              "Q": 0.0245217866972085
+            },
+            "2043": {
+              "C": 0.0,
+              "H": 138.111328125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.007137181649636868
+            },
+            "2033": {
+              "C": 29.0888671875,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9678341448091723
+            },
+            "2047": {
+              "C": 0.0,
+              "H": 309.5634765625,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.0032096188264204286
+            },
+            "2034": {
+              "C": 1.86865234375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.7415120535150826
+            },
+            "1964": {
+              "C": 0.0,
+              "H": 99.58251953125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.009844213400243221
+            },
+            "2028": {
+              "C": 48.35302734375,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9801402209012539
+            },
+            "2029": {
+              "C": 21.2412109375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9569729820580697
+            },
+            "2030": {
+              "C": 15.4013671875,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9425332510241876
+            },
+            "2038": {
+              "C": 0.0,
+              "H": 35.4716796875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.026686820776106956
+            },
+            "2039": {
+              "C": 0.0,
+              "H": 37.53564453125,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.025293630895774927
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "e6cc0fbb6c97e57ed71f47c8af5eb9f7d0116650229b66e325f09dcc27349acb"
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__reset/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 2,
+      "case_optimizer_maintenance": "reset",
+      "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__reset\\s10",
+      "training_seconds": 0.8285858000162989,
+      "summary": {
+        "task": "acrobot",
+        "env_id": "Acrobot-v1",
+        "profile": "smoke",
+        "seed": 10,
+        "total_timesteps": 2048,
+        "configured_total_timesteps": 2048,
+        "actual_timesteps": 2048,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": -458.0,
+          "std_return": 59.396968841552734,
+          "min_return": -500.0,
+          "max_return": -374.0,
+          "mean_length": 458.3333435058594
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": -458.0,
+          "std_return": 59.396968841552734,
+          "min_return": -500.0,
+          "max_return": -374.0,
+          "mean_length": 458.3333435058594
+        },
+        "selected_step": 2048,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 2048,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 0.0,
+          "best_mean_return": null,
+          "evaluations": 0,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 2048
+        },
+        "case_entries": 0,
+        "critic_case_entries": 128,
+        "action_counts": [
+          0,
+          0,
+          0
+        ],
+        "cases_pruned": 24,
+        "cases_replaced": 1896,
+        "actor_cases_pruned": 0,
+        "actor_cases_replaced": 0,
+        "critic_cases_pruned": 24,
+        "critic_cases_replaced": 1896,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 48,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 1,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__reset\\s10\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__reset\\s10"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 4336.8974609375,
+        "critic_holdout_explained_variance": 0.13445091247558594,
+        "critic_holdout_value_mean": -20.529476165771484,
+        "critic_holdout_target_mean": -83.5895767211914,
+        "critic_holdout_samples": 1000,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 1000,
+        "critic_holdout_mean_episode_return": -500.0,
+        "critic_holdout_mean_episode_length": 500.0,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 2,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40020
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "2009": {
+              "C": 21.0537109375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.9566230355403058
+            },
+            "2011": {
+              "C": 36.412109375,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9739665429399502
+            },
+            "2013": {
+              "C": 52.34814453125,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9816001078118682
+            },
+            "2015": {
+              "C": 40.03076171875,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9762079020434717
+            },
+            "2016": {
+              "C": 33.89404296875,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9721402239120676
+            },
+            "2017": {
+              "C": 21.77978515625,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9579474754111825
+            },
+            "2019": {
+              "C": 0.0,
+              "H": 2.30224609375,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.2324367268187493
+            },
+            "2033": {
+              "C": 0.0,
+              "H": 115.4150390625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.008516796553358895
+            },
+            "2008": {
+              "C": 54.85107421875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9824101828550815
+            },
+            "2010": {
+              "C": 54.853515625,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9824109381978082
+            },
+            "2014": {
+              "C": 36.41357421875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9739675356865936
+            },
+            "2020": {
+              "C": 4.83837890625,
+              "H": 0.87353515625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.7570596429023679
+            },
+            "2023": {
+              "C": 0.0,
+              "H": 15.716796875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.05644361150920516
+            },
+            "2028": {
+              "C": 0.0,
+              "H": 61.1455078125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.015836439275606625
+            },
+            "2034": {
+              "C": 0.0,
+              "H": 65.85498046875,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.014737311735879742
+            },
+            "2027": {
+              "C": 0.0,
+              "H": 25.265625,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.03667621776504298
+            },
+            "2018": {
+              "C": 148.5205078125,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9933563870164079
+            },
+            "2021": {
+              "C": 2.93603515625,
+              "H": 4.22265625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.42975955643226527
+            },
+            "2026": {
+              "C": 0.0,
+              "H": 39.8955078125,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.023868907484674018
+            },
+            "2029": {
+              "C": 0.0,
+              "H": 37.12353515625,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.0255600624024961
+            },
+            "2012": {
+              "C": 269.90966796875,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9963223080390252
+            },
+            "2024": {
+              "C": 74.53564453125,
+              "H": 7.439453125,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.8995005262209198
+            },
+            "2025": {
+              "C": 133.31396484375,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9926097797728807
+            },
+            "2030": {
+              "C": 20.66455078125,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9558782342676174
+            },
+            "2031": {
+              "C": 30.08642578125,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9688341728425122
+            },
+            "2032": {
+              "C": 20.99853515625,
+              "H": 3.31591796875,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.835986788391598
+            },
+            "2042": {
+              "C": 0.0,
+              "H": 149.64404296875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.0065943902603946974
+            },
+            "2043": {
+              "C": 0.0,
+              "H": 311.61669921875,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.003188605716759019
+            },
+            "2044": {
+              "C": 0.0,
+              "H": 207.1005859375,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.004782387364035886
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "668ef5d90897a9f9ad3f1552999e0ff61cd0c5e10fedfc5622c74888235c48e1"
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "actor_type": "nnknn",
+      "critic_type": "nnknn",
+      "configured_target_mode": "ema",
+      "audit_queries_per_batch": 2,
+      "case_optimizer_maintenance": "preserve_by_id",
+      "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+      "versions": {
+        "torch": "2.14.0+xpu",
+        "gymnasium": "1.3.0"
+      },
+      "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "training_seconds": 0.8254741998389363,
+      "summary": {
+        "task": "acrobot",
+        "env_id": "Acrobot-v1",
+        "profile": "smoke",
+        "seed": 10,
+        "total_timesteps": 2048,
+        "configured_total_timesteps": 2048,
+        "actual_timesteps": 2048,
+        "eval_episodes": 3,
+        "success_threshold": null,
+        "passed": true,
+        "algorithm": "nnknn_actor_critic_separate_memory_gae",
+        "actor_type": "nnknn",
+        "critic_type": "nnknn",
+        "architecture": {
+          "separate_case_bases": true,
+          "shared_nnknn_representation": true,
+          "critic_target_shared_case_store": true,
+          "actor_case_insertion": "raw_positive_advantage_only"
+        },
+        "gae": {
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "advantage_clip": 5.0
+        },
+        "exploration": {
+          "mode": "epsilon_mixed_policy",
+          "applies_to_actor": true,
+          "initial_epsilon": 1.0,
+          "final_epsilon": 0.05,
+          "fraction": 0.5,
+          "final_step_epsilon": 0.05,
+          "readiness": {
+            "min_case_entries": 8,
+            "min_cases_per_action": 2
+          }
+        },
+        "final_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": -458.0,
+          "std_return": 59.396968841552734,
+          "min_return": -500.0,
+          "max_return": -374.0,
+          "mean_length": 458.3333435058594
+        },
+        "last_eval": {
+          "episodes": 3,
+          "seed": 10000,
+          "mean_return": -458.0,
+          "std_return": 59.396968841552734,
+          "min_return": -500.0,
+          "max_return": -374.0,
+          "mean_length": 458.3333435058594
+        },
+        "selected_step": 2048,
+        "selected_source": "final",
+        "training_efficiency": {
+          "best_model_step": 2048,
+          "best_model_training_fraction": 1.0,
+          "first_success_step": null,
+          "first_success_training_fraction": null,
+          "best_minus_last_return": 0.0,
+          "budget_interpretation": "final_is_best_check_for_underfit"
+        },
+        "early_stopping": {
+          "enabled": false,
+          "patience": 30,
+          "min_delta": 1.0,
+          "min_steps": 25000,
+          "target_score": 0.0,
+          "best_mean_return": null,
+          "evaluations": 0,
+          "evaluations_without_improvement": 0,
+          "stopped_early": false,
+          "stopping_reason": "budget_exhausted",
+          "stopping_step": 2048
+        },
+        "case_entries": 0,
+        "critic_case_entries": 128,
+        "action_counts": [
+          0,
+          0,
+          0
+        ],
+        "cases_pruned": 24,
+        "cases_replaced": 1896,
+        "actor_cases_pruned": 0,
+        "actor_cases_replaced": 0,
+        "critic_cases_pruned": 24,
+        "critic_cases_replaced": 1896,
+        "critic_label_updates": 0,
+        "critic_label_update_samples": 0,
+        "partial_rollout_segments": 1,
+        "partial_rollout_samples": 48,
+        "critic_target_enabled": true,
+        "critic_target_value_mode": "ema",
+        "critic_target_sync_interval": 4,
+        "critic_target_ema_tau": 0.05,
+        "critic_target_value_syncs": 1,
+        "critic_holdout_evaluations": 0,
+        "latest_critic_holdout": null,
+        "checkpoint_path": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s10\\checkpoint.pt",
+        "run_dir": "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\optimizer_alignment\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s10"
+      },
+      "independent_mc": {
+        "critic_holdout_mse": 4347.6005859375,
+        "critic_holdout_explained_variance": 0.13378560543060303,
+        "critic_holdout_value_mean": -20.444116592407227,
+        "critic_holdout_target_mean": -83.5853500366211,
+        "critic_holdout_samples": 1000,
+        "critic_holdout_episodes": 2,
+        "critic_holdout_environment_steps": 1000,
+        "critic_holdout_mean_episode_return": -500.0,
+        "critic_holdout_mean_episode_length": 500.0,
+        "critic_holdout_behavior_epsilon": 0.05,
+        "critic_holdout_truncated_bootstraps": 2,
+        "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+        "critic_holdout_bootstrap_source": "target_value_model",
+        "critic_holdout_seed": 40020
+      },
+      "audit_events": 8,
+      "interventions": 64,
+      "credit": [
+        {
+          "role": "critic",
+          "stream": "independent_mc",
+          "cases": {
+            "2011": {
+              "C": 42.85693359375,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9777069023697301
+            },
+            "2013": {
+              "C": 59.09423828125,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9836318443746453
+            },
+            "2015": {
+              "C": 46.27392578125,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9792848834268952
+            },
+            "2016": {
+              "C": 39.86669921875,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.976114668252802
+            },
+            "2017": {
+              "C": 43.79833984375,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9781651473959166
+            },
+            "2019": {
+              "C": 3.81005859375,
+              "H": 0.0,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.8278846961929573
+            },
+            "2026": {
+              "C": 0.0,
+              "H": 60.4892578125,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.0160027504727375
+            },
+            "2033": {
+              "C": 0.0,
+              "H": 111.15087890625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.008837757246486258
+            },
+            "2010": {
+              "C": 74.96044921875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9870063128509342
+            },
+            "2014": {
+              "C": 55.2783203125,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9825413874823112
+            },
+            "2020": {
+              "C": 23.01513671875,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9600242040951767
+            },
+            "2023": {
+              "C": 0.787109375,
+              "H": 0.17724609375,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.6028660846647999
+            },
+            "2027": {
+              "C": 0.0,
+              "H": 30.2021484375,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.0310538286580743
+            },
+            "2028": {
+              "C": 0.0,
+              "H": 44.42431640625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.021540435646896727
+            },
+            "2034": {
+              "C": 0.0,
+              "H": 111.787109375,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.008788341715443107
+            },
+            "2018": {
+              "C": 148.5205078125,
+              "H": 0.0,
+              "exposure": 4,
+              "smoothing": 1.0,
+              "Q": 0.9933563870164079
+            },
+            "2021": {
+              "C": 2.93603515625,
+              "H": 4.22265625,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.42975955643226527
+            },
+            "2029": {
+              "C": 0.0,
+              "H": 37.12353515625,
+              "exposure": 1,
+              "smoothing": 1.0,
+              "Q": 0.0255600624024961
+            },
+            "2012": {
+              "C": 269.90966796875,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9963223080390252
+            },
+            "2024": {
+              "C": 74.53564453125,
+              "H": 7.439453125,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.8995005262209198
+            },
+            "2025": {
+              "C": 133.31396484375,
+              "H": 0.0,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.9926097797728807
+            },
+            "2030": {
+              "C": 20.66455078125,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9558782342676174
+            },
+            "2031": {
+              "C": 30.08642578125,
+              "H": 0.0,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.9688341728425122
+            },
+            "2032": {
+              "C": 20.99853515625,
+              "H": 3.31591796875,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.835986788391598
+            },
+            "2042": {
+              "C": 0.0,
+              "H": 149.64404296875,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.0065943902603946974
+            },
+            "2043": {
+              "C": 0.0,
+              "H": 311.61669921875,
+              "exposure": 3,
+              "smoothing": 1.0,
+              "Q": 0.003188605716759019
+            },
+            "2044": {
+              "C": 0.0,
+              "H": 207.1005859375,
+              "exposure": 2,
+              "smoothing": 1.0,
+              "Q": 0.004782387364035886
+            }
+          }
+        }
+      ],
+      "checkpoint_sha256": "6f753611773e5677cc1abfe3e87ef0e62f34a77009155ba96e2f60c37b291d13"
+    }
+  ],
+  "source_fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+  "versions": {
+    "torch": "2.14.0+xpu",
+    "gymnasium": "1.3.0"
+  }
+}

@@ -1,0 +1,10 @@
+global_step,completed_episodes,diagnostic_index,critic_holdout_mse,critic_holdout_explained_variance,critic_holdout_value_mean,critic_holdout_target_mean,critic_holdout_samples,critic_holdout_episodes,critic_holdout_environment_steps,critic_holdout_mean_episode_return,critic_holdout_mean_episode_length,critic_holdout_behavior_epsilon,critic_holdout_truncated_bootstraps,critic_holdout_target_method,critic_holdout_bootstrap_source,critic_holdout_seed
+2539,100,1,603.4978637695312,-0.022794127464294434,2.543010950088501,22.439348220825195,216,5,216,43.2,43.2,0.0,0,discounted_monte_carlo_with_truncation_bootstrap,online_value_model,30000
+6462,200,2,226.6908416748047,-0.0321650505065918,6.975739479064941,17.729263305664062,182,5,182,36.4,36.4,0.0,0,discounted_monte_carlo_with_truncation_bootstrap,online_value_model,30005
+12336,300,3,402.47003173828125,-0.0995016098022461,14.835898399353027,26.47010040283203,264,5,264,52.8,52.8,0.0,0,discounted_monte_carlo_with_truncation_bootstrap,online_value_model,30010
+23879,400,4,2016.2857666015625,-0.3875645399093628,29.428659439086914,62.457855224609375,1166,5,1166,233.2,233.2,0.0,0,discounted_monte_carlo_with_truncation_bootstrap,online_value_model,30015
+44949,500,5,899.6072998046875,-0.5107643604278564,45.53999710083008,49.75387191772461,720,5,720,144.0,144.0,0.0,0,discounted_monte_carlo_with_truncation_bootstrap,online_value_model,30020
+62649,600,6,675.3836669921875,0.15378892421722412,52.0325813293457,59.54183578491211,994,5,994,198.8,198.8,0.0,0,discounted_monte_carlo_with_truncation_bootstrap,online_value_model,30025
+85718,700,7,454.8887939453125,0.31401199102401733,58.70366287231445,59.533729553222656,1019,5,1019,203.8,203.8,0.0,0,discounted_monte_carlo_with_truncation_bootstrap,online_value_model,30030
+110163,800,8,488.3936767578125,0.3167375922203064,68.00598907470703,75.99017333984375,1770,5,1770,354.0,354.0,0.0,1,discounted_monte_carlo_with_truncation_bootstrap,online_value_model,30035
+140438,900,9,496.2935791015625,0.23739981651306152,74.77413177490234,76.1822509765625,1632,5,1632,326.4,326.4,0.0,1,discounted_monte_carlo_with_truncation_bootstrap,online_value_model,30040

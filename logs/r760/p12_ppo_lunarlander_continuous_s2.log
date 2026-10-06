@@ -1,0 +1,152 @@
+[ppo] step=135 episode=1 return=-442.7 length=135 lr=3.00e-04 entropy=None
+[ppo] step=261 episode=2 return=-235.4 length=126 lr=3.00e-04 entropy=None
+[ppo] step=481 episode=3 return=-214.9 length=220 lr=3.00e-04 entropy=None
+[ppo] step=659 episode=4 return=-647.7 length=178 lr=3.00e-04 entropy=None
+[ppo] step=745 episode=5 return=-465.0 length=86 lr=3.00e-04 entropy=None
+[ppo] step=1245 episode=10 return=-121.3 length=89 lr=3.00e-04 entropy=None
+[ppo] step=2451 episode=20 return=-119.7 length=87 lr=2.96e-04 entropy=2.8395
+[ppo] step=3531 episode=30 return=-73.1 length=85 lr=2.96e-04 entropy=2.8395
+[ppo] step=4692 episode=40 return=-311.3 length=107 lr=2.92e-04 entropy=2.845
+[ppo][eval] step=5000 mean_return=-240.87 max_return=-37.39
+[ppo] step=5857 episode=50 return=-391.4 length=98 lr=2.92e-04 entropy=2.845
+[ppo] step=6974 episode=60 return=-72.3 length=138 lr=2.88e-04 entropy=2.8538
+[ppo] step=8110 episode=70 return=37.4 length=146 lr=2.88e-04 entropy=2.8538
+[ppo] step=9371 episode=80 return=-119.3 length=146 lr=2.84e-04 entropy=2.8651
+[ppo][eval] step=10000 mean_return=-148.11 max_return=-18.07
+[ppo] step=10449 episode=90 return=-218.9 length=135 lr=2.80e-04 entropy=2.8691
+[ppo] step=11752 episode=100 return=49.0 length=94 lr=2.80e-04 entropy=2.8691
+[ppo] step=12872 episode=110 return=-182.5 length=114 lr=2.75e-04 entropy=2.8584
+[ppo] step=14083 episode=120 return=-175.0 length=108 lr=2.75e-04 entropy=2.8584
+[ppo][eval] step=15000 mean_return=-241.94 max_return=-111.01
+[ppo] step=15600 episode=130 return=-85.8 length=97 lr=2.71e-04 entropy=2.8509
+[ppo] step=17808 episode=140 return=-96.8 length=178 lr=2.67e-04 entropy=2.8558
+[ppo] step=19180 episode=150 return=-66.9 length=136 lr=2.63e-04 entropy=2.8649
+[ppo][eval] step=20000 mean_return=-177.76 max_return=-73.18
+[ppo] step=21721 episode=160 return=46.5 length=1000 lr=2.59e-04 entropy=2.8723
+[ppo] step=24090 episode=170 return=-56.9 length=178 lr=2.55e-04 entropy=2.883
+[ppo][eval] step=25000 mean_return=-146.03 max_return=219.90
+[ppo] step=28374 episode=180 return=-1.2 length=207 lr=2.47e-04 entropy=2.8869
+[ppo][eval] step=30000 mean_return=-86.25 max_return=236.01
+[ppo] step=30428 episode=190 return=-177.2 length=184 lr=2.43e-04 entropy=2.8995
+[ppo] step=34048 episode=200 return=8.2 length=122 lr=2.34e-04 entropy=2.9183
+[ppo][eval] step=35000 mean_return=-67.47 max_return=267.27
+[ppo] step=38666 episode=210 return=-157.0 length=443 lr=2.26e-04 entropy=2.9229
+[ppo][eval] step=40000 mean_return=-106.16 max_return=26.35
+[ppo] step=44180 episode=220 return=-44.6 length=207 lr=2.14e-04 entropy=2.8891
+[ppo][eval] step=45000 mean_return=-118.25 max_return=183.59
+[ppo] step=49087 episode=230 return=61.8 length=1000 lr=2.06e-04 entropy=2.884
+[ppo][eval] step=50000 mean_return=-119.16 max_return=161.32
+[ppo] step=54836 episode=240 return=83.1 length=1000 lr=1.94e-04 entropy=2.8647
+[ppo][eval] step=55000 mean_return=-125.47 max_return=174.95
+[ppo][eval] step=60000 mean_return=-87.73 max_return=170.81
+[ppo] step=64304 episode=250 return=67.3 length=1000 lr=1.73e-04 entropy=2.861
+[ppo][eval] step=65000 mean_return=-82.01 max_return=173.21
+[ppo][eval] step=70000 mean_return=-38.50 max_return=135.72
+[ppo] step=72990 episode=260 return=-7.2 length=1000 lr=1.57e-04 entropy=2.8286
+[ppo][eval] step=75000 mean_return=-90.68 max_return=77.44
+[ppo][eval] step=80000 mean_return=-81.86 max_return=98.93
+[ppo] step=82990 episode=270 return=63.3 length=1000 lr=1.36e-04 entropy=2.7517
+[ppo][eval] step=85000 mean_return=-60.46 max_return=-5.90
+[ppo][eval] step=90000 mean_return=-48.70 max_return=16.36
+[ppo] step=92492 episode=280 return=42.7 length=1000 lr=1.16e-04 entropy=2.7169
+[ppo][eval] step=95000 mean_return=17.23 max_return=192.51
+[ppo][eval] step=100000 mean_return=32.15 max_return=166.70
+[ppo] step=101691 episode=290 return=79.8 length=1000 lr=9.93e-05 entropy=2.7138
+[ppo][eval] step=105000 mean_return=97.18 max_return=185.01
+[ppo][eval] step=110000 mean_return=91.74 max_return=188.64
+[ppo] step=110582 episode=300 return=104.2 length=928 lr=8.29e-05 entropy=2.6804
+[ppo][eval] step=115000 mean_return=98.26 max_return=173.85
+[ppo] step=118365 episode=310 return=65.2 length=1000 lr=6.65e-05 entropy=2.672
+[ppo][eval] step=120000 mean_return=142.82 max_return=209.36
+[ppo][eval] step=125000 mean_return=137.57 max_return=204.08
+[ppo] step=126847 episode=320 return=106.4 length=1000 lr=5.01e-05 entropy=2.6707
+[ppo][eval] step=130000 mean_return=167.48 max_return=221.04
+[ppo][eval] step=135000 mean_return=145.74 max_return=219.37
+[ppo] step=135589 episode=330 return=137.0 length=935 lr=2.97e-05 entropy=2.6684
+[ppo][eval] step=140000 mean_return=161.67 max_return=207.00
+[ppo] step=143977 episode=340 return=90.2 length=1000 lr=1.33e-05 entropy=2.662
+[ppo][eval] step=145000 mean_return=136.01 max_return=207.63
+[ppo][eval] step=150000 mean_return=154.37 max_return=202.42
+[ppo] finished profile=fast mean_eval_return=167.48 passed=False run_dir=results/rl/ppo_lunarlander_continuous_20260828_014320_192811
+{
+  "task": "lunarlander_continuous",
+  "env_id": "LunarLander-v3",
+  "algorithm": "ppo_clipped_surrogate_gae",
+  "profile": "fast",
+  "seed": 2,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "updates": 74,
+  "rollout_length": 2048,
+  "action_kind": "continuous",
+  "eval_episodes": 20,
+  "success_threshold": 200.0,
+  "passed": false,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 167.48037719726562,
+    "std_return": 65.77932739257812,
+    "min_return": -27.016159057617188,
+    "max_return": 221.04461669921875,
+    "mean_length": 626.2000122070312
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 132.62954711914062,
+    "std_return": 81.05831909179688,
+    "min_return": -70.66976928710938,
+    "max_return": 203.36581420898438,
+    "mean_length": 733.25
+  },
+  "selected_step": 130000,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 130000,
+    "best_model_training_fraction": 0.8666666666666667,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 34.850830078125,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 280.0,
+    "best_mean_return": 167.48037719726562,
+    "evaluations": 30,
+    "evaluations_without_improvement": 4,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "run_dir": "results/rl/ppo_lunarlander_continuous_20260828_014320_192811"
+}
+Checkpoint: results/rl/ppo_lunarlander_continuous_20260828_014320_192811/checkpoint.pt
+	Command being timed: ".venv/bin/python tools/run_rl_ppo.py lunarlander_continuous --profile fast --seed 2 --device cpu --no-early-stopping --total-timesteps 150000"
+	User time (seconds): 287.16
+	System time (seconds): 1.46
+	Percent of CPU this job got: 125%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:49.77
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 825296
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 481957
+	Voluntary context switches: 223
+	Involuntary context switches: 4686
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 592
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
