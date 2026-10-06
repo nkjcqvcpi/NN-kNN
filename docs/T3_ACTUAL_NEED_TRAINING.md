@@ -1,5 +1,33 @@
 # Train-only actual host need preparation
 
+## October6 complete actual collection
+
+All192 prespecified train-only needs now complete and pass the independent
+source/ZIP/data/article split/host/decoder/exact prompt/tokenizer/output/journal
+auditor.128 fit/64 tune IDs remain fixed. The bounded profile with uniform256
+request ceiling produces16,705 input/9,926 output tokens in1,882.85 generation
+seconds. Both previously failing tune requests complete at118/186 tokens and
+512/510 need characters. All190 previously valid output strings remain exact.
+The previous complete128/256 runs retain their two failures and their full costs.
+
+Only4/128 fit and2/64 tune need strings exactly equal the original question.
+The declared lexical hash vectors change for100/128 fit and50/64 tune questions.
+Repeated text remains in the repaired requests;format success is not semantic
+repair. No driver replacement query or missing-need filtering is used.
+Read `T3_REQUEST_LOOP_DIAGNOSIS.md` for the actual failure/repair boundary.
+
+Three real original-question hard-negative controls have completed with the
+recorded earlier selected epochs3/4/1 and recall@2 .65625/.671875/.65625. The
+actual-need trainings,full independent gradient/state replays,common-query
+comparison and public outcome arms remain required before a fitted benefit claim.
+Driver90847 is still active. This completed collection is not global promotion.
+
+Evidence: `outputs/t3-train-need-queries-bounded-20261006/`,
+`outputs/neural-cbr-t3-train-need-query-bounded-verification.json`,
+`outputs/neural-cbr-t3-complete-need-collection-results.json`.
+The older preparation below is historical and describes the preserved earlier
+source/attempt;the complete bounded source is frozen149 `e26aac9c...`.
+
 The measured public request shift changes44/64 hash vectors and12 selected sets.
 `tools/t3_need_matching.py --need-queries` now fits/evaluates the actual emitted
 public needs while keeping original source targets,candidate banks,article split,

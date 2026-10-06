@@ -1,5 +1,12 @@
 # Handoff
 
+**2026-10-06 complete actual192 needs:** Full source/prompt/tokenizer/host/output/
+journal audit passes;192/192 valid,16,705 input/9,926 output/1,882.85 seconds.
+All190 old successes exact;two tune repairs512/510 chars preserve repetition.
+Fit/tune hash vectors change100/128 and50/64. Three original-question controls
+complete;actual fits/replays/public arms still run in90847. Read
+`docs/T3_ACTUAL_NEED_TRAINING.md`. Internal64-call driver96676 waits serially.
+
 **2026-10-06 actual internal experiment queued:** Session96676 waits for verified
 bounded owner23992,then64 fresh answer-only none/prompt/internal/combined calls
 and full independent audit. Source152 `225483f2...`;all242 tests pass. Remote
