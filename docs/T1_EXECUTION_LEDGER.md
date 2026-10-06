@@ -1,5 +1,11 @@
 # Continuous execution ledger — 2026-10-04
 
+October6 both192-query128/256 treatments fail on the same two repeating strings;
+190 other outputs exact,complete failed-accounting audits pass,neither fit starts.
+Optional bounded grammar implemented and actual backend continuation rejection
+verified.61 T3 tests pass. Read `T3_REQUEST_LOOP_DIAGNOSIS.md`;no successful actual
+need training claim. Full scientific and experiment gates remain open.
+
 October5 actual need145 truncates under128;collection continues and incomplete
 fitting is rejected. Uniform request-budget repair implemented with declared
 version2 manifests and matching public host/grammar/cap checks.59 T3 tests pass.

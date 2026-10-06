@@ -1,5 +1,12 @@
 # Handoff
 
+**2026-10-06 request repetition diagnosis:** Read
+`docs/T3_REQUEST_LOOP_DIAGNOSIS.md`. Both complete192-query128/256 treatments
+retain the same two repeating-string failures;190 outputs match exactly.
+No fitting starts. Actual backend replay blocks repetition under the optional
+512-need/128-state bounded grammar.61 T3 tests pass;fresh model diagnosis and
+complete new coverage still required. Drivers95436/95533/74501 terminal1.
+
 **2026-10-05 request collection failure/repair:** Read
 `docs/T3_REQUEST_BUDGET_REPAIR.md`. Frozen128-token collection observes a truncated
 request at145;finish and preserve all192,then reject incomplete fitting. New

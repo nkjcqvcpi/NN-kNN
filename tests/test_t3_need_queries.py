@@ -72,3 +72,13 @@ def test_extended_requests_require_explicit_uniform_budget(tmp_path):
     with pytest.raises(ValueError,match='decode ceiling'):load(tmp_path,task,artifact)
     artifact['protocol']['decode']['max_new_tokens']=256;artifact['protocol']['maximum_generated_tokens']=128
     with pytest.raises(ValueError,match='total budget'):load(tmp_path,task,artifact)
+
+
+def test_bounded_need_manifest_validates_actual_emitted_string(tmp_path):
+    task,artifact=fixture();artifact['protocol']['request_profile']='bounded'
+    with pytest.raises(ValueError,match='version2'):load(tmp_path,task,artifact)
+    artifact['protocol'].update(version=2,request_token_ceiling=256,decode={'max_new_tokens':256},maximum_calls=1,maximum_generated_tokens=256)
+    record=artifact['records'][0];record['request']['need']='x'*513;record['call']['output']=json.dumps(record['request'])
+    with pytest.raises(ValueError,match='bounded string'):load(tmp_path,task,artifact)
+    record['request']['need']='actual emitted bounded need';record['call']['output']=json.dumps(record['request'])
+    assert load(tmp_path,task,artifact)[0]['fit']=='actual emitted bounded need'
