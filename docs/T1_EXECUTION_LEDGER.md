@@ -1,5 +1,11 @@
 # Continuous execution ledger — 2026-10-04
 
+October5 public32 direct utility sets complete:128 actual calls/64 removal pairs,
+all exact prompt/journal/score/manual credit/complementarity checks pass;32 full
+outputs repeat source.12 helpful/11 harmful/41 zero;four task failures retained,
+no truth label/global update. Actual train-only need generation now running.
+Read `T3_PUBLIC_UTILITY_RESULTS.md`;scientific gates remain open.
+
 October5 strict plain80 complete and compared with constrained80:144 calls each,
 24 vs seven failures,all128 combined retrieval traces/3,552 manual candidates
 verify.144 raw plain outputs match legacy exactly;13 extra validation rejections.

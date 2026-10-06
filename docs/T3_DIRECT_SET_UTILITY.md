@@ -1,5 +1,11 @@
 # Direct public set utility preparation
 
+The32-set real experiment is now complete and independently verified in
+`T3_PUBLIC_UTILITY_RESULTS.md`:128 calls,64 observed removal pairs,four completed
+formatting failures retained,32 exact repeated full outputs and exact no-refill
+prompt/journal/score/C/H/Q/complementarity replay. There are12 helpful,11 harmful
+and41 zero conditional effects. No global update or case-truth inference follows.
+
 The T3 plan§9.3 prefers direct conditional removal:
 `u_i = J(q,S without i)-J(q,S)`. `model/t3/utility.py` now evaluates the exact
 delivered full set,each single removal and empty. It preserves order/content and
