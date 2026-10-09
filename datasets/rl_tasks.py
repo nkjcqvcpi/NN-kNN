@@ -40,6 +40,7 @@ class RLTaskSpec:
     # `target_mean_return` is the mean return treated as task-maximum for
     # immediate early stopping. None keeps the workflow-config defaults
     # (CartPole's 475/max_episode_steps behavior).
+    maximum_return: float | None = None
     success_threshold: float | None = None
     target_mean_return: float | None = None
     # Extra keyword arguments forwarded to `gymnasium.make` by the shared
@@ -81,12 +82,14 @@ _RL_TASKS: dict[str, RLTaskSpec] = {
             "Fast DQN sanity task used by the official PyTorch DQN tutorial.",
             "Engineering gate before moving to Atari/ALE, the DQN and NEC paper-aligned benchmark family.",
         ),
+        maximum_return=500.0,
         success_threshold=475.0,
         target_mean_return=500.0,
     ),
     "acrobot": RLTaskSpec(
         name="acrobot",
         env_id="Acrobot-v1",
+        maximum_return=0.0,
         family="classic_control",
         observation_kind="flat_box",
         action_kind="discrete",

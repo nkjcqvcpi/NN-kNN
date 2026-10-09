@@ -16,6 +16,8 @@ checkpoints/classifier_psych_depression_physical_symptons.h5
 dataset/__pycache__/reg_data.cpython-310.pyc
 dataset/__pycache__/reg_data.cpython-310.pyc
 *.h5
+*.pth
+*.pt
 *.pyc
 *.pyc.*
 __pycache__/
@@ -32,27 +34,20 @@ checkpoints/regression_covid_depressed_reg.h5
 checkpoints/regression_covid_lonely_reg.h5
 checkpoints/regression_covid_physical_reg.h5
 results/table1_kfold_20260418_213251/stdout.log
+/results/rl/
+/results/t0_battery/
+/results/t0_battery_xpu/
+/results/t0_benchmark/
+/results/t1_battery/
+/results/t1_benchmark/
 
-# Keep reproducible RL metrics and run metadata in Git, but never publish model
-# weights or local launch artifacts.
-#
-# Results are filed by the host that produced them (2026-09-08 reorganisation):
-#   results/r760/   Linux / H100 / CUDA
-#   results/g234/   Windows Server 2025 / i5-13400F / Intel Arc, CPU
-# One rule per host tree covers every battery underneath, so a new battery
-# directory needs no new ignore rule.
-/results/r760/**/*.pt
-/results/r760/**/*.pth
-/results/g234/**/*.pt
-/results/g234/**/*.pth
-# results/rl/ is the pre-reorganisation location and the runners' default
-# --output-dir; keep the same policy in case a run lands there unfiled.
-/results/rl/**/*.pt
-/results/rl/**/*.pth
+# T1 per-run artifacts stay on the experiment host (1.7 GB); only runs__*.jsonl shards are versioned
+results/t1/*/*/
+results/t1_invalid_fresh_adam/
+results/t1_smoke/
+logs/t1/
 
-# Console logs and PID files: the structured files in each run directory are the
-# canonical record. Collected under logs/<host>/ by the same reorganisation.
-/logs/
-/*.log
-/*.err
-/*pid*.txt
+# Revised PI verification artifacts: snapshots, checkpoints and event streams remain local.
+/results/t1_pi20260920/
+
+.pytest_cache/
