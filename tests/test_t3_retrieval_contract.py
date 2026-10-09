@@ -3,7 +3,7 @@ import json
 import pytest
 import torch
 
-from model.t1.core import CoreConfig, build_model
+from model.common.core import CoreConfig, build_model
 from model.t3.retrieval import Access, Case, Request, Retriever, conditional_credit
 from model.t3.orchestrator import Budget, run_loop
 

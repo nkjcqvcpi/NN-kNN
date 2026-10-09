@@ -13,7 +13,7 @@ import re
 
 import torch
 
-from model.t1.core import CoreConfig, build_model
+from model.common.core import CoreConfig, build_model
 from .retrieval import Request
 
 

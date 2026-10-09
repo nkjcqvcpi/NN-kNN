@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 import sys
 
-from model.t1.artifacts import source_fingerprint
+from model.common.artifacts import source_fingerprint
 from model.t3.benchmarks import answer_metrics,hotpot_metrics,load_hotpot,load_squad,select_by_id
 
 

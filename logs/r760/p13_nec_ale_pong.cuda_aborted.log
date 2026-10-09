@@ -1,8 +1,0 @@
-A.L.E: Arcade Learning Environment (version 0.12.1+8a8fafb)
-[Powered by Stella]
-[nec] step=994 episode=1 return=-20.0 length=994 epsilon=0.996 loss=None entries=994
-[nec] step=1907 episode=2 return=-21.0 length=913 epsilon=0.993 loss=None entries=1907
-[nec] step=2860 episode=3 return=-20.0 length=953 epsilon=0.989 loss=0.13403524458408356 entries=2860
-[nec] step=3694 episode=4 return=-21.0 length=834 epsilon=0.986 loss=0.15639933943748474 entries=3694
-[nec] step=4458 episode=5 return=-21.0 length=764 epsilon=0.983 loss=0.21090242266654968 entries=4458
-[nec] step=9301 episode=10 return=-20.0 length=836 epsilon=0.965 loss=0.2084774374961853 entries=9301
