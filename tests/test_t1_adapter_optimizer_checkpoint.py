@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import torch
 
-from model.t1.core import CoreConfig, build_model
+from model.common.core import CoreConfig, build_model
 from model.t1.reuse import ReuseConfig, train_classification_adapter
 from model.t1.sync import SyncConfig, train_synchronized
 import model.t1.reuse as reuse

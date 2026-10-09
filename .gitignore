@@ -49,3 +49,5 @@ logs/t1/
 
 # Revised PI verification artifacts: snapshots, checkpoints and event streams remain local.
 /results/t1_pi20260920/
+
+.pytest_cache/

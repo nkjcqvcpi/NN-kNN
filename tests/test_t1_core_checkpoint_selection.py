@@ -2,8 +2,8 @@
 import copy
 import pytest
 import torch
-from model.t1.core import CoreConfig, build_model, train_retrieval
-import model.t1.core as core
+from model.common.core import CoreConfig, build_model, train_retrieval
+import model.common.core as core
 
 
 def setup(monkeypatch, patience=6):

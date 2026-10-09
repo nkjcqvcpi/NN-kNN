@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-from model.t1.core import CoreConfig, build_model, make_optimizer, train_retrieval
+from model.common.core import CoreConfig, build_model, make_optimizer, train_retrieval
 from model.t1.maintenance import CaseArchive, run_maintenance
 from model.t1.provenance import CaseStatisticsStore, ScoreConfig
 from model.t1.retention import RetentionConfig

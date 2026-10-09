@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import torch
 
 from tools.t1_run import Runner, load_config
-from model.t1.core import CoreConfig, build_model, make_optimizer
+from model.common.core import CoreConfig, build_model, make_optimizer
 from model.nn_cdh import NNCDHAdapter
 
 

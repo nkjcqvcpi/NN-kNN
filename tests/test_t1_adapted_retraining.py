@@ -10,7 +10,7 @@ from model.t1.candidates import MaintenanceReference
 from model.t1.provenance import CaseStatisticsStore, ScoreConfig
 from model.t1.retention import RetentionConfig
 from model.t1.retraining import reference_loss
-from model.t1.core import CoreConfig, build_model, make_optimizer
+from model.common.core import CoreConfig, build_model, make_optimizer
 from model.t1.reuse import ReuseConfig, train_classification_adapter
 
 

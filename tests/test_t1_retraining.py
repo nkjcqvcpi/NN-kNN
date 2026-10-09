@@ -7,7 +7,7 @@ import pytest
 import torch
 
 from model.t1.candidates import MaintenanceReference
-from model.t1.core import CoreConfig, build_model, clone_optimizer, make_optimizer
+from model.common.core import CoreConfig, build_model, clone_optimizer, make_optimizer
 from model.t1.provenance import CaseStatisticsStore, ScoreConfig
 from model.t1.retraining import continued_trial, reference_loss, run_retrained_removal
 from model.t1.retention import RetentionConfig

@@ -7,7 +7,7 @@ import pytest
 import torch
 
 from model.t1.data import make_synthetic, make_splits
-from model.t1.core import CoreConfig, build_model
+from model.common.core import CoreConfig, build_model
 from model.t1.revise import InterventionLog, evaluate_m0_m1_m2
 
 

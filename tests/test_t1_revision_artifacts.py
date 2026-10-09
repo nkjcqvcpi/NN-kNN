@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from model.t1.core import CoreConfig, build_model, evaluate, make_optimizer, train_retrieval
+from model.common.core import CoreConfig, build_model, evaluate, make_optimizer, train_retrieval
 from model.t1.revise import InterventionLog, evaluate_m0_m1_m2
 
 

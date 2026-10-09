@@ -7,9 +7,9 @@ import pytest
 import torch
 
 from model.nn_cdh import ClassificationNNCDHAdapter
-from model.t1.core import CoreConfig, build_model, retrieval_events
-from model.t1.nominal import NominalSchema, NominalClassificationAdapter, encoded_queries
-from model.t1.outcomes import final_prediction, prediction_loss
+from model.common.core import CoreConfig, build_model, retrieval_events
+from model.common.nominal import NominalSchema, NominalClassificationAdapter, encoded_queries
+from model.common.outcomes import final_prediction, prediction_loss
 from model.t1.reuse import ReuseConfig, train_classification_adapter, evaluate_reuse, neighborhood_inputs
 from model.t1.provenance import CaseStatisticsStore, audit_provenance
 from model.t1.candidates import MaintenanceReference, removal_influence, coverage_reachability

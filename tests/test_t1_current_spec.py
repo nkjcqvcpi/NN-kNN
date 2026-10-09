@@ -12,7 +12,7 @@ import torch.nn.functional as F
 
 from model.nn_cdh import ClassificationNNCDHAdapter
 from model.t1.candidates import MaintenanceReference, coverage_reachability, removal_influence
-from model.t1.core import CoreConfig, build_model, evaluate
+from model.common.core import CoreConfig, build_model, evaluate
 from model.t1.maintenance import CaseArchive, run_maintenance
 from model.t1.provenance import CaseStatisticsStore, ScoreConfig, active_cohorts, audit_provenance, score_cases
 from model.t1.retention import RetentionConfig, select_active_set
@@ -238,7 +238,7 @@ def test_regression_adapter_changes_outcome_and_removal_loss():
 
 
 def test_retrieval_trace_contains_actual_final_adapter_decision():
-    from model.t1.core import retrieval_events
+    from model.common.core import retrieval_events
     m, _, _ = toy()
     rows = retrieval_events(m, torch.tensor([[.02, 0.]]), torch.tensor([1]),
                             stream="test", run_id="x", adapter=FixedAdapter(1))
