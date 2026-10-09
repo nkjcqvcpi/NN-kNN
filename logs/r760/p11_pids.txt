@@ -1,0 +1,2 @@
+1613713 p11_driver (bash p11_driver.sh; bounded parallelism xargs -P 6; runs remaining 19 of 20 PPO fixed-budget jobs: cartpole/acrobot/lunarlander/minatar_breakout x seeds 0-4, excluding cartpole seed 0 which was run manually first and verified)
+1612729 p11_ppo_cartpole_s0 (manual sanity run, COMPLETED exit 0, wall clock 1:46.34, see results/rl/ppo_cartpole_20260828_011912_860851)

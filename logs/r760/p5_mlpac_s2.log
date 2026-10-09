@@ -1,0 +1,161 @@
+[nnknn-rl] step=500 episode=1 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=1000 episode=2 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=1500 episode=3 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=2000 episode=4 return=-500.0 length=500 loss=269.1691589355469 cases=None
+[nnknn-rl] step=2500 episode=5 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=5000 episode=10 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=10000 episode=20 return=-500.0 length=500 loss=266.7727966308594 cases=None
+[nnknn-rl] step=15000 episode=30 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=19871 episode=40 return=-500.0 length=500 loss=262.8162536621094 cases=None
+[nnknn-rl] step=24820 episode=50 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=29801 episode=60 return=-500.0 length=500 loss=260.1077575683594 cases=None
+[nnknn-rl] step=34777 episode=70 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=39760 episode=80 return=-500.0 length=500 loss=255.34347534179688 cases=None
+[nnknn-rl] step=44658 episode=90 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl][critic-holdout] step=49490 episodes=100 mse=6182.1089 explained_variance=-0.0531
+[nnknn-rl] step=49490 episode=100 return=-500.0 length=500 loss=250.64056396484375 cases=None
+[nnknn-rl][eval] step=49490 mean_return=-500.00 max_return=-500.00
+[nnknn-rl] step=54218 episode=110 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=59100 episode=120 return=-500.0 length=500 loss=247.20156860351562 cases=None
+[nnknn-rl] step=64100 episode=130 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=68774 episode=140 return=-500.0 length=500 loss=239.3114471435547 cases=None
+[nnknn-rl] step=73555 episode=150 return=-306.0 length=307 loss=None cases=None
+[nnknn-rl] step=78555 episode=160 return=-500.0 length=500 loss=233.39321899414062 cases=None
+[nnknn-rl] step=83555 episode=170 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=88555 episode=180 return=-500.0 length=500 loss=230.0413360595703 cases=None
+[nnknn-rl] step=93555 episode=190 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl][critic-holdout] step=98555 episodes=200 mse=5546.7285 explained_variance=-0.0146
+[nnknn-rl] step=98555 episode=200 return=-500.0 length=500 loss=216.0443572998047 cases=None
+[nnknn-rl][eval] step=98555 mean_return=-500.00 max_return=-500.00
+[nnknn-rl] step=103555 episode=210 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=108555 episode=220 return=-500.0 length=500 loss=209.05294799804688 cases=None
+[nnknn-rl] step=113555 episode=230 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=118555 episode=240 return=-500.0 length=500 loss=195.6901092529297 cases=None
+[nnknn-rl] step=123555 episode=250 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=128555 episode=260 return=-500.0 length=500 loss=185.71990966796875 cases=None
+[nnknn-rl] step=133555 episode=270 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl] step=138555 episode=280 return=-500.0 length=500 loss=171.5337371826172 cases=None
+[nnknn-rl] step=143555 episode=290 return=-500.0 length=500 loss=None cases=None
+[nnknn-rl][critic-holdout] step=148555 episodes=300 mse=4030.9536 explained_variance=-0.0084
+[nnknn-rl] step=148555 episode=300 return=-500.0 length=500 loss=157.90127563476562 cases=None
+[nnknn-rl][eval] step=148555 mean_return=-500.00 max_return=-500.00
+[nnknn-rl] finished profile=fast mean_eval_return=-500.00 passed=False run_dir=results/rl/nnknn_rl_acrobot_20260802_194645_154897
+{
+  "task": "acrobot",
+  "env_id": "Acrobot-v1",
+  "profile": "fast",
+  "seed": 2,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "eval_episodes": 20,
+  "success_threshold": -100.0,
+  "passed": false,
+  "algorithm": "nnknn_actor_critic_separate_memory_gae",
+  "actor_type": "mlp",
+  "critic_type": "mlp",
+  "architecture": {
+    "separate_case_bases": true,
+    "shared_nnknn_representation": false,
+    "critic_target_shared_case_store": false,
+    "actor_case_insertion": "raw_positive_advantage_only"
+  },
+  "gae": {
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "advantage_clip": 5.0
+  },
+  "exploration": {
+    "mode": "standard_stochastic_policy",
+    "applies_to_actor": false,
+    "initial_epsilon": 0.0,
+    "final_epsilon": 0.0,
+    "fraction": 0.5,
+    "final_step_epsilon": 0.0,
+    "readiness": {
+      "min_case_entries": 32,
+      "min_cases_per_action": 8
+    }
+  },
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": -500.0,
+    "std_return": 0.0,
+    "min_return": -500.0,
+    "max_return": -500.0,
+    "mean_length": 500.0
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": -500.0,
+    "std_return": 0.0,
+    "min_return": -500.0,
+    "max_return": -500.0,
+    "mean_length": 500.0
+  },
+  "selected_step": 150000,
+  "selected_source": "final",
+  "training_efficiency": {
+    "best_model_step": 150000,
+    "best_model_training_fraction": 1.0,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 0.0,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": -60.0,
+    "best_mean_return": -500.0,
+    "evaluations": 3,
+    "evaluations_without_improvement": 2,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "case_entries": null,
+  "critic_case_entries": null,
+  "action_counts": null,
+  "cases_pruned": 0,
+  "cases_replaced": 0,
+  "actor_cases_pruned": 0,
+  "actor_cases_replaced": 0,
+  "critic_cases_pruned": 0,
+  "critic_cases_replaced": 0,
+  "critic_label_updates": 0,
+  "critic_label_update_samples": 0,
+  "partial_rollout_segments": 1,
+  "partial_rollout_samples": 445,
+  "critic_target_enabled": false,
+  "critic_target_value_mode": "none",
+  "critic_target_sync_interval": 4,
+  "critic_target_ema_tau": 0.05,
+  "critic_target_value_syncs": 0,
+  "critic_holdout_evaluations": 3,
+  "latest_critic_holdout": {
+    "global_step": 148555,
+    "completed_episodes": 300,
+    "diagnostic_index": 3,
+    "critic_holdout_mse": 4030.95361328125,
+    "critic_holdout_explained_variance": -0.008382678031921387,
+    "critic_holdout_value_mean": -24.467445373535156,
+    "critic_holdout_target_mean": -85.2111587524414,
+    "critic_holdout_samples": 2500,
+    "critic_holdout_episodes": 5,
+    "critic_holdout_environment_steps": 2500,
+    "critic_holdout_mean_episode_return": -500.0,
+    "critic_holdout_mean_episode_length": 500.0,
+    "critic_holdout_behavior_epsilon": 0.0,
+    "critic_holdout_truncated_bootstraps": 5,
+    "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+    "critic_holdout_bootstrap_source": "online_value_model",
+    "critic_holdout_seed": 30010
+  },
+  "run_dir": "results/rl/nnknn_rl_acrobot_20260802_194645_154897"
+}
+Checkpoint: results/rl/nnknn_rl_acrobot_20260802_194645_154897/checkpoint.pt

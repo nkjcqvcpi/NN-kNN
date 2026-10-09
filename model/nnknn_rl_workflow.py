@@ -5,8 +5,10 @@ import csv
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 import json
+import hashlib
 from pathlib import Path
 import random
+import time
 from typing import Any
 
 import numpy as np
@@ -215,6 +217,15 @@ class NNKNNRLConfig:
     admission_diversity_threshold: float | None = None
     case_grace_period_steps: int = 0
     source_reference: str = "Separate-memory NN-kNN actor-critic with staged cases and GAE advantages"
+    case_audit_queries_per_batch: int = 0
+    case_optimizer_maintenance: str = 'reset'
+    case_quality_tracking: bool = False
+    case_retention_keep_fraction: float | None = None
+    case_retention_frequency: int = 1_000
+    case_retention_queries: int = 16
+    case_retention_loss_budget: float = 0.
+    case_retention_query_budget: float | None = 0.
+    case_retention_roles: str = 'both'
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -782,6 +793,8 @@ class NNKNNValueNetwork(nn.Module):
             del self.nnknn_model._buffers["labels"]
             self.nnknn_model.register_parameter("labels", labels_param)
         self.nnknn_model.to(self.nnknn_model.cases.device)
+        self._align_core_case_ids()
+        self.register_load_state_dict_post_hook(self._restore_core_case_ids)
 
     def update_momentum_encoder(self, momentum: float | None = None) -> None:
         """Update momentum encoder parameters via EMA (AAAI 2027 Eq. 1)."""
@@ -795,6 +808,26 @@ class NNKNNValueNetwork(nn.Module):
     def active_case_ids(self) -> torch.Tensor:
         return self.case_ids[: self.case_entries]
 
+    def _align_core_case_ids(self) -> None:
+        """Use critic memory IDs for retrieval too, including inactive rows.
+
+        Keep the outer buffers for checkpoint compatibility. Older checkpoints
+        allocated a second, capacity-offset ID sequence inside the core.
+        """
+        with torch.no_grad():
+            self.nnknn_model.case_ids.copy_(self.case_ids)
+            self.nnknn_model.next_case_id.copy_(self.next_case_id)
+
+    def _restore_core_case_ids(self, module, incompatible_keys) -> None:
+        # active_case_count is a Python attribute, not a state-dict buffer.
+        # Recover the compact active prefix when loading into an empty critic.
+        active = self.case_ids >= 0
+        count = int(active.sum().item())
+        if not bool(active[:count].all()) or bool(active[count:].any()):
+            raise ValueError("critic checkpoint case IDs must form a compact active prefix")
+        self.nnknn_model.set_active_case_count(count)
+        self._align_core_case_ids()
+
     def _assign_new_case_ids(self, start: int, count: int) -> None:
         if count <= 0:
             return
@@ -804,6 +837,7 @@ class NNKNNValueNetwork(nn.Module):
                 torch.arange(first_id, first_id + count, device=self.case_ids.device, dtype=torch.long)
             )
             self.next_case_id.add_(count)
+        self._align_core_case_ids()
 
     def _compact_cases(self, keep_indices: torch.Tensor | list[int]) -> int:
         active_count = self.case_entries
@@ -816,6 +850,7 @@ class NNKNNValueNetwork(nn.Module):
                 self.case_ids[:new_count].copy_(kept_ids)
             if new_count < active_count:
                 self.case_ids[new_count:active_count].fill_(-1)
+        self._align_core_case_ids()
         return removed
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
@@ -1688,6 +1723,33 @@ def make_nnknn_rl_config(profile: str = "fast", **overrides: Any) -> NNKNNRLConf
         if int(data.get("critic_update_epochs", 1)) != 1:
             raise ValueError("Shared-representation NN-kNN actor/critic requires critic_update_epochs=1")
         data["critic_learning_rate"] = float(data.get("learning_rate", 5e-4))
+    data['case_audit_queries_per_batch'] = int(data.get('case_audit_queries_per_batch',0))
+    if not 0 <= data['case_audit_queries_per_batch'] <= 32:
+        raise ValueError('case_audit_queries_per_batch must lie in [0,32]')
+    data['case_optimizer_maintenance'] = str(data.get('case_optimizer_maintenance','reset'))
+    if data['case_optimizer_maintenance'] not in {'reset','preserve_by_id'}:
+        raise ValueError('case_optimizer_maintenance must be reset or preserve_by_id')
+    data['case_quality_tracking']=_coerce_bool_field('case_quality_tracking',False)
+    if data['case_quality_tracking'] and data['case_audit_queries_per_batch']==0:
+        raise ValueError('case_quality_tracking requires explicit bounded audit queries')
+    fraction=data.get('case_retention_keep_fraction')
+    if fraction is not None:
+        fraction=float(fraction)
+        if not np.isfinite(fraction) or not 0<fraction<=1:raise ValueError('retention fraction must lie in (0,1]')
+        if data['case_optimizer_maintenance']!='preserve_by_id':raise ValueError('live retention requires preserve_by_id optimizer maintenance')
+    data['case_retention_keep_fraction']=fraction
+    data['case_retention_frequency']=int(data.get('case_retention_frequency',1000))
+    data['case_retention_queries']=int(data.get('case_retention_queries',16))
+    if data['case_retention_frequency']<=0 or not 1<=data['case_retention_queries']<=128:
+        raise ValueError('positive retention frequency and queries in [1,128] required')
+    for field_name in ('case_retention_loss_budget','case_retention_query_budget'):
+        value=data.get(field_name,0.)
+        if value is None and field_name=='case_retention_query_budget':continue
+        value=float(value)
+        if not np.isfinite(value) or value<0:raise ValueError('finite nonnegative retention loss budgets required')
+        data[field_name]=value
+    data['case_retention_roles']=str(data.get('case_retention_roles','both'))
+    if data['case_retention_roles'] not in {'both','actor','critic'}:raise ValueError('invalid retention roles')
     return NNKNNRLConfig(**data)
 
 
@@ -1948,6 +2010,51 @@ def _reset_optimizer_case_state(optimizer: optim.Optimizer | None, model: nn.Mod
             optimizer.state.pop(parameter, None)
 
 
+def _case_store_ids(model: nn.Module) -> torch.Tensor | None:
+    if isinstance(model,NNKNNValueNetwork):
+        return model.active_case_ids().detach().clone()
+    if isinstance(model,NNKNNPolicyNetwork):
+        return model.nnknn_model.active_case_ids().detach().clone()
+    return None
+
+
+def _realign_optimizer_case_state(optimizer: optim.Optimizer | None, model: nn.Module,
+                                 old_ids: torch.Tensor) -> dict[str,Any]:
+    """Preserve private case moments by identity; new/inactive rows get zero.
+
+    Adam's scalar step remains shared by each vector parameter, including new
+    rows. This is not a per-case independent optimizer or a learning guarantee.
+    """
+    current=_case_store_ids(model)
+    if current is None:
+        raise TypeError('optimizer alignment requires a standalone case store')
+    before=[int(i) for i in old_ids.cpu().tolist()]
+    after=[int(i) for i in current.cpu().tolist()]
+    if len(before)!=len(set(before)) or len(after)!=len(set(after)) or any(i<0 for i in before+after):
+        raise ValueError('optimizer alignment requires unique active stable IDs')
+    positions={case_id:row for row,case_id in enumerate(before)}
+    preserved=[case_id for case_id in after if case_id in positions]
+    result=dict(mode='preserve_by_id',preserved_case_ids=preserved,
+        new_case_ids=[i for i in after if i not in positions],
+        removed_case_ids=[i for i in before if i not in set(after)],
+        tensor_states=0,scalar_steps={})
+    if optimizer is None:return result
+    with torch.no_grad():
+        for name,parameter in model.named_parameters():
+            if name not in _nnknn_case_parameter_names(model):continue
+            state=optimizer.state.get(parameter,{})
+            if 'step' in state:
+                result['scalar_steps'][name]=float(state['step'])
+            for value in state.values():
+                if not torch.is_tensor(value) or value.shape!=parameter.shape or value.ndim==0:continue
+                original=value.clone()
+                value.zero_()
+                for new_row,case_id in enumerate(after):
+                    if case_id in positions:value[new_row].copy_(original[positions[case_id]])
+                result['tensor_states']+=1
+    return result
+
+
 def _build_nnknn_target_value_model(
     source: NNKNNValueNetwork,
     *,
@@ -2000,6 +2107,7 @@ def _align_nnknn_target_case_store(
         target.case_ids.copy_(source.case_ids)
         target.next_case_id.copy_(source.next_case_id)
         target.nnknn_model.set_active_case_count(new_count)
+        target._align_core_case_ids()
     target.eval()
 
 
@@ -2038,6 +2146,17 @@ def _sync_nnknn_target_value_model(
 
 def _copy_state_dict_to_cpu(module: nn.Module) -> dict[str, torch.Tensor]:
     return {key: value.detach().cpu().clone() for key, value in module.state_dict().items()}
+
+
+def _optimizer_state_snapshot(optimizer: optim.Optimizer | None):
+    if optimizer is None:return None
+    def cpu(value):
+        if torch.is_tensor(value):return value.detach().cpu().clone()
+        if isinstance(value,dict):return {k:cpu(v) for k,v in value.items()}
+        if isinstance(value,list):return [cpu(v) for v in value]
+        if isinstance(value,tuple):return tuple(cpu(v) for v in value)
+        return copy.deepcopy(value)
+    return cpu(optimizer.state_dict())
 
 
 def _sync_shared_target_value_model(
@@ -2417,11 +2536,13 @@ def _train_actor_critic_batch(
     device: torch.device,
     global_step: int,
     completed_episodes: int,
+    audit_sink=None,
 ) -> dict[str, Any] | None:
     observations: list[np.ndarray] = []
     next_observations: list[np.ndarray] = []
     actions: list[int] = []
     behavior_epsilons: list[float] = []
+    policy_readiness: list[bool] = []
     rewards: list[torch.Tensor] = []
     terminated: list[bool] = []
     episode_boundaries: list[bool] = []
@@ -2437,6 +2558,7 @@ def _train_actor_critic_batch(
         observations.extend(episode["observations"])
         next_observations.extend(episode["next_observations"])
         actions.extend(episode["actions"])
+        policy_readiness.extend(episode.get('policy_readiness',[False]*episode_length))
         behavior_epsilons.extend(
             float(value)
             for value in episode.get("behavior_epsilons", [0.0] * episode_length)
@@ -2456,6 +2578,8 @@ def _train_actor_critic_batch(
         return None
     if len(behavior_epsilons) != len(actions):
         raise ValueError("Each NN-kNN-RL action must have a matching behavior epsilon")
+    if len(policy_readiness) != len(actions):
+        raise ValueError('Each action must have a matching policy readiness flag')
 
     obs_t = torch.as_tensor(np.asarray(observations, dtype=np.float32), dtype=torch.float32, device=device)
     next_obs_t = torch.as_tensor(np.asarray(next_observations, dtype=np.float32), dtype=torch.float32, device=device)
@@ -2504,6 +2628,27 @@ def _train_actor_critic_batch(
     value_model.train()
     value_predictions = value_model(obs_t)
     critic_loss = F.mse_loss(value_predictions, value_targets.detach())
+    if audit_sink is not None and cfg.case_audit_queries_per_batch:
+        from model.t2.audit import audit_query
+        for index in range(min(cfg.case_audit_queries_per_batch,len(actions))):
+            if isinstance(value_model,NNKNNValueNetwork) and value_model.case_entries:
+                event=audit_query(value_model,obs_t[index],stream='training_gae',target=float(value_targets[index]))
+                if not np.isclose(event['full_prediction'],float(value_predictions[index].detach()),atol=1e-5,rtol=1e-5):
+                    raise ValueError('audit evaluation differs from actual training critic prediction')
+                event.update(global_step=global_step,query_index=index,phase='before_gradient_and_insertion',
+                    bootstrap_value_source='target' if target_value_model is not None else 'online',
+                    raw_advantage=float(raw_advantages[index]))
+                audit_sink(event)
+            if isinstance(actor,NNKNNPolicyNetwork) and policy_readiness[index] and actor.case_entries:
+                event=audit_query(actor,obs_t[index],stream='actor_policy_surrogate',action=actions[index],
+                    advantage=float(normalized_advantages[index]),policy_ready=True,
+                    behavior_epsilon=float(behavior_epsilons_t[index]),probability_floor=cfg.advantage_epsilon,
+                    advantage_source='normalized_clipped_training_gae')
+                if not np.allclose(event['full_prediction'],probs[index].detach().cpu().numpy(),atol=1e-5,rtol=1e-5):
+                    raise ValueError('audit evaluation differs from actual training policy prediction')
+                event.update(global_step=global_step,query_index=index,phase='before_gradient_and_insertion',
+                    raw_advantage=float(raw_advantages[index]),executed_under_ready_policy=True)
+                audit_sink(event)
 
     if joint_optimizer is not None:
         joint_optimizer.zero_grad()
@@ -2580,6 +2725,8 @@ def _train_actor_critic_batch(
             )
             critic_train_value_mean = float(critic_train_predictions.mean().cpu().item())
 
+    optimizer_ids = [(name,model,optimizer,_case_store_ids(model)) for name,model,optimizer in
+        [('actor',actor,actor_optimizer),('critic',value_model,critic_optimizer or joint_optimizer)]]
     critic_add_stats = {"added": 0, "pruned": 0, "replaced": 0, "label_updates": 0, "label_update_samples": 0}
     if isinstance(value_model, NNKNNValueNetwork):
         critic_add_stats = value_model.add_cases(obs_t, value_targets.detach())
@@ -2593,13 +2740,37 @@ def _train_actor_critic_batch(
         )
 
     actor.train()
+    alignment_events=[]
+    if cfg.case_optimizer_maintenance=='preserve_by_id':
+        for name,model,optimizer,old_ids in optimizer_ids:
+            if old_ids is not None:
+                event=_realign_optimizer_case_state(optimizer,model,old_ids)
+                event.update(case_store=name,source='capacity_insert',global_step=global_step)
+                alignment_events.append(event)
     stats = _actor_case_bias_stats(actor)
     reward_varying_episodes = (
         int(torch.stack(reward_variation_flags).sum().detach().cpu().item()) if reward_variation_flags else 0
     )
     total_loss = actor_loss.detach() + float(cfg.value_loss_coef) * critic_optimization_mse
+    retention_reference={}
+    if cfg.case_retention_keep_fraction is not None:
+        # Evenly cover the actual current batch; no diagnostic rollout queries.
+        def selected_indices(indices):
+            count=min(cfg.case_retention_queries,len(indices))
+            return indices[torch.linspace(0,len(indices)-1,count,device=device).long()] if count else indices
+        critic_indices=selected_indices(torch.arange(len(actions),device=device))
+        ready_indices=selected_indices(torch.tensor(policy_readiness,dtype=torch.bool,device=device).nonzero().flatten())
+        retention_reference['critic']=dict(queries=obs_t[critic_indices].detach().clone(),stream='training_gae',
+            targets=value_targets[critic_indices].detach().clone(),batch_query_indices=critic_indices.cpu().tolist())
+        retention_reference['actor']=dict(queries=obs_t[ready_indices].detach().clone(),stream='actor_policy_surrogate',
+            actions=actions_t[ready_indices].detach().clone(),advantages=normalized_advantages[ready_indices].detach().clone(),
+            behavior_epsilons=behavior_epsilons_t[ready_indices].detach().flatten().clone(),
+            policy_ready=torch.ones(len(ready_indices),dtype=torch.bool,device=device),probability_floor=cfg.advantage_epsilon,
+            batch_query_indices=ready_indices.cpu().tolist(),advantage_source='normalized_clipped_training_gae')
     return {
         "global_step": global_step,
+        **({'_retention_reference':retention_reference} if cfg.case_retention_keep_fraction is not None else {}),
+        "_case_optimizer_alignment": alignment_events,
         "episodes": len(episodes),
         "samples": int(obs_t.shape[0]),
         "loss": float(total_loss.cpu().item()),
@@ -2732,11 +2903,15 @@ def evaluate_critic_holdout(
     seed: int,
     global_step: int,
     device: str | torch.device | None = None,
+    audit_sink=None,
+    max_audit_queries: int = 0,
 ) -> dict[str, Any]:
     """Evaluate critic generalization on behavior-policy rollouts excluded from training."""
 
     if episodes <= 0:
         raise ValueError("critic holdout episodes must be positive")
+    if max_audit_queries < 0:
+        raise ValueError("max_audit_queries must be nonnegative")
     spec = get_rl_task_spec(task_name)
     actor_device = next(actor.parameters()).device
     critic_device = next(value_model.parameters()).device
@@ -2847,6 +3022,17 @@ def evaluate_critic_holdout(
         with torch.no_grad():
             predictions_t = value_model(observations_t)
             holdout_mse = F.mse_loss(predictions_t, targets_t)
+        if audit_sink is not None and max_audit_queries and isinstance(value_model, NNKNNValueNetwork) and value_model.case_entries:
+            from model.t2.audit import audit_query
+            for audit_index in range(min(max_audit_queries, targets_t.numel())):
+                event = audit_query(value_model, observations_t[audit_index],
+                                    stream="independent_mc", target=float(targets_t[audit_index]))
+                event.update(diagnostic_seed=seed, query_index=audit_index,
+                             global_step=global_step, gamma=cfg.gamma,
+                             reward_shaping=cfg.reward_shaping,
+                             time_limit_bootstrap="target_critic" if target_value_model is not None else "online_critic",
+                             unmasked_holdout_prediction=float(predictions_t[audit_index]))
+                audit_sink(event)
         return {
             "critic_holdout_mse": float(holdout_mse.cpu().item()),
             "critic_holdout_explained_variance": explained_variance(predictions_t, targets_t),
@@ -2888,6 +3074,10 @@ def train_nnknn_rl(
 
     spec = get_rl_task_spec(task_name)
     cfg = config or make_nnknn_rl_config(spec.default_profile)
+    if cfg.case_retention_keep_fraction is not None:
+        # Dataclass callers must obey the same explicit retention constraints
+        # as CLI/profile callers, before constructing environments or training.
+        cfg=make_nnknn_rl_config(**cfg.to_dict())
     seed_everything(cfg.seed)
     run_device = _resolve_device_arg(device)
 
@@ -2939,6 +3129,11 @@ def train_nnknn_rl(
     best_eval_step: int | None = None
     best_actor_state: dict[str, Any] | None = None
     best_critic_state: dict[str, torch.Tensor] | None = None
+    best_target_state = None
+    best_optimizer_states = None
+    best_quality_state = None
+    from model.t2.quality import QualityLedger
+    quality_ledger=QualityLedger(str(run_dir.resolve())) if cfg.case_quality_tracking else None
     actor_cases_pruned = 0
     actor_cases_replaced = 0
     critic_cases_pruned = 0
@@ -2950,6 +3145,9 @@ def train_nnknn_rl(
     critic_target_syncs = 1 if target_value_model is not None else 0
     critic_update_batches = 0
     last_maintenance_bucket = 0
+    optimizer_alignment_rows: list[dict[str,Any]] = []
+    retention_events: list[dict[str,Any]] = []
+    last_retention_bucket=0
 
     def total_cases_pruned() -> int:
         return actor_cases_pruned + critic_cases_pruned
@@ -2963,6 +3161,9 @@ def train_nnknn_rl(
         nonlocal critic_label_updates, critic_label_update_samples
         nonlocal partial_rollout_segments, partial_rollout_samples
         nonlocal critic_target_syncs, critic_update_batches, last_maintenance_bucket
+        nonlocal last_retention_bucket
+        optimizer_alignment_rows.extend(loss_row.pop('_case_optimizer_alignment',[]))
+        retention_reference=loss_row.pop('_retention_reference',{})
 
         for case_store, model, optimizer_for_store in (
             ("actor", actor, actor_optimizer),
@@ -2976,7 +3177,7 @@ def train_nnknn_rl(
             else:
                 critic_cases_pruned += pruned
                 critic_cases_replaced += replaced
-            if pruned > 0 or replaced > 0:
+            if (pruned > 0 or replaced > 0) and cfg.case_optimizer_maintenance=='reset':
                 _reset_optimizer_case_state(optimizer_for_store, model)
             row = _maintenance_row(
                 global_step=completed_step,
@@ -3004,13 +3205,19 @@ def train_nnknn_rl(
                 ):
                     if not isinstance(model, (NNKNNPolicyNetwork, NNKNNValueNetwork)):
                         continue
+                    old_ids=_case_store_ids(model)
                     pruned = model.prune_cases()
                     if case_store == "actor":
                         actor_cases_pruned += pruned
                     else:
                         critic_cases_pruned += pruned
                     if pruned > 0:
-                        _reset_optimizer_case_state(optimizer_for_store, model)
+                        if cfg.case_optimizer_maintenance=='reset':
+                            _reset_optimizer_case_state(optimizer_for_store, model)
+                        else:
+                            event=_realign_optimizer_case_state(optimizer_for_store,model,old_ids)
+                            event.update(case_store=case_store,source='scheduled_prune',global_step=completed_step)
+                            optimizer_alignment_rows.append(event)
                     row = _maintenance_row(
                         global_step=completed_step,
                         case_store=case_store,
@@ -3022,6 +3229,56 @@ def train_nnknn_rl(
                     if row is not None:
                         maintenance_rows.append(row)
 
+        if cfg.case_retention_keep_fraction is not None:
+            bucket=completed_step//cfg.case_retention_frequency
+            if bucket>last_retention_bucket:
+                last_retention_bucket=bucket
+                from model.t2.retention import TrainingReference,constrained_retain
+                # Align newly inserted structural rows before preserving a pre-retention snapshot.
+                if target_value_model is not None:_align_nnknn_target_case_store(value_network,target_value_model)
+                for role,model,optimizer in [('critic',value_network,critic_optimizer or joint_optimizer),('actor',actor,actor_optimizer)]:
+                    if cfg.case_retention_roles not in {'both',role}:continue
+                    if not isinstance(model,(NNKNNPolicyNetwork,NNKNNValueNetwork)):continue
+                    raw=retention_reference[role]
+                    event=dict(role=role,global_step=completed_step,phase='after_gradient_insertion_prune_before_retention',
+                        reference={k:v.cpu().tolist() if torch.is_tensor(v) else v for k,v in raw.items()},
+                        bootstrap_value_source=loss_row['bootstrap_value_source'])
+                    if not len(raw['queries']) or model.case_entries<=1:
+                        event.update(skipped=True,reason='no actual ready-policy reference or insufficient active cases')
+                        retention_events.append(event);continue
+                    snapshot_dir=run_dir/'retention_states';snapshot_dir.mkdir(exist_ok=True)
+                    snapshot=snapshot_dir/f'{role}_step_{completed_step}.pt'
+                    torch.save(dict(actor_state=_model_state(actor),critic_state=_copy_state_dict_to_cpu(value_network),
+                        target_state=_copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None,
+                        optimizer_states=dict(actor_or_joint=_optimizer_state_snapshot(actor_optimizer),critic=_optimizer_state_snapshot(critic_optimizer)),
+                        config=cfg.to_dict(),obs_dim=obs_dim,action_dim=action_dim),snapshot)
+                    event.update(snapshot=str(snapshot),snapshot_sha256=hashlib.sha256(snapshot.read_bytes()).hexdigest())
+                    fields={k:v for k,v in raw.items() if k not in {'batch_query_indices','advantage_source'}}
+                    reference=TrainingReference(**fields)
+                    old_ids=_case_store_ids(model)
+                    target_capacity=max(1,int(model.case_entries*cfg.case_retention_keep_fraction))
+                    if role=='actor':
+                        # Preserve the configured behavior readiness threshold
+                        # as well as the selector's per-action coverage floor.
+                        target_capacity=min(model.case_entries,max(target_capacity,cfg.min_case_entries))
+                    started=time.perf_counter()
+                    result=constrained_retain(model,reference,
+                        keep_capacity=target_capacity,
+                        loss_budget=cfg.case_retention_loss_budget,max_query_loss_increase=cfg.case_retention_query_budget)
+                    event.update(result=result,selection_seconds=time.perf_counter()-started,skipped=False)
+                    alignment=_realign_optimizer_case_state(optimizer,model,old_ids)
+                    alignment.update(case_store=role,source='fresh_training_reference_retention',global_step=completed_step)
+                    optimizer_alignment_rows.append(alignment);event['alignment']=alignment
+                    if role=='critic':
+                        critic_cases_pruned+=result['removed']
+                        if target_value_model is not None:_align_nnknn_target_case_store(value_network,target_value_model)
+                    else:actor_cases_pruned+=result['removed']
+                    retention_events.append(event)
+                    row=_maintenance_row(global_step=completed_step,case_store=role,cases_pruned=result['removed'],cases_replaced=0,
+                        model=model,source='fresh_training_reference_retention')
+                    if row is not None:maintenance_rows.append(row)
+                loss_row.update(case_entries=_actor_case_entries(actor),critic_case_entries=value_network.case_entries if isinstance(value_network,NNKNNValueNetwork) else None,
+                    action_counts=_actor_action_counts_json(actor),**_actor_case_bias_stats(actor))
         if target_value_model is not None:
             _align_nnknn_target_case_store(value_network, target_value_model)
             critic_update_batches += 1
@@ -3060,6 +3317,8 @@ def train_nnknn_rl(
             seed=diagnostic_seed,
             global_step=completed_step,
             device=run_device,
+            audit_sink=collect_case_audit if quality_ledger is not None else None,
+            max_audit_queries=cfg.case_audit_queries_per_batch if quality_ledger is not None else 0,
         )
         row = {
             "global_step": int(completed_step),
@@ -3091,6 +3350,25 @@ def train_nnknn_rl(
     pending_update_episodes: list[dict[str, Any]] = []
     early_stopping = _build_early_stopping_tracker(cfg, spec)
     actual_timesteps = 0
+    episode_policy_readiness: list[bool] = []
+    case_audit_events: list[dict[str,Any]] = []
+    def collect_case_audit(event):
+        step=event['global_step']
+        audit_dir=run_dir/'case_audit_states'
+        audit_dir.mkdir(exist_ok=True)
+        event.setdefault('phase','independent_post_batch_mc')
+        snapshot=audit_dir/f"{event['phase']}_step_{step}.pt"
+        if not snapshot.exists():
+            torch.save(dict(actor_state=_model_state(actor),critic_state=_copy_state_dict_to_cpu(value_network),
+                target_state=_copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None,
+                config=cfg.to_dict(),obs_dim=obs_dim,action_dim=action_dim),snapshot)
+        event['snapshot']=str(snapshot)
+        if quality_ledger is not None:
+            event['snapshot_sha256']=hashlib.sha256(snapshot.read_bytes()).hexdigest()
+            namespace=f"{event['role']}:{event['stream']}:{step}:{event['query_index']}:{event.get('diagnostic_seed','training')}"
+            model=actor if event['role']=='actor' else value_network
+            quality_ledger.apply(event,event_id=namespace,active_ids=_case_store_ids(model).cpu().tolist())
+        case_audit_events.append(event)
 
     try:
         for global_step in range(cfg.total_timesteps):
@@ -3115,6 +3393,7 @@ def train_nnknn_rl(
             episode_next_observations.append(observation_to_array(next_obs, obs_spec))
             episode_actions.append(action)
             episode_behavior_epsilons.append(selection.behavior_epsilon)
+            episode_policy_readiness.append(selection.policy_ready)
             episode_rewards.append(float(reward))
             episode_terminated.append(bool(terminated))
             episode_truncated.append(bool(truncated))
@@ -3133,6 +3412,7 @@ def train_nnknn_rl(
                         "next_observations": episode_next_observations,
                         "actions": episode_actions,
                         "behavior_epsilons": episode_behavior_epsilons,
+                        "policy_readiness": episode_policy_readiness,
                         "rewards": episode_rewards,
                         "terminated": episode_terminated,
                         "truncated": episode_truncated,
@@ -3153,6 +3433,7 @@ def train_nnknn_rl(
                         device=run_device,
                         global_step=completed_step,
                         completed_episodes=episode_index,
+                        audit_sink=collect_case_audit if cfg.case_audit_queries_per_batch else None,
                     )
                     if loss_row is not None:
                         record_batch_result(loss_row, completed_step)
@@ -3231,6 +3512,10 @@ def train_nnknn_rl(
                         best_eval_step = completed_step
                         best_actor_state = _model_state(actor)
                         best_critic_state = _copy_state_dict_to_cpu(value_network)
+                        best_target_state = _copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None
+                        best_optimizer_states = dict(actor_or_joint=_optimizer_state_snapshot(actor_optimizer),
+                            critic=_optimizer_state_snapshot(critic_optimizer))
+                        best_quality_state = quality_ledger.state_dict() if quality_ledger is not None else None
                     if progress:
                         print(
                             "[nnknn-rl][eval] "
@@ -3248,6 +3533,7 @@ def train_nnknn_rl(
                 episode_next_observations = []
                 episode_actions = []
                 episode_behavior_epsilons = []
+                episode_policy_readiness = []
                 episode_rewards = []
                 episode_terminated = []
                 episode_truncated = []
@@ -3289,6 +3575,10 @@ def train_nnknn_rl(
                     best_eval_step = completed_step
                     best_actor_state = _model_state(actor)
                     best_critic_state = _copy_state_dict_to_cpu(value_network)
+                    best_target_state = _copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None
+                    best_optimizer_states = dict(actor_or_joint=_optimizer_state_snapshot(actor_optimizer),
+                        critic=_optimizer_state_snapshot(critic_optimizer))
+                    best_quality_state = quality_ledger.state_dict() if quality_ledger is not None else None
                 if progress:
                     print(
                         "[nnknn-rl][eval] "
@@ -3311,6 +3601,7 @@ def train_nnknn_rl(
                 "next_observations": episode_next_observations,
                 "actions": episode_actions,
                 "behavior_epsilons": episode_behavior_epsilons,
+                "policy_readiness": episode_policy_readiness,
                 "rewards": episode_rewards,
                 "terminated": episode_terminated,
                 "truncated": episode_truncated,
@@ -3331,6 +3622,7 @@ def train_nnknn_rl(
                 device=run_device,
                 global_step=actual_timesteps,
                 completed_episodes=episode_index,
+                audit_sink=collect_case_audit if cfg.case_audit_queries_per_batch else None,
             )
             if loss_row is not None:
                 record_batch_result(loss_row, actual_timesteps)
@@ -3353,6 +3645,10 @@ def train_nnknn_rl(
         selected_source = "final"
         selected_actor_state = _model_state(actor)
         selected_critic_state = _copy_state_dict_to_cpu(value_network)
+        selected_target_state = _copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None
+        selected_optimizer_states = dict(actor_or_joint=_optimizer_state_snapshot(actor_optimizer),
+            critic=_optimizer_state_snapshot(critic_optimizer))
+        selected_quality_state = quality_ledger.state_dict() if quality_ledger is not None else None
     else:
         selected_eval = best_eval
         selected_step = int(best_eval_step or 0)
@@ -3361,6 +3657,17 @@ def train_nnknn_rl(
         selected_critic_state = best_critic_state or _copy_state_dict_to_cpu(value_network)
         _load_model_state(actor, selected_actor_state)
         value_network.load_state_dict(selected_critic_state)
+        selected_target_state = best_target_state
+        selected_optimizer_states = best_optimizer_states
+        selected_quality_state = best_quality_state
+        if quality_ledger is not None:quality_ledger=QualityLedger.from_state_dict(selected_quality_state)
+        actor_optimizer.load_state_dict(selected_optimizer_states['actor_or_joint'])
+        if critic_optimizer is not None:
+            critic_optimizer.load_state_dict(selected_optimizer_states['critic'])
+        if target_value_model is not None:
+            # Detach the shared raw bank before restore, then realign below.
+            target_value_model.nnknn_model._buffers['cases'] = target_value_model.nnknn_model.cases.detach().clone()
+            target_value_model.load_state_dict(selected_target_state)
     if target_value_model is not None:
         _align_nnknn_target_case_store(value_network, target_value_model)
 
@@ -3388,6 +3695,10 @@ def train_nnknn_rl(
         "actor_behavior_policy": _actor_behavior_policy_name(actor),
         "actor_state": selected_actor_state,
         "critic_state_dict": selected_critic_state,
+        "target_state_dict": selected_target_state,
+        "selected_optimizer_states": selected_optimizer_states,
+        "selected_case_quality_state": selected_quality_state,
+        "training_state_scope": "selected parameters/optimizer/target; rollout, environment and RNG resume not included",
         "task": spec.to_dict(),
         "config": cfg.to_dict(),
         "obs_dim": obs_dim,
@@ -3442,6 +3753,17 @@ def train_nnknn_rl(
     _write_csv(run_dir / "loss_metrics.csv", loss_rows)
     _write_csv(run_dir / "eval_metrics.csv", eval_rows)
     _write_csv(run_dir / "critic_holdout_metrics.csv", critic_holdout_rows)
+    if cfg.case_optimizer_maintenance=='preserve_by_id':
+        _write_json(run_dir/'case_optimizer_events.json',dict(events=optimizer_alignment_rows,
+            scalar_step_semantics='global_per_parameter_including_new_rows'))
+    if cfg.case_audit_queries_per_batch:
+        _write_json(run_dir/'case_audit_events.json',dict(events=case_audit_events,
+            role_streams='training_gae, actor_policy_surrogate and optional independent_mc kept separate'))
+    if quality_ledger is not None:
+        _write_json(run_dir/'case_quality_selected.json',quality_ledger.state_dict())
+    if cfg.case_retention_keep_fraction is not None:
+        _write_json(run_dir/'case_retention_events.json',dict(events=retention_events,
+            selection='current training batch, post-gradient/insertion/prune, before target sync; no diagnostic selection'))
     _write_csv(run_dir / "case_maintenance.csv", maintenance_rows)
     _write_csv(run_dir / "final_eval_episodes.csv", selected_eval["episode_metrics"])
     _write_csv(run_dir / "last_eval_episodes.csv", last_eval["episode_metrics"])
@@ -3567,6 +3889,8 @@ def train_nnknn_rl(
         "model": actor,
         "value_model": value_network,
         "target_model": target_value_model,
+        "optimizers": dict(actor_or_joint=actor_optimizer,critic=critic_optimizer),
+        "case_quality": quality_ledger,
         "task": spec,
         "config": cfg,
         "run_dir": run_dir,
@@ -3586,10 +3910,11 @@ def load_nnknn_rl_checkpoint(
     checkpoint_path: str | Path,
     *,
     device: str | torch.device | None = None,
+    restore_optimizers: bool = False,
 ) -> dict[str, Any]:
     run_device = _resolve_device_arg(device)
     checkpoint_path = Path(checkpoint_path)
-    checkpoint = torch.load(checkpoint_path, map_location=run_device, weights_only=False)
+    checkpoint = torch.load(checkpoint_path, map_location=run_device, weights_only=True)
     algorithm = checkpoint.get("algorithm")
     if algorithm != ALGORITHM_NAME:
         raise ValueError(
@@ -3622,12 +3947,38 @@ def load_nnknn_rl_checkpoint(
     )
     _load_model_state(model, checkpoint["actor_state"])
     value_model.load_state_dict(checkpoint["critic_state_dict"])
+    target_model = None
+    if checkpoint.get('target_state_dict') is not None:
+        target_model = _build_nnknn_target_value_model(value_model,device=run_device)
+        target_model.nnknn_model._buffers['cases'] = target_model.nnknn_model.cases.detach().clone()
+        target_model.load_state_dict(checkpoint['target_state_dict'])
+        _align_nnknn_target_case_store(value_model,target_model)
+    restored_optimizers = None
+    restored_quality=None
+    if checkpoint.get('selected_case_quality_state') is not None:
+        from model.t2.quality import QualityLedger
+        restored_quality=QualityLedger.from_state_dict(checkpoint['selected_case_quality_state'])
+    if restore_optimizers:
+        states=checkpoint.get('selected_optimizer_states')
+        if states is None:
+            raise ValueError('legacy checkpoint has no selected optimizer state')
+        if cfg.share_nnknn_representation and isinstance(model,NNKNNPolicyNetwork) and isinstance(value_model,NNKNNValueNetwork):
+            actor_optimizer=_build_joint_nnknn_rl_optimizer(model,value_model,base_lr=cfg.learning_rate,case_lr=cfg.case_learning_rate)
+            critic_optimizer=None
+        else:
+            actor_optimizer=_build_nnknn_rl_optimizer(model,base_lr=cfg.learning_rate,case_lr=cfg.case_learning_rate)
+            critic_optimizer=_build_nnknn_rl_optimizer(value_model,base_lr=cfg.critic_learning_rate,case_lr=cfg.case_learning_rate)
+        actor_optimizer.load_state_dict(states['actor_or_joint'])
+        if critic_optimizer is not None:critic_optimizer.load_state_dict(states['critic'])
+        restored_optimizers=dict(actor_or_joint=actor_optimizer,critic=critic_optimizer)
     model.eval()
     value_model.eval()
     return {
         "model": model,
         "value_model": value_model,
-        "target_model": None,
+        "target_model": target_model,
+        "optimizers": restored_optimizers,
+        "case_quality": restored_quality,
         "config": cfg,
         "task": checkpoint["task"],
         "checkpoint": checkpoint,

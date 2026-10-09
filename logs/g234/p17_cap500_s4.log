@@ -1,0 +1,309 @@
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+[nnknn-rl] step=11 episode=1 return=11.0 length=11 loss=None cases=0
+[nnknn-rl] step=31 episode=2 return=20.0 length=20 loss=None cases=0
+[nnknn-rl] step=46 episode=3 return=15.0 length=15 loss=None cases=0
+[nnknn-rl] step=60 episode=4 return=14.0 length=14 loss=48.54212951660156 cases=60
+[nnknn-rl] step=85 episode=5 return=25.0 length=25 loss=None cases=60
+[nnknn-rl] step=216 episode=10 return=15.0 length=15 loss=None cases=158
+[nnknn-rl] step=451 episode=20 return=53.0 length=53 loss=52.63358688354492 cases=298
+[nnknn-rl] step=644 episode=30 return=19.0 length=19 loss=None cases=350
+[nnknn-rl] step=949 episode=40 return=20.0 length=20 loss=39.973594665527344 cases=489
+[nnknn-rl] step=1237 episode=50 return=33.0 length=33 loss=None cases=479
+[nnknn-rl] step=1473 episode=60 return=16.0 length=16 loss=38.13396453857422 cases=480
+[nnknn-rl] step=1744 episode=70 return=31.0 length=31 loss=None cases=493
+[nnknn-rl] step=1921 episode=80 return=11.0 length=11 loss=21.06926155090332 cases=500
+[nnknn-rl] step=2148 episode=90 return=16.0 length=16 loss=None cases=470
+[nnknn-rl][critic-holdout] step=2342 episodes=100 mse=26.8878 explained_variance=0.5846
+[nnknn-rl] step=2342 episode=100 return=17.0 length=17 loss=17.494640350341797 cases=478
+[nnknn-rl][eval] step=2342 mean_return=315.70 max_return=500.00
+[nnknn-rl] step=2588 episode=110 return=20.0 length=20 loss=None cases=498
+[nnknn-rl] step=2807 episode=120 return=18.0 length=18 loss=13.114140510559082 cases=477
+[nnknn-rl] step=3049 episode=130 return=46.0 length=46 loss=None cases=491
+[nnknn-rl] step=3327 episode=140 return=16.0 length=16 loss=13.268206596374512 cases=500
+[nnknn-rl] step=3504 episode=150 return=16.0 length=16 loss=None cases=489
+[nnknn-rl] step=3766 episode=160 return=43.0 length=43 loss=36.85834884643555 cases=500
+[nnknn-rl] step=4033 episode=170 return=30.0 length=30 loss=None cases=500
+[nnknn-rl] step=4320 episode=180 return=15.0 length=15 loss=76.9688491821289 cases=500
+[nnknn-rl] step=4556 episode=190 return=52.0 length=52 loss=None cases=498
+[nnknn-rl][critic-holdout] step=4786 episodes=200 mse=14.4963 explained_variance=0.6959
+[nnknn-rl] step=4786 episode=200 return=10.0 length=10 loss=24.088186264038086 cases=500
+[nnknn-rl][eval] step=4786 mean_return=462.80 max_return=500.00
+[nnknn-rl] step=5052 episode=210 return=30.0 length=30 loss=None cases=500
+[nnknn-rl] step=5284 episode=220 return=22.0 length=22 loss=12.363083839416504 cases=500
+[nnknn-rl] step=5538 episode=230 return=18.0 length=18 loss=None cases=500
+[nnknn-rl] step=5760 episode=240 return=11.0 length=11 loss=33.1065788269043 cases=500
+[nnknn-rl] step=6055 episode=250 return=102.0 length=102 loss=None cases=500
+[nnknn-rl] step=6341 episode=260 return=25.0 length=25 loss=15.641789436340332 cases=500
+[nnknn-rl] step=6646 episode=270 return=17.0 length=17 loss=None cases=500
+[nnknn-rl] step=6852 episode=280 return=17.0 length=17 loss=19.498889923095703 cases=491
+[nnknn-rl] step=7068 episode=290 return=16.0 length=16 loss=None cases=500
+[nnknn-rl][critic-holdout] step=7379 episodes=300 mse=37.4699 explained_variance=0.5286
+[nnknn-rl] step=7379 episode=300 return=12.0 length=12 loss=53.837955474853516 cases=500
+[nnknn-rl][eval] step=7379 mean_return=403.40 max_return=500.00
+[nnknn-rl] step=7664 episode=310 return=10.0 length=10 loss=None cases=500
+[nnknn-rl] step=7910 episode=320 return=28.0 length=28 loss=19.569963455200195 cases=500
+[nnknn-rl] step=8208 episode=330 return=17.0 length=17 loss=None cases=500
+[nnknn-rl] step=8503 episode=340 return=20.0 length=20 loss=12.174237251281738 cases=500
+[nnknn-rl] step=8811 episode=350 return=20.0 length=20 loss=None cases=500
+[nnknn-rl] step=9105 episode=360 return=15.0 length=15 loss=56.76433181762695 cases=500
+[nnknn-rl] step=9487 episode=370 return=33.0 length=33 loss=None cases=500
+[nnknn-rl] step=9721 episode=380 return=10.0 length=10 loss=21.850234985351562 cases=500
+[nnknn-rl] step=10079 episode=390 return=31.0 length=31 loss=None cases=500
+[nnknn-rl][critic-holdout] step=10254 episodes=400 mse=592.5075 explained_variance=0.1463
+[nnknn-rl] step=10254 episode=400 return=23.0 length=23 loss=20.21775245666504 cases=500
+[nnknn-rl][eval] step=10254 mean_return=407.45 max_return=500.00
+[nnknn-rl] step=10507 episode=410 return=53.0 length=53 loss=None cases=500
+[nnknn-rl] step=10733 episode=420 return=22.0 length=22 loss=20.360124588012695 cases=500
+[nnknn-rl] step=11024 episode=430 return=27.0 length=27 loss=None cases=500
+[nnknn-rl] step=11312 episode=440 return=15.0 length=15 loss=38.51908874511719 cases=500
+[nnknn-rl] step=11615 episode=450 return=27.0 length=27 loss=None cases=500
+[nnknn-rl] step=11831 episode=460 return=27.0 length=27 loss=20.02056312561035 cases=500
+[nnknn-rl] step=12144 episode=470 return=27.0 length=27 loss=None cases=500
+[nnknn-rl] step=12543 episode=480 return=29.0 length=29 loss=55.1821403503418 cases=500
+[nnknn-rl] step=12787 episode=490 return=57.0 length=57 loss=None cases=500
+[nnknn-rl][critic-holdout] step=13198 episodes=500 mse=204.6183 explained_variance=0.3079
+[nnknn-rl] step=13198 episode=500 return=33.0 length=33 loss=43.97597122192383 cases=500
+[nnknn-rl][eval] step=13198 mean_return=432.30 max_return=500.00
+[nnknn-rl] step=13510 episode=510 return=37.0 length=37 loss=None cases=500
+[nnknn-rl] step=13908 episode=520 return=36.0 length=36 loss=42.59418869018555 cases=500
+[nnknn-rl] step=14317 episode=530 return=24.0 length=24 loss=None cases=500
+[nnknn-rl] step=14797 episode=540 return=24.0 length=24 loss=35.23316192626953 cases=500
+[nnknn-rl] step=15071 episode=550 return=17.0 length=17 loss=None cases=500
+[nnknn-rl] step=15328 episode=560 return=14.0 length=14 loss=24.89490509033203 cases=499
+[nnknn-rl] step=15623 episode=570 return=26.0 length=26 loss=None cases=500
+[nnknn-rl] step=15942 episode=580 return=11.0 length=11 loss=45.941097259521484 cases=500
+[nnknn-rl] step=16331 episode=590 return=21.0 length=21 loss=None cases=500
+[nnknn-rl][critic-holdout] step=16629 episodes=600 mse=130.5528 explained_variance=0.1919
+[nnknn-rl] step=16629 episode=600 return=18.0 length=18 loss=55.640750885009766 cases=500
+[nnknn-rl][eval] step=16629 mean_return=327.20 max_return=500.00
+[nnknn-rl] step=17077 episode=610 return=46.0 length=46 loss=None cases=500
+[nnknn-rl] step=17583 episode=620 return=87.0 length=87 loss=117.59115600585938 cases=500
+[nnknn-rl] step=17983 episode=630 return=19.0 length=19 loss=None cases=500
+[nnknn-rl] step=18373 episode=640 return=26.0 length=26 loss=33.13998794555664 cases=500
+[nnknn-rl] step=18710 episode=650 return=31.0 length=31 loss=None cases=500
+[nnknn-rl] step=19077 episode=660 return=31.0 length=31 loss=50.93495559692383 cases=500
+[nnknn-rl] step=19519 episode=670 return=36.0 length=36 loss=None cases=500
+[nnknn-rl] step=20068 episode=680 return=95.0 length=95 loss=112.66090393066406 cases=500
+[nnknn-rl] step=20563 episode=690 return=149.0 length=149 loss=None cases=500
+[nnknn-rl][critic-holdout] step=20889 episodes=700 mse=81.1355 explained_variance=0.4689
+[nnknn-rl] step=20889 episode=700 return=30.0 length=30 loss=56.254722595214844 cases=500
+[nnknn-rl][eval] step=20889 mean_return=440.40 max_return=500.00
+[nnknn-rl] step=21326 episode=710 return=19.0 length=19 loss=None cases=500
+[nnknn-rl] step=21699 episode=720 return=31.0 length=31 loss=65.34786224365234 cases=500
+[nnknn-rl] step=22241 episode=730 return=93.0 length=93 loss=None cases=500
+[nnknn-rl] step=22617 episode=740 return=74.0 length=74 loss=53.27621078491211 cases=500
+[nnknn-rl] step=23097 episode=750 return=20.0 length=20 loss=None cases=500
+[nnknn-rl] step=23601 episode=760 return=21.0 length=21 loss=105.50718688964844 cases=500
+[nnknn-rl] step=24268 episode=770 return=40.0 length=40 loss=None cases=500
+[nnknn-rl] step=24894 episode=780 return=159.0 length=159 loss=102.75167083740234 cases=500
+[nnknn-rl] step=25385 episode=790 return=39.0 length=39 loss=None cases=500
+[nnknn-rl][critic-holdout] step=25892 episodes=800 mse=258.1998 explained_variance=0.2387
+[nnknn-rl] step=25892 episode=800 return=107.0 length=107 loss=83.400146484375 cases=500
+[nnknn-rl][eval] step=25892 mean_return=418.95 max_return=500.00
+[nnknn-rl] step=26460 episode=810 return=35.0 length=35 loss=None cases=500
+[nnknn-rl] step=27391 episode=820 return=75.0 length=75 loss=88.68629455566406 cases=500
+[nnknn-rl] step=27854 episode=830 return=16.0 length=16 loss=None cases=500
+[nnknn-rl] step=28408 episode=840 return=132.0 length=132 loss=81.51683044433594 cases=500
+[nnknn-rl] step=28974 episode=850 return=125.0 length=125 loss=None cases=500
+[nnknn-rl] step=29633 episode=860 return=27.0 length=27 loss=97.67959594726562 cases=500
+[nnknn-rl] step=30536 episode=870 return=80.0 length=80 loss=None cases=500
+[nnknn-rl] step=31127 episode=880 return=98.0 length=98 loss=85.14291381835938 cases=500
+[nnknn-rl] step=31968 episode=890 return=48.0 length=48 loss=None cases=500
+[nnknn-rl][critic-holdout] step=32873 episodes=900 mse=649.3488 explained_variance=0.1694
+[nnknn-rl] step=32873 episode=900 return=87.0 length=87 loss=80.14115905761719 cases=500
+[nnknn-rl][eval] step=32873 mean_return=473.85 max_return=500.00
+[nnknn-rl] step=34178 episode=910 return=260.0 length=260 loss=None cases=500
+[nnknn-rl] step=35085 episode=920 return=85.0 length=85 loss=103.1972885131836 cases=500
+[nnknn-rl] step=36086 episode=930 return=106.0 length=106 loss=None cases=500
+[nnknn-rl] step=36966 episode=940 return=66.0 length=66 loss=80.78302764892578 cases=500
+[nnknn-rl] step=37728 episode=950 return=27.0 length=27 loss=None cases=500
+[nnknn-rl] step=38689 episode=960 return=35.0 length=35 loss=93.37975311279297 cases=500
+[nnknn-rl] step=40015 episode=970 return=113.0 length=113 loss=None cases=500
+[nnknn-rl] step=41022 episode=980 return=81.0 length=81 loss=104.59158325195312 cases=500
+[nnknn-rl] step=42092 episode=990 return=38.0 length=38 loss=None cases=500
+[nnknn-rl][critic-holdout] step=43056 episodes=1000 mse=466.6220 explained_variance=0.1426
+[nnknn-rl] step=43056 episode=1000 return=110.0 length=110 loss=99.55884552001953 cases=500
+[nnknn-rl][eval] step=43056 mean_return=422.05 max_return=500.00
+[nnknn-rl] step=44186 episode=1010 return=95.0 length=95 loss=None cases=500
+[nnknn-rl] step=45186 episode=1020 return=64.0 length=64 loss=89.5975341796875 cases=500
+[nnknn-rl] step=46274 episode=1030 return=151.0 length=151 loss=None cases=500
+[nnknn-rl] step=47656 episode=1040 return=71.0 length=71 loss=100.88803100585938 cases=500
+[nnknn-rl] step=49263 episode=1050 return=119.0 length=119 loss=None cases=500
+[nnknn-rl] step=51268 episode=1060 return=185.0 length=185 loss=100.23442077636719 cases=500
+[nnknn-rl] step=52675 episode=1070 return=158.0 length=158 loss=None cases=500
+[nnknn-rl] step=54741 episode=1080 return=240.0 length=240 loss=93.4384765625 cases=500
+[nnknn-rl] step=56499 episode=1090 return=174.0 length=174 loss=None cases=500
+[nnknn-rl][critic-holdout] step=58033 episodes=1100 mse=733.2872 explained_variance=0.2303
+[nnknn-rl] step=58033 episode=1100 return=58.0 length=58 loss=89.21149444580078 cases=500
+[nnknn-rl][eval] step=58033 mean_return=412.05 max_return=500.00
+[nnknn-rl] step=59507 episode=1110 return=103.0 length=103 loss=None cases=500
+[nnknn-rl] step=61262 episode=1120 return=230.0 length=230 loss=69.10456085205078 cases=500
+[nnknn-rl] step=63994 episode=1130 return=273.0 length=273 loss=None cases=500
+[nnknn-rl] step=66840 episode=1140 return=500.0 length=500 loss=71.6291275024414 cases=500
+[nnknn-rl] step=68958 episode=1150 return=184.0 length=184 loss=None cases=500
+[nnknn-rl] step=71282 episode=1160 return=176.0 length=176 loss=73.24034881591797 cases=500
+[nnknn-rl] step=72968 episode=1170 return=133.0 length=133 loss=None cases=500
+[nnknn-rl] step=76272 episode=1180 return=236.0 length=236 loss=53.5003776550293 cases=500
+[nnknn-rl] step=79798 episode=1190 return=500.0 length=500 loss=None cases=500
+[nnknn-rl][critic-holdout] step=82548 episodes=1200 mse=1107.1323 explained_variance=0.3165
+[nnknn-rl] step=82548 episode=1200 return=132.0 length=132 loss=56.598819732666016 cases=500
+[nnknn-rl][eval] step=82548 mean_return=405.60 max_return=500.00
+[nnknn-rl] step=85307 episode=1210 return=198.0 length=198 loss=None cases=500
+[nnknn-rl] step=88789 episode=1220 return=500.0 length=500 loss=58.19272994995117 cases=500
+[nnknn-rl] step=91757 episode=1230 return=208.0 length=208 loss=None cases=500
+[nnknn-rl] step=93845 episode=1240 return=200.0 length=200 loss=56.368003845214844 cases=457
+[nnknn-rl] step=95705 episode=1250 return=322.0 length=322 loss=None cases=500
+[nnknn-rl] step=98346 episode=1260 return=347.0 length=347 loss=61.13331985473633 cases=500
+[nnknn-rl] step=100381 episode=1270 return=252.0 length=252 loss=None cases=500
+[nnknn-rl] step=102982 episode=1280 return=389.0 length=389 loss=38.63074493408203 cases=500
+[nnknn-rl] step=105106 episode=1290 return=109.0 length=109 loss=None cases=500
+[nnknn-rl][critic-holdout] step=107379 episodes=1300 mse=751.6581 explained_variance=0.6699
+[nnknn-rl] step=107379 episode=1300 return=227.0 length=227 loss=41.20527267456055 cases=463
+[nnknn-rl][eval] step=107379 mean_return=298.20 max_return=403.00
+[nnknn-rl] step=109793 episode=1310 return=207.0 length=207 loss=None cases=500
+[nnknn-rl] step=111975 episode=1320 return=112.0 length=112 loss=52.296077728271484 cases=500
+[nnknn-rl] step=114932 episode=1330 return=414.0 length=414 loss=None cases=500
+[nnknn-rl] step=117606 episode=1340 return=224.0 length=224 loss=72.402587890625 cases=500
+[nnknn-rl] step=120674 episode=1350 return=236.0 length=236 loss=None cases=500
+[nnknn-rl] step=123774 episode=1360 return=382.0 length=382 loss=43.5037956237793 cases=500
+[nnknn-rl] step=127115 episode=1370 return=256.0 length=256 loss=None cases=500
+[nnknn-rl] step=130278 episode=1380 return=292.0 length=292 loss=114.20556640625 cases=500
+[nnknn-rl] step=133441 episode=1390 return=456.0 length=456 loss=None cases=500
+[nnknn-rl][critic-holdout] step=135960 episodes=1400 mse=696.6700 explained_variance=0.6843
+[nnknn-rl] step=135960 episode=1400 return=309.0 length=309 loss=53.04896926879883 cases=500
+[nnknn-rl][eval] step=135960 mean_return=411.20 max_return=500.00
+[nnknn-rl] step=138678 episode=1410 return=135.0 length=135 loss=None cases=500
+[nnknn-rl] step=141317 episode=1420 return=216.0 length=216 loss=65.25060272216797 cases=500
+[nnknn-rl] step=144152 episode=1430 return=147.0 length=147 loss=None cases=463
+[nnknn-rl] step=146695 episode=1440 return=115.0 length=115 loss=71.67871856689453 cases=500
+[nnknn-rl] step=149211 episode=1450 return=79.0 length=79 loss=None cases=500
+[nnknn-rl] finished profile=fast mean_eval_return=473.85 passed=False run_dir=results\rl_capacity_cpu_g234\nnknn_rl_cartpole_20260903_235233_395975
+{
+  "task": "cartpole",
+  "env_id": "CartPole-v1",
+  "profile": "fast",
+  "seed": 4,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "eval_episodes": 20,
+  "success_threshold": 475.0,
+  "passed": false,
+  "algorithm": "nnknn_actor_critic_separate_memory_gae",
+  "actor_type": "nnknn",
+  "critic_type": "nnknn",
+  "architecture": {
+    "separate_case_bases": true,
+    "shared_nnknn_representation": true,
+    "critic_target_shared_case_store": true,
+    "actor_case_insertion": "raw_positive_advantage_only"
+  },
+  "gae": {
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "advantage_clip": 5.0
+  },
+  "exploration": {
+    "mode": "epsilon_mixed_policy",
+    "applies_to_actor": true,
+    "initial_epsilon": 1.0,
+    "final_epsilon": 0.05,
+    "fraction": 0.5,
+    "final_step_epsilon": 0.05,
+    "readiness": {
+      "min_case_entries": 32,
+      "min_cases_per_action": 8
+    }
+  },
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 473.8500061035156,
+    "std_return": 46.10126876831055,
+    "min_return": 300.0,
+    "max_return": 500.0,
+    "mean_length": 473.8500061035156
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": 463.8999938964844,
+    "std_return": 54.94351577758789,
+    "min_return": 331.0,
+    "max_return": 500.0,
+    "mean_length": 463.8999938964844
+  },
+  "selected_step": 32873,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 32873,
+    "best_model_training_fraction": 0.21915333333333334,
+    "first_success_step": null,
+    "first_success_training_fraction": null,
+    "best_minus_last_return": 9.95001220703125,
+    "budget_interpretation": "unsolved_or_underfit"
+  },
+  "early_stopping": {
+    "enabled": true,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": 500.0,
+    "best_mean_return": 473.8500061035156,
+    "evaluations": 14,
+    "evaluations_without_improvement": 5,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "case_entries": 500,
+  "critic_case_entries": 500,
+  "action_counts": [
+    259,
+    241
+  ],
+  "cases_pruned": 28890,
+  "cases_replaced": 235705,
+  "actor_cases_pruned": 15150,
+  "actor_cases_replaced": 107018,
+  "critic_cases_pruned": 13740,
+  "critic_cases_replaced": 128687,
+  "critic_label_updates": 1564,
+  "critic_label_update_samples": 7073,
+  "partial_rollout_segments": 1,
+  "partial_rollout_samples": 197,
+  "critic_target_enabled": true,
+  "critic_target_value_mode": "ema",
+  "critic_target_sync_interval": 4,
+  "critic_target_ema_tau": 0.05,
+  "critic_target_value_syncs": 92,
+  "critic_holdout_evaluations": 14,
+  "latest_critic_holdout": {
+    "global_step": 135960,
+    "completed_episodes": 1400,
+    "diagnostic_index": 14,
+    "critic_holdout_mse": 696.6700439453125,
+    "critic_holdout_explained_variance": 0.6842696070671082,
+    "critic_holdout_value_mean": 45.33560562133789,
+    "critic_holdout_target_mean": 67.28468322753906,
+    "critic_holdout_samples": 1394,
+    "critic_holdout_episodes": 5,
+    "critic_holdout_environment_steps": 1394,
+    "critic_holdout_mean_episode_return": 278.8,
+    "critic_holdout_mean_episode_length": 278.8,
+    "critic_holdout_behavior_epsilon": 0.05,
+    "critic_holdout_truncated_bootstraps": 0,
+    "critic_holdout_target_method": "discounted_monte_carlo_with_truncation_bootstrap",
+    "critic_holdout_bootstrap_source": "target_value_model",
+    "critic_holdout_seed": 30065
+  },
+  "run_dir": "results\\rl_capacity_cpu_g234\\nnknn_rl_cartpole_20260903_235233_395975"
+}
+Checkpoint: results\rl_capacity_cpu_g234\nnknn_rl_cartpole_20260903_235233_395975\checkpoint.pt
+[18:47:51] DONE seed=4 cap=500 exit=
+[19:26:32] DONE seed=3 cap=1000 exit=
+[19:26:32] CAPACITY CAMPAIGN COMPLETE

@@ -1,0 +1,5 @@
+3235367 nn_mutable
+3235368 nn_trainable
+3235369 mlp_nn_mutable
+3235370 mlp_nn_trainable
+3235371 mlp_nn_hybrid

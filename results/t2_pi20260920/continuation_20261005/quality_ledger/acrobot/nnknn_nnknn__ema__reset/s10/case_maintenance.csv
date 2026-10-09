@@ -1,0 +1,2 @@
+global_step,case_store,source,cases_pruned,cases_replaced,case_entries,action_counts,bias_min,bias_mean,bias_max
+512,critic,capacity_insert,0,384,128,,0.0,0.0,0.0

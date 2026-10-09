@@ -1,0 +1,221 @@
+[dqn] step=500 episode=1 return=-500.0 length=500 epsilon=0.994 loss=None
+[dqn] step=1000 episode=2 return=-500.0 length=500 epsilon=0.987 loss=0.4492466151714325
+[dqn] step=1500 episode=3 return=-500.0 length=500 epsilon=0.981 loss=0.00016514933668076992
+[dqn] step=2000 episode=4 return=-500.0 length=500 epsilon=0.975 loss=0.0006053451797924936
+[dqn] step=2500 episode=5 return=-500.0 length=500 epsilon=0.968 loss=0.00069859076756984
+[dqn] step=4753 episode=10 return=-500.0 length=500 epsilon=0.940 loss=0.300165593624115
+[dqn][eval] step=5000 mean_return=-500.00 max_return=-500.00
+[dqn] step=9489 episode=20 return=-500.0 length=500 epsilon=0.880 loss=0.0056363060139119625
+[dqn][eval] step=10000 mean_return=-500.00 max_return=-500.00
+[dqn] step=13722 episode=30 return=-449.0 length=450 epsilon=0.826 loss=0.019654955714941025
+[dqn][eval] step=15000 mean_return=-500.00 max_return=-500.00
+[dqn] step=17937 episode=40 return=-478.0 length=479 epsilon=0.773 loss=0.6188005805015564
+[dqn][eval] step=20000 mean_return=-500.00 max_return=-500.00
+[dqn] step=20973 episode=50 return=-325.0 length=326 epsilon=0.734 loss=0.03952597454190254
+[dqn] step=23493 episode=60 return=-236.0 length=237 epsilon=0.702 loss=0.05579039454460144
+[dqn][eval] step=25000 mean_return=-104.25 max_return=-70.00
+[dqn] step=26154 episode=70 return=-178.0 length=179 epsilon=0.669 loss=0.3612438142299652
+[dqn] step=28416 episode=80 return=-242.0 length=243 epsilon=0.640 loss=0.34231865406036377
+[dqn][eval] step=30000 mean_return=-82.00 max_return=-62.00
+[dqn] step=30375 episode=90 return=-127.0 length=128 epsilon=0.615 loss=0.15058037638664246
+[dqn] step=32795 episode=100 return=-159.0 length=160 epsilon=0.585 loss=0.5489317178726196
+[dqn] step=34750 episode=110 return=-198.0 length=199 epsilon=0.560 loss=0.289075642824173
+[dqn][eval] step=35000 mean_return=-109.65 max_return=-70.00
+[dqn] step=36563 episode=120 return=-140.0 length=141 epsilon=0.537 loss=0.3625848889350891
+[dqn] step=38192 episode=130 return=-164.0 length=165 epsilon=0.516 loss=0.42221659421920776
+[dqn] step=39959 episode=140 return=-144.0 length=145 epsilon=0.494 loss=0.5429120063781738
+[dqn][eval] step=40000 mean_return=-115.40 max_return=-64.00
+[dqn] step=41800 episode=150 return=-135.0 length=136 epsilon=0.471 loss=0.3267200291156769
+[dqn] step=43348 episode=160 return=-166.0 length=167 epsilon=0.451 loss=0.5049874782562256
+[dqn] step=44846 episode=170 return=-124.0 length=125 epsilon=0.432 loss=0.39767277240753174
+[dqn][eval] step=45000 mean_return=-88.25 max_return=-71.00
+[dqn] step=46200 episode=180 return=-140.0 length=141 epsilon=0.415 loss=0.5210749506950378
+[dqn] step=47563 episode=190 return=-137.0 length=138 epsilon=0.398 loss=0.41418561339378357
+[dqn] step=48849 episode=200 return=-151.0 length=152 epsilon=0.381 loss=0.3461179733276367
+[dqn][eval] step=50000 mean_return=-86.20 max_return=-76.00
+[dqn] step=50314 episode=210 return=-196.0 length=197 epsilon=0.363 loss=0.31768396496772766
+[dqn] step=51605 episode=220 return=-91.0 length=92 epsilon=0.346 loss=0.2506754696369171
+[dqn] step=52877 episode=230 return=-131.0 length=132 epsilon=0.330 loss=0.35286182165145874
+[dqn] step=53950 episode=240 return=-91.0 length=92 epsilon=0.317 loss=0.5481151938438416
+[dqn][eval] step=55000 mean_return=-80.90 max_return=-63.00
+[dqn] step=55139 episode=250 return=-93.0 length=94 epsilon=0.302 loss=0.35246071219444275
+[dqn] step=56263 episode=260 return=-103.0 length=104 epsilon=0.287 loss=0.4471130967140198
+[dqn] step=57435 episode=270 return=-121.0 length=122 epsilon=0.273 loss=0.5825652480125427
+[dqn] step=58421 episode=280 return=-118.0 length=119 epsilon=0.260 loss=0.3498135805130005
+[dqn] step=59449 episode=290 return=-88.0 length=89 epsilon=0.247 loss=0.38965505361557007
+[dqn][eval] step=60000 mean_return=-84.70 max_return=-70.00
+[dqn] step=60508 episode=300 return=-144.0 length=145 epsilon=0.234 loss=0.28797662258148193
+[dqn] step=61477 episode=310 return=-112.0 length=113 epsilon=0.221 loss=0.4346840977668762
+[dqn] step=62533 episode=320 return=-120.0 length=121 epsilon=0.208 loss=0.5157262682914734
+[dqn] step=63560 episode=330 return=-112.0 length=113 epsilon=0.195 loss=0.2545369565486908
+[dqn] step=64556 episode=340 return=-107.0 length=108 epsilon=0.182 loss=0.26987409591674805
+[dqn][eval] step=65000 mean_return=-82.05 max_return=-64.00
+[dqn] step=65527 episode=350 return=-120.0 length=121 epsilon=0.170 loss=0.3535558879375458
+[dqn] step=66526 episode=360 return=-88.0 length=89 epsilon=0.157 loss=0.39516976475715637
+[dqn] step=67430 episode=370 return=-84.0 length=85 epsilon=0.146 loss=0.4018259644508362
+[dqn] step=68487 episode=380 return=-111.0 length=112 epsilon=0.133 loss=0.3533305525779724
+[dqn] step=69448 episode=390 return=-80.0 length=81 epsilon=0.120 loss=0.37959539890289307
+[dqn][eval] step=70000 mean_return=-79.40 max_return=-62.00
+[dqn] step=70351 episode=400 return=-82.0 length=83 epsilon=0.109 loss=0.33577588200569153
+[dqn] step=71266 episode=410 return=-80.0 length=81 epsilon=0.097 loss=0.3101513385772705
+[dqn] step=72177 episode=420 return=-83.0 length=84 epsilon=0.086 loss=0.3813830316066742
+[dqn] step=73076 episode=430 return=-85.0 length=86 epsilon=0.074 loss=0.3607255518436432
+[dqn] step=74030 episode=440 return=-78.0 length=79 epsilon=0.062 loss=0.2695351839065552
+[dqn] step=74819 episode=450 return=-73.0 length=74 epsilon=0.052 loss=0.3152792751789093
+[dqn][eval] step=75000 mean_return=-81.15 max_return=-62.00
+[dqn] step=75870 episode=460 return=-109.0 length=110 epsilon=0.050 loss=0.2561425566673279
+[dqn] step=76741 episode=470 return=-83.0 length=84 epsilon=0.050 loss=0.2882828712463379
+[dqn] step=77635 episode=480 return=-109.0 length=110 epsilon=0.050 loss=0.38287895917892456
+[dqn] step=78586 episode=490 return=-72.0 length=73 epsilon=0.050 loss=0.3200398087501526
+[dqn] step=79443 episode=500 return=-91.0 length=92 epsilon=0.050 loss=0.28140655159950256
+[dqn][eval] step=80000 mean_return=-74.55 max_return=-62.00
+[dqn] step=80277 episode=510 return=-80.0 length=81 epsilon=0.050 loss=0.2474508136510849
+[dqn] step=81087 episode=520 return=-77.0 length=78 epsilon=0.050 loss=0.34603315591812134
+[dqn] step=81922 episode=530 return=-71.0 length=72 epsilon=0.050 loss=0.42007577419281006
+[dqn] step=82748 episode=540 return=-84.0 length=85 epsilon=0.050 loss=0.216347798705101
+[dqn] step=83664 episode=550 return=-85.0 length=86 epsilon=0.050 loss=0.19937187433242798
+[dqn] step=84470 episode=560 return=-75.0 length=76 epsilon=0.050 loss=0.18897242844104767
+[dqn][eval] step=85000 mean_return=-79.45 max_return=-63.00
+[dqn] step=85315 episode=570 return=-83.0 length=84 epsilon=0.050 loss=0.3066661059856415
+[dqn] step=86203 episode=580 return=-76.0 length=77 epsilon=0.050 loss=0.326163649559021
+[dqn] step=87072 episode=590 return=-104.0 length=105 epsilon=0.050 loss=0.24357041716575623
+[dqn] step=88000 episode=600 return=-74.0 length=75 epsilon=0.050 loss=0.28959813714027405
+[dqn] step=88868 episode=610 return=-107.0 length=108 epsilon=0.050 loss=0.31962794065475464
+[dqn] step=89716 episode=620 return=-92.0 length=93 epsilon=0.050 loss=0.27231472730636597
+[dqn][eval] step=90000 mean_return=-101.95 max_return=-61.00
+[dqn] step=90558 episode=630 return=-78.0 length=79 epsilon=0.050 loss=0.35782572627067566
+[dqn] step=91444 episode=640 return=-71.0 length=72 epsilon=0.050 loss=0.2779654860496521
+[dqn] step=92348 episode=650 return=-93.0 length=94 epsilon=0.050 loss=0.31511592864990234
+[dqn] step=93304 episode=660 return=-97.0 length=98 epsilon=0.050 loss=0.23514536023139954
+[dqn] step=94122 episode=670 return=-63.0 length=64 epsilon=0.050 loss=0.20839080214500427
+[dqn] step=94993 episode=680 return=-70.0 length=71 epsilon=0.050 loss=0.2954227328300476
+[dqn][eval] step=95000 mean_return=-85.20 max_return=-69.00
+[dqn] step=95947 episode=690 return=-95.0 length=96 epsilon=0.050 loss=0.31718629598617554
+[dqn] step=96848 episode=700 return=-92.0 length=93 epsilon=0.050 loss=0.450431764125824
+[dqn] step=97736 episode=710 return=-62.0 length=63 epsilon=0.050 loss=0.2341591715812683
+[dqn] step=98870 episode=720 return=-92.0 length=93 epsilon=0.050 loss=0.26575756072998047
+[dqn] step=99731 episode=730 return=-87.0 length=88 epsilon=0.050 loss=0.2529659867286682
+[dqn][eval] step=100000 mean_return=-87.30 max_return=-72.00
+[dqn] step=100645 episode=740 return=-63.0 length=64 epsilon=0.050 loss=0.27420341968536377
+[dqn] step=101505 episode=750 return=-74.0 length=75 epsilon=0.050 loss=0.39148974418640137
+[dqn] step=102403 episode=760 return=-78.0 length=79 epsilon=0.050 loss=0.3598099946975708
+[dqn] step=103269 episode=770 return=-68.0 length=69 epsilon=0.050 loss=0.4716148376464844
+[dqn] step=104178 episode=780 return=-103.0 length=104 epsilon=0.050 loss=0.21125686168670654
+[dqn][eval] step=105000 mean_return=-76.55 max_return=-63.00
+[dqn] step=105085 episode=790 return=-99.0 length=100 epsilon=0.050 loss=0.31617048382759094
+[dqn] step=105978 episode=800 return=-85.0 length=86 epsilon=0.050 loss=0.31713736057281494
+[dqn] step=106827 episode=810 return=-94.0 length=95 epsilon=0.050 loss=0.3754376769065857
+[dqn] step=107810 episode=820 return=-119.0 length=120 epsilon=0.050 loss=0.4084516763687134
+[dqn] step=108630 episode=830 return=-71.0 length=72 epsilon=0.050 loss=0.29143115878105164
+[dqn] step=109442 episode=840 return=-86.0 length=87 epsilon=0.050 loss=0.3206213712692261
+[dqn][eval] step=110000 mean_return=-86.05 max_return=-62.00
+[dqn] step=110324 episode=850 return=-79.0 length=80 epsilon=0.050 loss=0.273475706577301
+[dqn] step=111146 episode=860 return=-90.0 length=91 epsilon=0.050 loss=0.31707221269607544
+[dqn] step=111913 episode=870 return=-83.0 length=84 epsilon=0.050 loss=0.2722715735435486
+[dqn] step=112749 episode=880 return=-88.0 length=89 epsilon=0.050 loss=0.3001331090927124
+[dqn] step=113640 episode=890 return=-74.0 length=75 epsilon=0.050 loss=0.24550415575504303
+[dqn] step=114421 episode=900 return=-102.0 length=103 epsilon=0.050 loss=0.29423433542251587
+[dqn][eval] step=115000 mean_return=-71.90 max_return=-61.00
+[dqn] step=115200 episode=910 return=-62.0 length=63 epsilon=0.050 loss=0.23138701915740967
+[dqn] step=116095 episode=920 return=-86.0 length=87 epsilon=0.050 loss=0.37345659732818604
+[dqn] step=116849 episode=930 return=-77.0 length=78 epsilon=0.050 loss=0.25129228830337524
+[dqn] step=117698 episode=940 return=-106.0 length=107 epsilon=0.050 loss=0.22557687759399414
+[dqn] step=118623 episode=950 return=-124.0 length=125 epsilon=0.050 loss=0.2759714722633362
+[dqn] step=119556 episode=960 return=-90.0 length=91 epsilon=0.050 loss=0.3568182587623596
+[dqn][eval] step=120000 mean_return=-77.90 max_return=-63.00
+[dqn] step=120412 episode=970 return=-108.0 length=109 epsilon=0.050 loss=0.378398060798645
+[dqn] step=121217 episode=980 return=-88.0 length=89 epsilon=0.050 loss=0.2585546672344208
+[dqn] step=122360 episode=990 return=-111.0 length=112 epsilon=0.050 loss=0.28511255979537964
+[dqn] step=123165 episode=1000 return=-105.0 length=106 epsilon=0.050 loss=0.249349445104599
+[dqn] step=124036 episode=1010 return=-84.0 length=85 epsilon=0.050 loss=0.23542049527168274
+[dqn] step=124921 episode=1020 return=-85.0 length=86 epsilon=0.050 loss=0.25808876752853394
+[dqn][eval] step=125000 mean_return=-89.65 max_return=-63.00
+[dqn] step=125875 episode=1030 return=-75.0 length=76 epsilon=0.050 loss=0.3186946213245392
+[dqn] step=126819 episode=1040 return=-83.0 length=84 epsilon=0.050 loss=0.48479655385017395
+[dqn] step=127711 episode=1050 return=-105.0 length=106 epsilon=0.050 loss=0.4105263948440552
+[dqn] step=128581 episode=1060 return=-76.0 length=77 epsilon=0.050 loss=0.29523760080337524
+[dqn] step=129410 episode=1070 return=-89.0 length=90 epsilon=0.050 loss=0.3326420783996582
+[dqn][eval] step=130000 mean_return=-77.00 max_return=-60.00
+[dqn] step=130174 episode=1080 return=-69.0 length=70 epsilon=0.050 loss=0.23943084478378296
+[dqn] step=131092 episode=1090 return=-102.0 length=103 epsilon=0.050 loss=0.2810642123222351
+[dqn] step=131987 episode=1100 return=-62.0 length=63 epsilon=0.050 loss=0.3159431219100952
+[dqn] step=132959 episode=1110 return=-137.0 length=138 epsilon=0.050 loss=0.2633349895477295
+[dqn] step=133741 episode=1120 return=-68.0 length=69 epsilon=0.050 loss=0.39460158348083496
+[dqn] step=134945 episode=1130 return=-91.0 length=92 epsilon=0.050 loss=0.33523207902908325
+[dqn][eval] step=135000 mean_return=-78.50 max_return=-62.00
+[dqn] step=135841 episode=1140 return=-79.0 length=80 epsilon=0.050 loss=0.5595438480377197
+[dqn] step=136708 episode=1150 return=-99.0 length=100 epsilon=0.050 loss=0.30803534388542175
+[dqn] step=137560 episode=1160 return=-107.0 length=108 epsilon=0.050 loss=0.3221513628959656
+[dqn] step=138429 episode=1170 return=-64.0 length=65 epsilon=0.050 loss=0.29972952604293823
+[dqn] step=139277 episode=1180 return=-104.0 length=105 epsilon=0.050 loss=0.31080031394958496
+[dqn][eval] step=140000 mean_return=-81.85 max_return=-62.00
+[dqn] step=140040 episode=1190 return=-80.0 length=81 epsilon=0.050 loss=0.4386434555053711
+[dqn] step=140797 episode=1200 return=-69.0 length=70 epsilon=0.050 loss=0.42282456159591675
+[dqn] step=141782 episode=1210 return=-104.0 length=105 epsilon=0.050 loss=0.6039900183677673
+[dqn] step=142688 episode=1220 return=-85.0 length=86 epsilon=0.050 loss=0.4054531455039978
+[dqn] step=143557 episode=1230 return=-77.0 length=78 epsilon=0.050 loss=0.3711520731449127
+[dqn] step=144347 episode=1240 return=-63.0 length=64 epsilon=0.050 loss=0.4057999849319458
+[dqn][eval] step=145000 mean_return=-500.00 max_return=-500.00
+[dqn] step=145232 episode=1250 return=-82.0 length=83 epsilon=0.050 loss=0.35004404187202454
+[dqn] step=146201 episode=1260 return=-86.0 length=87 epsilon=0.050 loss=0.3133779764175415
+[dqn] step=147208 episode=1270 return=-101.0 length=102 epsilon=0.050 loss=0.2577050030231476
+[dqn] step=148172 episode=1280 return=-89.0 length=90 epsilon=0.050 loss=0.2486947774887085
+[dqn] step=149128 episode=1290 return=-130.0 length=131 epsilon=0.050 loss=0.3432786166667938
+[dqn] step=149976 episode=1300 return=-63.0 length=64 epsilon=0.050 loss=0.3036731779575348
+[dqn][eval] step=150000 mean_return=-90.75 max_return=-63.00
+[dqn] finished profile=fast mean_eval_return=-71.90 passed=True run_dir=results/rl/dqn_acrobot_20260802_194644_017898
+{
+  "task": "acrobot",
+  "env_id": "Acrobot-v1",
+  "profile": "fast",
+  "seed": 1,
+  "total_timesteps": 150000,
+  "configured_total_timesteps": 150000,
+  "actual_timesteps": 150000,
+  "eval_episodes": 20,
+  "success_threshold": -100.0,
+  "passed": true,
+  "final_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": -71.9000015258789,
+    "std_return": 8.791473388671875,
+    "min_return": -93.0,
+    "max_return": -61.0,
+    "mean_length": 72.9000015258789
+  },
+  "last_eval": {
+    "episodes": 20,
+    "seed": 10000,
+    "mean_return": -90.75,
+    "std_return": 21.018741607666016,
+    "min_return": -138.0,
+    "max_return": -63.0,
+    "mean_length": 91.75
+  },
+  "selected_step": 115000,
+  "selected_source": "best_eval",
+  "training_efficiency": {
+    "best_model_step": 115000,
+    "best_model_training_fraction": 0.7666666666666667,
+    "first_success_step": 30000,
+    "first_success_training_fraction": 0.2,
+    "best_minus_last_return": 18.849998474121094,
+    "budget_interpretation": "regressed_after_best"
+  },
+  "early_stopping": {
+    "enabled": false,
+    "patience": 30,
+    "min_delta": 1.0,
+    "min_steps": 25000,
+    "target_score": -60.0,
+    "best_mean_return": -71.9000015258789,
+    "evaluations": 30,
+    "evaluations_without_improvement": 7,
+    "stopped_early": false,
+    "stopping_reason": "budget_exhausted",
+    "stopping_step": 150000
+  },
+  "run_dir": "results/rl/dqn_acrobot_20260802_194644_017898"
+}
+Checkpoint: results/rl/dqn_acrobot_20260802_194644_017898/checkpoint.pt
