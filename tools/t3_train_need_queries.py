@@ -36,7 +36,7 @@ def main():
     native_handle=os.add_dll_directory(str(native)) if sys.platform=='win32' else None
     import torch
     from transformers import AutoModelForCausalLM,AutoTokenizer
-    from model.t1.artifacts import source_fingerprint
+    from model.common.artifacts import source_fingerprint
     from model.t3.benchmarks import load_squad
     from model.t3.host_schema import request_prompt,request_decode,decision_schema,decoder_schema,validate_decision
     from model.t3.need_queries import load_need_queries

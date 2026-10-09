@@ -1,4 +1,0 @@
-base: alignment_sync.yaml
-experiment: alignment_sync_capacity_match
-status: exploratory_matched_capacity_sync
-capacity_match: {K: 0.75, policy: provenance_only}

@@ -14,7 +14,7 @@ import time
 import torch
 
 from model.nnknn_model import GlocalFeatureWeight
-from model.t1.artifacts import source_fingerprint
+from model.common.artifacts import source_fingerprint
 from model.t3.benchmarks import load_squad
 from model.t3.lexical import artifact_text,bm25_rank,candidate_bank,core_bank,need_loss
 from model.t3.need_queries import load_need_queries

@@ -1,3 +1,0 @@
-base: alignment_revision.yaml
-experiment: alignment_revision_matched
-revise: {matched_training_control: true}

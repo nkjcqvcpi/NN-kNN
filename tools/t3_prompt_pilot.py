@@ -32,8 +32,8 @@ def main():
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from model.t1.artifacts import source_fingerprint
-    from model.t1.core import CoreConfig, build_model
+    from model.common.artifacts import source_fingerprint
+    from model.common.core import CoreConfig, build_model
     from model.t3.orchestrator import Budget, run_loop
     from model.t3.retrieval import Access, Case, Retriever, conditional_credit
 

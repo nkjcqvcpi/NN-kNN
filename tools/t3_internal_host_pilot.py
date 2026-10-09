@@ -42,7 +42,7 @@ def main():
     from transformers import AutoModelForCausalLM,AutoTokenizer,LogitsProcessorList
     from lmformatenforcer import JsonSchemaParser
     from lmformatenforcer.integrations.transformers import build_token_enforcer_tokenizer_data,build_transformers_prefix_allowed_tokens_fn
-    from model.t1.artifacts import source_fingerprint
+    from model.common.artifacts import source_fingerprint
     from model.t3.internal import ArtifactLogitMixture
     from model.t3.metric_provenance import metric_provenance
     from model.t3.host_schema import decoder_schema,validate_decision
