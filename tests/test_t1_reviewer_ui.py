@@ -9,8 +9,8 @@ from urllib.error import HTTPError
 import pytest
 import torch
 
-from model.t1.core import CoreConfig, build_model
-from model.t1.outcomes import final_prediction, frozen_evaluation
+from model.common.core import CoreConfig, build_model
+from model.common.outcomes import final_prediction, frozen_evaluation
 from model.t1.reviewer_ui import ReviewerSession
 from tools.t1_reviewer_ui import make_handler
 

@@ -52,6 +52,8 @@ default_args = {
     # "feature_extractor": None,  # e.g., a CNN for images or embedding for text
     "feature_dim": 128,  # Example placeholder, replace with actual value as needed
     "glocal_fw_set_num": 1,
+    "mcb_momentum": 0.999,
+    "mcb_normalize_embeddings": False,
     'training_epochs': 1000,
     "neg_weight_flag": False,
 
@@ -559,6 +561,8 @@ class NN_KNN_Model(nn.Module):
                 - bias_manual_value: (when bias_manual_set true) The manually set value for case default bias.
                 - ignore_identical_in_training: Whether to leave one out in training when sampling cases.
                 - top_k: (for explanation or for regression with locality regularization) K for Neighbor Agreement / nDCG in validation
+                - mcb_momentum: Momentum coefficient for EMA encoder updates (default: 0.999).
+                - mcb_normalize_embeddings: Whether to L2-normalize embeddings (default: False/True).
 
         """
 
@@ -671,7 +675,16 @@ class NN_KNN_Model(nn.Module):
         self.feature_dim = None
         if feature_extractor is not None:
             with torch.no_grad():
-                dummy_input = cases[0].unsqueeze(0).to(device)
+                # Probe on the extractor's own device. Callers that pre-move the
+                # extractor to the module-level `device` (the regression /
+                # classification workflows) are unaffected; RL workflows build
+                # the extractor on CPU and move the whole model afterwards, and
+                # the old unconditional `.to(device)` crashed for them.
+                try:
+                    probe_device = next(feature_extractor.parameters()).device
+                except StopIteration:
+                    probe_device = device
+                dummy_input = cases[0].unsqueeze(0).to(probe_device)
                 self.feature_dim = feature_extractor(dummy_input).shape[-1]
         else:
             self.feature_dim = cases.shape[-1]
@@ -766,6 +779,38 @@ class NN_KNN_Model(nn.Module):
                 self.next_case_id.fill_(next_id + count)
         self.set_active_case_count(end)
         return count
+
+    def overwrite_case_at(self, case_index: int, case: torch.Tensor, label: torch.Tensor) -> None:
+        """Overwrite an existing case slot in-place without $O(K)$ array reallocation."""
+        idx = int(case_index)
+        if not (0 <= idx < self.active_case_count):
+            raise IndexError(f"case_index {idx} out of active range [0, {self.active_case_count})")
+        case_t = torch.as_tensor(case, dtype=self.cases.dtype, device=self.cases.device)
+        label_t = torch.as_tensor(label, dtype=self.labels.dtype, device=self.labels.device)
+        if case_t.dim() > 0 and case_t.shape[0] == 1 and case_t.shape != self.cases[idx].shape:
+            case_t = case_t.squeeze(0)
+        if label_t.dim() > 0 and label_t.shape[0] == 1 and label_t.shape != self.labels[idx].shape:
+            label_t = label_t.squeeze(0)
+
+        old_class = int(torch.argmax(self.labels[idx]).item()) if self.task_type == "classification" and self.labels.shape[-1] > 1 else 0
+        new_class = int(torch.argmax(label_t).item()) if self.task_type == "classification" and label_t.shape[-1] > 1 else 0
+
+        with torch.no_grad():
+            self.cases[idx].copy_(case_t)
+            self.labels[idx].copy_(label_t)
+            self.biases[idx].fill_(self.case_default_bias)
+            self.negative_weights[idx].fill_(1.0)
+            self.glocal_weights[idx].copy_(
+                torch.softmax(
+                    torch.ones(self.glocal_weightor_set_num, device=self.glocal_weights.device),
+                    dim=-1,
+                )
+            )
+        if self.task_type == "classification" and old_class != new_class:
+            if old_class in self.class_to_cases and idx in self.class_to_cases[old_class]:
+                self.class_to_cases[old_class].remove(idx)
+            self.class_to_cases.setdefault(new_class, []).append(idx)
+        self._invalidate_case_cache()
 
     def active_case_ids(self) -> torch.Tensor:
         if hasattr(self, "case_ids"):

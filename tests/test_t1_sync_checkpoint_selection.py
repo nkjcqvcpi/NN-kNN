@@ -7,7 +7,7 @@ import torch
 import numpy as np
 
 from model.t1.calibration import calibrate_free_radius
-from model.t1.core import CoreConfig, build_model
+from model.common.core import CoreConfig, build_model
 from model.t1.maintenance import realign_optimizer_state
 from model.t1.sync import SyncConfig, train_synchronized
 import model.t1.sync as sync

@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from model.nn_cdh import NNCDHAdapter
-from model.t1.core import CoreConfig, build_model, make_optimizer
+from model.common.core import CoreConfig, build_model, make_optimizer
 from model.t1.reuse import ReuseConfig
 from model.t1.adapted_retraining import continued_adapted_trial
 

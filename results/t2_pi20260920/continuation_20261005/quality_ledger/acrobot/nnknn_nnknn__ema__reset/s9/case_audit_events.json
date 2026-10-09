@@ -1,4 +1,0 @@
-{
-  "events": [],
-  "role_streams": "training_gae, actor_policy_surrogate and optional independent_mc kept separate"
-}

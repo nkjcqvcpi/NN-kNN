@@ -14,7 +14,7 @@ import torch
 
 from model.nn_cdh import ClassificationNNCDHAdapter
 from model.t1.calibration import calibrate_free_radius, l_small
-from model.t1.core import CoreConfig, build_model, evaluate, make_optimizer, train_retrieval
+from model.common.core import CoreConfig, build_model, evaluate, make_optimizer, train_retrieval
 from model.t1.data import make_splits, make_synthetic
 from model.t1.maintenance import CaseArchive, realign_optimizer_state, run_maintenance
 from model.t1.provenance import (
@@ -330,7 +330,7 @@ def test_compaction_never_mutates_caller_training_data():
 
 
 def test_clone_optimizer_continues_state():
-    from model.t1.core import clone_optimizer
+    from model.common.core import clone_optimizer
 
     X, y = _toy()
     model, cc = _model(X, y)
@@ -347,7 +347,7 @@ def test_finetune_include_initial_never_worse_on_validation():
     model, cc = _model(X, y)
     tr = train_retrieval(model, X, y, X, y, cc, epochs=3)
     v0 = evaluate(model, X, y)["loss_pre"]
-    from model.t1.core import clone_optimizer
+    from model.common.core import clone_optimizer
 
     opt = clone_optimizer(tr.optimizer, model, cc)
     with torch.no_grad():

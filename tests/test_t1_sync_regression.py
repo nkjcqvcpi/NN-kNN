@@ -7,8 +7,8 @@ import torch
 from model.nn_cdh import NNCDHAdapter
 from model.t1.calibration import calibrate_free_radius
 from model.t1.candidates import MaintenanceReference, removal_influence
-from model.t1.core import CoreConfig, build_model, train_retrieval
-from model.t1.outcomes import final_prediction, frozen_evaluation, prediction_loss
+from model.common.core import CoreConfig, build_model, train_retrieval
+from model.common.outcomes import final_prediction, frozen_evaluation, prediction_loss
 from model.t1.reuse import evaluate_regression_reuse
 from model.t1.sync import SyncConfig, _forward_terms, train_synchronized
 
@@ -67,7 +67,7 @@ def test_external_regression_adapter_is_actual_path_in_audit_and_removal():
 
 
 def test_selected_core_restores_corresponding_adam_step(monkeypatch):
-    import model.t1.core as core
+    import model.common.core as core
     m, cc, data = toy()
     # Validation selects epoch 1 despite two further executed epochs.
     values = iter([1., 2., 3.])
@@ -83,7 +83,7 @@ def test_selected_core_restores_corresponding_adam_step(monkeypatch):
 
 
 def test_initial_checkpoint_restores_unadvanced_optimizer(monkeypatch):
-    import model.t1.core as core
+    import model.common.core as core
     m, cc, data = toy()
     before = copy.deepcopy(m.state_dict())
     values = iter([0., 1., 2.])

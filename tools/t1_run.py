@@ -32,9 +32,9 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 import yaml  # noqa: E402
 
-from model.t1.artifacts import build_manifest, case_statistics_rows, config_id, source_fingerprint, write_json, write_jsonl  # noqa: E402
+from model.common.artifacts import build_manifest, case_statistics_rows, config_id, source_fingerprint, write_json, write_jsonl  # noqa: E402
 from model.t1.calibration import calibrate_free_radius  # noqa: E402
-from model.t1.core import CoreConfig, build_model, clone_optimizer, evaluate, retrieval_events, train_retrieval  # noqa: E402
+from model.common.core import CoreConfig, build_model, clone_optimizer, evaluate, retrieval_events, train_retrieval  # noqa: E402
 from model.t1.data import make_splits  # noqa: E402
 from model.t1.candidates import MaintenanceReference
 from model.t1.maintenance import CaseArchive, run_maintenance  # noqa: E402
@@ -44,7 +44,7 @@ from model.t1.retention import RetentionConfig  # noqa: E402
 from model.t1.reuse import ReuseConfig, evaluate_reuse, evaluate_regression_reuse, train_classification_adapter  # noqa: E402
 from model.t1.revise import flagging_ablation  # noqa: E402
 from model.t1.sync import SyncConfig, train_synchronized  # noqa: E402
-from model.t1.nominal import encoded_queries  # noqa: E402
+from model.common.nominal import encoded_queries  # noqa: E402
 
 
 # --------------------------------------------------------------------------- config
@@ -553,7 +553,7 @@ class Runner:
         data = self.data_for(ds, seed)
         base, cc, tr = self.trained_core(data, seed)
         fr, _ = calibrate_free_radius(base, s_task=float(self.cfg["sync"]["s_task"]), snapshot_step=tr.best_epoch)
-        from model.t1.geometry import case_case_distance
+        from model.common.geometry import case_case_distance
 
         D = case_case_distance(base)
         positive = D[torch.isfinite(D) & (D > 0)]
