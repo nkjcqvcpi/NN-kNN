@@ -1,5 +1,14 @@
 # PI document alignment review — 2026-10-02
 
+Current continuation: [October 9 plan audit](T1_PLAN_AUDIT_20261009.md).
+Alternating synchronization already existed. Calibration storage, before/after
+loss evidence and required ablations are now corrected; the revised full suite
+passed 161 tests, followed by 15 passing calibration tests after adding compact
+snapshot coverage. The 120 repaired pilot runs pass. Full-data grid search and
+additional planned experiments are documented in
+[the current study](T1_FULL_STUDY_20261009.md). The historical progress counts and pending lists below
+describe their dated implementation boundaries, not the current complete status.
+
 ## Scope and authority
 
 Code reviewed: the local `neural-cbr` worktree based on `6adeb30`.

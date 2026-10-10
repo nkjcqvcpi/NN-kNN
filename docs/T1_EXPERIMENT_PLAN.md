@@ -1,8 +1,9 @@
 # T1 experiment plan
 
-Updated 2026-10-02 for career-2027 `cd772776`. Current maintenance uses Q, B,
+Updated 2026-10-09 for career-2027 `cd772776`. Current maintenance uses Q, B,
 coverage/reachability and final-loss removal separately. Thresholded cached
-removal is validated against full queries; optional retraining is not implemented.
+removal is validated against full queries; optional retrieval-only and adapted
+retraining have bounded implementations and pilots, not scalable confirmation.
 New runs use `results/t1_pi20260920/`; old `results/t1/` is historical.
 A removal run that stops above K is not eligible for a matched fixed-K claim.
 
@@ -61,7 +62,14 @@ Primary metrics per table: `test_accuracy_pre` (classification) or `test_rmse_pr
 - Data-valuation baselines (influence functions, Data Shapley on a subset) as retention comparators.
 - Image/text legacy suites with trained encoders; a TabArena transfer subset.
 - In-training maintenance (checkpoint protocol) for P1, after the post-hoc pilot identifies candidate policies.
-- Regression synchronization; RL Phase 3; T1.2 human UI study.
+- Full synchronization/MCB interaction confirmation and T1.2 human UI study.
+- RL Phase 3 belongs to `rl/` on branch `rl`; it is a cross-branch dependency.
+
+Regression synchronization is implemented. The October 9 audit adds required
+loss/radius ablations, actual frozen calibration snapshots and stage diagnostics;
+146 tests and 120 corrected pilot runs pass replay checks. See
+[T1_PLAN_AUDIT_20261009.md](T1_PLAN_AUDIT_20261009.md) for current results,
+the invalid first batches, matched-capacity limits and remaining plan gaps.
 
 ## Bounded alignment verification
 
