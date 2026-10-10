@@ -14,7 +14,7 @@ dataset are not established by these changes.
 | Fit preprocessing on training only | Same T1 ownership | `model/t1/data.py`, HPO tests | Numeric and unseen category tests; real access to all four modern tasks | Commit `774b715`; completed |
 | Complete regression reuse and task namespaces | Same T1 ownership | `tools/t1_run.py`, runner contract tests | Three actual Energy reuse conditions; wine classification/regression collision test | Commit `774b715`; completed |
 | Execute validation-only full-data grid and modern comparators | Same T1 ownership | `tools/t1_grid_search.py`, grid YAML | Five-family Iris preflight; per-trial receipts and frozen selection | Commit `774b715`; full grid running |
-| Execute synchronized/independent ablations and all planned automated families | Same T1 ownership | `tools/t1_execute_study.py`, synchronization/control YAMLs | Successful subprocess receipts, manifests and checkpoints required | Iris/synthetic subset running; all-task execution queued after successful grid |
+| Execute synchronized/independent ablations and all planned automated families | Same T1 ownership | `tools/t1_execute_study.py`, synchronization/control YAMLs | Successful subprocess receipts, manifests and checkpoints required | Iris/synthetic subset completed (160 runs); all-task execution queued after successful grid |
 | General maintenance score and scientific gates | Same T1 ownership | Future accepted derivation and stage documentation | Exact selector reduction, matched comparisons, frozen acceptance margins | Unresolved in authoritative plan; no hidden formula selected |
 | Human revision study | Same T1 ownership | Existing reviewer UI, protocol, participant evidence | Actual approved participants and matched controls | Pending actual participant/protocol information |
 | Standalone core, RL, LLM | `main` / `nnknn/`; `rl` / `rl/`; `LLM` / `llm/` | No stage changes in this task | Validate recipients before any required cherry-pick | Not changed; depend on accepted T1 evidence where applicable |
@@ -122,10 +122,20 @@ select a replacement radius. The same conditional diagnostic scan is queued
 after the full study, using task-role namespaces to distinguish the two wine
 tasks.
 
+The combined Iris/synthetic subset completed all 20 dataset/seed jobs and 160
+conditions: 100 synchronization runs and 60 reuse runs. Replay reproduced 120
+synchronization snapshots, 6,818 epoch records, 700 synchronization metrics and
+420 reuse metrics. All 160 canonical manifests match unique aggregate rows.
+The radius diagnostics separately reproduced 100 snapshots, 3,817 epoch records
+and 350 scalar metrics across 50 runs. Recorded source ZIPs passed integrity and
+fingerprint checks. Complete subset evidence is not complete all-task evidence.
+
 Execution began at 2026-10-10 06:37 UTC (October 9 locally). Source fingerprint:
 `ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4`.
 Full-data CPU NN-kNN initialization plus one California Housing epoch took
 42.5 seconds; completion time for the complete study is not yet known.
+At the latest recorded handoff, 27/110 dataset/family jobs had completed with
+zero failed trials or jobs. Use `grid_full_20261009/progress.json` for live counts.
 
 Artifacts under `results/t1_pi20260920/`:
 
@@ -136,7 +146,7 @@ Artifacts under `results/t1_pi20260920/`:
 - `plan_full_20261009/`: generated experiment queue/configs/logs/results after
   successful grid completion.
 - `plan_iris_20261009/`: full-budget Iris/synthetic reuse and synchronization
-  subset, launched while other HPO tasks continue; separate from the later full
+  subset (160 completed runs), launched while other HPO tasks continue; separate from the later full
   queue to keep exact execution scope visible.
 - `runner_preflight_20261009/`: bounded real-data regression/MCB runner checks.
 - `radius_iris_20261009/`: recorded train-calibration triggers, resolved configs,
@@ -159,3 +169,11 @@ reused; failed trials are retried. The automatic pipeline runs the second comman
 only if the first completes successfully. Final reports must state completed and
 failed trials, actual capacity, inference/training cost and paired fresh-seed
 results. No SOTA claim or scientific gate has yet been established.
+
+The queued diagnostic scan also writes `grid_full_20261009/performance_report.json`
+from complete five-seed evaluations and `plan_full_20261009/canonical_results.json`
+from individual manifests/metrics, after experiment subprocesses have exited.
+These aggregate canonical artifacts rather than treating an interim shared
+summary file as completion evidence. Historical 120-run pilots were rechecked
+with the current compatible replay script and still reproduce all recorded
+snapshots and metrics.

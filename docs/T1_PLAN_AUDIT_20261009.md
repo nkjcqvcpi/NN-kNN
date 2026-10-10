@@ -122,8 +122,10 @@ Artifacts (local, ignored by Git):
 - Audit counts: `plan_audit_20261009_repaired/artifact_audit.json`.
 - Full per-condition means/SDs: each experiment's `summary.csv`; matched results
   and paired differences are under `alignment_sync_plan_matched_20261009/`.
-- Replay script: `plan_audit_20261009/audit_sync_evidence.py`; invoke with the
-  repaired output directory as its argument. The script replays actual measuring
+- Replay script: `plan_audit_20261009_repaired/audit_replay_current_20261009.py`; invoke with the
+  repaired output directory as its argument. This copy compares the historical
+  recorded fields without requiring subsequently added calibration metadata.
+  The script replays actual measuring
   scales and predictions and checks frozen source bundles.
 - Invalid first calibration artifacts: `plan_audit_20261009/`; retained as failure
   evidence. Their audit log records the label-alias failure. Do not use them to
@@ -136,7 +138,7 @@ Run from the owning checkout:
 .venv/Scripts/python.exe codex/smoke_test.py --mode imports
 .venv/Scripts/python.exe tools/t1_run.py configs/t1/alignment_sync_plan_20261009.yaml --out <fresh-output-directory>
 .venv/Scripts/python.exe tools/t1_run.py configs/t1/alignment_sync_plan_matched_20261009.yaml --out <fresh-output-directory>
-.venv/Scripts/python.exe results/t1_pi20260920/plan_audit_20261009/audit_sync_evidence.py results/t1_pi20260920/plan_audit_20261009_repaired
+.venv/Scripts/python.exe results/t1_pi20260920/plan_audit_20261009_repaired/audit_replay_current_20261009.py results/t1_pi20260920/plan_audit_20261009_repaired
 ```
 
 ## Full experiment continuation
