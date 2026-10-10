@@ -33,7 +33,7 @@ import torch  # noqa: E402
 import yaml  # noqa: E402
 
 from model.common.artifacts import build_manifest, case_statistics_rows, config_id, source_fingerprint, write_json, write_jsonl  # noqa: E402
-from model.t1.calibration import calibrate_free_radius  # noqa: E402
+from model.t1.calibration import calibrate_free_radius, compact_calibration_snapshot  # noqa: E402
 from model.common.core import CoreConfig, build_model, clone_optimizer, evaluate, retrieval_events, train_retrieval  # noqa: E402
 from model.t1.data import make_splits  # noqa: E402
 from model.t1.candidates import MaintenanceReference
@@ -41,7 +41,7 @@ from model.t1.maintenance import CaseArchive, run_maintenance  # noqa: E402
 from model.t1.mcb import StabilityTracker  # noqa: E402
 from model.t1.provenance import CaseStatisticsStore, ScoreConfig, active_cohorts, audit_provenance, score_cases  # noqa: E402
 from model.t1.retention import RetentionConfig  # noqa: E402
-from model.t1.reuse import ReuseConfig, evaluate_reuse, evaluate_regression_reuse, train_classification_adapter  # noqa: E402
+from model.t1.reuse import ReuseConfig, evaluate_reuse, evaluate_regression_reuse, train_classification_adapter, train_regression_adapter  # noqa: E402
 from model.t1.revise import flagging_ablation  # noqa: E402
 from model.t1.sync import SyncConfig, train_synchronized  # noqa: E402
 from model.common.nominal import encoded_queries  # noqa: E402
@@ -200,16 +200,22 @@ class Runner:
         sp = self.cfg["splits"]
         return make_splits(ds["name"], ds["task_type"], seed, test_frac=sp["test_frac"], val_frac=sp["val_frac"], maint_frac=sp.get("maint_frac", 0.0), reg_cohort_bins=sp.get("reg_cohort_bins", 5), max_train=ds.get("max_train"), synthetic=ds.get("synthetic"))
 
+    def dataset_key(self, ds):
+        roles = {d["task_type"] for d in self.cfg["datasets"] if d["name"] == ds["name"]}
+        return f"{ds['task_type']}__{ds['name']}" if len(roles) > 1 else ds["name"]
+
     def trained_core(self, data, seed: int, **over):
-        cc = core_cfg_for(self.cfg, data.task_type, seed, **over)
+        selected = self.cfg.get("core_by_dataset", {}).get(f"{data.task_type}__{data.name}", {})
+        cc = core_cfg_for(self.cfg, data.task_type, seed, **{**selected, **over})
         model = build_model(data.X_train, data.y_train, cc, data.num_classes)
         tr = train_retrieval(model, data.X_train, data.y_train, data.X_val, data.y_val, cc)
         return model, cc, tr
 
     def finish(self, *, ds, seed, cond_label, cond, data, model, store, archive, metrics, history, events, components, budgets, maintenance, model_desc, extra_files=None, prediction_adapter=None, binary_files=None, optimizer=None, adapter_optimizer_state=None, optimizer_checkpoint_epoch=None):
-        run_dir = self.out / ds["name"] / cond_label / f"s{seed}"
+        dataset_key = self.dataset_key(ds)
+        run_dir = self.out / dataset_key / cond_label / f"s{seed}"
         run_cfg = {"experiment": self.exp, "dataset": ds, "seed": seed, "condition": cond, "config": self.cfg}
-        run_id = f"{self.exp}-{ds['name']}-{cond_label}-s{seed}-{config_id(run_cfg)[:8]}"
+        run_id = f"{self.exp}-{dataset_key}-{cond_label}-s{seed}-{config_id(run_cfg)[:8]}"
         man = build_manifest(
             run_id=run_id, repo=REPO, cfg=run_cfg, data_desc=data.describe(), components=components, budgets=budgets,
             maintenance=maintenance, evaluation={"confirmatory_or_exploratory": self.cfg["status"], "number_of_seeds": len(self.cfg["seeds"]), "uncertainty_method": "per-seed runs; summarized by tools/t1_summarize.py"}, model_desc=model_desc,
@@ -234,7 +240,7 @@ class Runner:
                     "adapter_requires_grad": None if prediction_adapter is None else
                         {n: p.requires_grad for n, p in prediction_adapter.named_parameters()},
                     "model_description": model_desc}, run_dir / "checkpoint.pt")
-        data_path = self.out / ds["name"] / f"data_snapshot_s{seed}.pt"
+        data_path = self.out / dataset_key / f"data_snapshot_s{seed}.pt"
         if not data_path.exists():
             snapshot = {name: getattr(data, name) for name in
                         ("X_train", "y_train", "X_val", "y_val", "X_test", "y_test",
@@ -248,9 +254,9 @@ class Runner:
             write_json(run_dir / "adapter_nominal_schema.json", prediction_adapter.nominal_schema.state_dict())
         for name, obj in (binary_files or {}).items():
             torch.save(obj, run_dir / name)
-        row = {"run_id": run_id, "experiment": self.exp, "dataset": ds["name"], "task_type": data.task_type, "seed": seed, "condition": cond_label, **{k: v for k, v in cond.items() if not isinstance(v, (dict, list))}, **{k: v for k, v in metrics.items() if not isinstance(v, (dict, list))}}
+        row = {"run_id": run_id, "experiment": self.exp, "dataset": dataset_key, "dataset_name": ds["name"], "task_type": data.task_type, "seed": seed, "condition": cond_label, **{k: v for k, v in cond.items() if not isinstance(v, (dict, list))}, **{k: v for k, v in metrics.items() if not isinstance(v, (dict, list))}}
         # one shard per dataset: parallel jobs (one per dataset) never share a file
-        with (self.out / f"runs__{ds['name']}.jsonl").open("a", encoding="utf-8") as fh:
+        with (self.out / f"runs__{dataset_key}.jsonl").open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(row) + "\n")
         keys = ("test_accuracy_pre", "test_accuracy_post", "test_rmse_pre", "test_accuracy_rare", "n_cases")
         print(f"[done] {run_id} " + " ".join(f"{k}={metrics[k]:.4f}" for k in keys if isinstance(metrics.get(k), (int, float))), flush=True)
@@ -317,24 +323,29 @@ class Runner:
 
     def run_reuse(self, ds, seed):
         data = self.data_for(ds, seed)
-        if data.task_type != "classification":
-            raise ValueError("reuse experiment is the classification extension")
         model, cc, tr = self.trained_core(data, seed)
-        store_a = CaseStatisticsStore()
+        store_a = CaseStatisticsStore(data.task_type)
         audit(model, data, self.cfg, store_a, 0)
         for cond in self.cfg["conditions"]:
             rc = ReuseConfig(seed=seed, **{**self.cfg["reuse"], **cond})
-            adapter, info = train_classification_adapter(model, data, rc)
-            ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc, query_nominal=encoded_queries(adapter, data, "test"), test_groups=data.test_groups)
-            store_b = CaseStatisticsStore()
+            if data.task_type == "classification":
+                adapter, info = train_classification_adapter(model, data, rc)
+                ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc, query_nominal=encoded_queries(adapter, data, "test"), test_groups=data.test_groups)
+                output_mode = cond["output_mode"]
+            else:
+                adapter, info = train_regression_adapter(model, data, rc)
+                ev = evaluate_regression_reuse(model, adapter, data.X_test, data.y_test,
+                    success_tolerance=self.cfg["statistics"]["regression_success_tolerance"])
+                output_mode = "aggregate_regression"
+            store_b = CaseStatisticsStore(data.task_type)
             ainfo = audit(model, data, self.cfg, store_b, 0, adapter=adapter)
-            label = f"{cond['output_mode']}_{cond['loss']}"
+            label = f"{output_mode}_{cond['loss']}"
             m = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
-                 **{f"test_flip_{k}": v for k, v in ev["flips"].items()},
+                 **{f"test_flip_{k}": v for k, v in ev.get("flips", {}).items()},
                  "audit_mean_loss_final": ainfo["mean_loss_final"],
                  "provenance_semantics": ainfo["provenance_semantics"]}
             self.finish(ds=ds, seed=seed, cond_label=label, cond=cond, data=data, model=model, store=store_b, archive=None, metrics=m, history={"core": tr.history, "adapter": info["history"]}, events=[],
-                        components={"retrieve": "trained NN-kNN core (frozen)", "reuse_or_adapter": f"aggregate label-conditioned NN-CDH ({cond['output_mode']}, {cond['loss']})", "revise": "off", "retain": "none", "mcb": "off", "component_synchronization": "off (retrieval frozen first)"},
+                        components={"retrieve": "trained NN-kNN core (frozen)", "reuse_or_adapter": f"aggregate label-conditioned NN-CDH ({output_mode}, {cond['loss']})", "revise": "off", "retain": "none", "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": "off (retrieval frozen first)"},
                         budgets={"case_capacity": model.case_count(), "adapter_epochs_max": rc.epochs,
                                  "adapter_epochs_run": info["epochs_run"], "adapter_best_epoch": info["best_epoch"]},
                         maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "adapter": rc.__dict__},
@@ -552,7 +563,6 @@ class Runner:
     def run_sync(self, ds, seed):
         data = self.data_for(ds, seed)
         base, cc, tr = self.trained_core(data, seed)
-        fr, _ = calibrate_free_radius(base, s_task=float(self.cfg["sync"]["s_task"]), snapshot_step=tr.best_epoch)
         from model.common.geometry import case_case_distance
 
         D = case_case_distance(base)
@@ -562,6 +572,25 @@ class Runner:
             model = copy.deepcopy(base)
             fields = SyncConfig.__dataclass_fields__
             merged = {**self.cfg["sync"], **cond}
+            radius_method = merged.get("free_radius_method", "trained_bias_region")
+            initial_bias = None
+            if radius_method == "initial_bias_region":
+                initial_bias = build_model(data.X_train, data.y_train, cc, data.num_classes).biases.detach().clone()
+            calibration_snapshots = []
+            def calibrate(ep):
+                ids = model.active_case_ids().long()
+                radius, snapshot = calibrate_free_radius(model, s_task=float(merged["s_task"]),
+                    snapshot_step=ep, method=radius_method, neighbor_k=cc.bias_init_k,
+                    aggregation=merged.get("radius_aggregation", "mean"),
+                    bias_transform=merged.get("bias_transform", "identity"),
+                    shrink_factor=float(merged.get("shrink_factor", .5)),
+                    clipping_quantile=float(merged.get("clipping_quantile", .95)),
+                    initial_bias=None if initial_bias is None else initial_bias[ids])
+                snapshot["model_state"] = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+                snapshot["active_case_count"] = model.case_count()
+                calibration_snapshots.append(compact_calibration_snapshot(snapshot))
+                return radius
+            fr = calibrate(tr.best_epoch)
             merged.setdefault("output_mode", "aggregate_regression" if data.task_type == "regression" else "nominal_residual_scores")
             sc = SyncConfig(seed=seed, **{k: (tuple(v) if k == "hidden_dims" else v) for k, v in merged.items() if k in fields and k != "seed"})
             store, archive, events = CaseStatisticsStore(data.task_type), CaseArchive(), []
@@ -575,16 +604,26 @@ class Runner:
                 events.extend(res["events"])
                 return res["summary"]
 
-            recal = lambda ep: calibrate_free_radius(model, s_task=float(self.cfg["sync"]["s_task"]), snapshot_step=ep)[0]  # noqa: E731
+            recal = calibrate
             m_epochs = set(self.cfg["sync"].get("maintenance_epochs", []))
             ropt = clone_optimizer(tr.optimizer, model, cc)
             for grp in ropt.param_groups:
                 grp["lr"] = grp["lr"] * float(self.cfg["sync"]["retrieval_lr_scale"])
-            adapter, info = train_synchronized(model, data, cc, sc, fr, near_scale=near_scale, maintenance_hook=hook, maintenance_epochs=m_epochs, recalibrate=recal, core_optimizer=ropt)
+            tracker = StabilityTracker(data.X_val, k=cc.top_k)
+            tracker.snapshot(model, 0, model.active_case_ids().tolist())
+            def observe(ep, mdl, adapter):
+                return tracker.snapshot(mdl, ep, mdl.active_case_ids().tolist())
+            adapter, info = train_synchronized(model, data, cc, sc, fr, near_scale=near_scale, maintenance_hook=hook, maintenance_epochs=m_epochs, recalibrate=recal, core_optimizer=ropt, epoch_observer=observe)
             model_desc = {"core": cc.__dict__, "sync": sc.__dict__, "near_scale": near_scale,
                 "post_selection_capacity_match": capacity_match,
                 "free_radius_at_t_star": fr.to_dict(), "free_radius_selected": info["free_radius"]}
-            binary_files, extra_files = {}, {}
+            binary_files = {"calibration_snapshots.pt": calibration_snapshots}
+            extra_files = {"calibration_protocol.json": {
+                "method": radius_method, "pair_source": "active_training_cases_only_nonself",
+                "initial_bias_region_metric": "post_core_learned_metric" if initial_bias is not None else None,
+                "snapshot_file": "calibration_snapshots.pt",
+                "snapshot_steps": [s["free_radius"]["snapshot_step"] for s in calibration_snapshots],
+                "recompute": "declared_maintenance_checkpoints_only"}}
             if capacity_match:
                 binary_files["before_capacity_match.pt"] = {
                     "model_state": copy.deepcopy(model.state_dict()), "active_case_count": model.case_count(),
@@ -619,13 +658,17 @@ class Runner:
                  **{f"test_flip_{k}": v for k, v in ev.get("flips", {}).items()},
                  "tau_task": fr.tau_task, "free_radius_status": fr.status,
                  "tau_task_final": info["free_radius"]["tau_task"], "n_cases": model.case_count()}
+            for key in ("representation_drift", "neighborhood_churn", "selection_churn"):
+                values = [r[key] for r in tracker.records if key in r]
+                if values:
+                    m[f"mean_{key}"] = float(np.mean(values))
             phase_updates = {phase: sum(h["optimizer_updates"] for h in info["history"] if h["phase"] == phase)
                              for phase in ("retrieval", "adapter")}
             selected_updates = {phase: sum(h["optimizer_updates"] for h in info["history"]
                 if h["phase"] == phase and h["epoch"] <= info["best_epoch"]) for phase in ("retrieval", "adapter")}
-            label = cond["schedule"] + (f"_matched_K{capacity_spec}" if capacity_match else "")
+            label = cond.get("name", cond["schedule"]) + (f"_matched_K{capacity_spec}" if capacity_match else "")
             self.finish(ds=ds, seed=seed, cond_label=label, cond=cond, data=data, model=model, store=store, archive=archive, metrics=m, history={"core": tr.history, "sync": info["history"]}, events=events,
-                        components={"retrieve": "NN-kNN core", "reuse_or_adapter": sc.output_mode, "revise": "off", "retain": "checkpoint maintenance" if events else "none", "mcb": "off", "component_synchronization": sc.schedule},
+                        components={"retrieve": "NN-kNN core", "reuse_or_adapter": sc.output_mode, "revise": "off", "retain": "checkpoint maintenance" if events else "none", "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": sc.schedule},
                         budgets={"case_capacity": model.case_count(), "sync_epochs_max": sc.epochs,
                             "sync_epochs_run": len(info["history"]), "executed_optimizer_updates": phase_updates,
                             "selected_optimizer_updates": selected_updates,

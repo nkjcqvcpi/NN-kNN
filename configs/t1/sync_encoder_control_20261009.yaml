@@ -1,0 +1,3 @@
+base: sync_mcb_interaction_20261009.yaml
+experiment: sync_encoder_control_20261009
+core: {mcb_enabled: false}

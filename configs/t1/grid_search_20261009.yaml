@@ -1,0 +1,65 @@
+status: exploratory_validation_search
+experiment: grid_search_20261009
+development_seeds: [20, 21]
+evaluation_seeds: [30, 31, 32, 33, 34]
+screen_epochs: 60
+screen_patience: 15
+refit_epochs: 300
+refit_patience: 40
+finalists: 3
+torch_threads: 1
+splits: {test_frac: 0.2, val_frac: 0.2, maint_frac: 0.0, reg_cohort_bins: 5}
+families: [nnknn, knn, catboost, mlp, tabm]
+datasets:
+  - {name: iris, task_type: classification}
+  - {name: wine, task_type: classification}
+  - {name: breast_cancer, task_type: classification}
+  - {name: balance, task_type: classification}
+  - {name: digits, task_type: classification}
+  - {name: zebra, task_type: classification}
+  - {name: zebra_special, task_type: classification}
+  - {name: energy_efficiency, task_type: regression}
+  - {name: yacht, task_type: regression}
+  - {name: airfoil, task_type: regression}
+  - {name: student_performance, task_type: regression}
+  - {name: abalone, task_type: regression}
+  - {name: body_fat, task_type: regression}
+  - {name: diabets, task_type: regression}
+  - {name: car, task_type: regression}
+  - {name: califonia_housing, task_type: regression}
+  - {name: bike_sharing, task_type: regression}
+  - {name: wine, task_type: regression}
+  # Frozen by sample size/feature regimes, before model results were inspected.
+  - {name: tabarena_363614, task_type: classification, display: anneal}
+  - {name: tabarena_363626, task_type: classification, display: credit-g}
+  - {name: tabarena_363625, task_type: regression, display: concrete_compressive_strength}
+  - {name: tabarena_363675, task_type: regression, display: healthcare_insurance_expenses}
+grids:
+  nnknn:
+    representation: [raw, mlp]
+    top_k: [3, 10]
+    lr_case: [0.001, 0.01]
+    glocal_fw_set_num: [1, 4]
+    tau: [0.5, 1.0]
+  knn:
+    n_neighbors: [1, 3, 5, 10, 20, 40, 60, 80]
+    weights: [uniform, distance]
+    p: [1, 2]
+  catboost:
+    depth: [4, 8]
+    learning_rate: [0.03, 0.1]
+    l2_leaf_reg: [1.0, 5.0]
+    random_strength: [0.0, 1.0]
+    iterations: [300, 600]
+  mlp:
+    width: [64, 128]
+    layers: [1, 2]
+    lr: [0.001, 0.003]
+    weight_decay: [0.0, 0.001]
+    dropout: [0.0, 0.1]
+  tabm:
+    d_block: [64, 128]
+    n_blocks: [1, 2]
+    lr: [0.001, 0.003]
+    weight_decay: [0.0, 0.001]
+    k: [8, 16]

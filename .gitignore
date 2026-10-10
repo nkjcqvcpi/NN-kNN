@@ -51,3 +51,4 @@ logs/t1/
 /results/t1_pi20260920/
 
 .pytest_cache/
+datasets/t1_cache/

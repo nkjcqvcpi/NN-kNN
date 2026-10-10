@@ -1,0 +1,20 @@
+# Exploratory plan audit: primary schedules and individual required ablations.
+base: alignment_sync.yaml
+experiment: alignment_sync_plan_20261009
+seeds: [8, 9, 10]
+datasets:
+  - {name: iris, task_type: classification, max_train: 60}
+  - {name: energy_efficiency, task_type: regression, max_train: 60}
+sync:
+  free_radius_method: trained_bias_region
+conditions:
+  - {schedule: independent}
+  - {schedule: alternating_rr}
+  - {schedule: alternating_rrr}
+  - {name: rr_no_L_pre, schedule: alternating_rr, w_pre: 0.0}
+  - {name: rr_no_L_near, schedule: alternating_rr, w_near: 0.0}
+  - {name: rr_no_L_delta, schedule: alternating_rr, v_delta: 0.0}
+  - {name: rr_no_L_small, schedule: alternating_rr, v_small: 0.0}
+  - {name: rr_zero_radius, schedule: alternating_rr, free_radius_method: zero}
+  - {name: rr_initial_bias_radius, schedule: alternating_rr, free_radius_method: initial_bias_region}
+  - {name: rr_exact_kth_radius, schedule: alternating_rr, free_radius_method: exact_kth_pair}

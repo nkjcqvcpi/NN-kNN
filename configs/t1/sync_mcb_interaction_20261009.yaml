@@ -1,0 +1,3 @@
+base: full_sync_ablation_20261009.yaml
+experiment: sync_mcb_interaction_20261009
+core: {representation: mlp, mlp_dims: [32, 16], mcb_enabled: true, mcb_momentum: 0.99, normalize_embeddings: true}

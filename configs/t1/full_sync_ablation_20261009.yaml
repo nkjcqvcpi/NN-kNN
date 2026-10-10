@@ -1,0 +1,19 @@
+base: alignment_sync_plan_matched_20261009.yaml
+experiment: full_sync_ablation_20261009
+seeds: [30, 31, 32, 33, 34]
+core: {epochs: 300, patience: 40}
+sync: {epochs: 120, block_epochs: 2, patience: 30, maintenance_epochs: [40, 80]}
+datasets:
+  - {name: synthetic_diag, task_type: classification, synthetic: {generator_version: independent_v1}}
+  - {name: iris, task_type: classification}
+  - {name: wine, task_type: classification}
+  - {name: breast_cancer, task_type: classification}
+  - {name: balance, task_type: classification}
+  - {name: digits, task_type: classification}
+  - {name: zebra, task_type: classification}
+  - {name: zebra_special, task_type: classification}
+  - {name: energy_efficiency, task_type: regression}
+  - {name: yacht, task_type: regression}
+  - {name: airfoil, task_type: regression}
+  - {name: student_performance, task_type: regression}
+  - {name: abalone, task_type: regression, max_train: 1500}
