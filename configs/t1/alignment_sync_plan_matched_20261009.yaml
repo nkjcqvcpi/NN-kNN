@@ -1,0 +1,6 @@
+base: alignment_sync_plan_20261009.yaml
+experiment: alignment_sync_plan_matched_20261009
+# All final predictors have 45/60 active cases. Post-hoc compression adds no
+# training, while RRR also maintains at its declared outer checkpoints.
+# Executed/selected updates and cost are recorded; this is not equal compute.
+capacity_match: {K: 0.75, policy: provenance_only}

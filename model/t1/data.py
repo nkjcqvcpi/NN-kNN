@@ -16,7 +16,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
+import pandas as pd
+import hashlib
 import torch
+from pathlib import Path
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -75,18 +82,67 @@ class T1Data:
 
 
 def _load_raw(name: str, task_type: str, seed: int) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+    data_dir = Path(__file__).resolve().parents[2] / "datasets"
+    if name.startswith(("openml_", "tabarena_")):
+        import openml
+        task = openml.tasks.get_task(int(name.split("_")[1]), download_splits=True) if name.startswith("tabarena_") else None
+        ds = openml.datasets.get_dataset(task.dataset_id if task else int(name.split("_")[1]), download_data=True)
+        frame, target, _, _ = ds.get_data(target=task.target_name if task else ds.default_target_attribute, dataset_format="dataframe")
+        if task_type == "classification":
+            target = pd.Categorical(target).codes.astype(np.int64)
+        source_meta = {"source": "openml", "openml_id": ds.dataset_id,
+            "openml_version": ds.version, "name_on_source": ds.name,
+            "license": ds.licence, "protocol": "T1 reconstructed holdout, not official TabArena splits"}
+        if task:
+            repeats, folds, _ = task.get_split_dimensions()
+            repeat, fold = (seed // folds) % repeats, seed % folds
+            train_idx, test_idx = task.get_train_test_split_indices(repeat=repeat, fold=fold)
+            source_meta.update(openml_task_id=task.task_id, outer_repeat=repeat, outer_fold=fold,
+                outer_train_indices=train_idx.tolist(), outer_test_indices=test_idx.tolist(),
+                protocol="OpenML official outer split; train-only inner holdout; no TabArena bagging/leaderboard equivalence")
+        return frame, np.asarray(target).reshape(-1), source_meta
+    if task_type == "regression" and name == "student_performance":
+        frame = pd.read_csv(data_dir / "student-por.csv", sep=";")
+        return frame.drop(columns="G3"), frame.G3.to_numpy(), {"source": "student-por.csv", "preprocessing": "training_only_categories"}
+    if task_type == "regression" and name == "body_fat":
+        frame = pd.read_csv(data_dir / "bodyfat.csv")
+        x = frame.drop(columns=["BodyFat", "Density"]).copy()
+        x["Bmi"] = 703 * x.Weight / x.Height.pow(2)
+        x["ACratio"] = x.Abdomen / x.Chest
+        x["HTratio"] = x.Hip / x.Thigh
+        x = x.drop(columns=["Weight", "Height", "Abdomen", "Chest", "Hip", "Thigh"])
+        return x, frame.Density.to_numpy(), {"source": "bodyfat.csv", "target": "Density (legacy target)",
+            "outlier_policy": "no whole-dataset statistical filtering"}
+    if task_type == "regression" and name == "diabets":
+        from sklearn.datasets import load_diabetes
+        ds = load_diabetes(scaled=False)
+        return ds.data, ds.target, {"source": "sklearn.load_diabetes(scaled=False)"}
     if task_type == "classification":
         from datasets.classification_data import load_small_classification_dataset
 
         st = load_small_classification_dataset(name, seed=seed)
         return st["X"].numpy().astype(np.float32), st["y"].numpy().astype(np.int64), {"source": "datasets.classification_data"}
     from datasets.reg_data import Reg_data
-
-    X, y = Reg_data(name)
+    # Public remote legacy data are cached before any learned preprocessing.
+    # Repeated HPO seeds/families must not refetch UCI at every fit.
+    cache = data_dir / "t1_cache" / f"{name}.npz"
+    cacheable = name in {"abalone", "califonia_housing", "bike_sharing", "wine"}
+    if cacheable and cache.exists():
+        with np.load(cache, allow_pickle=False) as raw:
+            X, y = raw["X"], raw["y"]
+    else:
+        X, y = Reg_data(name)
+        if cacheable:
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            # Avoid colliding writers when separate dataset workers start.
+            import os
+            temporary = cache.with_name(f"{name}.{os.getpid()}.npz")
+            np.savez_compressed(temporary, X=np.asarray(X, dtype=np.float32), y=np.asarray(y, dtype=np.float32))
+            temporary.replace(cache)
     return (
         np.asarray(X, dtype=np.float32),
         np.asarray(y, dtype=np.float32).reshape(-1),
-        {"source": "datasets.reg_data"},
+        {"source": "datasets.reg_data", **({"raw_snapshot_sha256": hashlib.sha256(cache.read_bytes()).hexdigest()} if cacheable else {})},
     )
 
 
@@ -115,7 +171,10 @@ def make_splits(
     X, y, meta = _load_raw(name, task_type, seed)
     idx = np.arange(len(y))
     strat = y if task_type == "classification" else None
-    tr_idx, te_idx = train_test_split(idx, test_size=test_frac, random_state=seed, stratify=strat)
+    if "outer_train_indices" in meta:
+        tr_idx, te_idx = np.asarray(meta.pop("outer_train_indices")), np.asarray(meta.pop("outer_test_indices"))
+    else:
+        tr_idx, te_idx = train_test_split(idx, test_size=test_frac, random_state=seed, stratify=strat)
     strat_tr = y[tr_idx] if task_type == "classification" else None
     rel_val = val_frac / (1.0 - test_frac)
     tr_idx, va_idx = train_test_split(tr_idx, test_size=rel_val, random_state=seed + 1, stratify=strat_tr)
@@ -127,8 +186,24 @@ def make_splits(
     if max_train is not None and len(tr_idx) > max_train:
         strat_tr = y[tr_idx] if task_type == "classification" else None
         tr_idx, _ = train_test_split(tr_idx, train_size=max_train, random_state=seed + 3, stratify=strat_tr)
-    scaler = StandardScaler().fit(X[tr_idx])
-    t = lambda a: torch.tensor(scaler.transform(X[a]), dtype=torch.float32)  # noqa: E731
+    if isinstance(X, pd.DataFrame):
+        numeric = X.select_dtypes(include="number").columns.tolist()
+        categorical = [c for c in X.columns if c not in numeric]
+        # Explicitly retain nominal differences in the fitted representation.
+        # Category vocabulary and missing-value estimates never use val/test.
+        scaler = ColumnTransformer([
+            ("numeric", make_pipeline(SimpleImputer(keep_empty_features=True), StandardScaler()), numeric),
+            ("categorical", make_pipeline(SimpleImputer(strategy="most_frequent", keep_empty_features=True),
+                OneHotEncoder(handle_unknown="ignore", sparse_output=False)), categorical)], sparse_threshold=0.)
+        scaler.fit(X.iloc[tr_idx])
+        t = lambda a: torch.tensor(scaler.transform(X.iloc[a]), dtype=torch.float32)
+        meta["nominal_coverage"] = {c: "joint_one_hot_representation_train_fitted" for c in categorical}
+    else:
+        scaler = make_pipeline(SimpleImputer(keep_empty_features=True), StandardScaler()).fit(X[tr_idx])
+        t = lambda a: torch.tensor(scaler.transform(X[a]), dtype=torch.float32)
+    meta["split_indices"] = {"train": tr_idx.tolist(), "validation": va_idx.tolist(), "test": te_idx.tolist(),
+        "maintenance": [] if mt_idx is None else mt_idx.tolist()}
+    meta["preprocessing_fit_stream"] = "train_only"
     if task_type == "classification":
         yt = lambda a: torch.tensor(y[a], dtype=torch.long)  # noqa: E731
         num_classes = int(len(np.unique(y)))

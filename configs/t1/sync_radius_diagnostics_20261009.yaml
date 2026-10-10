@@ -1,0 +1,8 @@
+base: full_sync_ablation_20261009.yaml
+experiment: sync_radius_diagnostics_20261009
+conditions:
+  - {name: rr_identity_mean, schedule: alternating_rr}
+  - {name: rr_identity_median, schedule: alternating_rr, radius_aggregation: median}
+  - {name: rr_shrunk_mean, schedule: alternating_rr, bias_transform: shrunk, shrink_factor: 0.5}
+  - {name: rr_clipped_mean, schedule: alternating_rr, bias_transform: clipped, clipping_quantile: 0.95}
+  - {name: rr_cohort_normalized_mean, schedule: alternating_rr, bias_transform: cohort_normalized}

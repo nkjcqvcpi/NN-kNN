@@ -127,6 +127,7 @@ def train_synchronized(
     maintenance_epochs: set[int] | None = None,
     recalibrate: Callable[[int], FreeRadius] | None = None,
     core_optimizer: torch.optim.Optimizer | None = None,
+    epoch_observer: Callable[[int, Any, Any], dict[str, Any]] | None = None,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
     cfg.validate(model.task_type)
     started = time.perf_counter()
@@ -168,6 +169,23 @@ def train_synchronized(
 
     for ep in range(1, cfg.epochs + 1):
         ph = phase_of(ep)
+        # Same train-only LOO stream before/after the update; eval mode keeps
+        # dropout and mutable encoders from confounding the comparison.
+        def diagnostic_terms():
+            model.eval()
+            adapter.eval()
+            with torch.no_grad():
+                totals = {}
+                for start in range(0, len(y), core_cfg.batch_size):
+                    stop = min(start + core_cfg.batch_size, len(y))
+                    terms = _forward_terms(model, adapter, X[start:stop], y[start:stop], fr,
+                        output_mode=cfg.output_mode, near_scale=near_scale,
+                        query_case_ids=torch.arange(start, stop, device=device),
+                        query_nominal=None if nominal_train is None else nominal_train[start:stop])
+                    for key, value in terms.items():
+                        totals[key] = totals.get(key, 0.) + float(value) * (stop - start) / len(y)
+            return totals
+        before_update = diagnostic_terms()
         model.train()
         adapter.train()
         perm = torch.randperm(y.numel(), generator=g)
@@ -208,6 +226,7 @@ def train_synchronized(
             nb += 1
         rec = {"epoch": ep, "phase": ph, "optimizer_updates": nb,
                "training_examples": len(y), "retrieval_query_case_pairs": query_case_pairs,
+               "train_before_update": before_update, "train_after_update": diagnostic_terms(),
                **{k: v / max(nb, 1) for k, v in agg.items()}}
         if ep in maintenance_epochs and maintenance_hook is not None and cfg.schedule == "alternating_rrr":
             before_count = model.case_count()
@@ -224,6 +243,7 @@ def train_synchronized(
             # an audit or no-op selection does not invalidate a better state.
             if changed:
                 best, bad = (float("inf"), None, None, -1, None, None, None), 0
+            rec["train_after_maintenance"] = diagnostic_terms()
         # validation: post-adaptation task loss on the untouched validation stream
         model.eval()
         adapter.eval()
@@ -231,7 +251,10 @@ def train_synchronized(
             V = _forward_terms(model, adapter, data.X_val.to(device), data.y_val.to(device),
                                fr, output_mode=cfg.output_mode, near_scale=near_scale, query_nominal=nominal_val)
             v_post, v_pre = float(V["L_post"]), float(V["L_pre"])
-        rec.update({"val_L_post": v_post, "val_L_pre": v_pre, "n_cases": model.case_count()})
+        rec.update({"val_L_post": v_post, "val_L_pre": v_pre,
+                    "validation_terms": {k: float(v) for k, v in V.items()}, "n_cases": model.case_count()})
+        if epoch_observer is not None:
+            rec["stability"] = epoch_observer(ep, model, adapter)
         hist.append(rec)
         # select on post loss only after the adapter has trained at least once
         if any(h["phase"] == "adapter" for h in hist) and v_post < best[0] - 1e-9:
