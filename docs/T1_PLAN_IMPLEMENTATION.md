@@ -10,7 +10,7 @@ The September 20 candidate note supersedes Q/B combination and stored-label
 agreement as the primary provenance definition. The earlier geometric formula,
 pre-adaptation-only audit and separate weighted coverage/redundancy formulas are
 historical designs, not current active policies. Old T0/T1 artifacts remain in Git
-history. Existing September 29 results under `results/t1/` are preserved but do
+history. Existing September 29 results under `results/t1/<phase>/pilot_20260929/` are preserved but do
 not validate the revised pipeline.
 
 ## Current implemented behavior
