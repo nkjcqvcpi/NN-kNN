@@ -78,7 +78,31 @@ def load_config(path: Path) -> dict[str, Any]:
         base = load_config_raw(path.parent / cfg.pop("base"))
         cfg = _deep_merge(base, cfg)
     _check_resolved(cfg)
+    expand_condition_grid(cfg)
     return cfg
+
+
+def expand_condition_grid(cfg: dict[str, Any]) -> None:
+    """Append ``condition_grid`` blocks to ``conditions`` as named Cartesian products.
+
+    Each block is ``{name, fixed: {...}, grid: {key: [values]}}``; a condition is
+    named ``<name>__<key>=<value>...`` in grid-key order. Names must be unique.
+    """
+    import itertools
+    blocks = cfg.pop("condition_grid", None)  # expanded once; saved configs list conditions
+    if not blocks:
+        return
+    conds = list(cfg.get("conditions") or [])
+    for block in blocks:
+        keys = list(block.get("grid", {}))
+        for values in itertools.product(*(block["grid"][k] for k in keys)):
+            cond = {**block.get("fixed", {}), **dict(zip(keys, values))}
+            cond["name"] = block["name"] + "".join(f"__{k}={v}" for k, v in zip(keys, values))
+            conds.append(cond)
+    names = [c.get("name", c.get("schedule")) for c in conds]
+    if len(set(names)) != len(names):
+        raise ValueError("condition names must be unique")
+    cfg["conditions"] = conds
 
 
 def load_config_raw(path: Path) -> dict[str, Any]:
@@ -174,10 +198,23 @@ def adapted_metrics(model, adapter, data, stream, cfg, rc=None):
     """Pre/post-adaptation metrics on one evaluation stream (``test`` or ``val``)."""
     X, y = getattr(data, f"X_{stream}"), getattr(data, f"y_{stream}")
     if data.task_type == "classification":
-        return evaluate_reuse(model, adapter, X, y, rc, query_nominal=encoded_queries(adapter, data, stream),
-                              test_groups=data.test_groups if stream == "test" else None)
-    return evaluate_regression_reuse(model, adapter, X, y,
-                                     success_tolerance=cfg["statistics"]["regression_success_tolerance"])
+        out = evaluate_reuse(model, adapter, X, y, rc, query_nominal=encoded_queries(adapter, data, stream),
+                             test_groups=data.test_groups if stream == "test" else None)
+    else:
+        out = evaluate_regression_reuse(model, adapter, X, y,
+                                        success_tolerance=cfg["statistics"]["regression_success_tolerance"])
+    # Synchronization's post-adaptation task loss (cross-entropy or MSE), so frozen-core
+    # reuse and every schedule share one selection criterion.
+    from model.common.outcomes import frozen_evaluation
+    from model.t1.sync import _forward_terms
+    device = model.cases.device
+    nominal = encoded_queries(adapter, data, stream)
+    with frozen_evaluation(model, adapter):
+        T = _forward_terms(model, adapter, X.to(device), y.to(device), None,
+                           output_mode=rc.output_mode if data.task_type == "classification" else "aggregate_regression",
+                           near_scale=1.0, query_nominal=None if nominal is None else nominal.to(device))
+    out["L_post"] = float(T["L_post"])
+    return out
 
 
 class EveryEpoch:

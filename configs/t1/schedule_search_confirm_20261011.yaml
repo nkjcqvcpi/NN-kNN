@@ -1,0 +1,8 @@
+# Confirmation of validation-selected training schedules on fresh evaluation seeds.
+# tools/t1_schedule_search.py select fills arms, conditions (finalists and
+# references), tuned cores and budgets from the stage-A configuration.
+base: _base.yaml
+experiment: schedule_search_confirm_20261011
+type: encoder_ablation
+status: exploratory_confirmation
+seeds: [30, 31, 32, 33, 34]
