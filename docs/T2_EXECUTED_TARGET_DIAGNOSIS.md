@@ -29,5 +29,5 @@ that all negative-reward trajectories lack helpful actions. Maintain the
 AGENTS admission rule and MC holdout exclusion while testing explicitly
 declared value warm starts and maintenance optimizer controls.
 
-Artifacts `results/t2_pi20260920/continuation_20261004/target_sync1/` and task
+Artifacts `results/t2/s02_s03_instrumentation_role_audits/pi20260920/continuation_20261004/target_sync1/` and task
 outputs `neural-cbr-t2-sync1-results.md`, MC/training verification JSONs.

@@ -294,7 +294,7 @@ def generate_rl_report(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run RL MCB and capacity experiment battery.")
-    parser.add_argument("--output-dir", default="results/rl_mcb_campaign")
+    parser.add_argument("--output-dir", default="results/t2/s06_case_memory_mechanisms/rl_mcb_campaign")
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--skip-acrobot", action="store_true", help="Skip Acrobot capacity run.")

@@ -39,7 +39,7 @@ gain or matched-compute gate claim follows from this engineering repair.
 Source `91b1ff4ca6d45d0decf891870b1f8a0bb767d253d21124aaf556c45f1e626980`;
 125 files; ZIP SHA256
 `bb71ceb185c74039fc109469070e3cd82d4d7c4ea66bc4123d6b94b0ce120705`.
-Artifacts `results/t2_pi20260920/continuation_20261005/selected_checkpoint/`.
+Artifacts `results/t2/s02_s03_instrumentation_role_audits/pi20260920/continuation_20261005/selected_checkpoint/`.
 Task outputs `neural-cbr-t2-selected-state-verification.json` and
 `neural-cbr-t2-selected-checkpoint-mc-verification.json` record counts and
 per-run phases. Next integrate role-specific quality/provenance retention and

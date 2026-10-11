@@ -75,10 +75,10 @@ Final source `dc26517dfadb6d13be47acd74e974d1a3444ce75b848431e97a3ecadbfda9add`;
 `c0828c5fabe1bf5b9571372a915a46d93d3f0d72d3fd7860d4094bb898d02ba0`.
 Original sourceb1a804d18abf and direct-validation source5eafc20eb29f are retained.
 
-Evidence:task `work/live_retention_{off,noop,actor,critic,both}/`, instrumented
-`work/live_retention_replayed/`, `work/live_retention_completed/`, final
-`work/live_retention_ready_completed/`; reports
-`outputs/neural-cbr-t2-live-retention-results.md`, original/complete/ready and MC
+Evidence:task `results/t2/s06_case_memory_mechanisms/codex_task_20261002/runs/live_retention_{off,noop,actor,critic,both}/`, instrumented
+`results/t2/s06_case_memory_mechanisms/codex_task_20261002/runs/live_retention_replayed/`, `results/t2/s06_case_memory_mechanisms/codex_task_20261002/runs/live_retention_completed/`, final
+`results/t2/s06_case_memory_mechanisms/codex_task_20261002/runs/live_retention_ready_completed/`; reports
+`results/t2/s06_case_memory_mechanisms/codex_task_20261002/outputs/neural-cbr-t2-live-retention-results.md`, original/complete/ready and MC
 verification JSONs, `neural-cbr-t2-live-fixed-policy-verification.json`.
 This is an optional exploratory implementation, not Stage A success. Next
 separate actor return protection from surrogate guarantees, confirm matched

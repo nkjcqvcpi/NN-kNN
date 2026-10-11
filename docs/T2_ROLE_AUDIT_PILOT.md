@@ -42,7 +42,7 @@ from canonical IDs; legacy restore and actual predictions are tested. All12
 runs were repeated from the corrected freeze.159 T1/T2/T3 tests and maintained
 RL smoke pass; old manual cancellation audit failure logs remain.
 
-Artifacts: `results/t2_pi20260920/continuation_20261004/role_audit_512_restore/`.
+Artifacts: `results/t2/s02_s03_instrumentation_role_audits/pi20260920/continuation_20261004/role_audit_512_restore/`.
 Task reports `neural-cbr-t2-role-audit-results.md` and
 `neural-cbr-t2-role-audit-verification.json`. Only the first8 MC queries/run
 are audited, and actual actor rollout interventions remain unfinished. One

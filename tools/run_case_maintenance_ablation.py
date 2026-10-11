@@ -183,7 +183,7 @@ def generate_ablation_report(output_dir: Path, df: pd.DataFrame, seeds: list[int
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run case maintenance ablation study.")
-    parser.add_argument("--output-dir", default="results/rl_case_maintenance")
+    parser.add_argument("--output-dir", default="results/t2/s06_case_memory_mechanisms/rl_case_maintenance")
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()

@@ -47,5 +47,5 @@ unknown/action coverage, correct moment/target alignment and recorded costs.
 Also investigate Acrobot value startup and target/advantage calibration rather
 than admitting nonpositive actor cases to manufacture readiness.
 
-Evidence:task `work/retention_reference_{control,wide,guard}/` and
-`outputs/neural-cbr-t2-reference-guard-{results.md,verification.json}`.
+Evidence:task `results/t2/s06_case_memory_mechanisms/codex_task_20261002/runs/retention_reference_{control,wide,guard}/` and
+`results/t2/s06_case_memory_mechanisms/codex_task_20261002/outputs/neural-cbr-t2-reference-guard-{results.md,verification.json}`.

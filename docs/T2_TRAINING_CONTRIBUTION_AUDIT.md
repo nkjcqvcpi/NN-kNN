@@ -24,7 +24,7 @@ reference pairs exactly match earlier unobserved training weights/evaluation.
 Frozen source `ad6e33ee01990aa654db54e1567e8035257f26b4ef339b2132b3be81f91924b5`;
 122 files; ZIP SHA256
 `9df89ed43478ece882abdda5357baa67b414560fa7c54663e39a6c640335df1d`.
-Artifacts `results/t2_pi20260920/continuation_20261004/target_audit_2048/`.
+Artifacts `results/t2/s02_s03_instrumentation_role_audits/pi20260920/continuation_20261004/target_audit_2048/`.
 Task output `neural-cbr-t2-target-audit-results.md`, independent MC and training
 verification JSONs store actual snapshot hashes, events and exact comparisons.
 
