@@ -52,6 +52,8 @@ default_args = {
     # "feature_extractor": None,  # e.g., a CNN for images or embedding for text
     "feature_dim": 128,  # Example placeholder, replace with actual value as needed
     "glocal_fw_set_num": 1,
+    "mcb_momentum": 0.999,
+    "mcb_normalize_embeddings": False,
     'training_epochs': 1000,
     "neg_weight_flag": False,
 
@@ -86,8 +88,13 @@ default_args = {
     "use_nn_cdh": False,  # Whether to use nn_cdh for regression label adaptation
     "cdh_aggregate": True,
 
+    "use_mcb": False,
+    "mcb_momentum": 0.999,
+    "mcb_normalize_embeddings": False,
+
     "checkpoint_path": None,  # Path to save/load model checkpoints
 }
+
 
 
 def get_feature_dim(case, feature_extractor):
@@ -525,6 +532,7 @@ class NN_KNN_Model(nn.Module):
                  feature_distance_metric = None, 
                  glocal_weightor=None, 
                  nn_cdh = None,
+                 momentum_encoder = None,
                   **kwargs):
         """
         Initializes the NN_KNN_Model.
@@ -535,6 +543,7 @@ class NN_KNN_Model(nn.Module):
             feature_extractor: Optional feature extractor (e.g., CNN for images or embedding for text).
             feature_distance_metric: Optional custom distance metric function. If None, using euclidean distance.
             glocal_weightor: Optional glocal weightor for feature weighting.
+            momentum_encoder: Optional momentum encoder for MCB (AAAI 2027) reference case representation.
             **kwargs: Additional configuration parameters that includes:
                 - task_type: "classification" or "regression".
                 - normalize_over_cases: Whether to normalize case activations.
@@ -552,18 +561,32 @@ class NN_KNN_Model(nn.Module):
                 - bias_manual_value: (when bias_manual_set true) The manually set value for case default bias.
                 - ignore_identical_in_training: Whether to leave one out in training when sampling cases.
                 - top_k: (for explanation or for regression with locality regularization) K for Neighbor Agreement / nDCG in validation
+                - mcb_momentum: Momentum coefficient for EMA encoder updates (default: 0.999).
+                - mcb_normalize_embeddings: Whether to L2-normalize embeddings (default: False/True).
 
         """
 
         super(NN_KNN_Model, self).__init__()
-        self.register_buffer("cases", cases.to(device))  # Shape: [num_cases, *case_shape]
-        self.register_buffer("labels", labels.to(device))  # Shape: [num_cases, num_classes]
+        # Own copies: compact_cases/append_cases write into these buffers in place, and
+        # .to(device) on the same device aliases the caller's tensors (it would silently
+        # reorder/zero the caller's training data after compaction).
+        self.register_buffer("cases", cases.detach().clone().to(device))  # Shape: [num_cases, *case_shape]
+        self.register_buffer("labels", labels.detach().clone().to(device))  # Shape: [num_cases, num_classes]
         print("cases trainable:", self.cases.requires_grad)
         print("labels trainable:", self.labels.requires_grad)
 
 
         # self.labels = nn.Parameter(self.labels, requires_grad=False)  # Non-trainable
         self.feature_extractor = build_effective_feature_extractor(feature_extractor, kwargs)
+        self.momentum_encoder = momentum_encoder
+        if self.momentum_encoder is not None:
+            self.momentum_encoder.eval()
+            for p in self.momentum_encoder.parameters():
+                p.requires_grad = False
+        self.mcb_momentum = float(kwargs.get('mcb_momentum', default_args.get('mcb_momentum', 0.999)))
+        self.mcb_normalize_embeddings = bool(
+            kwargs.get('mcb_normalize_embeddings', default_args.get('mcb_normalize_embeddings', self.momentum_encoder is not None))
+        )
         self.feature_distance_metric = feature_distance_metric
         self.glocal_weightor = glocal_weightor
         self.nn_cdh = nn_cdh
@@ -652,11 +675,30 @@ class NN_KNN_Model(nn.Module):
         self.feature_dim = None
         if feature_extractor is not None:
             with torch.no_grad():
-                dummy_input = cases[0].unsqueeze(0).to(device)
+                # Probe on the extractor's own device. Callers that pre-move the
+                # extractor to the module-level `device` (the regression /
+                # classification workflows) are unaffected; RL workflows build
+                # the extractor on CPU and move the whole model afterwards, and
+                # the old unconditional `.to(device)` crashed for them.
+                try:
+                    probe_device = next(feature_extractor.parameters()).device
+                except StopIteration:
+                    probe_device = device
+                dummy_input = cases[0].unsqueeze(0).to(probe_device)
                 self.feature_dim = feature_extractor(dummy_input).shape[-1]
         else:
             self.feature_dim = cases.shape[-1]
         self.cached_features = None  # To cache features during evaluation mode
+
+        # Stable case IDs that survive compaction (T0 identity requirement)
+        self.register_buffer(
+            "case_ids",
+            torch.arange(len(cases), dtype=torch.long, device=self.cases.device),
+        )
+        self.register_buffer(
+            "next_case_id",
+            torch.tensor(len(cases), dtype=torch.long, device=self.cases.device),
+        )
 
         self.top_k_mode = False
         self.top_k = kwargs.get('top_k', default_args['top_k'])
@@ -729,8 +771,51 @@ class NN_KNN_Model(nn.Module):
                     dim=-1,
                 )
             )
+            if hasattr(self, "case_ids") and hasattr(self, "next_case_id"):
+                next_id = int(self.next_case_id.item())
+                self.case_ids[start:end] = torch.arange(
+                    next_id, next_id + count, dtype=torch.long, device=self.case_ids.device
+                )
+                self.next_case_id.fill_(next_id + count)
         self.set_active_case_count(end)
         return count
+
+    def overwrite_case_at(self, case_index: int, case: torch.Tensor, label: torch.Tensor) -> None:
+        """Overwrite an existing case slot in-place without $O(K)$ array reallocation."""
+        idx = int(case_index)
+        if not (0 <= idx < self.active_case_count):
+            raise IndexError(f"case_index {idx} out of active range [0, {self.active_case_count})")
+        case_t = torch.as_tensor(case, dtype=self.cases.dtype, device=self.cases.device)
+        label_t = torch.as_tensor(label, dtype=self.labels.dtype, device=self.labels.device)
+        if case_t.dim() > 0 and case_t.shape[0] == 1 and case_t.shape != self.cases[idx].shape:
+            case_t = case_t.squeeze(0)
+        if label_t.dim() > 0 and label_t.shape[0] == 1 and label_t.shape != self.labels[idx].shape:
+            label_t = label_t.squeeze(0)
+
+        old_class = int(torch.argmax(self.labels[idx]).item()) if self.task_type == "classification" and self.labels.shape[-1] > 1 else 0
+        new_class = int(torch.argmax(label_t).item()) if self.task_type == "classification" and label_t.shape[-1] > 1 else 0
+
+        with torch.no_grad():
+            self.cases[idx].copy_(case_t)
+            self.labels[idx].copy_(label_t)
+            self.biases[idx].fill_(self.case_default_bias)
+            self.negative_weights[idx].fill_(1.0)
+            self.glocal_weights[idx].copy_(
+                torch.softmax(
+                    torch.ones(self.glocal_weightor_set_num, device=self.glocal_weights.device),
+                    dim=-1,
+                )
+            )
+        if self.task_type == "classification" and old_class != new_class:
+            if old_class in self.class_to_cases and idx in self.class_to_cases[old_class]:
+                self.class_to_cases[old_class].remove(idx)
+            self.class_to_cases.setdefault(new_class, []).append(idx)
+        self._invalidate_case_cache()
+
+    def active_case_ids(self) -> torch.Tensor:
+        if hasattr(self, "case_ids"):
+            return self.case_ids[: self.case_count()]
+        return torch.arange(self.case_count(), dtype=torch.long, device=self.cases.device)
 
     def compact_cases(self, keep_indices: torch.Tensor | list[int]) -> int:
         keep_t = torch.as_tensor(keep_indices, dtype=torch.long, device=self.cases.device).view(-1)
@@ -744,12 +829,15 @@ class NN_KNN_Model(nn.Module):
             kept_biases = self.biases[keep_t].clone()
             kept_negative_weights = self.negative_weights[keep_t].clone()
             kept_glocal_weights = self.glocal_weights[keep_t].clone()
+            kept_case_ids = self.case_ids[keep_t].clone() if hasattr(self, "case_ids") else None
             if new_count:
                 self.cases[:new_count].copy_(kept_cases)
                 self.labels[:new_count].copy_(kept_labels)
                 self.biases[:new_count].copy_(kept_biases)
                 self.negative_weights[:new_count].copy_(kept_negative_weights)
                 self.glocal_weights[:new_count].copy_(kept_glocal_weights)
+                if kept_case_ids is not None:
+                    self.case_ids[:new_count].copy_(kept_case_ids)
             if new_count < active_count:
                 self.cases[new_count:active_count].zero_()
                 self.labels[new_count:active_count].zero_()
@@ -765,6 +853,8 @@ class NN_KNN_Model(nn.Module):
                         dim=-1,
                     )
                 )
+                if hasattr(self, "case_ids"):
+                    self.case_ids[new_count:active_count].fill_(-1)
         removed = active_count - new_count
         self.set_active_case_count(new_count)
         return removed
@@ -810,7 +900,7 @@ class NN_KNN_Model(nn.Module):
 
     def _extract_features(self, case_indices):
         """
-        Extract features for selected cases using the feature extractor.
+        Extract features for selected cases using the feature extractor or momentum encoder.
 
         Args:
             case_indices (torch.Tensor): Indices of cases to process.
@@ -820,10 +910,17 @@ class NN_KNN_Model(nn.Module):
         """
         selected_cases = self.cases[case_indices]  # Shape: [num_selected_cases, *case_shape]
 
-        if self.feature_extractor is not None:
+        if self.momentum_encoder is not None:
+            with torch.no_grad():
+                extracted_features = self.momentum_encoder(selected_cases)
+                if getattr(self, "mcb_normalize_embeddings", False):
+                    extracted_features = F.normalize(extracted_features, p=2, dim=-1)
+        elif self.feature_extractor is not None:
             if self.training:
                 # Always compute features during training
                 extracted_features = self.feature_extractor(selected_cases)  # Shape: [num_selected_cases, feature_dim]
+                if getattr(self, "mcb_normalize_embeddings", False):
+                    extracted_features = F.normalize(extracted_features, p=2, dim=-1)
                 #wipe cache because feature extractor will be updated
                 self.cached_features = None
             else:
@@ -839,6 +936,8 @@ class NN_KNN_Model(nn.Module):
                 if uncached_indices:
                     uncached_cases = self.cases[uncached_indices]
                     uncached_features = self.feature_extractor(uncached_cases)  # Extract features for uncached cases
+                    if getattr(self, "mcb_normalize_embeddings", False):
+                        uncached_features = F.normalize(uncached_features, p=2, dim=-1)
                     self.cached_features[uncached_indices] = uncached_features
 
                 # Retrieve features from the cache
@@ -848,6 +947,23 @@ class NN_KNN_Model(nn.Module):
             extracted_features = selected_cases
 
         return extracted_features
+
+    def update_momentum_encoder(self, momentum: float | None = None) -> None:
+        """Update momentum encoder parameters via EMA (AAAI 2027 Eq. 1)."""
+        if getattr(self, "momentum_encoder", None) is None or self.feature_extractor is None:
+            return
+        m = float(self.mcb_momentum if momentum is None else momentum)
+        with torch.no_grad():
+            for p_online, p_mom in zip(self.feature_extractor.parameters(), self.momentum_encoder.parameters()):
+                p_mom.data.lerp_(p_online.data, 1.0 - m)
+            for b_online, b_mom in zip(self.feature_extractor.buffers(), self.momentum_encoder.buffers()):
+                b_mom.data.copy_(b_online.data)
+
+    def train(self, mode: bool = True):
+        super().train(mode)
+        if getattr(self, "momentum_encoder", None) is not None:
+            self.momentum_encoder.eval()
+        return self
 
     # def _adapt_labels_for_regression(
     #     self,
@@ -894,22 +1010,51 @@ class NN_KNN_Model(nn.Module):
 
 
 
-    def forward(self, query):
-        """
-        Perform forward pass and optionally provide explanations.
+    def retrieve(self, query, exclude_identical=None, case_mask=None, query_case_ids=None,
+                 force_case_ids=None, forced_weight_floor=None):
+        """Run the NN-kNN retrieval step only (no label aggregation / reuse).
 
-        Args:
-            query (torch.Tensor): Query tensor of shape [batch_size, *query_shape].
+        Returns a dict with ``case_indices`` (active slots used), ``query_features``,
+        ``case_features``, ``distances`` [B, N_sel] and ``weights`` [B, N_sel]
+        (normalized activations a_i(x)).
 
-        Returns:
-            final_predictions (torch.Tensor): Predicted probabilities/logits for each class.
-            predicted_solution (torch.Tensor): Predicted class indices (classification) or values (regression).
-            most_activated_cases (list, optional): List of top-k most activated cases (if explanation_mode=True).
-            most_activated_case_labels (list, optional): Labels of the top-k most activated cases.
-            most_activated_activations (torch.Tensor, optional): Activations of the top-k most activated cases.
+        ``exclude_identical``: None keeps the training-time default
+        (``ignore_identical_in_training and self.training``); True forces
+        leave-one-out exclusion of zero-distance cases (used for audits on
+        training cases); False disables it.
+        ``case_mask``: optional bool tensor over active slots; False entries are
+        removed before normalization so remaining activations renormalize
+        (counterfactual case removal / quarantine).
+        ``query_case_ids``: optional stable case ID per query. With
+        ``exclude_identical=False``, exclude only that case identity; equal
+        inputs from distinct cases remain available. Absent IDs keep the
+        maintained legacy behavior.
+        ``force_case_ids``: optional stable IDs for a transient controlled
+        decision in the normalized-softmax/pre-top-k path. All eligibility
+        gates remain active. ``forced_weight_floor`` is an explicit positive
+        per-forced-case activation floor; returned ``override`` marks the
+        changed membership/activation treatment without altering parameters.
         """
         batch_size = query.size(0)
         num_cases = self.case_count()
+        forced = None
+        if force_case_ids is not None:
+            if (self.sampling_cases_flag or not self.normalize_over_cases or
+                    self.case_normalizer != "softmax" or not self.config.get("pre_topk_mask", False) or
+                    self.config.get("case_score_mode", default_args["case_score_mode"]) not in {"bias_minus_distance", "neg_distance"}):
+                raise ValueError("Forced retrieval requires unsampled normalized softmax with pre-top-k learned scoring")
+            raw_ids = torch.as_tensor(force_case_ids, device=query.device).view(-1)
+            forced = raw_ids.long()
+            if not torch.equal(raw_ids, forced) or forced.numel() == 0 or forced.unique().numel() != forced.numel():
+                raise ValueError("force_case_ids must contain unique integer stable IDs")
+            if forced.numel() > min(num_cases, int(self.config.get("top_k", 20))):
+                raise ValueError("Forced cases exceed the top-k budget")
+            if not torch.isin(forced, self.active_case_ids()).all():
+                raise ValueError("Forced case IDs must be active; restore archived cases separately")
+            if forced_weight_floor is None or not 0 < float(forced_weight_floor) <= 1.0 / forced.numel():
+                raise ValueError("Forced retrieval needs an explicit positive activation floor with count*floor <= 1")
+        elif forced_weight_floor is not None:
+            raise ValueError("forced_weight_floor requires force_case_ids")
         if num_cases <= 0:
             raise ValueError("NN_KNN_Model.forward requires at least one active case")
         case_indices = torch.arange(num_cases).to(query.device)  # Default: use all case_nets
@@ -930,7 +1075,12 @@ class NN_KNN_Model(nn.Module):
           case_indices = torch.tensor(sampled_indices).to(query.device)
 
         # Extract features
-        query_features = self.feature_extractor(query) if self.feature_extractor is not None else query
+        if self.feature_extractor is not None:
+            query_features = self.feature_extractor(query)
+            if getattr(self, "mcb_normalize_embeddings", False):
+                query_features = F.normalize(query_features, p=2, dim=-1)
+        else:
+            query_features = query
         case_features = self._extract_features(case_indices)
 
         # Compute distances
@@ -947,11 +1097,30 @@ class NN_KNN_Model(nn.Module):
             elementwise_distance = self.glocal_weightor(elementwise_distance, glocal_weights)  # Weighted distances
 
         distances = torch.sqrt(torch.relu(torch.sum(elementwise_distance, dim=-1)))  # [batch_size, num_selected_cases]
-        if self.ignore_identical_in_training and self.training:
+        if exclude_identical is None:
+            exclude_identical = bool(self.ignore_identical_in_training and self.training)
+        if exclude_identical:
             eps = 1e-8
             identical_mask = (distances < eps)
         else:
             identical_mask = None
+        if query_case_ids is not None:
+            # Stable identity also works with MCB, duplicate inputs, and compaction.
+            qids = torch.as_tensor(query_case_ids, device=distances.device).view(-1)
+            if qids.numel() != batch_size:
+                raise ValueError("query_case_ids must have one ID per query")
+            self_mask = qids[:, None] == self.case_ids[case_indices][None, :]
+            identical_mask = self_mask if identical_mask is None else (identical_mask | self_mask)
+        if case_mask is not None:
+            # Counterfactual/quarantine masking over *active* case slots: False = excluded.
+            cm = torch.as_tensor(case_mask, dtype=torch.bool, device=distances.device)[case_indices]
+            excluded = (~cm).unsqueeze(0).expand_as(distances)
+            identical_mask = excluded if identical_mask is None else (identical_mask | excluded)
+        forced_columns = None
+        if forced is not None:
+            forced_columns = torch.isin(self.case_ids[case_indices], forced)
+            if identical_mask is not None and identical_mask[:, forced_columns].any():
+                raise ValueError("Forced retrieval cannot bypass quarantine or query self-exclusion")
 
         # Convert distances to activations
         # pre_activations = self.scaled_sigmoid(self.biases[case_indices] - distances)  # [batch_size, num_selected_cases]
@@ -1028,7 +1197,15 @@ class NN_KNN_Model(nn.Module):
                 if self.config.get("pre_topk_mask", False):
                     K = int(self.config.get("top_k", 20))
                     K = min(K, z.size(1))
-                    top_vals, top_idx = torch.topk(z, k=K, dim=1)
+                    if forced_columns is None:
+                        top_vals, top_idx = torch.topk(z, k=K, dim=1)
+                    else:
+                        # Override membership only; normalize the real, unchanged
+                        # learned scores. An explicit floor makes participation
+                        # robust to softmax underflow for a very low-scoring case.
+                        rank = z.masked_fill(forced_columns.unsqueeze(0), float("inf"))
+                        _, top_idx = torch.topk(rank, k=K, dim=1)
+                        top_vals = z.gather(1, top_idx)
                     fill_val = float("-inf") if self.case_normalizer == "softmax" else -1e9
                     z_masked = torch.full_like(z, fill_val)
                     z = z_masked.scatter(1, top_idx, top_vals)
@@ -1057,20 +1234,76 @@ class NN_KNN_Model(nn.Module):
                 weighted_activations = z
             if identical_mask is not None:
                 weighted_activations = weighted_activations.masked_fill(identical_mask, 0.0)
+        if forced_columns is not None:
+            floor = float(forced_weight_floor)
+            weighted_activations = ((1.0 - forced.numel() * floor) * weighted_activations +
+                                    floor * forced_columns.to(weighted_activations.dtype).unsqueeze(0))
+        return {
+            "case_indices": case_indices,
+            "query_features": query_features,
+            "case_features": case_features,
+            "distances": distances,
+            "feature_distance_contributions": elementwise_distance,
+            "weights": weighted_activations,
+            "excluded": identical_mask,
+            "override": None if forced is None else {"forced_case_ids": forced.tolist(),
+                                                      "activation_floor": float(forced_weight_floor),
+                                                      "transient": True},
+        }
+
+    def forward(self, query, exclude_identical=None, case_mask=None, query_case_ids=None,
+                force_case_ids=None, forced_weight_floor=None, query_nominal=None,
+                return_retrieval=False):
+        """
+        Perform forward pass and optionally provide explanations.
+
+        Args:
+            query (torch.Tensor): Query tensor of shape [batch_size, *query_shape].
+            exclude_identical / case_mask: see ``retrieve``.
+
+        Returns:
+            final_predictions (torch.Tensor): Predicted probabilities/logits for each class.
+            predicted_solution (torch.Tensor): Predicted class indices (classification) or values (regression).
+            most_activated_cases (list, optional): List of top-k most activated cases (if explanation_mode=True).
+            most_activated_case_labels (list, optional): Labels of the top-k most activated cases.
+            most_activated_activations (torch.Tensor, optional): Activations of the top-k most activated cases.
+        """
+        batch_size = query.size(0)
+        r = self.retrieve(query, exclude_identical=exclude_identical, case_mask=case_mask, query_case_ids=query_case_ids,
+                          force_case_ids=force_case_ids, forced_weight_floor=forced_weight_floor)
+        case_indices = r["case_indices"]
+        query_features = r["query_features"]
+        case_features = r["case_features"]
+        weighted_activations = r["weights"]
+
         # Multiply activations by labels
         selected_labels = self.labels[case_indices]  # [num_selected_cases, num_classes]
 
         if self.task_type == "classification":
             # Retrieval is unchanged: only the final output aggregates case
             # attention into probability mass for each one-hot class label.
-            final_predictions = torch.matmul(
+            p0_q = torch.matmul(
                 weighted_activations, selected_labels.to(weighted_activations.dtype)
             )
-            final_predictions = final_predictions / final_predictions.sum(
+            p0_q = p0_q / p0_q.sum(
                 dim=1, keepdim=True
             ).clamp_min(1e-12)
-            predicted_solution = final_predictions.argmax(dim=1)  # [batch_size]
-            pre_adapted_solution = None
+            # Classification NN-CDH adaptation hook (T0 Reuse)
+            cls_adapter = getattr(self, "classification_adapter", None)
+            if cls_adapter is not None and getattr(self, "enable_classification_adapter", True):
+                pre_adapted_solution = p0_q.argmax(dim=1)
+                w = weighted_activations.unsqueeze(2)  # [B, N_sel, 1]
+                z_bar = torch.sum(w * case_features.unsqueeze(0), dim=1)  # [B, D]
+                Delta_z_q = query_features - z_bar
+                from model.t1.nominal import nominal_difference
+                Delta_u_q = nominal_difference(cls_adapter, self, r, query_nominal)
+                r_hat_q, s_q = cls_adapter(Delta_z_q, p0_q, Delta_u_q)
+                final_predictions = s_q
+                predicted_solution = s_q.argmax(dim=1)
+            else:
+                pre_adapted_solution = None
+                final_predictions = p0_q
+                predicted_solution = p0_q.argmax(dim=1)
         else:  # regression
             # Ensure labels are [N_sel, 1]
             if selected_labels.dim() == 1:
@@ -1240,7 +1473,9 @@ class NN_KNN_Model(nn.Module):
             # most_activated_activations_raw = w_k
             # most_activated_activations_norm = w_k_norm
         # -----------------------------------------------------------------------
-        return final_predictions, predicted_solution, pre_adapted_solution, most_activated_cases, most_activated_case_labels, most_activated_activations
+        outputs = (final_predictions, predicted_solution, pre_adapted_solution, most_activated_cases, most_activated_case_labels, most_activated_activations)
+        # Opt-in trace from the exact retrieval that produced this prediction.
+        return (*outputs, r) if return_retrieval else outputs
 
 
 def classification_class_mass_loss(
