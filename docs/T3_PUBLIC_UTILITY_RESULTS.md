@@ -14,7 +14,7 @@ All32 fresh full-set outputs exactly equal their archived source outputs. Every 
 
 all32 prespecified engineering sets,including source failures; direct actual full/remove/empty counterfactuals; no replacement or global truth/promotion claim; near-zero tolerance1e-12 is reporting only
 
-Evidence:outputs/t3-public-set-utility-20261005/;outputs/neural-cbr-t3-public-utility-verification.json;outputs/neural-cbr-t3-public-utility-results.json.
+Evidence:results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-public-set-utility-20261005/;results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-public-utility-verification.json;results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-public-utility-results.json.
 Source144 files:aaba914ea1445c77bcb474a0cb0f18578460a372905f02cafe9222746afee797;ZIP62defc4cca7082cb471fd3741cdf3e43a22b8261f7d87bc8f638f7e2bbb3bb2c.
 
 SQuAD full-set gain is negative in both groups. The model can perform worse with

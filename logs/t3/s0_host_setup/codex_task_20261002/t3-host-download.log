@@ -1,0 +1,7 @@
+
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]
+Fetching 9 files:  89%|████████▉ | 8/9 [00:02<00:00,  3.50it/s]
+Fetching 9 files:  89%|████████▉ | 8/9 [00:19<00:02,  2.50s/it]
+Fetching 9 files: 100%|██████████| 9/9 [02:56<00:00, 19.61s/it]
+Fetching 9 files: 100%|██████████| 9/9 [02:56<00:00, 19.61s/it]
+{"model": "Qwen/Qwen3-0.6B", "revision": "c1899de289a04d12100db370d81485cdf75e47ca", "file_count": 9, "weights_bytes": 1503300328}

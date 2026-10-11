@@ -58,8 +58,8 @@ original preservation,annotation separation and metric edge cases have focused
 tests.33 T3 tests pass; previous joint boundary205 passed before these four tests.
 
 Task evidence: `work/t3-public-data-20261005/manifest_mirror_complete.json`,
-`outputs/t3-public-data-audit-20261005-preserved-gaps/verification.json`,
-`outputs/neural-cbr-t3-public-conversion-verification.json`; failed downloads,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-public-data-audit-20261005-preserved-gaps/verification.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-public-conversion-verification.json`; failed downloads,
 missing v1.1 evaluator and initial strict annotation checks remain in task logs.
 Source `9ea49b9e196d7837eaf18d1213e50aa8968d5dcee39f28179348d22888967c41`,
 135 files; ZIP SHA256

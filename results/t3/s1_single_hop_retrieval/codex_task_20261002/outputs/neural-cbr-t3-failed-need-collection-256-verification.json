@@ -1,0 +1,57 @@
+{
+  "source": {
+    "fingerprint": "f28d4dbeebd51affafc45ae6ecf3095bffa0d4fc995c4d54e055dfacc3e488c3",
+    "head": "29eaf8f6681a1aacc79440f2cb7e56d4f67156b0",
+    "entries": 149,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_uniform_request_256_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_uniform_request_256_source_f28d4dbeebd5.zip",
+    "zip_sha256": "2ecb2e0142810be8e5688f84451ffaface19f5fa8375aed92e28290c8b9eacff"
+  },
+  "summary": {
+    "calls": 192,
+    "valid_requests": 190,
+    "errors": 2,
+    "input_tokens": 16705,
+    "output_tokens": 10134,
+    "generation_seconds": 1874.1308338001836
+  },
+  "errors": [
+    {
+      "position": 145,
+      "question_id": "572e807dcb0c0d14000f11e9",
+      "error": "Unterminated string starting at: line 3 column 11 (char 30)",
+      "output_tokens": 256
+    },
+    {
+      "position": 174,
+      "question_id": "5727f2323acd2414000df081",
+      "error": "Unterminated string starting at: line 3 column 11 (char 30)",
+      "output_tokens": 256
+    }
+  ],
+  "all_recorded_checks_passed": true,
+  "incomplete_fitting_rejected": true,
+  "input_artifacts": {
+    "protocol.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-train-need-queries-256-20261005\\protocol.json",
+      "sha256": "7fe8c05f26aecfa5a899ea5cd5a17095ed1f91641291c54f86f4968b3ed03b09"
+    },
+    "need_queries.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-train-need-queries-256-20261005\\need_queries.json",
+      "sha256": "4644320368127658874d64f1acae941f9bae9fc6bd5d9dbc7c8599e4d5f8ec0c"
+    },
+    "records.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-train-need-queries-256-20261005\\records.jsonl",
+      "sha256": "231557092d3baaedb503f37c258619be9da2be5436c2d9eae59448a64f4328a6"
+    },
+    "host_calls.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-train-need-queries-256-20261005\\host_calls.jsonl",
+      "sha256": "2993d4763a769288d5935205bf177d0bc98e8494dcf6b20c002a820d69db76d8"
+    },
+    "summary.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-train-need-queries-256-20261005\\summary.json",
+      "sha256": "f1a9d87a3d8c428bb4dcc5b5b412129a3c792893c080a3c9fecb3777b534cb5b"
+    }
+  },
+  "boundary": "complete failed collection accounting; not successful need coverage, tokenizer/model replay, semantic relevance or trained metric"
+}

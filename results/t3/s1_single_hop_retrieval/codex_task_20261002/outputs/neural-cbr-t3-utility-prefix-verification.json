@@ -1,0 +1,196 @@
+{
+  "provisional_snapshot": true,
+  "source": {
+    "fingerprint": "aaba914ea1445c77bcb474a0cb0f18578460a372905f02cafe9222746afee797",
+    "head": "673add8c2f9bf6f51c57331ba777cd6914b32131",
+    "entries": 144,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_public_set_utility_task_failure_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_public_set_utility_task_failure_source_aaba914ea144.zip",
+    "zip_sha256": "62defc4cca7082cb471fd3741cdf3e43a22b8261f7d87bc8f638f7e2bbb3bb2c"
+  },
+  "sets": 17,
+  "host_calls": 68,
+  "observed_credit_pairs": 34,
+  "invalid_outcomes": 4,
+  "repeated_full_outputs_equal": 17,
+  "repeated_full_outputs_different": 0,
+  "checks": [
+    {
+      "key": [
+        "squad",
+        "571cc6f85efbb31900334de4",
+        "fixed"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "571cc6f85efbb31900334de4",
+        "learned"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "56f80143aef2371900625d69",
+        "fixed"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "56f80143aef2371900625d69",
+        "learned"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "572f5875947a6a140053c89d",
+        "fixed"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "572f5875947a6a140053c89d",
+        "learned"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "5711475ca58dae1900cd6d8c",
+        "fixed"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "5711475ca58dae1900cd6d8c",
+        "learned"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "5725f46289a1e219009ac0fb",
+        "fixed"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "5725f46289a1e219009ac0fb",
+        "learned"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "572683075951b619008f7513",
+        "fixed"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "572683075951b619008f7513",
+        "learned"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "571c9074dd7acb1400e4c100",
+        "fixed"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "571c9074dd7acb1400e4c100",
+        "learned"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "573083dc2461fd1900a9ce6d",
+        "fixed"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "squad",
+        "573083dc2461fd1900a9ce6d",
+        "learned"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    },
+    {
+      "key": [
+        "hotpot",
+        "5a8f73455542997ba9cb3269",
+        "fixed"
+      ],
+      "variants": 4,
+      "all_checks_passed": true
+    }
+  ],
+  "all_recorded_checks_passed": true,
+  "input_artifacts": {
+    "protocol.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-utility-prefix-17\\protocol.json",
+      "sha256": "f08c35cf4a54292f8d2715a690eaf47d7b28a4846c79e6bae43f97c458e3461a"
+    },
+    "host_calls.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-utility-prefix-17\\host_calls.jsonl",
+      "sha256": "6b3418945dd0d2877e2aee96147b0e06a6c7a65a56585d856a01b1f0cf27ea94"
+    },
+    "outcome_events.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-utility-prefix-17\\outcome_events.jsonl",
+      "sha256": "a931ca7d5a305159844403fc825cd7ff434699013bba54e5d1c003bcee09f9f4"
+    },
+    "set_audits.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-utility-prefix-17\\set_audits.jsonl",
+      "sha256": "458f59d865a9bba25ebaefeeeda76fc81001eb34f8de4fb86e86a55483653b23"
+    },
+    "summary.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-utility-prefix-17\\summary.json",
+      "sha256": "ef5f6316cd23ea96009e7e0fb6c41af2f15429d54bb40c09ca43b71237dbabb9"
+    }
+  },
+  "scope": "actual recorded frozen-host output/objective/no-refill/prompt/credit/complementarity/journal replay; no fresh LLM generations or global promotion claim"
+}

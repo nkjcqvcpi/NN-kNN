@@ -1,0 +1,258 @@
+{
+  "trials": 80,
+  "host_calls": 144,
+  "input_tokens": 48219,
+  "output_tokens": 6543,
+  "by_condition": {
+    "squad/none": {
+      "trials": 8,
+      "errors": 0,
+      "answer_em": 0.25,
+      "answer_f1": 0.2944078947368421,
+      "host_calls": 8,
+      "seconds": 32.370546400081366,
+      "input_tokens": 923,
+      "output_tokens": 192,
+      "capped_calls": 0,
+      "recorded_retrievals": 0,
+      "supporting_f1": null,
+      "joint_f1": null
+    },
+    "squad/bm25": {
+      "trials": 8,
+      "errors": 2,
+      "answer_em": 0.125,
+      "answer_f1": 0.32650779453105033,
+      "host_calls": 16,
+      "seconds": 126.4410604997538,
+      "input_tokens": 6836,
+      "output_tokens": 805,
+      "capped_calls": 1,
+      "recorded_retrievals": 6,
+      "supporting_f1": null,
+      "joint_f1": null
+    },
+    "squad/fixed": {
+      "trials": 8,
+      "errors": 1,
+      "answer_em": 0.25,
+      "answer_f1": 0.4340659340659341,
+      "host_calls": 16,
+      "seconds": 119.00425369967707,
+      "input_tokens": 6181,
+      "output_tokens": 734,
+      "capped_calls": 1,
+      "recorded_retrievals": 7,
+      "supporting_f1": null,
+      "joint_f1": null
+    },
+    "squad/learned": {
+      "trials": 8,
+      "errors": 2,
+      "answer_em": 0.125,
+      "answer_f1": 0.24214285714285713,
+      "host_calls": 16,
+      "seconds": 125.70228430023417,
+      "input_tokens": 5972,
+      "output_tokens": 778,
+      "capped_calls": 0,
+      "recorded_retrievals": 6,
+      "supporting_f1": null,
+      "joint_f1": null
+    },
+    "squad/iterative": {
+      "trials": 8,
+      "errors": 1,
+      "answer_em": 0.125,
+      "answer_f1": 0.29047619047619044,
+      "host_calls": 16,
+      "seconds": 114.70634429971687,
+      "input_tokens": 4106,
+      "output_tokens": 720,
+      "capped_calls": 1,
+      "recorded_retrievals": 7,
+      "supporting_f1": null,
+      "joint_f1": null
+    },
+    "hotpot/none": {
+      "trials": 8,
+      "errors": 0,
+      "answer_em": 0.125,
+      "answer_f1": 0.18055555555555555,
+      "host_calls": 8,
+      "seconds": 28.282590699614957,
+      "input_tokens": 1001,
+      "output_tokens": 182,
+      "capped_calls": 0,
+      "recorded_retrievals": 0,
+      "supporting_f1": 0.0,
+      "joint_f1": 0.0
+    },
+    "hotpot/bm25": {
+      "trials": 8,
+      "errors": 1,
+      "answer_em": 0.125,
+      "answer_f1": 0.2361111111111111,
+      "host_calls": 16,
+      "seconds": 116.95295799989253,
+      "input_tokens": 6183,
+      "output_tokens": 757,
+      "capped_calls": 1,
+      "recorded_retrievals": 7,
+      "supporting_f1": 0.0,
+      "joint_f1": 0.0
+    },
+    "hotpot/fixed": {
+      "trials": 8,
+      "errors": 0,
+      "answer_em": 0.125,
+      "answer_f1": 0.21875,
+      "host_calls": 16,
+      "seconds": 102.96049339999445,
+      "input_tokens": 6368,
+      "output_tokens": 660,
+      "capped_calls": 0,
+      "recorded_retrievals": 8,
+      "supporting_f1": 0.0,
+      "joint_f1": 0.0
+    },
+    "hotpot/learned": {
+      "trials": 8,
+      "errors": 0,
+      "answer_em": 0.125,
+      "answer_f1": 0.1875,
+      "host_calls": 16,
+      "seconds": 100.72690590005368,
+      "input_tokens": 6485,
+      "output_tokens": 647,
+      "capped_calls": 0,
+      "recorded_retrievals": 8,
+      "supporting_f1": 0.0,
+      "joint_f1": 0.0
+    },
+    "hotpot/iterative": {
+      "trials": 8,
+      "errors": 4,
+      "answer_em": 0.0,
+      "answer_f1": 0.03571428571428572,
+      "host_calls": 16,
+      "seconds": 167.28985729953274,
+      "input_tokens": 4164,
+      "output_tokens": 1068,
+      "capped_calls": 4,
+      "recorded_retrievals": 4,
+      "supporting_f1": 0.0,
+      "joint_f1": 0.0
+    }
+  },
+  "errors": [
+    {
+      "dataset": "squad",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "condition": "bm25",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "last_output_tokens": 128,
+      "last_output": "```json\n{\n  \"ready\": true,\n  \"answer\": \"90\u00b0\",\n  \"supporting_facts\": [\n    {\n      \"citation\": \"case_id\": 2943080761128348177,\n      \"content\": \"In one case (the first type of Vauclain compound), the pistons worked in the same phase driving a common crosshead and crank, again set at 90\u00b0 as for a two-cylinder engine.\"\n    },\n    {\n      \"citation\": \"case_id\": 3758297"
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "condition": "fixed",
+      "error": "Expecting value: line 1 column 1 (char 0)",
+      "last_output_tokens": 128,
+      "last_output": "```json\n{\n  \"ready\": true,\n  \"answer\": \"90\u00b0\",\n  \"supporting_facts\": [\n    {\n      \"citation\": \"case_id\": 2943080761128348177,\n      \"content\": \"In one case (the first type of Vauclain compound), the pistons worked in the same phase driving a common crosshead and crank, again set at 90\u00b0 as for a two-cylinder engine.\"\n    },\n    {\n      \"citation\": \"case_id\": 1774534"
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "condition": "learned",
+      "error": "Expecting ',' delimiter: line 6 column 28 (char 95)",
+      "last_output_tokens": 123,
+      "last_output": "```json\n{\n  \"ready\": true,\n  \"answer\": \"90\u00b0\",\n  \"supporting_facts\": [\n    {\n      \"citation\": \"case_id\": 2943080761128348177,\n      \"content\": \"With the 3-cylinder compound arrangement, the LP cranks were either set at 90\u00b0 with the HP one at 135\u00b0 to the other two, or in some cases all three cranks were set at 120\u00b0.\"\n    }\n  ]\n}\n```"
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "condition": "bm25",
+      "error": "Expecting ',' delimiter: line 6 column 28 (char 106)",
+      "last_output_tokens": 81,
+      "last_output": "{\n  \"ready\": true,\n  \"answer\": \"William Smilie\",\n  \"supporting_facts\": [\n    {\n      \"citation\": \"case_id\": 1837018860940832358,\n      \"content\": \"Developer William Smilie created the nation's first planned aviation community.\"\n    }\n  ]\n}"
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "condition": "learned",
+      "error": "Expecting ',' delimiter: line 6 column 28 (char 106)",
+      "last_output_tokens": 85,
+      "last_output": "```json\n{\n  \"ready\": true,\n  \"answer\": \"William Smilie\",\n  \"supporting_facts\": [\n    {\n      \"citation\": \"case_id\": 1837018860940832358,\n      \"content\": \"Developer William Smilie created the nation's first planned aviation community.\"\n    }\n  ]\n}\n```"
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "condition": "iterative",
+      "error": "Unterminated string starting at: line 1 column 110 (char 109)",
+      "last_output_tokens": 128,
+      "last_output": "{\"ready\": true, \"answer\": \"William Smilie\", \"supporting_facts\": [{\"case_id\": 1837018860940832358, \"content\": \"{\\\"title\\\":\\\"Fresno,_California\\\",\\\"passage\\\":\\\"Formed in 1946, Sierra Sky Park Airport is a residential airport community born of a unique agreement in transportation law to allow personal aircraft and automobiles to share certain roads. Sierra Sky Park was the first aviation community to be built[citation needed] and there are now numerous such communities across the United States and around the world."
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5a8f73455542997ba9cb3269",
+      "condition": "bm25",
+      "error": "Unterminated string starting at: line 9 column 22 (char 187)",
+      "last_output_tokens": 128,
+      "last_output": "{\n  \"ready\": true,\n  \"answer\": \"University of Texas at Austin\",\n  \"supporting_facts\": [\n    {\n      \"citation\": [\n        {\n          \"case_id\": 3972111779050873920,\n          \"content\": \"{\\\"title\\\":\\\"University of Texas at Austin\\\",\\\"sentences\\\":[\\\"The University of Texas at Austin (UT, UT Austin, or Texas) is a public research university and the flagship institution of the University of Texas System.\\\",\\\" Founded in 1881 as \\\\\\\"The University of Texas,\\\\"
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5ae0ba15554299603e41844d",
+      "condition": "iterative",
+      "error": "Unterminated string starting at: line 1 column 313 (char 312)",
+      "last_output_tokens": 128,
+      "last_output": "{\"ready\": true, \"answer\": \"Manglietia\", \"supporting_facts\": [{\"case_id\": 6155158671728131802, \"content\": \"{\\\"title\\\":\\\"Manglietia\\\",\\\"sentences\\\":[\\\"Manglietia is a genus of flowering plants in the family Magnoliaceae.\\\",\\\" There are about 40 species native to Asia.\\\"]}\", \"artifact_type\": \"evidence\", \"source\": \"hotpotqa-distractor:04cba0103fc6049"
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5a90206155429933b8a20481",
+      "condition": "iterative",
+      "error": "support predictions require title and nonnegative sentence index",
+      "last_output_tokens": 128,
+      "last_output": "{\"ready\": true, \"answer\": \"Victoria\", \"supporting_facts\": [{\"case_id\": 841978671819438094, \"content\": \"{\\\"title\\\":\\\"Kensington System\\\",\\\"sentences\\\":[\\\"The Kensington System was a strict and elaborate set of rules designed by Victoria, Duchess of Kent, along with her attendant, Sir John Conroy, concerning the upbringing of the Duchess's daughter, the future Queen Victoria.\\\",\\\" It is named after Kensington Palace in London, where Victoria resided with her mother prior to acceding the throne.]\"}]}"
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5ac2cb09554299657fa29066",
+      "condition": "iterative",
+      "error": "Unterminated string starting at: line 1 column 109 (char 108)",
+      "last_output_tokens": 128,
+      "last_output": "{\"ready\": true, \"answer\": \"West Virginia\", \"supporting_facts\": [{\"case_id\": 7120547640374301865, \"content\": \"{\\\"title\\\":\\\"Big 12 Conference men's basketball\\\",\\\"sentences\\\":[\\\"The Big 12 Conference is a group of 10 (originally 12) universities which compete in the NCAA Division I level.\\\",\\\" The conference was formed in 1994 but did not begin conference play until the fall of 1996.\\\",\\\" The schools that compose the"
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5ab4bea15542990594ba9cae",
+      "condition": "iterative",
+      "error": "Unterminated string starting at: line 1 column 433 (char 432)",
+      "last_output_tokens": 128,
+      "last_output": "{\"ready\": true, \"answer\": \"Croke Park\", \"supporting_facts\": [{\"case_id\": 4817184955489360752, \"content\": \"{\\\"title\\\":\\\"Freebooters F.C.\\\",\\\"sentences\\\":[\\\"Freebooters F.C was an association football club from Sandymount, Dublin, Ireland.\\\",\\\" Their highest achievement was reaching the Irish Cup final which was staged at the City and County Grounds, Jones Road, Dublin, now Croke Park.\\\"]}\", \"artifact_type\": \"evidence\", \"source\": \""
+    }
+  ],
+  "error_messages": {
+    "Expecting value: line 1 column 1 (char 0)": 2,
+    "Expecting ',' delimiter: line 6 column 28 (char 95)": 1,
+    "Expecting ',' delimiter: line 6 column 28 (char 106)": 2,
+    "Unterminated string starting at: line 1 column 110 (char 109)": 1,
+    "Unterminated string starting at: line 9 column 22 (char 187)": 1,
+    "Unterminated string starting at: line 1 column 313 (char 312)": 1,
+    "support predictions require title and nonnegative sentence index": 1,
+    "Unterminated string starting at: line 1 column 109 (char 108)": 1,
+    "Unterminated string starting at: line 1 column 433 (char 432)": 1
+  },
+  "audit_boundary": "fresh actual core/hash/BM25/manual-feature/event/score/payload replay of 53 recorded retrieval events; 11 post-retrieval error traces missing and not reconstructed; no fresh LLM generations,causal utility or confirmation claim",
+  "actual_second_retrievals": 0,
+  "limitations": [
+    "eight prospective engineering questions per dataset; no confirmatory inference",
+    "same resource ceilings do not equal actual compute: none uses one call,all other trials use two",
+    "iterative supplies one case and no host requests a second round; not a demonstrated multi-hop loop",
+    "conditional 64-case SQuAD pools and Hotpot distractor contexts,not unrestricted corpus retrieval",
+    "old errored retrieval event IDs missing; new journal cannot reconstruct them"
+  ]
+}

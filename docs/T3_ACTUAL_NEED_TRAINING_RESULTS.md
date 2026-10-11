@@ -52,9 +52,9 @@ full audits remain required. The separate internal-interface64-answer experiment
 is queued after that job's GPU use.
 
 Evidence:
-`outputs/neural-cbr-t3-actual-need-bounded-retraining-verification.json`,
-`outputs/neural-cbr-t3-common-need-bounded-evaluation.json`,
-`outputs/neural-cbr-t3-actual-need-training-results.json`,
-`outputs/neural-cbr-t3-repaired-need-rank-diagnosis.json`,
-`work/t3_actual_need_bounded_retraining.log`,`work/t3_bounded_request_256_driver.log`.
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-actual-need-bounded-retraining-verification.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-common-need-bounded-evaluation.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-actual-need-training-results.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-repaired-need-rank-diagnosis.json`,
+`logs/t3/s1_single_hop_retrieval/codex_task_20261002/t3_actual_need_bounded_retraining.log`,`logs/t3/s0_host_setup/codex_task_20261002/t3_bounded_request_256_driver.log`.
 All source/data/request bindings use the preserved bounded149-file archive.

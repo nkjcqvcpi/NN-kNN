@@ -1,0 +1,19 @@
+{
+  "source": {
+    "fingerprint": "2a947b1490148acb0643c08e2197a0800407e0ff62c9d1bd90e6d8b2be442a05",
+    "head": "f136999cd006a286dbe64486b31f83f80439ec79",
+    "entries": 138,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_need_matching_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_need_matching_source_2a947b149014.zip",
+    "zip_sha256": "fcf5a39cdeb10b66737e3539726b97870d29b3243b999a8afe98e9936b9904a0"
+  },
+  "counts": {
+    "actual_retrainings": 3,
+    "actual_training_steps": 7680,
+    "evaluation_calls": 12672,
+    "nonzero_gradients": 7680,
+    "max_manual_gradient_error": 5.960464477539063e-08
+  },
+  "all_checks_passed": true,
+  "scope": "three actual complete retrainings,manual geometry/loss every call exactly; independent float32 gradient rtol1e-5/atol1e-7; all original selected/final Adam and parameter states exactly match"
+}

@@ -1,0 +1,1 @@
+{"trials": 64, "fresh_nn_retrievals": 16, "manual_candidates": 592, "internal_token_steps": 1010, "all_recorded_checks_passed": true, "errors": 2, "scope": "fresh core/manual geometry,Qwen token histograms/grammar-support/composed selected-token probability/greedy-token/output/score/journal replay; no fresh independent LLM regeneration or full-loop confirmation"}

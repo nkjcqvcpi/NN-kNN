@@ -1,0 +1,113 @@
+{
+  "groups": [
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "means": {
+        "question-control": {
+          "answer_f1": 0.1594017094017094,
+          "errors": 2,
+          "supporting_f1": 0.0,
+          "joint_f1": 0.0
+        },
+        "actual": {
+          "answer_f1": 0.15384615384615385,
+          "errors": 2,
+          "supporting_f1": 0.0,
+          "joint_f1": 0.0
+        }
+      },
+      "improved": 0,
+      "harmed": 1,
+      "tied": 7
+    },
+    {
+      "dataset": "squad",
+      "condition": "iterative",
+      "means": {
+        "question-control": {
+          "answer_f1": 0.41547619047619044,
+          "errors": 0,
+          "supporting_f1": 0.0,
+          "joint_f1": 0.0
+        },
+        "actual": {
+          "answer_f1": 0.5404761904761904,
+          "errors": 0,
+          "supporting_f1": 0.0,
+          "joint_f1": 0.0
+        }
+      },
+      "improved": 1,
+      "harmed": 0,
+      "tied": 7
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "means": {
+        "question-control": {
+          "answer_f1": 0.22321428571428573,
+          "errors": 0,
+          "supporting_f1": 0.0,
+          "joint_f1": 0.0
+        },
+        "actual": {
+          "answer_f1": 0.22321428571428573,
+          "errors": 0,
+          "supporting_f1": 0.0,
+          "joint_f1": 0.0
+        }
+      },
+      "improved": 0,
+      "harmed": 0,
+      "tied": 8
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "iterative",
+      "means": {
+        "question-control": {
+          "answer_f1": 0.20238095238095238,
+          "errors": 0,
+          "supporting_f1": 0.0,
+          "joint_f1": 0.0
+        },
+        "actual": {
+          "answer_f1": 0.20238095238095238,
+          "errors": 0,
+          "supporting_f1": 0.0,
+          "joint_f1": 0.0
+        }
+      },
+      "improved": 0,
+      "harmed": 0,
+      "tied": 8
+    }
+  ],
+  "costs": {
+    "question-control": {
+      "host_calls": 64,
+      "input_tokens": 21132,
+      "output_tokens": 2929,
+      "summed_trial_seconds": 551.4926512993407,
+      "format_initialization_seconds": 6.2301173999439925
+    },
+    "actual": {
+      "host_calls": 64,
+      "input_tokens": 21090,
+      "output_tokens": 2881,
+      "summed_trial_seconds": 550.1517309991177,
+      "format_initialization_seconds": 6.036700699944049
+    }
+  },
+  "actual_trials": 64,
+  "actual_calls": 128,
+  "changed_sets": 7,
+  "changed_orders": 11,
+  "changed_final_outputs": 6,
+  "identical_initial_requests": 32,
+  "manual_candidates": 2368,
+  "all_recorded_checks_passed": true,
+  "scope": "same16 exploratory questions/host/bounded request treatment and seed8; fitted metric input-distribution comparison with downstream observed failures retained; no independent confirmation or competitive gate"
+}

@@ -1,0 +1,14 @@
+squad_train_v11.json 87599 18896 verified
+squad_dev_v11.json 10570 2067 verified
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\Administrator\NN-KNN\nnknn-work\tools\t3_public_data_audit.py", line 108, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "C:\Users\Administrator\NN-KNN\nnknn-work\tools\t3_public_data_audit.py", line 53, in main
+    tasks,gold=loader(args.data_root/name,expected_sha256=files[name]['sha256'])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\NN-KNN\nnknn-work\model\t3\benchmarks.py", line 111, in load_hotpot
+    raise ValueError('support annotations must align original context')
+ValueError: support annotations must align original context

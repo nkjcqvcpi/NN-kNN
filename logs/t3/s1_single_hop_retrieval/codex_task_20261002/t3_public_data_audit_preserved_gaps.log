@@ -1,0 +1,4 @@
+squad_train_v11.json 87599 18896 verified
+squad_dev_v11.json 10570 2067 verified
+hotpot_dev_distractor_converted.json 7405 73700 verified
+verified scorer pairs 511156

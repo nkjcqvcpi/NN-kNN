@@ -1,0 +1,5 @@
+Waiting for verified format experiment; no overlapping GPU trial.
+{"trials": 80, "recorded_retrieval_events": 64, "nn_events": 48, "bm25_events": 16, "manual_candidates": 1776, "host_calls": 144, "schema_failures": 7, "second_retrieval_trials": 0, "error_trace_gaps": 0}
+Starting strict plain control after completed format experiment and audit.
+{"trials": 80, "recorded_retrieval_events": 64, "nn_events": 48, "bm25_events": 16, "manual_candidates": 1776, "host_calls": 144, "schema_failures": 24, "second_retrieval_trials": 0, "error_trace_gaps": 0}
+Both eighty-trial experiments and complete journal audits finished.

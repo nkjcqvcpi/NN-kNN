@@ -1,0 +1,6 @@
+C:\Users\Administrator\Documents\Codex\2026-10-02\neural-cbr-xiaomeng-document-https-github\work\t3_need_matching_source_archive\tools\t3_need_matching.py:105: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\torch\csrc\autograd\generated\python_variable_methods.cpp:821.)
+  parameter_delta_l2=float((metric.feature_weights-initial).norm()),trainable_parameters=metric.feature_weights.numel(),
+8 17 {'mean_need_loss': 4.008765060454607, 'source_recall_at1': 0.375, 'source_recall_at2': 0.484375} 16.77802848815918
+9 14 {'mean_need_loss': 4.008130371570587, 'source_recall_at1': 0.390625, 'source_recall_at2': 0.46875} 16.543197631835938
+10 19 {'mean_need_loss': 4.008923586457968, 'source_recall_at1': 0.390625, 'source_recall_at2': 0.484375} 16.82252311706543

@@ -1,0 +1,1 @@
+{"actual_training_updates": 128, "all_recorded_checks_passed": true, "scope": "real default count epoch; exact selected/final/initial/Adam/event/curve equality against archived pre-mode run; protocol only declares new source/explicit count"}

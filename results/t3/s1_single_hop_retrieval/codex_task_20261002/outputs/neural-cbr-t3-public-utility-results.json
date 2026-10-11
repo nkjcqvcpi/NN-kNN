@@ -1,0 +1,731 @@
+{
+  "summary": {
+    "sets": 32,
+    "evaluated_sets": 32,
+    "utility_observations": {
+      "observed": 64
+    },
+    "host_calls": 128,
+    "input_tokens": 52730,
+    "output_tokens": 3532,
+    "generation_seconds": 743.2999086999334,
+    "invalid_outcomes": 4,
+    "boundary": "exploratory public questions,not same original generation/trajectory; intervention compute charged separately; no global update"
+  },
+  "verification_counts": {
+    "sets": 32,
+    "host_calls": 128,
+    "observed_credit_pairs": 64,
+    "invalid_outcomes": 4,
+    "repeated_full_outputs_equal": 32,
+    "repeated_full_outputs_different": 0
+  },
+  "by_condition": {
+    "squad/fixed": {
+      "sets": 8,
+      "pairs": 16,
+      "helpful": 1,
+      "harmful": 6,
+      "zero": 9,
+      "mean_marginal": -0.14756181318681316,
+      "mean_full_f1": 0.15384615384615385,
+      "mean_empty_f1": 0.22149122807017543,
+      "mean_set_gain": -0.06764507422402158,
+      "mean_pair_complementarity": -0.22747855214960477,
+      "positive_complementarity": 1,
+      "negative_complementarity": 4,
+      "zero_complementarity": 3
+    },
+    "squad/learned": {
+      "sets": 8,
+      "pairs": 16,
+      "helpful": 3,
+      "harmful": 5,
+      "zero": 8,
+      "mean_marginal": -0.022338199591106556,
+      "mean_full_f1": 0.18291592128801432,
+      "mean_empty_f1": 0.22149122807017543,
+      "mean_set_gain": -0.03857530678216112,
+      "mean_pair_complementarity": -0.00610109240005198,
+      "positive_complementarity": 2,
+      "negative_complementarity": 3,
+      "zero_complementarity": 3
+    },
+    "hotpot/fixed": {
+      "sets": 8,
+      "pairs": 16,
+      "helpful": 4,
+      "harmful": 0,
+      "zero": 12,
+      "mean_marginal": 0.12946428571428573,
+      "mean_full_f1": 0.22321428571428573,
+      "mean_empty_f1": 0.0,
+      "mean_set_gain": 0.22321428571428573,
+      "mean_pair_complementarity": 0.035714285714285726,
+      "positive_complementarity": 1,
+      "negative_complementarity": 0,
+      "zero_complementarity": 7
+    },
+    "hotpot/learned": {
+      "sets": 8,
+      "pairs": 16,
+      "helpful": 4,
+      "harmful": 0,
+      "zero": 12,
+      "mean_marginal": 0.15625,
+      "mean_full_f1": 0.25,
+      "mean_empty_f1": 0.0,
+      "mean_set_gain": 0.25,
+      "mean_pair_complementarity": 0.0625,
+      "positive_complementarity": 1,
+      "negative_complementarity": 0,
+      "zero_complementarity": 7
+    }
+  },
+  "case_pairs": [
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "571cc6f85efbb31900334de4",
+      "case_id": 7348440706022066347,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "571cc6f85efbb31900334de4",
+      "case_id": 8129522349927895886,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "56f80143aef2371900625d69",
+      "case_id": 3694265132155491206,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "56f80143aef2371900625d69",
+      "case_id": 995634693284508880,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "572f5875947a6a140053c89d",
+      "case_id": 6105189786207573487,
+      "utility": {
+        "answer": -0.019230769230769162
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "572f5875947a6a140053c89d",
+      "case_id": 5485347956641043751,
+      "utility": {
+        "answer": -0.6263736263736263
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "case_id": 2943080761128348177,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "case_id": 1774534603414663626,
+      "utility": {
+        "answer": -1.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "case_id": 1837018860940832358,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "case_id": 1049302916062127535,
+      "utility": {
+        "answer": -1.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "572683075951b619008f7513",
+      "case_id": 4348396449439242445,
+      "utility": {
+        "answer": -0.6153846153846153
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "572683075951b619008f7513",
+      "case_id": 6232956627578278478,
+      "utility": {
+        "answer": -0.09999999999999998
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "571c9074dd7acb1400e4c100",
+      "case_id": 7506952454928208081,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "571c9074dd7acb1400e4c100",
+      "case_id": 4754437903567985223,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "573083dc2461fd1900a9ce6d",
+      "case_id": 7118229541802850837,
+      "utility": {
+        "answer": 1.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "fixed",
+      "question_id": "573083dc2461fd1900a9ce6d",
+      "case_id": 6144738402238365767,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "571cc6f85efbb31900334de4",
+      "case_id": 8783779219451822195,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "571cc6f85efbb31900334de4",
+      "case_id": 8129522349927895886,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "56f80143aef2371900625d69",
+      "case_id": 995634693284508880,
+      "utility": {
+        "answer": 0.2325581395348837
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "56f80143aef2371900625d69",
+      "case_id": 6469318542882119055,
+      "utility": {
+        "answer": 0.2325581395348837
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "572f5875947a6a140053c89d",
+      "case_id": 6105189786207573487,
+      "utility": {
+        "answer": -0.019230769230769162
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "572f5875947a6a140053c89d",
+      "case_id": 3240309558720822485,
+      "utility": {
+        "answer": -0.6263736263736263
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "case_id": 3571491509657966661,
+      "utility": {
+        "answer": -1.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "case_id": 2943080761128348177,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "case_id": 7486239465683195794,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "case_id": 2438164773712212136,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "572683075951b619008f7513",
+      "case_id": 4348396449439242445,
+      "utility": {
+        "answer": -0.07692307692307687
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "572683075951b619008f7513",
+      "case_id": 2612075909570018365,
+      "utility": {
+        "answer": -0.09999999999999998
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "571c9074dd7acb1400e4c100",
+      "case_id": 7506952454928208081,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "571c9074dd7acb1400e4c100",
+      "case_id": 4754437903567985223,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "573083dc2461fd1900a9ce6d",
+      "case_id": 7118229541802850837,
+      "utility": {
+        "answer": 1.0
+      }
+    },
+    {
+      "dataset": "squad",
+      "condition": "learned",
+      "question_id": "573083dc2461fd1900a9ce6d",
+      "case_id": 6401979729228597782,
+      "utility": {
+        "answer": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5a8f73455542997ba9cb3269",
+      "case_id": 6178950697838238485,
+      "utility": {
+        "answer": 0.2857142857142858,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5a8f73455542997ba9cb3269",
+      "case_id": 7276360671858636366,
+      "utility": {
+        "answer": 0.2857142857142858,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5ae0ba15554299603e41844d",
+      "case_id": 6155158671728131802,
+      "utility": {
+        "answer": 1.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5ae0ba15554299603e41844d",
+      "case_id": 2312778688938022253,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5a90206155429933b8a20481",
+      "case_id": 6538164145067303931,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5a90206155429933b8a20481",
+      "case_id": 3900864358023103103,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5a866fed554299211dda2b2e",
+      "case_id": 2387817381614073857,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5a866fed554299211dda2b2e",
+      "case_id": 4747310162461032979,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5a83c9445542992ef85e2360",
+      "case_id": 6490868377927537677,
+      "utility": {
+        "answer": 0.5,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5a83c9445542992ef85e2360",
+      "case_id": 6082135399282437719,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5a8b84875542995d1e6f13d7",
+      "case_id": 5972343653679175275,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5a8b84875542995d1e6f13d7",
+      "case_id": 165488455631231430,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5ac2cb09554299657fa29066",
+      "case_id": 2256738599249226193,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5ac2cb09554299657fa29066",
+      "case_id": 7120547640374301865,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5ab4bea15542990594ba9cae",
+      "case_id": 4817184955489360752,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "fixed",
+      "question_id": "5ab4bea15542990594ba9cae",
+      "case_id": 7779982926912687534,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5a8f73455542997ba9cb3269",
+      "case_id": 6178950697838238485,
+      "utility": {
+        "answer": 0.5,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5a8f73455542997ba9cb3269",
+      "case_id": 3864723361414259484,
+      "utility": {
+        "answer": 0.5,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5ae0ba15554299603e41844d",
+      "case_id": 6155158671728131802,
+      "utility": {
+        "answer": 1.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5ae0ba15554299603e41844d",
+      "case_id": 2312778688938022253,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5a90206155429933b8a20481",
+      "case_id": 841978671819438094,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5a90206155429933b8a20481",
+      "case_id": 6538164145067303931,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5a866fed554299211dda2b2e",
+      "case_id": 2387817381614073857,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5a866fed554299211dda2b2e",
+      "case_id": 4747310162461032979,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5a83c9445542992ef85e2360",
+      "case_id": 6490868377927537677,
+      "utility": {
+        "answer": 0.5,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5a83c9445542992ef85e2360",
+      "case_id": 6082135399282437719,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5a8b84875542995d1e6f13d7",
+      "case_id": 5972343653679175275,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5a8b84875542995d1e6f13d7",
+      "case_id": 7138755292046382679,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5ac2cb09554299657fa29066",
+      "case_id": 7120547640374301865,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5ac2cb09554299657fa29066",
+      "case_id": 4422775516863677406,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5ab4bea15542990594ba9cae",
+      "case_id": 4817184955489360752,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    },
+    {
+      "dataset": "hotpot",
+      "condition": "learned",
+      "question_id": "5ab4bea15542990594ba9cae",
+      "case_id": 6723665271265020427,
+      "utility": {
+        "answer": 0.0,
+        "support": 0.0,
+        "joint": 0.0
+      }
+    }
+  ],
+  "total_helpful": 12,
+  "total_harmful": 11,
+  "total_zero": 41,
+  "boundary": "all32 prespecified engineering sets,including source failures; direct actual full/remove/empty counterfactuals; no replacement or global truth/promotion claim; near-zero tolerance1e-12 is reporting only"
+}

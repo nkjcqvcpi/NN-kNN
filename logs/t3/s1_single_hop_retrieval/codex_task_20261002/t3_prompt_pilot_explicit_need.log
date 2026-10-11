@@ -1,0 +1,19 @@
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+Talor no_retrieval False no_retrieval
+Talor nnknn_one_shot False round_budget
+Talor nnknn_iterative False case_budget
+Talor quarantine_target False case_budget
+Neris no_retrieval False no_retrieval
+Neris nnknn_one_shot False round_budget
+Neris nnknn_iterative False case_budget
+Neris quarantine_target False case_budget
+Veska no_retrieval False no_retrieval
+Veska nnknn_one_shot False round_budget
+Veska nnknn_iterative False case_budget
+Veska quarantine_target False case_budget
+Pelor no_retrieval False no_retrieval
+Pelor nnknn_one_shot False round_budget
+Pelor nnknn_iterative False case_budget
+Pelor quarantine_target False case_budget

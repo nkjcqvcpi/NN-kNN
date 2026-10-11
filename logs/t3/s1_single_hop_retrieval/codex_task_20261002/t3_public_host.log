@@ -1,0 +1,27 @@
+squad 571cc6f85efbb31900334de4 none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} no_retrieval
+squad 571cc6f85efbb31900334de4 bm25 {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 571cc6f85efbb31900334de4 fixed {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 571cc6f85efbb31900334de4 learned {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 571cc6f85efbb31900334de4 iterative {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 56f80143aef2371900625d69 none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} no_retrieval
+squad 56f80143aef2371900625d69 bm25 {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 56f80143aef2371900625d69 fixed {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 56f80143aef2371900625d69 learned {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 56f80143aef2371900625d69 iterative {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 572f5875947a6a140053c89d none {'em': 0.0, 'f1': 0.25, 'precision': 0.16666666666666666, 'recall': 0.5} no_retrieval
+squad 572f5875947a6a140053c89d bm25 {'em': 0.0, 'f1': 0.25, 'precision': 0.16666666666666666, 'recall': 0.5} host_ready
+squad 572f5875947a6a140053c89d fixed {'em': 0.0, 'f1': 0.25, 'precision': 0.16666666666666666, 'recall': 0.5} host_ready
+squad 572f5875947a6a140053c89d learned {'em': 0.0, 'f1': 0.25, 'precision': 0.16666666666666666, 'recall': 0.5} host_ready
+squad 572f5875947a6a140053c89d iterative {'em': 0.0, 'f1': 0.3333333333333333, 'precision': 0.25, 'recall': 0.5} host_ready
+squad 5711475ca58dae1900cd6d8c none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} no_retrieval
+squad 5711475ca58dae1900cd6d8c bm25 {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 5711475ca58dae1900cd6d8c fixed {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 5711475ca58dae1900cd6d8c learned {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 5711475ca58dae1900cd6d8c iterative {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 5725f46289a1e219009ac0fb none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} no_retrieval
+squad 5725f46289a1e219009ac0fb bm25 {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 5725f46289a1e219009ac0fb fixed {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 5725f46289a1e219009ac0fb learned {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 5725f46289a1e219009ac0fb iterative {'em': 0.0, 'f1': 0.0} 'requested_types'
+squad 572683075951b619008f7513 none {'em': 0.0, 'f1': 0.10526315789473684, 'precision': 0.0625, 'recall': 0.3333333333333333} no_retrieval
+squad 572683075951b619008f7513 bm25 {'em': 0.0, 'f1': 0.0} 'requested_types'

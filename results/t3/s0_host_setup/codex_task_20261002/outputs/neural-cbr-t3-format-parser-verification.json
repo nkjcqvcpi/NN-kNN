@@ -1,0 +1,11 @@
+{
+  "backend": "lm-format-enforcer0.11.3",
+  "observed_boolean_const_failure": {
+    "type": "AttributeError",
+    "message": "'bool' object has no attribute 'startswith'"
+  },
+  "valid_stage_checks": 4,
+  "wrong_readiness_parses_but_runtime_rejects": true,
+  "all_checks_passed": true,
+  "scope": "real backend character-parser tests,not host generations"
+}

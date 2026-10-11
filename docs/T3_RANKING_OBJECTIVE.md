@@ -43,9 +43,9 @@ Source `e3c33e81d687fb6ebc2c16d00f6a3b678d8dbd67875afb269a5e6e0445b9f0c7`,
 139 files; ZIP SHA256
 `237b95cdc881473646af51f251b1fcac0b6f5d0325ced5587b088ec408a3aa1b`.
 Full source/ZIP bytes validate. Task artifacts:
-`work/t3-hard-negative-20261005/`,`work/t3-softmax-recall-20261005/`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-hard-negative-20261005/`,`results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-softmax-recall-20261005/`,
 their `-replayed/` counterparts and
-`outputs/neural-cbr-t3-ranking-objective-verification.json`.
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-ranking-objective-verification.json`.
 
 Proceed with independent public-host comparisons,resource accounting and
 objective exact-set utility. Broader representations,typed heads,calibration,

@@ -1,0 +1,21 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+________ test_large_host_vocabulary_trace_matches_composed_probability ________
+
+    def test_large_host_vocabulary_trace_matches_composed_probability():
+        vocab=151936
+        mixture=ArtifactLogitMixture([case(8,'A B')],{8:1.},Tokenizer(),vocabulary_size=vocab,alpha=.1,tokenizer_version='large-host-test')
+        output=mixture(torch.tensor([[1,2]]),torch.zeros(1,vocab))
+        expected=.9/vocab+.1*2/3
+        assert mixture.events[0]['mixture_argmax']==0
+>       assert mixture.events[0]['mixture_probability_at_argmax']==pytest.approx(expected,rel=1e-6,abs=1e-7)
+E       assert 0.06667547672986984 == 0.0666725902134232 ± 1.0e-07
+E         
+E         comparison failed
+E         Obtained: 0.06667547672986984
+E         Expected: 0.0666725902134232 ± 1.0e-07
+
+tests\test_t3_internal.py:68: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_t3_internal.py::test_large_host_vocabulary_trace_matches_composed_probability
+1 failed, 4 deselected in 2.80s

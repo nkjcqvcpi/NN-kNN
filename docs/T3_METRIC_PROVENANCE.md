@@ -20,8 +20,8 @@ rule is preserved and normalized explicitly rather than silently relabeled.
 All57 T3 tests pass. Six real historical checkpoints independently pass these
 bindings and exact data/split checks: loss-selected seeds8/9/10 epochs17/14/19
 and hard-negative recall-selected seeds8/9/10 epochs3/4/1. Task evidence:
-`outputs/neural-cbr-t3-metric-provenance-verification.json` and
-`work/check_t3_metric_provenance.py`. The first test attempt failed because the
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-metric-provenance-verification.json` and
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/audit_scripts/check_t3_metric_provenance.py`. The first test attempt failed because the
 default Windows pytest temporary directory denied access; rerunning in a new
 task-local temporary directory passed. No shared temporary files were removed.
 

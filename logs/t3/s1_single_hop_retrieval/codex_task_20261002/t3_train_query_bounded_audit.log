@@ -1,0 +1,1 @@
+{"queries": 192, "fit_queries": 128, "tune_queries": 64, "public_prompt_token_checks": 192, "all_recorded_checks_passed": true, "scope": "actual emitted192 train-only requests; exact tokenizer/source prompts,identity/data/host/decoder/output/journal coverage; no fresh LLM generation,semantic usefulness or global promotion claim"}

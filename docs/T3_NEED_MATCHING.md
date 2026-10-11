@@ -48,9 +48,9 @@ Frozen source `2a947b1490148acb0643c08e2197a0800407e0ff62c9d1bd90e6d8b2be442a05`
 138 files,ZIP SHA256
 `fcf5a39cdeb10b66737e3539726b97870d29b3243b999a8afe98e9936b9904a0`.
 Source and fullZIP contents validate. Task evidence:
-`work/t3-need-matching-20261005/`,
-`work/t3-need-matching-replayed-20261005-gradient-tolerance/`,
-`outputs/neural-cbr-t3-need-matching-verification.json`.
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-need-matching-20261005/`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-need-matching-replayed-20261005-gradient-tolerance/`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-need-matching-verification.json`.
 
 Next public-host controls retain the prespecified seed8 snapshot and report this
 failure rather than choosing a dev-successful seed. Prospective alternatives may

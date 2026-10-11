@@ -1,0 +1,19 @@
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+Talor no_retrieval False no_retrieval
+Talor nnknn_one_shot True host_ready
+Talor nnknn_iterative True host_ready
+Talor quarantine_target False host_ready
+Neris no_retrieval False no_retrieval
+Neris nnknn_one_shot True host_ready
+Neris nnknn_iterative True host_ready
+Neris quarantine_target False host_ready
+Veska no_retrieval False no_retrieval
+Veska nnknn_one_shot True host_ready
+Veska nnknn_iterative True host_ready
+Veska quarantine_target False host_ready
+Pelor no_retrieval False no_retrieval
+Pelor nnknn_one_shot True host_ready
+Pelor nnknn_iterative True host_ready
+Pelor quarantine_target False host_ready

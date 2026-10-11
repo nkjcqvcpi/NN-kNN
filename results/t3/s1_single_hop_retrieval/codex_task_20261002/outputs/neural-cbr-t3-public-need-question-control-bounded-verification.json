@@ -1,0 +1,617 @@
+{
+  "input_artifacts": {
+    "protocol.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-public-host-need-question-control-bounded-20261006\\protocol.json",
+      "sha256": "a5c68a4e9bd34a2d0fce209703ffbd19bda06b2d86ad016d0bd69d640f9d66a7"
+    },
+    "trials.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-public-host-need-question-control-bounded-20261006\\trials.jsonl",
+      "sha256": "739ae0c6493c5ea143094bae40e64829fcffc78984431863f3f596a73314a90d"
+    },
+    "retrieval_events.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-public-host-need-question-control-bounded-20261006\\retrieval_events.jsonl",
+      "sha256": "e81d71626a55ecbeb2afa7d9ce53835551303d278512e06cfb6a20e4db72cb2b"
+    },
+    "summary.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-public-host-need-question-control-bounded-20261006\\summary.json",
+      "sha256": "4518b6c514795cfcacbd62a613c42062d74e12fdc0eaff19f85be9a59c745a2e"
+    }
+  },
+  "provisional_snapshot": false,
+  "source": {
+    "fingerprint": "e26aac9c13ab3e00e7c022c4ad02d6b0469f034735be0c0e18975665e19a3dd7",
+    "head": "9340be60aa96202eb47a4569126c0ab8f03899e1",
+    "entries": 149,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_bounded_request_256_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_bounded_request_256_source_e26aac9c13ab.zip",
+    "zip_sha256": "7a87a29675d5190345bd1ad5d8556cc5fdbf8e02ce7b1ebe7f4b9dba903a8963"
+  },
+  "counts": {
+    "trials": 32,
+    "recorded_retrieval_events": 32,
+    "nn_events": 32,
+    "bm25_events": 0,
+    "manual_candidates": 1184,
+    "host_calls": 64,
+    "schema_failures": 2,
+    "second_retrieval_trials": 0,
+    "error_trace_gaps": 0
+  },
+  "records": [
+    {
+      "dataset": "squad",
+      "question_id": "571cc6f85efbb31900334de4",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "571cc6f85efbb31900334de4",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "56f80143aef2371900625d69",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "56f80143aef2371900625d69",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.4666666666666667,
+        "precision": 0.30434782608695654,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572f5875947a6a140053c89d",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.23076923076923078,
+        "precision": 0.13043478260869565,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572f5875947a6a140053c89d",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.8571428571428571,
+        "precision": 0.75,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0
+      },
+      "rounds": 1,
+      "failed": true,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "condition": "iterative",
+      "scores": {
+        "em": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0
+      },
+      "rounds": 1,
+      "failed": true,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572683075951b619008f7513",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.044444444444444446,
+        "precision": 0.023809523809523808,
+        "recall": 0.3333333333333333
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572683075951b619008f7513",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "571c9074dd7acb1400e4c100",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "571c9074dd7acb1400e4c100",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "573083dc2461fd1900a9ce6d",
+      "condition": "learned",
+      "scores": {
+        "em": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "573083dc2461fd1900a9ce6d",
+      "condition": "iterative",
+      "scores": {
+        "em": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5a8f73455542997ba9cb3269",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.28571428571428575,
+        "precision": 0.5,
+        "recall": 0.2,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5a8f73455542997ba9cb3269",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.28571428571428575,
+        "precision": 0.5,
+        "recall": 0.2,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5ae0ba15554299603e41844d",
+      "condition": "learned",
+      "scores": {
+        "em": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5ae0ba15554299603e41844d",
+      "condition": "iterative",
+      "scores": {
+        "em": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5a90206155429933b8a20481",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5a90206155429933b8a20481",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.3333333333333333,
+        "precision": 0.3333333333333333,
+        "recall": 0.3333333333333333,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5a866fed554299211dda2b2e",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5a866fed554299211dda2b2e",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5a83c9445542992ef85e2360",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.5,
+        "precision": 1.0,
+        "recall": 0.3333333333333333,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5a83c9445542992ef85e2360",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5a8b84875542995d1e6f13d7",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5a8b84875542995d1e6f13d7",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5ac2cb09554299657fa29066",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5ac2cb09554299657fa29066",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5ab4bea15542990594ba9cae",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "hotpot",
+      "question_id": "5ab4bea15542990594ba9cae",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    }
+  ],
+  "all_recorded_checks_passed": true,
+  "all_recorded_retrieval_traces_verified": true,
+  "scope": "fresh actual core/hash/BM25/manual-feature/event/score/payload replay including failed-trial partial events; exact immediate journal comparison; no fresh LLM generations or causal utility claim"
+}

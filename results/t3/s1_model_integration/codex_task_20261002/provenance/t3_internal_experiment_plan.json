@@ -1,0 +1,31 @@
+{
+  "created_utc": "2026-10-06T17:14:13.275554+00:00",
+  "freeze": {
+    "fingerprint": "225483f26fb77911321ac86ac52db90095e5b88d8d0a14500fe237e2ab8e8a40",
+    "head": "efb7ce180b9ffc7a96381f8979733c52406898de",
+    "entries": 152,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_internal_audited_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_internal_audited_source_225483f26fb7.zip",
+    "zip_sha256": "54a5c8265b13ab9aafd6196458c437ec675875b048abf1c6749718ee0065110a"
+  },
+  "alpha": 0.1,
+  "conditions": [
+    "none",
+    "prompt",
+    "internal",
+    "combined"
+  ],
+  "questions": 16,
+  "answer_calls": 64,
+  "answer_token_ceiling": 128,
+  "maximum_new_tokens": 8192,
+  "host": "Qwen3-0.6B c1899de289a04d12100db370d81485cdf75e47ca",
+  "trainable_host_parameters": 0,
+  "trainable_retrieval_parameters": 0,
+  "query_source": "shared actual source80 learned request outputs; no new request generation or driver rewrite",
+  "retrievals": "16 fresh maintained-core retrievals reproduce shared original sets; unchanged old need-s8 loss-selected metric",
+  "preflight_sha256": "4bdaff5e126742bf622831339b50b7802e0ce16cdb7ba8864f95d81f49d148bb",
+  "scope": "existing exploratory questions; source failures retained; no reserved question or alpha/seed selection on new outputs",
+  "cost_boundary": "one shared archived request/fresh retrieval per question; new answer-only opportunities equal but prompt/interface compute differs",
+  "scope_limits": "candidate lexical internal interface; no fresh full-loop or stronger host/internal architecture confirmation"
+}

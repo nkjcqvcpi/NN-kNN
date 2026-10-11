@@ -1,0 +1,4 @@
+Waiting for verified format/plain sequencing driver; no overlapping GPU utility calls.
+Starting all32 fixed/learned public sets; full/single-removal/empty counterfactuals.
+{"sets": 32, "host_calls": 128, "observed_credit_pairs": 64, "invalid_outcomes": 4, "repeated_full_outputs_equal": 32, "repeated_full_outputs_different": 0, "all_recorded_checks_passed": true, "scope": "actual recorded frozen-host output/objective/no-refill/prompt/credit/complementarity/journal replay; no fresh LLM generations or global promotion claim"}
+Direct public set utility generations and independent recorded-outcome replay finished.

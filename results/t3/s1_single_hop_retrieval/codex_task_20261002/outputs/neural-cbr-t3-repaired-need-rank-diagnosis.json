@@ -1,0 +1,68 @@
+{
+  "rows": [
+    {
+      "question_id": "572e807dcb0c0d14000f11e9",
+      "question": "When did professional teams begin to dominate the Canadian football championship?",
+      "actual_need": "When did professional teams begin to dominate the Canadian football championship?ical teams begin to dominate the Canadian football championship?ical teams begin to dominate the Canadian football championship?ical teams begin to dominate the Canadian football championship?ical teams begin to dominate the Canadian football championship?ical teams begin to dominate the Canadian football championship?ical teams begin to dominate the Canadian football championship?ical teams begin to dominate the Canadian footb",
+      "probes": {
+        "original_question": {
+          "bm25_source_rank": 1,
+          "bm25_selected_ids": [
+            7940588149885688932,
+            1472506650030776545
+          ],
+          "fixed_selected_ids": [
+            7940588149885688932,
+            4198675418249495913
+          ],
+          "fixed_source_recall2": true
+        },
+        "actual_need": {
+          "bm25_source_rank": 1,
+          "bm25_selected_ids": [
+            7940588149885688932,
+            8963535923636069682
+          ],
+          "fixed_selected_ids": [
+            7940588149885688932,
+            4198675418249495913
+          ],
+          "fixed_source_recall2": true
+        }
+      }
+    },
+    {
+      "question_id": "5727f2323acd2414000df081",
+      "question": "How much financial aid did Northwestern process for the 2009-2010 academic year?",
+      "actual_need": "How much financial aid did Northwestern process for the 2009-2010 academic year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?ical year?",
+      "probes": {
+        "original_question": {
+          "bm25_source_rank": 1,
+          "bm25_selected_ids": [
+            3939789542715929217,
+            7079600480777385128
+          ],
+          "fixed_selected_ids": [
+            3939789542715929217,
+            2035876657272131512
+          ],
+          "fixed_source_recall2": true
+        },
+        "actual_need": {
+          "bm25_source_rank": 1,
+          "bm25_selected_ids": [
+            3939789542715929217,
+            4094509129291295212
+          ],
+          "fixed_selected_ids": [
+            6307384190176264542,
+            6335610113715123367
+          ],
+          "fixed_source_recall2": false
+        }
+      }
+    }
+  ],
+  "actual_bm25_rankings": 4,
+  "scope": "same-bank direct-question counterfactual on the two repaired tune needs; source-identity ranks only; no primary query substitution or utility claim"
+}

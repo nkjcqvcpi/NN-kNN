@@ -1,0 +1,129 @@
+{
+  "source": {
+    "fingerprint": "e3c33e81d687fb6ebc2c16d00f6a3b678d8dbd67875afb269a5e6e0445b9f0c7",
+    "head": "679d1eaf9222a7025e84152aefc1b0708e411fbf",
+    "entries": 139,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_ranking_objective_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_ranking_objective_source_e3c33e81d687.zip",
+    "zip_sha256": "237b95cdc881473646af51f251b1fcac0b6f5d0325ced5587b088ec408a3aa1b"
+  },
+  "counts": {
+    "actual_retrainings": 6,
+    "actual_training_steps": 15360,
+    "evaluation_calls": 25344,
+    "nonzero_gradients": 15360,
+    "max_manual_gradient_error": 5.960464477539063e-08
+  },
+  "runs": [
+    {
+      "package": "t3-hard-negative-20261005",
+      "seed": 8,
+      "selected_epoch": 3,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7477785213850439,
+          "source_recall_at1": 0.6875,
+          "source_recall_at2": 0.7578125
+        },
+        "tune": {
+          "mean_need_loss": 0.7745123924687505,
+          "source_recall_at1": 0.46875,
+          "source_recall_at2": 0.65625
+        }
+      },
+      "all_checks_passed": true
+    },
+    {
+      "package": "t3-hard-negative-20261005",
+      "seed": 9,
+      "selected_epoch": 4,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7465811483561993,
+          "source_recall_at1": 0.7109375,
+          "source_recall_at2": 0.765625
+        },
+        "tune": {
+          "mean_need_loss": 0.7736482005566359,
+          "source_recall_at1": 0.484375,
+          "source_recall_at2": 0.671875
+        }
+      },
+      "all_checks_passed": true
+    },
+    {
+      "package": "t3-hard-negative-20261005",
+      "seed": 10,
+      "selected_epoch": 1,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7575114946812391,
+          "source_recall_at1": 0.6640625,
+          "source_recall_at2": 0.7421875
+        },
+        "tune": {
+          "mean_need_loss": 0.7732053883373737,
+          "source_recall_at1": 0.515625,
+          "source_recall_at2": 0.65625
+        }
+      },
+      "all_checks_passed": true
+    },
+    {
+      "package": "t3-softmax-recall-20261005",
+      "seed": 8,
+      "selected_epoch": 1,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 3.990857983008027,
+          "source_recall_at1": 0.6015625,
+          "source_recall_at2": 0.7109375
+        },
+        "tune": {
+          "mean_need_loss": 4.023306965827942,
+          "source_recall_at1": 0.421875,
+          "source_recall_at2": 0.546875
+        }
+      },
+      "all_checks_passed": true
+    },
+    {
+      "package": "t3-softmax-recall-20261005",
+      "seed": 9,
+      "selected_epoch": 0,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 4.025383172556758,
+          "source_recall_at1": 0.5234375,
+          "source_recall_at2": 0.640625
+        },
+        "tune": {
+          "mean_need_loss": 4.035785436630249,
+          "source_recall_at1": 0.421875,
+          "source_recall_at2": 0.546875
+        }
+      },
+      "all_checks_passed": true
+    },
+    {
+      "package": "t3-softmax-recall-20261005",
+      "seed": 10,
+      "selected_epoch": 0,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 4.025383172556758,
+          "source_recall_at1": 0.5234375,
+          "source_recall_at2": 0.640625
+        },
+        "tune": {
+          "mean_need_loss": 4.035785436630249,
+          "source_recall_at1": 0.421875,
+          "source_recall_at2": 0.546875
+        }
+      },
+      "all_checks_passed": true
+    }
+  ],
+  "all_checks_passed": true,
+  "scope": "six full actual retrainings; exact core geometry/loss; independent float32 gradients; all selected/final states exact; softmax final states match original loss-selection package"
+}

@@ -1,0 +1,508 @@
+{
+  "trials_per_arm": 80,
+  "host_calls_per_arm": 144,
+  "legacy_plain_identical_raw_calls": 144,
+  "newly_rejected_by_strict_validation": [
+    {
+      "key": [
+        "squad",
+        "56f80143aef2371900625d69",
+        "bm25"
+      ],
+      "error": "host answer must supply exact public fields",
+      "legacy_scores": {
+        "em": 0.0,
+        "f1": 0.13953488372093023,
+        "precision": 0.08333333333333333,
+        "recall": 0.42857142857142855
+      }
+    },
+    {
+      "key": [
+        "squad",
+        "56f80143aef2371900625d69",
+        "iterative"
+      ],
+      "error": "host answer must supply exact public fields",
+      "legacy_scores": {
+        "em": 0.0,
+        "f1": 0.4666666666666667,
+        "precision": 0.30434782608695654,
+        "recall": 1.0
+      }
+    },
+    {
+      "key": [
+        "squad",
+        "572f5875947a6a140053c89d",
+        "bm25"
+      ],
+      "error": "host answer must supply exact public fields",
+      "legacy_scores": {
+        "em": 0.0,
+        "f1": 0.8571428571428571,
+        "precision": 0.75,
+        "recall": 1.0
+      }
+    },
+    {
+      "key": [
+        "squad",
+        "572f5875947a6a140053c89d",
+        "fixed"
+      ],
+      "error": "host answer must supply exact public fields",
+      "legacy_scores": {
+        "em": 0.0,
+        "f1": 0.8571428571428571,
+        "precision": 0.75,
+        "recall": 1.0
+      }
+    },
+    {
+      "key": [
+        "squad",
+        "572f5875947a6a140053c89d",
+        "learned"
+      ],
+      "error": "host answer must supply exact public fields",
+      "legacy_scores": {
+        "em": 0.0,
+        "f1": 0.8571428571428571,
+        "precision": 0.75,
+        "recall": 1.0
+      }
+    },
+    {
+      "key": [
+        "squad",
+        "572f5875947a6a140053c89d",
+        "iterative"
+      ],
+      "error": "host answer must supply exact public fields",
+      "legacy_scores": {
+        "em": 0.0,
+        "f1": 0.8571428571428571,
+        "precision": 0.75,
+        "recall": 1.0
+      }
+    },
+    {
+      "key": [
+        "squad",
+        "5725f46289a1e219009ac0fb",
+        "fixed"
+      ],
+      "error": "host citations require bounded ordered title/index pairs",
+      "legacy_scores": {
+        "em": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    {
+      "key": [
+        "squad",
+        "572683075951b619008f7513",
+        "none"
+      ],
+      "error": "host answer must supply exact public fields",
+      "legacy_scores": {
+        "em": 0.0,
+        "f1": 0.10526315789473684,
+        "precision": 0.0625,
+        "recall": 0.3333333333333333
+      }
+    },
+    {
+      "key": [
+        "squad",
+        "572683075951b619008f7513",
+        "learned"
+      ],
+      "error": "host answer must supply exact public fields",
+      "legacy_scores": {
+        "em": 0.0,
+        "f1": 0.08,
+        "precision": 0.045454545454545456,
+        "recall": 0.3333333333333333
+      }
+    },
+    {
+      "key": [
+        "hotpot",
+        "5ae0ba15554299603e41844d",
+        "none"
+      ],
+      "error": "host answer must supply exact public fields",
+      "legacy_scores": {
+        "em": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      }
+    },
+    {
+      "key": [
+        "hotpot",
+        "5ae0ba15554299603e41844d",
+        "fixed"
+      ],
+      "error": "host answer must supply exact public fields",
+      "legacy_scores": {
+        "em": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      }
+    },
+    {
+      "key": [
+        "hotpot",
+        "5ae0ba15554299603e41844d",
+        "learned"
+      ],
+      "error": "host answer must supply exact public fields",
+      "legacy_scores": {
+        "em": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      }
+    },
+    {
+      "key": [
+        "hotpot",
+        "5a8b84875542995d1e6f13d7",
+        "bm25"
+      ],
+      "error": "host answer must supply exact public fields",
+      "legacy_scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "sp_em": 0.0,
+        "sp_precision": 0.0,
+        "sp_recall": 0.0,
+        "sp_f1": 0.0,
+        "joint_em": 0.0,
+        "joint_precision": 0.0,
+        "joint_recall": 0.0,
+        "joint_f1": 0.0
+      }
+    }
+  ],
+  "plain_errors": 24,
+  "formatted_errors": 7,
+  "plain_error_types": {
+    "host answer must supply exact public fields": 12,
+    "Expecting value: line 1 column 1 (char 0)": 2,
+    "Expecting ',' delimiter: line 6 column 28 (char 95)": 1,
+    "Expecting ',' delimiter: line 6 column 28 (char 106)": 2,
+    "host citations require bounded ordered title/index pairs": 2,
+    "Unterminated string starting at: line 1 column 110 (char 109)": 1,
+    "Unterminated string starting at: line 9 column 22 (char 187)": 1,
+    "Unterminated string starting at: line 1 column 313 (char 312)": 1,
+    "Unterminated string starting at: line 1 column 109 (char 108)": 1,
+    "Unterminated string starting at: line 1 column 433 (char 432)": 1
+  },
+  "by_condition": {
+    "squad/none": {
+      "plain": {
+        "trials": 8,
+        "errors": 1,
+        "answer_em": 0.25,
+        "answer_f1": 0.28125,
+        "host_calls": 8,
+        "seconds": 36.8148214998655
+      },
+      "formatted": {
+        "trials": 8,
+        "errors": 0,
+        "answer_em": 0.25,
+        "answer_f1": 0.2944078947368421,
+        "host_calls": 8,
+        "seconds": 44.64206890016794
+      },
+      "delta_f1": 0.01315789473684209,
+      "paired_wins": 1,
+      "paired_losses": 0,
+      "paired_ties": 7,
+      "plain_support_f1": null,
+      "formatted_support_f1": null,
+      "plain_joint_f1": null,
+      "formatted_joint_f1": null
+    },
+    "squad/bm25": {
+      "plain": {
+        "trials": 8,
+        "errors": 4,
+        "answer_em": 0.125,
+        "answer_f1": 0.20192307692307693,
+        "host_calls": 16,
+        "seconds": 143.1430654998403
+      },
+      "formatted": {
+        "trials": 8,
+        "errors": 2,
+        "answer_em": 0.125,
+        "answer_f1": 0.19688644688644688,
+        "host_calls": 16,
+        "seconds": 200.36410710052587
+      },
+      "delta_f1": -0.0050366300366300465,
+      "paired_wins": 2,
+      "paired_losses": 1,
+      "paired_ties": 5,
+      "plain_support_f1": null,
+      "formatted_support_f1": null,
+      "plain_joint_f1": null,
+      "formatted_joint_f1": null
+    },
+    "squad/fixed": {
+      "plain": {
+        "trials": 8,
+        "errors": 3,
+        "answer_em": 0.125,
+        "answer_f1": 0.20192307692307693,
+        "host_calls": 16,
+        "seconds": 132.24968820018694
+      },
+      "formatted": {
+        "trials": 8,
+        "errors": 3,
+        "answer_em": 0.125,
+        "answer_f1": 0.15384615384615385,
+        "host_calls": 16,
+        "seconds": 201.89949710015208
+      },
+      "delta_f1": -0.04807692307692307,
+      "paired_wins": 1,
+      "paired_losses": 1,
+      "paired_ties": 6,
+      "plain_support_f1": null,
+      "formatted_support_f1": null,
+      "plain_joint_f1": null,
+      "formatted_joint_f1": null
+    },
+    "squad/learned": {
+      "plain": {
+        "trials": 8,
+        "errors": 4,
+        "answer_em": 0.125,
+        "answer_f1": 0.125,
+        "host_calls": 16,
+        "seconds": 140.8246620001737
+      },
+      "formatted": {
+        "trials": 8,
+        "errors": 1,
+        "answer_em": 0.125,
+        "answer_f1": 0.18291592128801432,
+        "host_calls": 16,
+        "seconds": 192.66744430013932
+      },
+      "delta_f1": 0.057915921288014316,
+      "paired_wins": 2,
+      "paired_losses": 0,
+      "paired_ties": 6,
+      "plain_support_f1": null,
+      "formatted_support_f1": null,
+      "plain_joint_f1": null,
+      "formatted_joint_f1": null
+    },
+    "squad/iterative": {
+      "plain": {
+        "trials": 8,
+        "errors": 3,
+        "answer_em": 0.125,
+        "answer_f1": 0.125,
+        "host_calls": 16,
+        "seconds": 131.14648630004376
+      },
+      "formatted": {
+        "trials": 8,
+        "errors": 0,
+        "answer_em": 0.125,
+        "answer_f1": 0.29047619047619044,
+        "host_calls": 16,
+        "seconds": 142.55732909985818
+      },
+      "delta_f1": 0.16547619047619044,
+      "paired_wins": 2,
+      "paired_losses": 0,
+      "paired_ties": 6,
+      "plain_support_f1": null,
+      "formatted_support_f1": null,
+      "plain_joint_f1": null,
+      "formatted_joint_f1": null
+    },
+    "hotpot/none": {
+      "plain": {
+        "trials": 8,
+        "errors": 1,
+        "answer_em": 0.0,
+        "answer_f1": 0.05555555555555556,
+        "host_calls": 8,
+        "seconds": 32.23746459977701
+      },
+      "formatted": {
+        "trials": 8,
+        "errors": 0,
+        "answer_em": 0.125,
+        "answer_f1": 0.18055555555555555,
+        "host_calls": 8,
+        "seconds": 39.7851173998788
+      },
+      "delta_f1": 0.125,
+      "paired_wins": 1,
+      "paired_losses": 0,
+      "paired_ties": 7,
+      "plain_support_f1": 0.0,
+      "formatted_support_f1": 0.0,
+      "plain_joint_f1": 0.0,
+      "formatted_joint_f1": 0.0
+    },
+    "hotpot/bm25": {
+      "plain": {
+        "trials": 8,
+        "errors": 2,
+        "answer_em": 0.125,
+        "answer_f1": 0.2361111111111111,
+        "host_calls": 16,
+        "seconds": 133.25165899959393
+      },
+      "formatted": {
+        "trials": 8,
+        "errors": 1,
+        "answer_em": 0.125,
+        "answer_f1": 0.2361111111111111,
+        "host_calls": 16,
+        "seconds": 164.42832879978232
+      },
+      "delta_f1": 0.0,
+      "paired_wins": 0,
+      "paired_losses": 0,
+      "paired_ties": 8,
+      "plain_support_f1": 0.0,
+      "formatted_support_f1": 0.0,
+      "plain_joint_f1": 0.0,
+      "formatted_joint_f1": 0.0
+    },
+    "hotpot/fixed": {
+      "plain": {
+        "trials": 8,
+        "errors": 1,
+        "answer_em": 0.0,
+        "answer_f1": 0.09375,
+        "host_calls": 16,
+        "seconds": 113.87802830035798
+      },
+      "formatted": {
+        "trials": 8,
+        "errors": 0,
+        "answer_em": 0.125,
+        "answer_f1": 0.22321428571428573,
+        "host_calls": 16,
+        "seconds": 149.69226920045912
+      },
+      "delta_f1": 0.12946428571428573,
+      "paired_wins": 2,
+      "paired_losses": 0,
+      "paired_ties": 6,
+      "plain_support_f1": 0.0,
+      "formatted_support_f1": 0.0,
+      "plain_joint_f1": 0.0,
+      "formatted_joint_f1": 0.0
+    },
+    "hotpot/learned": {
+      "plain": {
+        "trials": 8,
+        "errors": 1,
+        "answer_em": 0.0,
+        "answer_f1": 0.0625,
+        "host_calls": 16,
+        "seconds": 112.5975034001749
+      },
+      "formatted": {
+        "trials": 8,
+        "errors": 0,
+        "answer_em": 0.125,
+        "answer_f1": 0.25,
+        "host_calls": 16,
+        "seconds": 149.01820520008914
+      },
+      "delta_f1": 0.1875,
+      "paired_wins": 2,
+      "paired_losses": 0,
+      "paired_ties": 6,
+      "plain_support_f1": 0.0,
+      "formatted_support_f1": 0.0,
+      "plain_joint_f1": 0.0,
+      "formatted_joint_f1": 0.0
+    },
+    "hotpot/iterative": {
+      "plain": {
+        "trials": 8,
+        "errors": 4,
+        "answer_em": 0.0,
+        "answer_f1": 0.03571428571428572,
+        "host_calls": 16,
+        "seconds": 185.93168279947713
+      },
+      "formatted": {
+        "trials": 8,
+        "errors": 0,
+        "answer_em": 0.125,
+        "answer_f1": 0.16071428571428573,
+        "host_calls": 16,
+        "seconds": 145.2701927998569
+      },
+      "delta_f1": 0.125,
+      "paired_wins": 1,
+      "paired_losses": 0,
+      "paired_ties": 7,
+      "plain_support_f1": 0.0,
+      "formatted_support_f1": 0.0,
+      "plain_joint_f1": 0.0,
+      "formatted_joint_f1": 0.0
+    }
+  },
+  "plain_tokens": {
+    "input": 48219,
+    "output": 6543
+  },
+  "formatted_tokens": {
+    "input": 48041,
+    "output": 6488
+  },
+  "plain_trial_seconds": 1162.0750615994912,
+  "formatted_trial_seconds": 1430.3245599009097,
+  "boundary": "paired eight engineering questions per dataset/condition; same strict contract/host/prompt/data/ceilings; decoder changes actual needs and answers; costs observed under differing machine load; no confirmation or competitive quality claim"
+}

@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "C:\Users\Administrator\Documents\Codex\2026-10-02\neural-cbr-xiaomeng-document-https-github\work\preflight_t3_internal_interface.py", line 59, in <module>
+    torch.testing.assert_close(result.softmax(-1)[0],.9*logits.softmax(-1)[0]+.1*pointer,rtol=1e-5,atol=1e-7)
+  File "C:\Users\Administrator\NN-KNN\nnknn-work\.venv\Lib\site-packages\torch\testing\_comparison.py", line 1689, in assert_close
+    raise error_metas[0].to_error(msg)
+AssertionError: Tensor-likes are not close!
+
+Mismatched elements: 44 / 151936 (0.0%)
+Greatest absolute difference: 6.030313670635223e-07 at index (279,) (up to 1e-07 allowed)
+Greatest relative difference: 0.00012465985491871834 at index (304,) (up to 1e-05 allowed)

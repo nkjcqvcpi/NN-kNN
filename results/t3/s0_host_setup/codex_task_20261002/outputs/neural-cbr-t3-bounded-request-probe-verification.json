@@ -1,0 +1,23 @@
+{
+  "requests": 2,
+  "all_recorded_checks_passed": true,
+  "input_tokens": 182,
+  "output_tokens": 304,
+  "generation_seconds": 63.77061970019713,
+  "exact_initial_repetition_preserved": true,
+  "input_artifacts": {
+    "calls.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-bounded-request-diagnostic-20261006\\calls.jsonl",
+      "sha256": "a728283c5b01e19ce268992f708b354483974471f86a12489b95bd306a7d2b7c"
+    },
+    "summary.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-bounded-request-diagnostic-20261006\\summary.json",
+      "sha256": "13294fae42a6f36255a1e3e45a577354ae13d931bba75f386f91dd73aed44c77"
+    }
+  },
+  "need_lengths": [
+    512,
+    510
+  ],
+  "boundary": "two postfailure actual diagnostic calls close original repetition within512 characters; complete schema and exact tokenizer/source bindings, not192 coverage or semantic repair"
+}

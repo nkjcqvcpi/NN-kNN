@@ -23,7 +23,7 @@ All Hotpot support/joint F1 means remain zero in both arms.
 
 paired eight engineering questions per dataset/condition; same strict contract/host/prompt/data/ceilings; decoder changes actual needs and answers; costs observed under differing machine load; no confirmation or competitive quality claim
 
-Evidence:outputs/neural-cbr-t3-strict-plain-verification.json;outputs/neural-cbr-t3-format-host-verification.json;outputs/neural-cbr-t3-strict-format-comparison.json.
+Evidence:results/t3/s0_host_setup/codex_task_20261002/outputs/neural-cbr-t3-strict-plain-verification.json;results/t3/s0_host_setup/codex_task_20261002/outputs/neural-cbr-t3-format-host-verification.json;results/t3/s0_host_setup/codex_task_20261002/outputs/neural-cbr-t3-strict-format-comparison.json.
 Shared141-file source90aac35f106efb737679739d58f295e52fd66d44738c72b2e4e686d7b88f7d0e;ZIP530f1eef49900ede6ceaa9b445429cb874330da99ace57b48e031683fddda77f.
 
 The strict comparison isolates enabling the decoder under one validated public

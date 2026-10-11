@@ -44,8 +44,8 @@ sublinear/binary CPU fits are also complete;their independent replay and common
 input comparison remain pending. These experiments are diagnostic candidates.
 
 Evidence:
-`outputs/neural-cbr-t3-public-need-question-control-bounded-verification.json`,
-`outputs/neural-cbr-t3-public-need-actual-bounded-verification.json`,
-`outputs/neural-cbr-t3-actual-need-public-results.json`,
-`outputs/t3-public-host-need-{question-control,actual}-bounded-20261006/`,
-`work/t3_bounded_request_256_driver.log`.
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-public-need-question-control-bounded-verification.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-public-need-actual-bounded-verification.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-actual-need-public-results.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-public-host-need-{question-control,actual}-bounded-20261006/`,
+`logs/t3/s0_host_setup/codex_task_20261002/t3_bounded_request_256_driver.log`.

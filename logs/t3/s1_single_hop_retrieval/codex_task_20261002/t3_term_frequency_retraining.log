@@ -1,0 +1,7 @@
+8 1 {'mean_need_loss': 0.7692304058000445, 'source_recall_at1': 0.546875, 'source_recall_at2': 0.671875} 5.13062047958374
+9 4 {'mean_need_loss': 0.7702003903687, 'source_recall_at1': 0.484375, 'source_recall_at2': 0.671875} 9.891393661499023
+10 1 {'mean_need_loss': 0.7690897062420845, 'source_recall_at1': 0.53125, 'source_recall_at2': 0.71875} 5.123757362365723
+8 1 {'mean_need_loss': 0.7755624977871776, 'source_recall_at1': 0.5, 'source_recall_at2': 0.703125} 5.030242443084717
+9 1 {'mean_need_loss': 0.7748089274391532, 'source_recall_at1': 0.484375, 'source_recall_at2': 0.671875} 4.8736138343811035
+10 1 {'mean_need_loss': 0.7754291435703635, 'source_recall_at1': 0.453125, 'source_recall_at2': 0.65625} 5.05752420425415
+{"actual_retrainings": 6, "actual_training_steps": 15360, "evaluation_calls": 25344, "nonzero_gradients": 15360, "max_manual_gradient_error": 1.1175870895385742e-08, "query_checks": 40704, "case_vector_checks": 2605056}

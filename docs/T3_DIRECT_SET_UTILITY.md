@@ -59,9 +59,9 @@ replace the waiting preparation job;no running GPU experiment is interrupted.
 Corrected144-file source
 `aaba914ea1445c77bcb474a0cb0f18578460a372905f02cafe9222746afee797`,ZIP
 `62defc4cca7082cb471fd3741cdf3e43a22b8261f7d87bc8f638f7e2bbb3bb2c`.
-Task evidence: `work/t3_public_set_utility_task_failure_freeze.json`,
-`work/run_t3_utility_task_failure_after_strict_plain.ps1`, `work/t3_utility_task_failure_driver.log`,
-`work/t3_public_set_utility_task_failure.log` and
-`outputs/t3-public-set-utility-20261005/` (created only when the job starts).
+Task evidence: `results/t3/s1_single_hop_retrieval/codex_task_20261002/provenance/t3_public_set_utility_task_failure_freeze.json`,
+`results/t3/s0_host_setup/codex_task_20261002/drivers/run_t3_utility_task_failure_after_strict_plain.ps1`, `logs/t3/s1_single_hop_retrieval/codex_task_20261002/t3_utility_task_failure_driver.log`,
+`logs/t3/s1_single_hop_retrieval/codex_task_20261002/t3_public_set_utility_task_failure.log` and
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-public-set-utility-20261005/` (created only when the job starts).
 Typed objectives/calibration,validated feedback batches,poisoning/rollback,
 internal/combined and stronger-host controls remain required follow-up work.

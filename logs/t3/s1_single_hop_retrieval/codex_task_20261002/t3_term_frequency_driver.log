@@ -1,0 +1,4 @@
+Real default count compatibility epoch before optional encoding fits; CPU only.
+Starting three matched actual-need sublinear fits; no fresh host calls.
+Starting three matched actual-need binary fits; no fresh host calls.
+Six optional encoding fits complete; independent manual gradients/state/common-input evaluation required.

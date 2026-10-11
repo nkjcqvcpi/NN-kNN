@@ -1,0 +1,449 @@
+{
+  "provisional_snapshot": true,
+  "source": {
+    "fingerprint": "90aac35f106efb737679739d58f295e52fd66d44738c72b2e4e686d7b88f7d0e",
+    "head": "194477575d8d5ecf73af71f83cd2bf284931bc5f",
+    "entries": 141,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_format_enforced_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_format_enforced_source_90aac35f106e.zip",
+    "zip_sha256": "530f1eef49900ede6ceaa9b445429cb874330da99ace57b48e031683fddda77f"
+  },
+  "counts": {
+    "trials": 31,
+    "recorded_retrieval_events": 24,
+    "nn_events": 18,
+    "bm25_events": 6,
+    "manual_candidates": 1152,
+    "host_calls": 55,
+    "schema_failures": 6,
+    "second_retrieval_trials": 0,
+    "error_trace_gaps": 0
+  },
+  "records": [
+    {
+      "dataset": "squad",
+      "question_id": "571cc6f85efbb31900334de4",
+      "condition": "none",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 0,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "571cc6f85efbb31900334de4",
+      "condition": "bm25",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "571cc6f85efbb31900334de4",
+      "condition": "fixed",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "571cc6f85efbb31900334de4",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "571cc6f85efbb31900334de4",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "56f80143aef2371900625d69",
+      "condition": "none",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 0,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "56f80143aef2371900625d69",
+      "condition": "bm25",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.19047619047619047,
+        "precision": 0.14285714285714285,
+        "recall": 0.2857142857142857
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "56f80143aef2371900625d69",
+      "condition": "fixed",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "56f80143aef2371900625d69",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.23255813953488372,
+        "precision": 0.1388888888888889,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "56f80143aef2371900625d69",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.4666666666666667,
+        "precision": 0.30434782608695654,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572f5875947a6a140053c89d",
+      "condition": "none",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.25,
+        "precision": 0.16666666666666666,
+        "recall": 0.5
+      },
+      "rounds": 0,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572f5875947a6a140053c89d",
+      "condition": "bm25",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.23076923076923078,
+        "precision": 0.13043478260869565,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572f5875947a6a140053c89d",
+      "condition": "fixed",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.23076923076923078,
+        "precision": 0.13043478260869565,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572f5875947a6a140053c89d",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.23076923076923078,
+        "precision": 0.13043478260869565,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572f5875947a6a140053c89d",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.8571428571428571,
+        "precision": 0.75,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "condition": "none",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 0,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "condition": "bm25",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0
+      },
+      "rounds": 1,
+      "failed": true,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "condition": "fixed",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0
+      },
+      "rounds": 1,
+      "failed": true,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0
+      },
+      "rounds": 1,
+      "failed": true,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5711475ca58dae1900cd6d8c",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "condition": "none",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 0,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "condition": "bm25",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0
+      },
+      "rounds": 1,
+      "failed": true,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "condition": "fixed",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0
+      },
+      "rounds": 1,
+      "failed": true,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "5725f46289a1e219009ac0fb",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572683075951b619008f7513",
+      "condition": "none",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.10526315789473684,
+        "precision": 0.0625,
+        "recall": 0.3333333333333333
+      },
+      "rounds": 0,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572683075951b619008f7513",
+      "condition": "bm25",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.15384615384615385,
+        "precision": 0.08333333333333333,
+        "recall": 1.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572683075951b619008f7513",
+      "condition": "fixed",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0
+      },
+      "rounds": 1,
+      "failed": true,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572683075951b619008f7513",
+      "condition": "learned",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "572683075951b619008f7513",
+      "condition": "iterative",
+      "scores": {
+        "em": 0.0,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rounds": 1,
+      "failed": false,
+      "recorded_checks_passed": true
+    },
+    {
+      "dataset": "squad",
+      "question_id": "571c9074dd7acb1400e4c100",
+      "condition": "none",
+      "scores": {
+        "em": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rounds": 0,
+      "failed": false,
+      "recorded_checks_passed": true
+    }
+  ],
+  "all_recorded_checks_passed": true,
+  "all_recorded_retrieval_traces_verified": true,
+  "scope": "fresh actual core/hash/BM25/manual-feature/event/score/payload replay including failed-trial partial events; exact immediate journal comparison; no fresh LLM generations or causal utility claim"
+}

@@ -1,0 +1,125 @@
+{
+  "source": {
+    "fingerprint": "c9b449047175764e957423e1ff61bd49f9b19b34fe32b465a3cc997ab72ae493",
+    "head": "ea74a3a3a88a64663aa97a139c383b18472bd10d",
+    "entries": 153,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_term_frequency_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_term_frequency_source_c9b449047175.zip",
+    "zip_sha256": "ab0167f88c137325223e4c0eea4b6780fdf5edb01def86dda6066fe706fa164b"
+  },
+  "counts": {
+    "actual_retrainings": 6,
+    "actual_training_steps": 15360,
+    "evaluation_calls": 25344,
+    "nonzero_gradients": 15360,
+    "max_manual_gradient_error": 1.1175870895385742e-08,
+    "query_checks": 40704,
+    "case_vector_checks": 2605056
+  },
+  "runs": [
+    {
+      "mode": "sublinear",
+      "seed": 8,
+      "selected_epoch": 1,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7581263179890811,
+          "source_recall_at1": 0.6484375,
+          "source_recall_at2": 0.765625
+        },
+        "tune": {
+          "mean_need_loss": 0.7692304058000445,
+          "source_recall_at1": 0.546875,
+          "source_recall_at2": 0.671875
+        }
+      }
+    },
+    {
+      "mode": "sublinear",
+      "seed": 9,
+      "selected_epoch": 4,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7496930402703583,
+          "source_recall_at1": 0.671875,
+          "source_recall_at2": 0.7734375
+        },
+        "tune": {
+          "mean_need_loss": 0.7702003903687,
+          "source_recall_at1": 0.484375,
+          "source_recall_at2": 0.671875
+        }
+      }
+    },
+    {
+      "mode": "sublinear",
+      "seed": 10,
+      "selected_epoch": 1,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.758317997213453,
+          "source_recall_at1": 0.6328125,
+          "source_recall_at2": 0.765625
+        },
+        "tune": {
+          "mean_need_loss": 0.7690897062420845,
+          "source_recall_at1": 0.53125,
+          "source_recall_at2": 0.71875
+        }
+      }
+    },
+    {
+      "mode": "binary",
+      "seed": 8,
+      "selected_epoch": 1,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7686159173026681,
+          "source_recall_at1": 0.5703125,
+          "source_recall_at2": 0.7265625
+        },
+        "tune": {
+          "mean_need_loss": 0.7755624977871776,
+          "source_recall_at1": 0.5,
+          "source_recall_at2": 0.703125
+        }
+      }
+    },
+    {
+      "mode": "binary",
+      "seed": 9,
+      "selected_epoch": 1,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7692207703366876,
+          "source_recall_at1": 0.5625,
+          "source_recall_at2": 0.71875
+        },
+        "tune": {
+          "mean_need_loss": 0.7748089274391532,
+          "source_recall_at1": 0.484375,
+          "source_recall_at2": 0.671875
+        }
+      }
+    },
+    {
+      "mode": "binary",
+      "seed": 10,
+      "selected_epoch": 1,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7685381323099136,
+          "source_recall_at1": 0.578125,
+          "source_recall_at2": 0.71875
+        },
+        "tune": {
+          "mean_need_loss": 0.7754291435703635,
+          "source_recall_at1": 0.453125,
+          "source_recall_at2": 0.65625
+        }
+      }
+    }
+  ],
+  "all_recorded_checks_passed": true,
+  "scope": "six actual full retrainings; independent per-word float32 features/geometry/loss/gradients; exact selected/final/Adam/events/curves; no host output or utility claim"
+}

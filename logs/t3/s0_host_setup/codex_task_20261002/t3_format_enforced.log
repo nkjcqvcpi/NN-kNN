@@ -1,0 +1,80 @@
+squad 571cc6f85efbb31900334de4 none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} no_retrieval
+squad 571cc6f85efbb31900334de4 bm25 {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 571cc6f85efbb31900334de4 fixed {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 571cc6f85efbb31900334de4 learned {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 571cc6f85efbb31900334de4 iterative {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 56f80143aef2371900625d69 none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} no_retrieval
+squad 56f80143aef2371900625d69 bm25 {'em': 0.0, 'f1': 0.19047619047619047, 'precision': 0.14285714285714285, 'recall': 0.2857142857142857} host_ready
+squad 56f80143aef2371900625d69 fixed {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 56f80143aef2371900625d69 learned {'em': 0.0, 'f1': 0.23255813953488372, 'precision': 0.1388888888888889, 'recall': 1.0} host_ready
+squad 56f80143aef2371900625d69 iterative {'em': 0.0, 'f1': 0.4666666666666667, 'precision': 0.30434782608695654, 'recall': 1.0} host_ready
+squad 572f5875947a6a140053c89d none {'em': 0.0, 'f1': 0.25, 'precision': 0.16666666666666666, 'recall': 0.5} no_retrieval
+squad 572f5875947a6a140053c89d bm25 {'em': 0.0, 'f1': 0.23076923076923078, 'precision': 0.13043478260869565, 'recall': 1.0} host_ready
+squad 572f5875947a6a140053c89d fixed {'em': 0.0, 'f1': 0.23076923076923078, 'precision': 0.13043478260869565, 'recall': 1.0} host_ready
+squad 572f5875947a6a140053c89d learned {'em': 0.0, 'f1': 0.23076923076923078, 'precision': 0.13043478260869565, 'recall': 1.0} host_ready
+squad 572f5875947a6a140053c89d iterative {'em': 0.0, 'f1': 0.8571428571428571, 'precision': 0.75, 'recall': 1.0} host_ready
+squad 5711475ca58dae1900cd6d8c none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} no_retrieval
+squad 5711475ca58dae1900cd6d8c bm25 {'em': 0.0, 'f1': 0.0} Unterminated string starting at: line 9 column 7 (char 371)
+squad 5711475ca58dae1900cd6d8c fixed {'em': 0.0, 'f1': 0.0} Unterminated string starting at: line 9 column 7 (char 371)
+squad 5711475ca58dae1900cd6d8c learned {'em': 0.0, 'f1': 0.0} Unterminated string starting at: line 8 column 5 (char 300)
+squad 5711475ca58dae1900cd6d8c iterative {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 5725f46289a1e219009ac0fb none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} no_retrieval
+squad 5725f46289a1e219009ac0fb bm25 {'em': 0.0, 'f1': 0.0} host citations require bounded ordered title/index pairs
+squad 5725f46289a1e219009ac0fb fixed {'em': 0.0, 'f1': 0.0} host citations require bounded ordered title/index pairs
+squad 5725f46289a1e219009ac0fb learned {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 5725f46289a1e219009ac0fb iterative {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 572683075951b619008f7513 none {'em': 0.0, 'f1': 0.10526315789473684, 'precision': 0.0625, 'recall': 0.3333333333333333} no_retrieval
+squad 572683075951b619008f7513 bm25 {'em': 0.0, 'f1': 0.15384615384615385, 'precision': 0.08333333333333333, 'recall': 1.0} host_ready
+squad 572683075951b619008f7513 fixed {'em': 0.0, 'f1': 0.0} Unterminated string starting at: line 6 column 7 (char 327)
+squad 572683075951b619008f7513 learned {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 572683075951b619008f7513 iterative {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 571c9074dd7acb1400e4c100 none {'em': 1.0, 'f1': 1.0, 'precision': 1.0, 'recall': 1.0} no_retrieval
+squad 571c9074dd7acb1400e4c100 bm25 {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 571c9074dd7acb1400e4c100 fixed {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 571c9074dd7acb1400e4c100 learned {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 571c9074dd7acb1400e4c100 iterative {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0} host_ready
+squad 573083dc2461fd1900a9ce6d none {'em': 1.0, 'f1': 1.0, 'precision': 1.0, 'recall': 1.0} no_retrieval
+squad 573083dc2461fd1900a9ce6d bm25 {'em': 1.0, 'f1': 1.0, 'precision': 1.0, 'recall': 1.0} host_ready
+squad 573083dc2461fd1900a9ce6d fixed {'em': 1.0, 'f1': 1.0, 'precision': 1.0, 'recall': 1.0} host_ready
+squad 573083dc2461fd1900a9ce6d learned {'em': 1.0, 'f1': 1.0, 'precision': 1.0, 'recall': 1.0} host_ready
+squad 573083dc2461fd1900a9ce6d iterative {'em': 1.0, 'f1': 1.0, 'precision': 1.0, 'recall': 1.0} host_ready
+hotpot 5a8f73455542997ba9cb3269 none {'em': 0.0, 'f1': 0.4444444444444445, 'precision': 0.5, 'recall': 0.4, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} no_retrieval
+hotpot 5a8f73455542997ba9cb3269 bm25 {'em': 0.0, 'f1': 0.0} host citations require bounded ordered title/index pairs
+hotpot 5a8f73455542997ba9cb3269 fixed {'em': 0.0, 'f1': 0.28571428571428575, 'precision': 0.5, 'recall': 0.2, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a8f73455542997ba9cb3269 learned {'em': 0.0, 'f1': 0.5, 'precision': 0.6666666666666666, 'recall': 0.4, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a8f73455542997ba9cb3269 iterative {'em': 0.0, 'f1': 0.28571428571428575, 'precision': 0.5, 'recall': 0.2, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5ae0ba15554299603e41844d none {'em': 1.0, 'f1': 1.0, 'precision': 1.0, 'recall': 1.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} no_retrieval
+hotpot 5ae0ba15554299603e41844d bm25 {'em': 1.0, 'f1': 1.0, 'precision': 1.0, 'recall': 1.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5ae0ba15554299603e41844d fixed {'em': 1.0, 'f1': 1.0, 'precision': 1.0, 'recall': 1.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5ae0ba15554299603e41844d learned {'em': 1.0, 'f1': 1.0, 'precision': 1.0, 'recall': 1.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5ae0ba15554299603e41844d iterative {'em': 1.0, 'f1': 1.0, 'precision': 1.0, 'recall': 1.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a90206155429933b8a20481 none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} no_retrieval
+hotpot 5a90206155429933b8a20481 bm25 {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a90206155429933b8a20481 fixed {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a90206155429933b8a20481 learned {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a90206155429933b8a20481 iterative {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a866fed554299211dda2b2e none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} no_retrieval
+hotpot 5a866fed554299211dda2b2e bm25 {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a866fed554299211dda2b2e fixed {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a866fed554299211dda2b2e learned {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a866fed554299211dda2b2e iterative {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a83c9445542992ef85e2360 none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} no_retrieval
+hotpot 5a83c9445542992ef85e2360 bm25 {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a83c9445542992ef85e2360 fixed {'em': 0.0, 'f1': 0.5, 'precision': 1.0, 'recall': 0.3333333333333333, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a83c9445542992ef85e2360 learned {'em': 0.0, 'f1': 0.5, 'precision': 1.0, 'recall': 0.3333333333333333, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a83c9445542992ef85e2360 iterative {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a8b84875542995d1e6f13d7 none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} no_retrieval
+hotpot 5a8b84875542995d1e6f13d7 bm25 {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a8b84875542995d1e6f13d7 fixed {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a8b84875542995d1e6f13d7 learned {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5a8b84875542995d1e6f13d7 iterative {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5ac2cb09554299657fa29066 none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} no_retrieval
+hotpot 5ac2cb09554299657fa29066 bm25 {'em': 0.0, 'f1': 0.888888888888889, 'precision': 1.0, 'recall': 0.8, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5ac2cb09554299657fa29066 fixed {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5ac2cb09554299657fa29066 learned {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5ac2cb09554299657fa29066 iterative {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5ab4bea15542990594ba9cae none {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} no_retrieval
+hotpot 5ab4bea15542990594ba9cae bm25 {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5ab4bea15542990594ba9cae fixed {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5ab4bea15542990594ba9cae learned {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready
+hotpot 5ab4bea15542990594ba9cae iterative {'em': 0.0, 'f1': 0.0, 'precision': 0.0, 'recall': 0.0, 'sp_em': 0.0, 'sp_precision': 0.0, 'sp_recall': 0.0, 'sp_f1': 0.0, 'joint_em': 0.0, 'joint_precision': 0.0, 'joint_recall': 0.0, 'joint_f1': 0.0} host_ready

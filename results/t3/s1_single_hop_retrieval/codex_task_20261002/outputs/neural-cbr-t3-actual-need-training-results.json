@@ -1,0 +1,187 @@
+{
+  "retraining_counts": {
+    "actual_retrainings": 6,
+    "actual_training_steps": 15360,
+    "evaluation_calls": 25344,
+    "nonzero_gradients": 15360,
+    "max_manual_gradient_error": 2.2351741790771484e-08,
+    "actual_query_checks": 40704
+  },
+  "common_evaluation_counts": {
+    "actual_nn_evaluations": 2688,
+    "actual_bm25_rankings": 384,
+    "manual_candidates": 172032
+  },
+  "tune": [
+    {
+      "query_source": "original_question",
+      "condition": "fixed",
+      "questions": 64,
+      "source_recall_at1": 0.421875,
+      "source_recall_at2": 0.546875
+    },
+    {
+      "query_source": "original_question",
+      "condition": "question-control/s8",
+      "questions": 64,
+      "source_recall_at1": 0.46875,
+      "source_recall_at2": 0.65625
+    },
+    {
+      "query_source": "original_question",
+      "condition": "question-control/s9",
+      "questions": 64,
+      "source_recall_at1": 0.484375,
+      "source_recall_at2": 0.671875
+    },
+    {
+      "query_source": "original_question",
+      "condition": "question-control/s10",
+      "questions": 64,
+      "source_recall_at1": 0.515625,
+      "source_recall_at2": 0.65625
+    },
+    {
+      "query_source": "original_question",
+      "condition": "actual/s8",
+      "questions": 64,
+      "source_recall_at1": 0.46875,
+      "source_recall_at2": 0.65625
+    },
+    {
+      "query_source": "original_question",
+      "condition": "actual/s9",
+      "questions": 64,
+      "source_recall_at1": 0.46875,
+      "source_recall_at2": 0.65625
+    },
+    {
+      "query_source": "original_question",
+      "condition": "actual/s10",
+      "questions": 64,
+      "source_recall_at1": 0.484375,
+      "source_recall_at2": 0.65625
+    },
+    {
+      "query_source": "original_question",
+      "condition": "bm25",
+      "questions": 64,
+      "source_recall_at1": 0.9375,
+      "source_recall_at2": 1.0
+    },
+    {
+      "query_source": "actual_need",
+      "condition": "fixed",
+      "questions": 64,
+      "source_recall_at1": 0.40625,
+      "source_recall_at2": 0.53125
+    },
+    {
+      "query_source": "actual_need",
+      "condition": "question-control/s8",
+      "questions": 64,
+      "source_recall_at1": 0.4375,
+      "source_recall_at2": 0.59375
+    },
+    {
+      "query_source": "actual_need",
+      "condition": "question-control/s9",
+      "questions": 64,
+      "source_recall_at1": 0.40625,
+      "source_recall_at2": 0.625
+    },
+    {
+      "query_source": "actual_need",
+      "condition": "question-control/s10",
+      "questions": 64,
+      "source_recall_at1": 0.453125,
+      "source_recall_at2": 0.625
+    },
+    {
+      "query_source": "actual_need",
+      "condition": "actual/s8",
+      "questions": 64,
+      "source_recall_at1": 0.421875,
+      "source_recall_at2": 0.625
+    },
+    {
+      "query_source": "actual_need",
+      "condition": "actual/s9",
+      "questions": 64,
+      "source_recall_at1": 0.40625,
+      "source_recall_at2": 0.625
+    },
+    {
+      "query_source": "actual_need",
+      "condition": "actual/s10",
+      "questions": 64,
+      "source_recall_at1": 0.453125,
+      "source_recall_at2": 0.640625
+    },
+    {
+      "query_source": "actual_need",
+      "condition": "bm25",
+      "questions": 64,
+      "source_recall_at1": 0.9375,
+      "source_recall_at2": 0.984375
+    }
+  ],
+  "paired": [
+    {
+      "query_source": "original_question",
+      "seed": 8,
+      "before_recall2": 0.65625,
+      "after_recall2": 0.65625,
+      "improved": 2,
+      "harmed": 2,
+      "changed_selected_orders": 18
+    },
+    {
+      "query_source": "original_question",
+      "seed": 9,
+      "before_recall2": 0.671875,
+      "after_recall2": 0.65625,
+      "improved": 1,
+      "harmed": 2,
+      "changed_selected_orders": 15
+    },
+    {
+      "query_source": "original_question",
+      "seed": 10,
+      "before_recall2": 0.65625,
+      "after_recall2": 0.65625,
+      "improved": 3,
+      "harmed": 3,
+      "changed_selected_orders": 33
+    },
+    {
+      "query_source": "actual_need",
+      "seed": 8,
+      "before_recall2": 0.59375,
+      "after_recall2": 0.625,
+      "improved": 4,
+      "harmed": 2,
+      "changed_selected_orders": 25
+    },
+    {
+      "query_source": "actual_need",
+      "seed": 9,
+      "before_recall2": 0.625,
+      "after_recall2": 0.625,
+      "improved": 3,
+      "harmed": 3,
+      "changed_selected_orders": 22
+    },
+    {
+      "query_source": "actual_need",
+      "seed": 10,
+      "before_recall2": 0.625,
+      "after_recall2": 0.640625,
+      "improved": 3,
+      "harmed": 2,
+      "changed_selected_orders": 30
+    }
+  ],
+  "all_recorded_checks_passed": true,
+  "scope": "same-context source identity/selection-data diagnostics; not downstream utility or independent confirmation"
+}

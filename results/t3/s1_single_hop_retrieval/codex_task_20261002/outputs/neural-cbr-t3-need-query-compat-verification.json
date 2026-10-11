@@ -1,0 +1,22 @@
+{
+  "source": {
+    "fingerprint": "f3e4de178a6f4bc47bb549eb34a67545107996709b1c8397fa35d425190c8497",
+    "head": "d6e75c8ea72e5c296b9e1fa511df11c01732a5aa",
+    "entries": 147,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_train_need_queries_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_train_need_queries_source_f3e4de178a6f.zip",
+    "zip_sha256": "9876cce6fb1768d2120d20fbcc511d556fe7eed9baec4769367e7947d46ad3ee"
+  },
+  "actual_nonzero_updates": 128,
+  "training_events": 128,
+  "exact_state_checks": [
+    "selected/final metric",
+    "selected/final Adam",
+    "initial metric",
+    "two history rows",
+    "128 training events"
+  ],
+  "frozen_prompt_equivalence_questions": 16,
+  "all_recorded_checks_passed": true,
+  "boundary": "one actual seed8/one-epoch default-query retraining reproduces frozen old epoch1 learning states; literal prompt extraction equivalence,not actual-need fitting or public benefit"
+}

@@ -1,0 +1,130 @@
+{
+  "source": {
+    "fingerprint": "e26aac9c13ab3e00e7c022c4ad02d6b0469f034735be0c0e18975665e19a3dd7",
+    "head": "9340be60aa96202eb47a4569126c0ab8f03899e1",
+    "entries": 149,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_bounded_request_256_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_bounded_request_256_source_e26aac9c13ab.zip",
+    "zip_sha256": "7a87a29675d5190345bd1ad5d8556cc5fdbf8e02ce7b1ebe7f4b9dba903a8963"
+  },
+  "counts": {
+    "actual_retrainings": 6,
+    "actual_training_steps": 15360,
+    "evaluation_calls": 25344,
+    "nonzero_gradients": 15360,
+    "max_manual_gradient_error": 2.2351741790771484e-08,
+    "actual_query_checks": 40704
+  },
+  "runs": [
+    {
+      "package": "t3-train-need-question-control-bounded-20261006",
+      "seed": 8,
+      "selected_epoch": 3,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7477785213850439,
+          "source_recall_at1": 0.6875,
+          "source_recall_at2": 0.7578125
+        },
+        "tune": {
+          "mean_need_loss": 0.7745123924687505,
+          "source_recall_at1": 0.46875,
+          "source_recall_at2": 0.65625
+        }
+      },
+      "all_checks_passed": true
+    },
+    {
+      "package": "t3-train-need-question-control-bounded-20261006",
+      "seed": 9,
+      "selected_epoch": 4,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7465811483561993,
+          "source_recall_at1": 0.7109375,
+          "source_recall_at2": 0.765625
+        },
+        "tune": {
+          "mean_need_loss": 0.7736482005566359,
+          "source_recall_at1": 0.484375,
+          "source_recall_at2": 0.671875
+        }
+      },
+      "all_checks_passed": true
+    },
+    {
+      "package": "t3-train-need-question-control-bounded-20261006",
+      "seed": 10,
+      "selected_epoch": 1,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7575114946812391,
+          "source_recall_at1": 0.6640625,
+          "source_recall_at2": 0.7421875
+        },
+        "tune": {
+          "mean_need_loss": 0.7732053883373737,
+          "source_recall_at1": 0.515625,
+          "source_recall_at2": 0.65625
+        }
+      },
+      "all_checks_passed": true
+    },
+    {
+      "package": "t3-train-need-actual-bounded-20261006",
+      "seed": 8,
+      "selected_epoch": 3,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7534309667535126,
+          "source_recall_at1": 0.6875,
+          "source_recall_at2": 0.7578125
+        },
+        "tune": {
+          "mean_need_loss": 0.7786268908530474,
+          "source_recall_at1": 0.421875,
+          "source_recall_at2": 0.625
+        }
+      },
+      "all_checks_passed": true
+    },
+    {
+      "package": "t3-train-need-actual-bounded-20261006",
+      "seed": 9,
+      "selected_epoch": 4,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7526367460377514,
+          "source_recall_at1": 0.7109375,
+          "source_recall_at2": 0.765625
+        },
+        "tune": {
+          "mean_need_loss": 0.7778541436418891,
+          "source_recall_at1": 0.40625,
+          "source_recall_at2": 0.625
+        }
+      },
+      "all_checks_passed": true
+    },
+    {
+      "package": "t3-train-need-actual-bounded-20261006",
+      "seed": 10,
+      "selected_epoch": 2,
+      "selected": {
+        "fit": {
+          "mean_need_loss": 0.7562188087031245,
+          "source_recall_at1": 0.6640625,
+          "source_recall_at2": 0.71875
+        },
+        "tune": {
+          "mean_need_loss": 0.7778513822704554,
+          "source_recall_at1": 0.453125,
+          "source_recall_at2": 0.640625
+        }
+      },
+      "all_checks_passed": true
+    }
+  ],
+  "all_recorded_checks_passed": true,
+  "scope": "six full actual retrainings; actual query identity/core geometry/loss and independent float32 gradients; exact selected/final states/events/curves; original-question controls match prior frozen hard-negative runs"
+}

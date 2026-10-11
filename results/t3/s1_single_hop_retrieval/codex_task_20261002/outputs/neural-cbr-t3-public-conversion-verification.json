@@ -1,0 +1,23 @@
+{
+  "source": {
+    "fingerprint": "9ea49b9e196d7837eaf18d1213e50aa8968d5dcee39f28179348d22888967c41",
+    "head": "7283e4b21d05782756927d0d6476f404107a9149",
+    "entries": 135,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_public_data_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_public_data_source_9ea49b9e196d.zip",
+    "zip_sha256": "91f40cb40d13e0eaf21d485875ed397cf5476044f413ead936a138b843d2411f"
+  },
+  "converted_rows": 7405,
+  "all_original_fields_preserved": true,
+  "source_annotation_gaps": {
+    "5ae61bfd5542992663a4f261": [
+      [
+        "Jimmy Butler (basketball)",
+        902
+      ]
+    ]
+  },
+  "scorer_pairs": 511156,
+  "all_checks_passed": true,
+  "scope": "full columnar/JSON comparison and sourceZIP integrity; no host outcome"
+}

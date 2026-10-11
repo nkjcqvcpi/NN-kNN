@@ -1,0 +1,20 @@
+{
+  "records": [
+    {
+      "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_prompt_direct_removal_source_archive",
+      "string_validation_admitted": true,
+      "metadata_replaced": true,
+      "bias_drift_delivered": true,
+      "active_only_constructed": false
+    },
+    {
+      "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_version_binding_source_archive",
+      "string_validation_admitted": false,
+      "metadata_replaced": false,
+      "bias_drift_delivered": false,
+      "active_only_constructed": true
+    }
+  ],
+  "all_checks_passed": true,
+  "scope": "actual old/new core contract counterexamples; no downstream benchmark"
+}

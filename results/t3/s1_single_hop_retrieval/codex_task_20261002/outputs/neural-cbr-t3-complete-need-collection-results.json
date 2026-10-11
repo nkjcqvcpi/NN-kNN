@@ -1,0 +1,89 @@
+{
+  "source": {
+    "fingerprint": "e26aac9c13ab3e00e7c022c4ad02d6b0469f034735be0c0e18975665e19a3dd7",
+    "head": "9340be60aa96202eb47a4569126c0ab8f03899e1",
+    "entries": 149,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_bounded_request_256_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_bounded_request_256_source_e26aac9c13ab.zip",
+    "zip_sha256": "7a87a29675d5190345bd1ad5d8556cc5fdbf8e02ce7b1ebe7f4b9dba903a8963"
+  },
+  "summary": {
+    "t3-train-need-queries-20261005": {
+      "calls": 192,
+      "valid_requests": 190,
+      "errors": 2,
+      "input_tokens": 16705,
+      "output_tokens": 9878,
+      "generation_seconds": 1974.3193398010917
+    },
+    "t3-train-need-queries-256-20261005": {
+      "calls": 192,
+      "valid_requests": 190,
+      "errors": 2,
+      "input_tokens": 16705,
+      "output_tokens": 10134,
+      "generation_seconds": 1874.1308338001836
+    },
+    "t3-train-need-queries-bounded-20261006": {
+      "calls": 192,
+      "valid_requests": 192,
+      "errors": 0,
+      "input_tokens": 16705,
+      "output_tokens": 9926,
+      "generation_seconds": 1882.8545372006483
+    }
+  },
+  "unchanged_successful_outputs": 190,
+  "repaired_requests": [
+    {
+      "position": 145,
+      "question_id": "572e807dcb0c0d14000f11e9",
+      "need_characters": 512,
+      "output_tokens": 118
+    },
+    {
+      "position": 174,
+      "question_id": "5727f2323acd2414000df081",
+      "need_characters": 510,
+      "output_tokens": 186
+    }
+  ],
+  "query_shift": {
+    "fit": {
+      "queries": 128,
+      "exact_question_needs": 4,
+      "hash_vector_changed": 100,
+      "maximum_need_characters": 349
+    },
+    "tune": {
+      "queries": 64,
+      "exact_question_needs": 2,
+      "hash_vector_changed": 50,
+      "maximum_need_characters": 512
+    }
+  },
+  "verified_inputs": {
+    "protocol.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-train-need-queries-bounded-20261006\\protocol.json",
+      "sha256": "3f693c15c3b25b1aeb85ceef83d2f8382f5a849b22bdd9085ab197f5edceb55e"
+    },
+    "need_queries.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-train-need-queries-bounded-20261006\\need_queries.json",
+      "sha256": "6c7f6972d232bddbe3306ad51b931d4ffb383ebe02bbd0734bdbe330558045f8"
+    },
+    "records.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-train-need-queries-bounded-20261006\\records.jsonl",
+      "sha256": "5b9e1517bba625d4c6f8e93dc35067136ce77d559dce81bfa0567fe7b6b60c8f"
+    },
+    "host_calls.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-train-need-queries-bounded-20261006\\host_calls.jsonl",
+      "sha256": "f7bc7317ac44bf946eaba2313320f7ae09c8ccc900a60bce95dd6e4c00577d91"
+    },
+    "summary.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-train-need-queries-bounded-20261006\\summary.json",
+      "sha256": "29f88d141532359e6bfd3f0f26c6f933a384e9f9ebb6b071e42218aa124baf4d"
+    }
+  },
+  "all_recorded_checks_passed": true,
+  "boundary": "complete actual train-only needs; same190 outputs/two string closures; semantic repetition remains; no fitted retrieval or downstream utility claim"
+}

@@ -1,0 +1,15 @@
+{
+  "actual_training_updates": 128,
+  "all_recorded_checks_passed": true,
+  "scope": "real default count epoch; exact selected/final/initial/Adam/event/curve equality against archived pre-mode run; protocol only declares new source/explicit count",
+  "inputs": {
+    "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-term-frequency-default-compat-20261006\\protocol.json": "ff22ee136bad77434a4f6cdb5de4f6e60622488a9276ed79470866f23fcb5be8",
+    "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-term-frequency-default-compat-20261006\\s8\\metric.pt": "a7c8ea282d0bdf9067c345a2d612d7fba3861bf08067bd7fd9be69e0a9929c34",
+    "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-term-frequency-default-compat-20261006\\s8\\summary.json": "f30ebaf6927e297ba148aa80cf195ac356a21e73cded4f8b8007db5226ba6687",
+    "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-term-frequency-default-compat-20261006\\s8\\training_events.json": "1c4ead2e8e4d10e7f1f43dab34c316cfc0e6dc1d22f8ee69f4e3a7bb2de71f26",
+    "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-need-query-default-compat-20261005\\protocol.json": "a617c4e461bc1a232af911966f7b8f01d9737cd59ce36fb534e0f30ce433262d",
+    "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-need-query-default-compat-20261005\\s8\\metric.pt": "a7c8ea282d0bdf9067c345a2d612d7fba3861bf08067bd7fd9be69e0a9929c34",
+    "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-need-query-default-compat-20261005\\s8\\summary.json": "9d76397d90fd6914ce05c9728a418307b1eb1e7e8a2cb3c7dcd96ba2b378c37e",
+    "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-need-query-default-compat-20261005\\s8\\training_events.json": "1c4ead2e8e4d10e7f1f43dab34c316cfc0e6dc1d22f8ee69f4e3a7bb2de71f26"
+  }
+}

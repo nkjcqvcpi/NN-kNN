@@ -1,0 +1,42 @@
+{
+  "created_utc": "2026-10-06T16:52:34.229727+00:00",
+  "freeze": {
+    "fingerprint": "e26aac9c13ab3e00e7c022c4ad02d6b0469f034735be0c0e18975665e19a3dd7",
+    "head": "9340be60aa96202eb47a4569126c0ab8f03899e1",
+    "entries": 149,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_bounded_request_256_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_bounded_request_256_source_e26aac9c13ab.zip",
+    "zip_sha256": "7a87a29675d5190345bd1ad5d8556cc5fdbf8e02ce7b1ebe7f4b9dba903a8963"
+  },
+  "initial_requests": 192,
+  "request_ceiling": 256,
+  "answer_continuation_ceiling": 128,
+  "no_per_question_retry": true,
+  "fit_ids": 128,
+  "tune_ids": 64,
+  "seeds": [
+    8,
+    9,
+    10
+  ],
+  "epochs": 20,
+  "objective": "hard_negative",
+  "selection": "tune_recall",
+  "public_comparison": {
+    "arms": [
+      "question-control",
+      "actual"
+    ],
+    "seed": 8,
+    "conditions": [
+      "learned",
+      "iterative"
+    ],
+    "trials_per_arm": 32,
+    "scope": "same existing exploratory8 SQuAD/8 Hotpot questions; reserved64 untouched",
+    "seed_choice": "seed8 fixed before any bounded public outcomes; prior128 exploratory outcomes and128/256 train-only failures known",
+    "boundary": "exploratory redesign, not independent confirmation; separate generation/training/public costs"
+  },
+  "request_profile": "bounded",
+  "diagnostic_questions": 2
+}

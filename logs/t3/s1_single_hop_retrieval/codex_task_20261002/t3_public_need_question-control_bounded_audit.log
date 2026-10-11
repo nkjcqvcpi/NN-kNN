@@ -1,0 +1,1 @@
+{"trials": 32, "recorded_retrieval_events": 32, "nn_events": 32, "bm25_events": 0, "manual_candidates": 1184, "host_calls": 64, "schema_failures": 2, "second_retrieval_trials": 0, "error_trace_gaps": 0}

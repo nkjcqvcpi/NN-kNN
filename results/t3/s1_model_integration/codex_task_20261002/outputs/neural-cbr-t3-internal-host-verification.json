@@ -1,0 +1,39 @@
+{
+  "source": {
+    "fingerprint": "225483f26fb77911321ac86ac52db90095e5b88d8d0a14500fe237e2ab8e8a40",
+    "head": "efb7ce180b9ffc7a96381f8979733c52406898de",
+    "entries": 152,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_internal_audited_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t3_internal_audited_source_225483f26fb7.zip",
+    "zip_sha256": "54a5c8265b13ab9aafd6196458c437ec675875b048abf1c6749718ee0065110a"
+  },
+  "trials": 64,
+  "fresh_nn_retrievals": 16,
+  "manual_candidates": 592,
+  "internal_token_steps": 1010,
+  "all_recorded_checks_passed": true,
+  "errors": 2,
+  "input_artifacts": {
+    "protocol.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-internal-host-20261006\\protocol.json",
+      "sha256": "4b322f971fdd10471f77242392aebb1877ffd8ea85080d08c660ae5707c23ab7"
+    },
+    "retrievals.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-internal-host-20261006\\retrievals.jsonl",
+      "sha256": "9a055fccadb489b44426b42f52c05f49b2c65741793bdf8443ec89e43cb9b7d3"
+    },
+    "host_calls.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-internal-host-20261006\\host_calls.jsonl",
+      "sha256": "8fdfbde447fbc957bbd9b112d61baa7eb4be25fa8b6002b759dbce8416696853"
+    },
+    "trials.jsonl": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-internal-host-20261006\\trials.jsonl",
+      "sha256": "d309c54503532afb74b15caa8acde4524822304c30126592ff20d079f52541b6"
+    },
+    "summary.json": {
+      "path": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\outputs\\t3-internal-host-20261006\\summary.json",
+      "sha256": "913002577558dedd50f06c9cb4e094c6ac88d6b874031a0c20a98b6171e7b1cb"
+    }
+  },
+  "scope": "fresh core/manual geometry,Qwen token histograms/grammar-support/composed selected-token probability/greedy-token/output/score/journal replay; no fresh independent LLM regeneration or full-loop confirmation"
+}
