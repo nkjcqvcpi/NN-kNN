@@ -35,8 +35,8 @@ retrieval as an explicit control rather than silently cleaning/replacing host
 requests. Direct set utility is evaluated separately on the actual delivered
 sets. Stronger-host/typed-head/internal comparisons remain open.
 
-Task evidence: `work/diagnose_t3_need_shift.py` and
-`outputs/neural-cbr-t3-need-shift-diagnosis.json`. Source141-file archive
+Task evidence: `results/t3/s1_single_hop_retrieval/codex_task_20261002/audit_scripts/diagnose_t3_need_shift.py` and
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-need-shift-diagnosis.json`. Source141-file archive
 `90aac35f106efb737679739d58f295e52fd66d44738c72b2e4e686d7b88f7d0e`,the completed
 80-trial constrained input and its full journal verification are bound.
 The verifier performs actual core retrievals but no new LLM generations.

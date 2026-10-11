@@ -46,9 +46,9 @@ runs even when later generation fails.
 Frozen source `bce249f4402c1ca31829143f04c641b479b9d2f387e1dad38fcfbeb29106c393`,
 139 files,ZIP `aa49b1825b56c6021e303c1211aa3383c6f099ee4f155ffb18786f84fca7e233`.
 Archive/ZIP bytes validate. Task evidence:
-`outputs/t3-public-host-20261005-request-v2/{protocol,summary}.json`, `trials.jsonl`,
-`outputs/neural-cbr-t3-public-host-verification.json` and
-`outputs/neural-cbr-t3-public-host-results.{json,md}`.
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-public-host-20261005-request-v2/{protocol,summary}.json`, `trials.jsonl`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-public-host-verification.json` and
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-public-host-results.{json,md}`.
 
 The optional strict-schema/token-filtered80-trial run is underway with journaling.
 Strict validation also differs from the original plain run; a strict plain

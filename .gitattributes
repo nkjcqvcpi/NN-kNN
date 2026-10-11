@@ -10,3 +10,8 @@ results/**/*.csv text !filter !diff !merge
 *.pth filter=lfs diff=lfs merge=lfs -text
 *.ckpt filter=lfs diff=lfs merge=lfs -text
 results/**/*.jsonl text !filter !diff !merge
+
+# Evidence copied from the Codex task workspace: store bytes exactly as produced,
+# because its verification files record hashes of the originals.
+results/t3/*/codex_task_*/** -text
+logs/t3/*/codex_task_*/** -text

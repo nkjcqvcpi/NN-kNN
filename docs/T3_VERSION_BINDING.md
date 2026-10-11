@@ -46,9 +46,9 @@ Source `2558358dbece90ace1155e9989bfccc1e16535962f4c84351dad7ef22792e45a`,
 132 files; ZIP SHA256
 `293afe38f9be4234ffe92dca5253d5ff69b0b048687b3f559faa2eb56c034f45`.
 Task artifacts: `work/t3_version_binding_source_archive/`,
-`outputs/t3-version-binding-host-20261005/`,
-`outputs/neural-cbr-t3-version-binding-probes.json`,
-`outputs/neural-cbr-t3-version-{host,removal}-verification.json`.
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-version-binding-host-20261005/`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-version-binding-probes.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-version-{host,removal}-verification.json`.
 Career-2027 HEAD was freshly checked as `cd772776` on October5; imported18
 authority documents remain unchanged. Public matched benchmarks,learned metric,
 specialized heads,feedback and internal/combined integration remain open.

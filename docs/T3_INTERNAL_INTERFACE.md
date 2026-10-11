@@ -69,10 +69,10 @@ mass,chosen host/mixture probabilities and hard-mask preservation. This permits
 independent reconstruction from original-case token counts and activations,with
 actual generated token IDs tied to the recorded greedy selections. Interface
 preparation time is reported separately from generation. Task evidence:
-`outputs/neural-cbr-t3-internal-preflight-verification.json`,
-`work/t3_internal_preflight_float32_failure.log`,
-`work/t3_internal_large_before_fix.log`,
-`work/audit_t3_internal_host.py`. A fresh64-call host run and its full independent
+`results/t3/s1_model_integration/codex_task_20261002/outputs/neural-cbr-t3-internal-preflight-verification.json`,
+`logs/t3/s1_model_integration/codex_task_20261002/t3_internal_preflight_float32_failure.log`,
+`logs/t3/s1_model_integration/codex_task_20261002/t3_internal_large_before_fix.log`,
+`results/t3/s1_model_integration/codex_task_20261002/audit_scripts/audit_t3_internal_host.py`. A fresh64-call host run and its full independent
 audit remain necessary. No internal quality benefit or empirical architecture
 selection is established by this preflight.
 
@@ -90,10 +90,10 @@ provenance,per-step permitted artifact mass and selected-token mixture formulas,
 generated IDs,strict failure scoring and complete journals. It does not perform
 fresh independent LLM regeneration or certify the internal architecture.
 
-Task paths: `work/t3_internal_experiment_plan.json`,
-`work/run_t3_internal_after_bounded.ps1`,`work/t3_internal_after_bounded_driver.log`.
-Future results: `outputs/t3-internal-host-20261006/`,
-`outputs/neural-cbr-t3-internal-host-verification.json`.
+Task paths: `results/t3/s1_model_integration/codex_task_20261002/provenance/t3_internal_experiment_plan.json`,
+`results/t3/s1_model_integration/codex_task_20261002/drivers/run_t3_internal_after_bounded.ps1`,`logs/t3/s1_model_integration/codex_task_20261002/t3_internal_after_bounded_driver.log`.
+Future results: `results/t3/s1_model_integration/codex_task_20261002/runs/t3-internal-host-20261006/`,
+`results/t3/s1_model_integration/codex_task_20261002/outputs/neural-cbr-t3-internal-host-verification.json`.
 All242 repository tests pass with the existing T1 tensor-to-scalar warning.
 The career-2027 remote HEAD was rechecked onOctober6 and remains the imported
 `cd77277600841438d98ac5793867da28b8ec6dd0`. Broader semantic/typed integration,

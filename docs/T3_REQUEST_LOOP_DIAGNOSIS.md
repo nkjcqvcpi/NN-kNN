@@ -31,9 +31,9 @@ still be poor need matching and must be measured rather than silently cleaned.
 
 All61 T3 tests pass. The previous uniform-budget revision passed all235 repository
 tests with one existing T1 tensor-to-scalar warning. Task evidence:
-`outputs/neural-cbr-t3-failed-need-collection-verification.json`,
-`outputs/neural-cbr-t3-failed-need-collection-256-verification.json`,
-`outputs/neural-cbr-t3-request-loop-diagnosis.json`.
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-failed-need-collection-verification.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-failed-need-collection-256-verification.json`,
+`results/t3/s0_host_setup/codex_task_20261002/outputs/neural-cbr-t3-request-loop-diagnosis.json`.
 The original147 and uniform256149 source archives remain unchanged.
 
 ## Fresh actual diagnostic and full run
@@ -58,10 +58,10 @@ remain untouched. This is redesign evidence,not independent confirmation.
 Frozen149-file source:
 `e26aac9c13ab3e00e7c022c4ad02d6b0469f034735be0c0e18975665e19a3dd7`,
 ZIP `7a87a29675d5190345bd1ad5d8556cc5fdbf8e02ce7b1ebe7f4b9dba903a8963`.
-Task evidence: `outputs/t3-bounded-request-diagnostic-20261006/`,
-`outputs/neural-cbr-t3-bounded-request-probe-verification.json`,
-`work/t3_bounded_request_plan.json`,`work/run_t3_bounded_request_256.ps1`,
-`work/t3_bounded_request_256_driver.log`. The first sequencing preflight referred
+Task evidence: `results/t3/s0_host_setup/codex_task_20261002/runs/t3-bounded-request-diagnostic-20261006/`,
+`results/t3/s0_host_setup/codex_task_20261002/outputs/neural-cbr-t3-bounded-request-probe-verification.json`,
+`results/t3/s0_host_setup/codex_task_20261002/provenance/t3_bounded_request_plan.json`,`results/t3/s0_host_setup/codex_task_20261002/drivers/run_t3_bounded_request_256.ps1`,
+`logs/t3/s0_host_setup/codex_task_20261002/t3_bounded_request_256_driver.log`. The first sequencing preflight referred
 to the new output rather than the preserved old failure;it stopped before any
 generation. The corrected driver verified no new output existed and preserved
 that preflight log separately before starting. Session90847 is the live full run.

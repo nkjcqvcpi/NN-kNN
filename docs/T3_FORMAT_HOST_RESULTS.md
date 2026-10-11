@@ -23,7 +23,7 @@ All Hotpot support/joint F1 means remain zero. Error scores stay zero in the den
 descriptive engineering comparison; strict validation and decoder both differ from legacy plain; no decoder causal attribution before strict plain control; no QA or multi-hop success claim
 
 Source141 files:90aac35f106efb737679739d58f295e52fd66d44738c72b2e4e686d7b88f7d0e;ZIP530f1eef49900ede6ceaa9b445429cb874330da99ace57b48e031683fddda77f.
-Evidence: outputs/neural-cbr-t3-format-host-verification.json;outputs/neural-cbr-t3-format-host-results.json;outputs/t3-public-host-20261005-format-enforced/.
+Evidence: results/t3/s0_host_setup/codex_task_20261002/outputs/neural-cbr-t3-format-host-verification.json;results/t3/s0_host_setup/codex_task_20261002/outputs/neural-cbr-t3-format-host-results.json;results/t3/s0_host_setup/codex_task_20261002/runs/t3-public-host-20261005-format-enforced/.
 
 Seven failures comprise four128-token JSON truncations and three invalid ordered
 citation pairs at77/98 tokens. The weaker decoder item union does not enforce

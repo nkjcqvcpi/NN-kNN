@@ -22,9 +22,9 @@ actual-need trainings,full independent gradient/state replays,common-query
 comparison and public outcome arms remain required before a fitted benefit claim.
 Driver90847 is still active. This completed collection is not global promotion.
 
-Evidence: `outputs/t3-train-need-queries-bounded-20261006/`,
-`outputs/neural-cbr-t3-train-need-query-bounded-verification.json`,
-`outputs/neural-cbr-t3-complete-need-collection-results.json`.
+Evidence: `results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-train-need-queries-bounded-20261006/`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-train-need-query-bounded-verification.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-complete-need-collection-results.json`.
 The older preparation below is historical and describes the preserved earlier
 source/attempt;the complete bounded source is frozen149 `e26aac9c...`.
 
@@ -71,9 +71,9 @@ remain required. No metric promotion or learned utility claim is made.
 Source147 files:
 `f3e4de178a6f4bc47bb549eb34a67545107996709b1c8397fa35d425190c8497`,ZIP
 `9876cce6fb1768d2120d20fbcc511d556fe7eed9baec4769367e7947d46ad3ee`.
-Task evidence: `work/t3_train_need_queries_freeze.json`,
-`outputs/neural-cbr-t3-need-query-compat-verification.json`,
-`outputs/t3-need-query-default-compat-20261005/`,
-`work/run_t3_train_queries_after_utility.ps1`, `work/t3_train_query_driver.log`.
-Future outputs: `outputs/t3-train-need-queries-20261005/`,
-`outputs/t3-train-need-{question-control,actual}-20261005/`.
+Task evidence: `results/t3/s1_single_hop_retrieval/codex_task_20261002/provenance/t3_train_need_queries_freeze.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-need-query-compat-verification.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-need-query-default-compat-20261005/`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/drivers/run_t3_train_queries_after_utility.ps1`, `logs/t3/s1_single_hop_retrieval/codex_task_20261002/t3_train_query_driver.log`.
+Future outputs: `results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-train-need-queries-20261005/`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-train-need-{question-control,actual}-20261005/`.

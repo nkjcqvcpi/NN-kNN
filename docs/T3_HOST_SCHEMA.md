@@ -39,10 +39,10 @@ plain control before attributing outcomes specifically to token filtering.
 Experiment freeze:141 files,source
 `90aac35f106efb737679739d58f295e52fd66d44738c72b2e4e686d7b88f7d0e`,ZIP
 `530f1eef49900ede6ceaa9b445429cb874330da99ace57b48e031683fddda77f`.
-Task evidence: `work/t3_format_enforced_freeze.json`,
-`outputs/neural-cbr-t3-format-parser-verification.json`,
-`outputs/t3-public-host-20261005-format-enforced/` and
-`work/t3_format_enforced.log`. Retrievals are journaled before subsequent host
+Task evidence: `results/t3/s0_host_setup/codex_task_20261002/provenance/t3_format_enforced_freeze.json`,
+`results/t3/s0_host_setup/codex_task_20261002/outputs/neural-cbr-t3-format-parser-verification.json`,
+`results/t3/s0_host_setup/codex_task_20261002/runs/t3-public-host-20261005-format-enforced/` and
+`logs/t3/s0_host_setup/codex_task_20261002/t3_format_enforced.log`. Retrievals are journaled before subsequent host
 calls and partial events retained on failures. The80-trial result is complete;
 see `T3_FORMAT_HOST_RESULTS.md` and the strict control above.
 
@@ -53,14 +53,14 @@ immediate journal exactly;no error trace gap remains in this prefix. Source/ZIP
 bytes,case/model/encoder hashes,payload prefixes and objective scores replay.
 The verifier makes no fresh LLM generations. This provisional31-trial boundary
 is not terminal80-trial results. Evidence:
-`outputs/t3-format-prefix-31/snapshot.json` and
-`outputs/neural-cbr-t3-format-prefix-verification.json`.
+`results/t3/s0_host_setup/codex_task_20261002/runs/t3-format-prefix-31/snapshot.json` and
+`results/t3/s0_host_setup/codex_task_20261002/outputs/neural-cbr-t3-format-prefix-verification.json`.
 
 The strict plain80-trial control is queued after the current GPU job. Its driver
 waits for the verified process,requires the terminal80-trial summary and full
 journal audit,then uses the identical141-file archive with `--strict-schema`
 and no format library. It stops on failed prerequisites. Both runs receive full
 journal audits;GPU trials do not overlap. Sequencing evidence:
-`work/run_t3_strict_plain_after_format.ps1` and
-`work/t3_format_then_plain_driver.log`. Runtime latency still includes changing
+`results/t3/s0_host_setup/codex_task_20261002/drivers/run_t3_strict_plain_after_format.ps1` and
+`logs/t3/s0_host_setup/codex_task_20261002/t3_format_then_plain_driver.log`. Runtime latency still includes changing
 machine load and is not a hardware-isolated comparison.

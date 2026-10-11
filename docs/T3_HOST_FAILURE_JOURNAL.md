@@ -45,7 +45,7 @@ Source `cc396e87b62a1ab38d9eb5d05c7472fc7acc825f8a1dfd778d0adf8cbb2eb1b0`,
 139 files,ZIP SHA256
 `e08a42f47603e877cac9c010790ef0aeb34c1096ce10c1a6a5a5d548cac5cbf1`.
 Source/fullZIP bytes validate. Task evidence:
-`outputs/neural-cbr-t3-failure-journal-verification.json`,
-`outputs/t3-public-host-20261005/termination_diagnosis.json` and distinct source
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/outputs/neural-cbr-t3-failure-journal-verification.json`,
+`results/t3/s1_single_hop_retrieval/codex_task_20261002/runs/t3-public-host-20261005/termination_diagnosis.json` and distinct source
 archives/logs for request v1,v2 and the journal implementation. No public task
 benefit,utility feedback,typed-head comparison or full T3 completion is claimed.
