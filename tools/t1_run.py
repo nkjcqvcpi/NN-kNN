@@ -34,7 +34,8 @@ import yaml  # noqa: E402
 
 from model.common.artifacts import build_manifest, case_statistics_rows, config_id, source_fingerprint, write_json, write_jsonl  # noqa: E402
 from model.t1.calibration import calibrate_free_radius, compact_calibration_snapshot  # noqa: E402
-from model.common.core import CoreConfig, build_model, clone_optimizer, evaluate, retrieval_events, train_retrieval  # noqa: E402
+from model.common.core import CoreConfig, build_model, clone_optimizer, evaluate, make_optimizer, retrieval_events, train_retrieval  # noqa: E402
+from model.common.geometry import active_case_features, query_features  # noqa: E402
 from model.t1.data import make_splits  # noqa: E402
 from model.t1.candidates import MaintenanceReference
 from model.t1.maintenance import CaseArchive, run_maintenance  # noqa: E402
@@ -163,6 +164,80 @@ def test_metrics(model, data, prefix="test"):
     return out
 
 
+def val_metrics(model, data):
+    """Retrieval-only validation metrics: the only stream allowed to rank conditions."""
+    e = evaluate(model, data.X_val, data.y_val)
+    return {f"val_{k}": v for k, v in e.items() if not k.startswith(("pred", "prob"))}
+
+
+def adapted_metrics(model, adapter, data, stream, cfg, rc=None):
+    """Pre/post-adaptation metrics on one evaluation stream (``test`` or ``val``)."""
+    X, y = getattr(data, f"X_{stream}"), getattr(data, f"y_{stream}")
+    if data.task_type == "classification":
+        return evaluate_reuse(model, adapter, X, y, rc, query_nominal=encoded_queries(adapter, data, stream),
+                              test_groups=data.test_groups if stream == "test" else None)
+    return evaluate_regression_reuse(model, adapter, X, y,
+                                     success_tolerance=cfg["statistics"]["regression_success_tolerance"])
+
+
+class EveryEpoch:
+    """Observation epochs for ``train_retrieval``: every epoch is a member, none is pending.
+
+    ``train_retrieval`` runs its checkpoint hook at member epochs, and delays early
+    stopping only for epochs it can iterate as still to come. A read-only observer
+    must never delay stopping, so iteration is empty.
+    """
+
+    def __contains__(self, epoch) -> bool:
+        return True
+
+    def __iter__(self):
+        return iter(())
+
+    def __bool__(self) -> bool:
+        return True
+
+
+def stability_summary(records, prefix):
+    out = {}
+    for key in ("representation_drift", "neighborhood_churn"):
+        values = [r[key] for r in records if key in r]
+        if values:
+            out[f"{prefix}_mean_{key}"] = float(np.mean(values))
+            out[f"{prefix}_late_{key}"] = float(np.mean(values[-10:]))
+    return out
+
+
+@torch.no_grad()
+def online_ema_gap(model):
+    """Mean distance between online (query) and EMA (case) embeddings of the same stored cases."""
+    if getattr(model, "momentum_encoder", None) is None:
+        return {}
+    cases = active_case_features(model)
+    online = query_features(model, model.cases[: model.case_count()])
+    return {"online_ema_gap": float((online - cases).norm(dim=1).mean()),
+            "case_embedding_norm": float(cases.norm(dim=1).mean())}
+
+
+def arm_label(arm, label):
+    return label if arm is None else f"{arm['name']}__{label}"
+
+
+def arm_fields(arm):
+    return {} if arm is None else {"arm": arm["name"], **{k: v for k, v in arm.items() if k != "name"}}
+
+
+def arm_core(arm):
+    return {} if arm is None else {k: v for k, v in arm.items() if k in CoreConfig.__dataclass_fields__}
+
+
+def near_scale_of(model):
+    from model.common.geometry import case_case_distance
+    D = case_case_distance(model)
+    positive = D[torch.isfinite(D) & (D > 0)]
+    return float(positive.median()) if positive.numel() else 1.0
+
+
 def truth_retention(model, data) -> dict[str, Any]:
     if not data.case_truth:
         return {}
@@ -210,6 +285,21 @@ class Runner:
         model = build_model(data.X_train, data.y_train, cc, data.num_classes)
         tr = train_retrieval(model, data.X_train, data.y_train, data.X_val, data.y_val, cc)
         return model, cc, tr
+
+    def observed_core(self, data, seed: int, **over):
+        """``trained_core`` plus read-only per-epoch stability snapshots on validation probes."""
+        selected = self.cfg.get("core_by_dataset", {}).get(f"{data.task_type}__{data.name}", {})
+        cc = core_cfg_for(self.cfg, data.task_type, seed, **{**selected, **over})
+        model = build_model(data.X_train, data.y_train, cc, data.num_classes)
+        tracker = StabilityTracker(data.X_val, k=cc.top_k)
+        tracker.snapshot(model, 0)
+        tr = train_retrieval(model, data.X_train, data.y_train, data.X_val, data.y_val, cc,
+                             checkpoint_hook=lambda ep, mdl, opt: tracker.snapshot(mdl, ep),
+                             checkpoint_epochs=EveryEpoch())
+        return model, cc, tr, tracker
+
+    def arms(self):
+        return self.cfg.get("arms") or [None]
 
     def finish(self, *, ds, seed, cond_label, cond, data, model, store, archive, metrics, history, events, components, budgets, maintenance, model_desc, extra_files=None, prediction_adapter=None, binary_files=None, optimizer=None, adapter_optimizer_state=None, optimizer_checkpoint_epoch=None):
         dataset_key = self.dataset_key(ds)
@@ -323,35 +413,73 @@ class Runner:
 
     def run_reuse(self, ds, seed):
         data = self.data_for(ds, seed)
-        model, cc, tr = self.trained_core(data, seed)
-        store_a = CaseStatisticsStore(data.task_type)
-        audit(model, data, self.cfg, store_a, 0)
-        for cond in self.cfg["conditions"]:
-            rc = ReuseConfig(seed=seed, **{**self.cfg["reuse"], **cond})
-            if data.task_type == "classification":
-                adapter, info = train_classification_adapter(model, data, rc)
-                ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc, query_nominal=encoded_queries(adapter, data, "test"), test_groups=data.test_groups)
-                output_mode = cond["output_mode"]
-            else:
-                adapter, info = train_regression_adapter(model, data, rc)
-                ev = evaluate_regression_reuse(model, adapter, data.X_test, data.y_test,
-                    success_tolerance=self.cfg["statistics"]["regression_success_tolerance"])
-                output_mode = "aggregate_regression"
-            store_b = CaseStatisticsStore(data.task_type)
-            ainfo = audit(model, data, self.cfg, store_b, 0, adapter=adapter)
-            label = f"{output_mode}_{cond['loss']}"
-            m = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
-                 **{f"test_flip_{k}": v for k, v in ev.get("flips", {}).items()},
-                 "audit_mean_loss_final": ainfo["mean_loss_final"],
-                 "provenance_semantics": ainfo["provenance_semantics"]}
-            self.finish(ds=ds, seed=seed, cond_label=label, cond=cond, data=data, model=model, store=store_b, archive=None, metrics=m, history={"core": tr.history, "adapter": info["history"]}, events=[],
-                        components={"retrieve": "trained NN-kNN core (frozen)", "reuse_or_adapter": f"aggregate label-conditioned NN-CDH ({output_mode}, {cond['loss']})", "revise": "off", "retain": "none", "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": "off (retrieval frozen first)"},
-                        budgets={"case_capacity": model.case_count(), "adapter_epochs_max": rc.epochs,
-                                 "adapter_epochs_run": info["epochs_run"], "adapter_best_epoch": info["best_epoch"]},
-                        maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "adapter": rc.__dict__},
-                        prediction_adapter=adapter, optimizer=tr.optimizer,
-                        adapter_optimizer_state=info["optimizer_state"],
-                        optimizer_checkpoint_epoch={"retrieval": tr.best_epoch, "adapter": info["best_epoch"]})
+        for arm in self.arms():
+            model, cc, tr = self.trained_core(data, seed, **arm_core(arm))
+            store_a = CaseStatisticsStore(data.task_type)
+            audit(model, data, self.cfg, store_a, 0)
+            for cond in self.cfg["conditions"]:
+                self.reuse_condition(ds, seed, data, model, cc, tr, cond, arm)
+
+    def reuse_condition(self, ds, seed, data, model, cc, tr, cond, arm=None):
+        """Train one frozen-retrieval adapter on ``model`` and record pre/post outcomes."""
+        rc = ReuseConfig(seed=seed, **{**self.cfg["reuse"], **cond})
+        if data.task_type == "classification":
+            adapter, info = train_classification_adapter(model, data, rc)
+            output_mode = cond["output_mode"]
+        else:
+            adapter, info = train_regression_adapter(model, data, rc)
+            output_mode = "aggregate_regression"
+        ev = adapted_metrics(model, adapter, data, "test", self.cfg, rc)
+        vev = adapted_metrics(model, adapter, data, "val", self.cfg, rc)
+        store_b = CaseStatisticsStore(data.task_type)
+        ainfo = audit(model, data, self.cfg, store_b, 0, adapter=adapter)
+        label = arm_label(arm, f"{output_mode}_{cond['loss']}")
+        m = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
+             **{f"test_flip_{k}": v for k, v in ev.get("flips", {}).items()},
+             **{f"val_{k}": v for k, v in vev.items() if not isinstance(v, dict)},
+             "audit_mean_loss_final": ainfo["mean_loss_final"],
+             "provenance_semantics": ainfo["provenance_semantics"]}
+        self.finish(ds=ds, seed=seed, cond_label=label, cond={**arm_fields(arm), **cond}, data=data, model=model, store=store_b, archive=None, metrics=m, history={"core": tr.history, "adapter": info["history"]}, events=[],
+                    components={"retrieve": "trained NN-kNN core (frozen)", "reuse_or_adapter": f"aggregate label-conditioned NN-CDH ({output_mode}, {cond['loss']})", "revise": "off", "retain": "none", "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": "off (retrieval frozen first)"},
+                    budgets={"case_capacity": model.case_count(), "adapter_epochs_max": rc.epochs,
+                             "adapter_epochs_run": info["epochs_run"], "adapter_best_epoch": info["best_epoch"]},
+                    maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "adapter": rc.__dict__},
+                    prediction_adapter=adapter, optimizer=tr.optimizer,
+                    adapter_optimizer_state=info["optimizer_state"],
+                    optimizer_checkpoint_epoch={"retrieval": tr.best_epoch, "adapter": info["best_epoch"]})
+
+    def run_encoder_ablation(self, ds, seed):
+        """Is the EMA case encoder (MCB) useful before any case-base maintenance?
+
+        Each arm (e.g. raw features, one shared MLP encoder, an online query MLP
+        with an EMA case encoder) trains one full-memory retrieval core with
+        read-only per-epoch stability snapshots. Setting 1 records that core's
+        retrieval-only output. Setting 2 adds reuse to the same core: frozen-
+        retrieval adapters (``reuse_conditions``) and synchronized schedules
+        (``conditions``). Arms share splits, seeds, budgets and retrieval rules.
+        """
+        data = self.data_for(ds, seed)
+        for arm in self.cfg["arms"]:
+            base, cc, tr, tracker = self.observed_core(data, seed, **arm_core(arm))
+            m = {**test_metrics(base, data), **val_metrics(base, data), "n_cases": base.case_count(),
+                 "core_epochs_run": tr.epochs_run, "core_best_epoch": tr.best_epoch,
+                 **stability_summary(tracker.records, "core"), **online_ema_gap(base)}
+            self.finish(ds=ds, seed=seed, cond_label=arm_label(arm, "retrieval_only"),
+                        cond={**arm_fields(arm), "setting": "retrieval_only"}, data=data, model=base,
+                        store=None, archive=None, metrics=m, history={"core": tr.history}, events=[],
+                        components={"retrieve": f"NN-kNN core ({cc.representation})", "reuse_or_adapter": "off", "revise": "off",
+                                    "retain": "none (full memory)", "mcb": "on" if cc.mcb_enabled else "off",
+                                    "component_synchronization": "off"},
+                        budgets={"case_capacity": base.case_count(), "core_epochs_max": cc.epochs,
+                                 "core_epochs_run": tr.epochs_run},
+                        maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "arm": arm},
+                        optimizer=tr.optimizer, optimizer_checkpoint_epoch={"retrieval": tr.best_epoch})
+            for cond in self.cfg.get("reuse_conditions", []):
+                self.reuse_condition(ds, seed, data, base, cc, tr, cond, arm)
+            if self.cfg.get("conditions"):
+                near_scale = near_scale_of(base)
+                for cond in self.cfg["conditions"]:
+                    self.sync_condition(ds, seed, data, base, cc, tr, cond, arm, near_scale)
 
     def run_adapted_retrained_removal(self, ds, seed):
         """Optional high-cost final-output removal with actual continued adapters."""
@@ -562,124 +690,139 @@ class Runner:
 
     def run_sync(self, ds, seed):
         data = self.data_for(ds, seed)
-        base, cc, tr = self.trained_core(data, seed)
-        from model.common.geometry import case_case_distance
+        for arm in self.arms():
+            base, cc, tr = self.trained_core(data, seed, **arm_core(arm))
+            near_scale = near_scale_of(base)
+            for cond in self.cfg["conditions"]:
+                self.sync_condition(ds, seed, data, base, cc, tr, cond, arm, near_scale)
 
-        D = case_case_distance(base)
-        positive = D[torch.isfinite(D) & (D > 0)]
-        near_scale = float(positive.median()) if positive.numel() else 1.0
-        for cond in self.cfg["conditions"]:
+    def sync_condition(self, ds, seed, data, base, cc, tr, cond, arm=None, near_scale=None):
+        """One synchronized condition continuing ``base`` or, with ``core_pretrain: false``,
+        training retrieval and reuse together from the untrained initialization."""
+        fields = SyncConfig.__dataclass_fields__
+        merged = {**self.cfg["sync"], **cond}
+        pretrained = bool(merged.get("core_pretrain", True))
+        if pretrained:
             model = copy.deepcopy(base)
-            fields = SyncConfig.__dataclass_fields__
-            merged = {**self.cfg["sync"], **cond}
-            radius_method = merged.get("free_radius_method", "trained_bias_region")
-            initial_bias = None
-            if radius_method == "initial_bias_region":
-                initial_bias = build_model(data.X_train, data.y_train, cc, data.num_classes).biases.detach().clone()
-            calibration_snapshots = []
-            def calibrate(ep):
-                ids = model.active_case_ids().long()
-                radius, snapshot = calibrate_free_radius(model, s_task=float(merged["s_task"]),
-                    snapshot_step=ep, method=radius_method, neighbor_k=cc.bias_init_k,
-                    aggregation=merged.get("radius_aggregation", "mean"),
-                    bias_transform=merged.get("bias_transform", "identity"),
-                    shrink_factor=float(merged.get("shrink_factor", .5)),
-                    clipping_quantile=float(merged.get("clipping_quantile", .95)),
-                    initial_bias=None if initial_bias is None else initial_bias[ids])
-                snapshot["model_state"] = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
-                snapshot["active_case_count"] = model.case_count()
-                calibration_snapshots.append(compact_calibration_snapshot(snapshot))
-                return radius
-            fr = calibrate(tr.best_epoch)
-            merged.setdefault("output_mode", "aggregate_regression" if data.task_type == "regression" else "nominal_residual_scores")
-            sc = SyncConfig(seed=seed, **{k: (tuple(v) if k == "hidden_dims" else v) for k, v in merged.items() if k in fields and k != "seed"})
-            store, archive, events = CaseStatisticsStore(data.task_type), CaseArchive(), []
-            capacity_match = self.cfg.get("capacity_match")
-            capacity_spec = capacity_match["K"] if capacity_match else self.cfg["sync"].get("K", 1.0)
-            K = resolve_K(capacity_spec, model.case_count()) if "rrr" in sc.schedule else None
+            t_star = tr.best_epoch
+        else:
+            model = build_model(data.X_train, data.y_train, cc, data.num_classes)
+            near_scale = near_scale_of(model)
+            t_star = 0
+        radius_method = merged.get("free_radius_method", "trained_bias_region")
+        initial_bias = None
+        if radius_method == "initial_bias_region":
+            initial_bias = build_model(data.X_train, data.y_train, cc, data.num_classes).biases.detach().clone()
+        calibration_snapshots = []
+        def calibrate(ep):
+            ids = model.active_case_ids().long()
+            radius, snapshot = calibrate_free_radius(model, s_task=float(merged["s_task"]),
+                snapshot_step=ep, method=radius_method, neighbor_k=cc.bias_init_k,
+                aggregation=merged.get("radius_aggregation", "mean"),
+                bias_transform=merged.get("bias_transform", "identity"),
+                shrink_factor=float(merged.get("shrink_factor", .5)),
+                clipping_quantile=float(merged.get("clipping_quantile", .95)),
+                initial_bias=None if initial_bias is None else initial_bias[ids])
+            snapshot["model_state"] = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            snapshot["active_case_count"] = model.case_count()
+            calibration_snapshots.append(compact_calibration_snapshot(snapshot))
+            return radius
+        fr = calibrate(t_star)
+        merged.setdefault("output_mode", "aggregate_regression" if data.task_type == "regression" else "nominal_residual_scores")
+        sc = SyncConfig(seed=seed, **{k: (tuple(v) if k == "hidden_dims" else v) for k, v in merged.items() if k in fields and k != "seed"})
+        store, archive, events = CaseStatisticsStore(data.task_type), CaseArchive(), []
+        capacity_match = self.cfg.get("capacity_match")
+        capacity_spec = capacity_match["K"] if capacity_match else self.cfg["sync"].get("K", 1.0)
+        K = resolve_K(capacity_spec, model.case_count()) if "rrr" in sc.schedule else None
 
-            def hook(ep, mdl, opt, adapter):
-                audit(mdl, data, self.cfg, store, ep, adapter=adapter)
-                res = run_maintenance(mdl, store, archive, K, retention_cfg_for({}, self.cfg, seed), score_cfg_for(self.cfg), step=ep, run_id=cond["schedule"], optimizer=opt, reg_bins=data.reg_bins, reference=maintenance_reference(data, self.cfg, adapter))
-                events.extend(res["events"])
-                return res["summary"]
+        def hook(ep, mdl, opt, adapter):
+            audit(mdl, data, self.cfg, store, ep, adapter=adapter)
+            res = run_maintenance(mdl, store, archive, K, retention_cfg_for({}, self.cfg, seed), score_cfg_for(self.cfg), step=ep, run_id=cond["schedule"], optimizer=opt, reg_bins=data.reg_bins, reference=maintenance_reference(data, self.cfg, adapter))
+            events.extend(res["events"])
+            return res["summary"]
 
-            recal = calibrate
-            m_epochs = set(self.cfg["sync"].get("maintenance_epochs", []))
-            ropt = clone_optimizer(tr.optimizer, model, cc)
-            for grp in ropt.param_groups:
-                grp["lr"] = grp["lr"] * float(self.cfg["sync"]["retrieval_lr_scale"])
-            tracker = StabilityTracker(data.X_val, k=cc.top_k)
-            tracker.snapshot(model, 0, model.active_case_ids().tolist())
-            def observe(ep, mdl, adapter):
-                return tracker.snapshot(mdl, ep, mdl.active_case_ids().tolist())
-            adapter, info = train_synchronized(model, data, cc, sc, fr, near_scale=near_scale, maintenance_hook=hook, maintenance_epochs=m_epochs, recalibrate=recal, core_optimizer=ropt, epoch_observer=observe)
-            model_desc = {"core": cc.__dict__, "sync": sc.__dict__, "near_scale": near_scale,
-                "post_selection_capacity_match": capacity_match,
-                "free_radius_at_t_star": fr.to_dict(), "free_radius_selected": info["free_radius"]}
-            binary_files = {"calibration_snapshots.pt": calibration_snapshots}
-            extra_files = {"calibration_protocol.json": {
-                "method": radius_method, "pair_source": "active_training_cases_only_nonself",
-                "initial_bias_region_metric": "post_core_learned_metric" if initial_bias is not None else None,
-                "snapshot_file": "calibration_snapshots.pt",
-                "snapshot_steps": [s["free_radius"]["snapshot_step"] for s in calibration_snapshots],
-                "recompute": "declared_maintenance_checkpoints_only"}}
-            if capacity_match:
-                binary_files["before_capacity_match.pt"] = {
-                    "model_state": copy.deepcopy(model.state_dict()), "active_case_count": model.case_count(),
-                    "adapter_state": copy.deepcopy(adapter.state_dict()), "optimizer_state": copy.deepcopy(ropt.state_dict()),
-                    "adapter_optimizer_state": copy.deepcopy(info["adapter_optimizer_state"]),
-                    "model_description": copy.deepcopy(model_desc),
-                    "requires_grad": {n: p.requires_grad for n, p in model.named_parameters()},
-                    "adapter_requires_grad": {n: p.requires_grad for n, p in adapter.named_parameters()},
-                    "optimizer_checkpoint_epoch": {"retrieval": info["best_epoch"], "adapter": info["best_epoch"]}}
-                audit(model, data, self.cfg, store, info["best_epoch"], adapter=adapter)
-                matched_K = resolve_K(capacity_match["K"], base.case_count())
-                match_res = run_maintenance(model, store, archive, matched_K,
-                    retention_cfg_for({"policy": capacity_match["policy"]}, self.cfg, seed), score_cfg_for(self.cfg),
-                    step=info["best_epoch"] + 1, run_id=f"{sc.schedule}-posthoc",
-                    optimizer=ropt, reg_bins=data.reg_bins, reference=maintenance_reference(data, self.cfg, adapter))
-                events.extend(match_res["events"])
-                extra_files["capacity_match_summary.json"] = match_res["summary"]
-                extra_files["capacity_match_scoring_trace.json"] = match_res.get("scoring_trace", [])
-                extra_files["capacity_match_protocol.json"] = {
-                    "target_capacity": matched_K, "policy": capacity_match["policy"],
-                    "after_selected_checkpoint": True, "finetune_epochs": 0,
-                    "matching": "final capacity; executed phases and retrieval cost separately reported",
-                    "achieved": model.case_count() == matched_K}
-            if data.task_type == "classification":
-                rc = ReuseConfig(output_mode=sc.output_mode, loss="combined", lambda_diff=1.0, lambda_cls=1.0, probability_mode=self.cfg["sync"].get("probability_mode", "softmax"), seed=seed)
-                ev = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc, query_nominal=encoded_queries(adapter, data, "test"), test_groups=data.test_groups)
-            else:
-                ev = evaluate_regression_reuse(model, adapter, data.X_test, data.y_test,
-                                               success_tolerance=self.cfg["statistics"]["regression_success_tolerance"])
+        recal = calibrate
+        m_epochs = set(self.cfg["sync"].get("maintenance_epochs", []))
+        # A trained core continues its Adam state (see clone_optimizer); an
+        # untrained one starts a fresh optimizer.
+        ropt = clone_optimizer(tr.optimizer, model, cc) if pretrained else make_optimizer(model, cc)
+        for grp in ropt.param_groups:
+            grp["lr"] = grp["lr"] * float(merged["retrieval_lr_scale"])
+        tracker = StabilityTracker(data.X_val, k=cc.top_k)
+        tracker.snapshot(model, 0, model.active_case_ids().tolist())
+        def observe(ep, mdl, adapter):
+            return tracker.snapshot(mdl, ep, mdl.active_case_ids().tolist())
+        adapter, info = train_synchronized(model, data, cc, sc, fr, near_scale=near_scale, maintenance_hook=hook, maintenance_epochs=m_epochs, recalibrate=recal, core_optimizer=ropt, epoch_observer=observe)
+        model_desc = {"core": cc.__dict__, "sync": sc.__dict__, "near_scale": near_scale,
+            "core_pretrain": pretrained, "retrieval_lr_scale": float(merged["retrieval_lr_scale"]),
+            "post_selection_capacity_match": capacity_match,
+            "free_radius_at_t_star": fr.to_dict(), "free_radius_selected": info["free_radius"]}
+        binary_files = {"calibration_snapshots.pt": calibration_snapshots}
+        extra_files = {"calibration_protocol.json": {
+            "method": radius_method, "pair_source": "active_training_cases_only_nonself",
+            "initial_bias_region_metric": "post_core_learned_metric" if initial_bias is not None else None,
+            "snapshot_file": "calibration_snapshots.pt",
+            "snapshot_steps": [s["free_radius"]["snapshot_step"] for s in calibration_snapshots],
+            "recompute": "declared_maintenance_checkpoints_only"}}
+        if capacity_match:
+            binary_files["before_capacity_match.pt"] = {
+                "model_state": copy.deepcopy(model.state_dict()), "active_case_count": model.case_count(),
+                "adapter_state": copy.deepcopy(adapter.state_dict()), "optimizer_state": copy.deepcopy(ropt.state_dict()),
+                "adapter_optimizer_state": copy.deepcopy(info["adapter_optimizer_state"]),
+                "model_description": copy.deepcopy(model_desc),
+                "requires_grad": {n: p.requires_grad for n, p in model.named_parameters()},
+                "adapter_requires_grad": {n: p.requires_grad for n, p in adapter.named_parameters()},
+                "optimizer_checkpoint_epoch": {"retrieval": info["best_epoch"], "adapter": info["best_epoch"]}}
             audit(model, data, self.cfg, store, info["best_epoch"], adapter=adapter)
-            m = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
-                 **{f"test_flip_{k}": v for k, v in ev.get("flips", {}).items()},
-                 "tau_task": fr.tau_task, "free_radius_status": fr.status,
-                 "tau_task_final": info["free_radius"]["tau_task"], "n_cases": model.case_count()}
-            for key in ("representation_drift", "neighborhood_churn", "selection_churn"):
-                values = [r[key] for r in tracker.records if key in r]
-                if values:
-                    m[f"mean_{key}"] = float(np.mean(values))
-            phase_updates = {phase: sum(h["optimizer_updates"] for h in info["history"] if h["phase"] == phase)
-                             for phase in ("retrieval", "adapter")}
-            selected_updates = {phase: sum(h["optimizer_updates"] for h in info["history"]
-                if h["phase"] == phase and h["epoch"] <= info["best_epoch"]) for phase in ("retrieval", "adapter")}
-            label = cond.get("name", cond["schedule"]) + (f"_matched_K{capacity_spec}" if capacity_match else "")
-            self.finish(ds=ds, seed=seed, cond_label=label, cond=cond, data=data, model=model, store=store, archive=archive, metrics=m, history={"core": tr.history, "sync": info["history"]}, events=events,
-                        components={"retrieve": "NN-kNN core", "reuse_or_adapter": sc.output_mode, "revise": "off", "retain": "checkpoint maintenance" if events else "none", "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": sc.schedule},
-                        budgets={"case_capacity": model.case_count(), "sync_epochs_max": sc.epochs,
-                            "sync_epochs_run": len(info["history"]), "executed_optimizer_updates": phase_updates,
-                            "selected_optimizer_updates": selected_updates,
-                            "training_retrieval_query_case_pairs": sum(h["retrieval_query_case_pairs"] for h in info["history"]),
-                            "sync_elapsed_seconds_including_maintenance_and_validation": info["elapsed_seconds"],
-                            "posthoc_finetune_epochs": 0}, maintenance={"policy": self.cfg["retention"]["policy"] if events else "none"},
-                        model_desc=model_desc,
-                        prediction_adapter=adapter, optimizer=ropt,
-                        binary_files=binary_files, extra_files=extra_files,
-                        adapter_optimizer_state=info["adapter_optimizer_state"],
-                        optimizer_checkpoint_epoch={"retrieval": info["best_epoch"], "adapter": info["best_epoch"]})
+            matched_K = resolve_K(capacity_match["K"], base.case_count())
+            match_res = run_maintenance(model, store, archive, matched_K,
+                retention_cfg_for({"policy": capacity_match["policy"]}, self.cfg, seed), score_cfg_for(self.cfg),
+                step=info["best_epoch"] + 1, run_id=f"{sc.schedule}-posthoc",
+                optimizer=ropt, reg_bins=data.reg_bins, reference=maintenance_reference(data, self.cfg, adapter))
+            events.extend(match_res["events"])
+            extra_files["capacity_match_summary.json"] = match_res["summary"]
+            extra_files["capacity_match_scoring_trace.json"] = match_res.get("scoring_trace", [])
+            extra_files["capacity_match_protocol.json"] = {
+                "target_capacity": matched_K, "policy": capacity_match["policy"],
+                "after_selected_checkpoint": True, "finetune_epochs": 0,
+                "matching": "final capacity; executed phases and retrieval cost separately reported",
+                "achieved": model.case_count() == matched_K}
+        rc = None
+        if data.task_type == "classification":
+            rc = ReuseConfig(output_mode=sc.output_mode, loss="combined", lambda_diff=1.0, lambda_cls=1.0, probability_mode=self.cfg["sync"].get("probability_mode", "softmax"), seed=seed)
+        ev = adapted_metrics(model, adapter, data, "test", self.cfg, rc)
+        vev = adapted_metrics(model, adapter, data, "val", self.cfg, rc)
+        audit(model, data, self.cfg, store, info["best_epoch"], adapter=adapter)
+        m = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
+             **{f"test_flip_{k}": v for k, v in ev.get("flips", {}).items()},
+             "tau_task": fr.tau_task, "free_radius_status": fr.status,
+             "tau_task_final": info["free_radius"]["tau_task"], "n_cases": model.case_count(),
+             **{f"val_{k}": v for k, v in vev.items() if not isinstance(v, dict)},
+             "best_val_L_post": info["best_val_L_post"], "sync_best_epoch": info["best_epoch"],
+             **online_ema_gap(model)}
+        for key in ("representation_drift", "neighborhood_churn", "selection_churn"):
+            values = [r[key] for r in tracker.records if key in r]
+            if values:
+                m[f"mean_{key}"] = float(np.mean(values))
+        phase_updates = {phase: sum(h["optimizer_updates"] for h in info["history"] if h["phase"] == phase)
+                         for phase in ("retrieval", "adapter", "joint")}
+        selected_updates = {phase: sum(h["optimizer_updates"] for h in info["history"]
+            if h["phase"] == phase and h["epoch"] <= info["best_epoch"]) for phase in ("retrieval", "adapter", "joint")}
+        label = arm_label(arm, cond.get("name", cond["schedule"]) + (f"_matched_K{capacity_spec}" if capacity_match else ""))
+        self.finish(ds=ds, seed=seed, cond_label=label, cond={**arm_fields(arm), **cond}, data=data, model=model, store=store, archive=archive, metrics=m, history={"core": tr.history if pretrained else [], "sync": info["history"]}, events=events,
+                    components={"retrieve": "NN-kNN core", "reuse_or_adapter": sc.output_mode, "revise": "off", "retain": "checkpoint maintenance" if events else "none", "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": sc.schedule},
+                    budgets={"case_capacity": model.case_count(), "sync_epochs_max": sc.epochs,
+                        "core_pretrain": pretrained, "core_epochs_run": tr.epochs_run if pretrained else 0,
+                        "sync_epochs_run": len(info["history"]), "executed_optimizer_updates": phase_updates,
+                        "selected_optimizer_updates": selected_updates,
+                        "training_retrieval_query_case_pairs": sum(h["retrieval_query_case_pairs"] for h in info["history"]),
+                        "sync_elapsed_seconds_including_maintenance_and_validation": info["elapsed_seconds"],
+                        "posthoc_finetune_epochs": 0}, maintenance={"policy": self.cfg["retention"]["policy"] if events else "none"},
+                    model_desc=model_desc,
+                    prediction_adapter=adapter, optimizer=ropt,
+                    binary_files=binary_files, extra_files=extra_files,
+                    adapter_optimizer_state=info["adapter_optimizer_state"],
+                    optimizer_checkpoint_epoch={"retrieval": info["best_epoch"], "adapter": info["best_epoch"]})
 
     def run_mcb(self, ds, seed):
         data = self.data_for(ds, seed)
