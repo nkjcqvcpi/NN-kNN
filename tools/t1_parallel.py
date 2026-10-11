@@ -1,0 +1,85 @@
+"""Run one T1 config as independent (dataset, seed) subprocesses with receipts.
+
+    python tools/t1_parallel.py configs/t1/<config>.yaml --out <results dir> --logs <log dir> --workers 8
+
+Each job calls ``tools/t1_run.py --only-dataset <name> --seeds <seed>``. A job whose
+receipt records exit code 0 is skipped on resume; failed jobs are retried.
+``progress.json`` in the log directory tracks counts. Exits nonzero if any job fails.
+Datasets that share a name across task types must be split into separate configs,
+because ``--only-dataset`` selects by name.
+"""
+from __future__ import annotations
+
+import argparse
+import concurrent.futures
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
+from tools.t1_run import load_config  # noqa: E402
+
+
+def run_job(config: Path, name: str, seed: int, out: Path, logs: Path) -> dict:
+    log = logs / f"{name}__s{seed}.log"
+    receipt = log.with_suffix(".json")
+    if receipt.exists():
+        previous = json.loads(receipt.read_text())
+        if previous["exit_code"] == 0:
+            return {**previous, "reused": True}
+    t0 = time.time()
+    with log.open("w", encoding="utf-8") as fh:
+        proc = subprocess.run([sys.executable, "-u", str(REPO / "tools/t1_run.py"), str(config),
+                               "--only-dataset", name, "--seeds", str(seed), "--out", str(out)],
+                              cwd=REPO, stdout=fh, stderr=subprocess.STDOUT)
+    result = {"config": str(config), "dataset": name, "seed": seed, "exit_code": proc.returncode,
+              "seconds": time.time() - t0, "log": str(log)}
+    receipt.write_text(json.dumps(result, indent=2))
+    return result
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("config")
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--logs", required=True)
+    ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--seeds", type=int, nargs="*")
+    ap.add_argument("--datasets", nargs="*", help="subset of dataset names, in launch order")
+    args = ap.parse_args()
+    config = Path(args.config).resolve()
+    cfg = load_config(config)
+    names = [d["name"] for d in cfg["datasets"]]
+    if len(set(names)) != len(names):
+        raise SystemExit("dataset names repeat across task types; split the config")
+    if args.datasets:  # also sets the launch order (start expensive tasks first)
+        unknown = set(args.datasets) - set(names)
+        if unknown:
+            raise SystemExit(f"datasets not in config: {sorted(unknown)}")
+        names = list(args.datasets)
+    seeds = args.seeds or cfg["seeds"]
+    out, logs = Path(args.out).resolve(), Path(args.logs).resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    logs.mkdir(parents=True, exist_ok=True)
+    jobs = [(n, int(s)) for n in names for s in seeds]
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
+        futures = {pool.submit(run_job, config, n, s, out, logs): (n, s) for n, s in jobs}
+        for future in concurrent.futures.as_completed(futures):
+            r = future.result()
+            results.append(r)
+            (logs / "progress.json").write_text(json.dumps({
+                "config": str(config), "expected_jobs": len(jobs), "finished_jobs": len(results),
+                "passed": sum(x["exit_code"] == 0 for x in results),
+                "failed": [x for x in results if x["exit_code"] != 0]}, indent=2))
+            print(f"[{len(results)}/{len(jobs)}] {r['dataset']} s{r['seed']}: exit {r['exit_code']}"
+                  f" ({r.get('seconds', 0):.0f}s{', reused' if r.get('reused') else ''})", flush=True)
+    if any(r["exit_code"] != 0 for r in results):
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()
