@@ -1,0 +1,45 @@
+{
+ "description": "Old -> new locations after filing T1 results and logs by T1 handoff phase (2026-10-10). Artifacts were moved unchanged; paths recorded inside them are the paths at run time.",
+ "moves": [
+  {
+   "old": "results/t1/p0_legacy_reference",
+   "new": "results/t1/p0_reproduce_instrument/pilot_20260929/p0_legacy_reference",
+   "kind": "tracked"
+  },
+  {
+   "old": "results/t1/p1_retention_classification",
+   "new": "results/t1/p1_supervised_retention/pilot_20260929/p1_retention_classification",
+   "kind": "tracked"
+  },
+  {
+   "old": "results/t1/p1_retention_regression",
+   "new": "results/t1/p1_supervised_retention/pilot_20260929/p1_retention_regression",
+   "kind": "tracked"
+  },
+  {
+   "old": "results/t1/p1_retention_synthetic",
+   "new": "results/t1/p1_supervised_retention/pilot_20260929/p1_retention_synthetic",
+   "kind": "tracked"
+  },
+  {
+   "old": "results/t1/p2_reuse",
+   "new": "results/t1/p2_classification_reuse/pilot_20260929/p2_reuse",
+   "kind": "tracked"
+  },
+  {
+   "old": "results/t1/p4_sync",
+   "new": "results/t1/p4_component_sync/pilot_20260929/p4_sync",
+   "kind": "tracked"
+  },
+  {
+   "old": "results/t1/p5_mcb",
+   "new": "results/t1/p5_mcb_interaction/pilot_20260929/p5_mcb",
+   "kind": "tracked"
+  },
+  {
+   "old": "results/t1/t12_revise_synthetic",
+   "new": "results/t1/p6_confirmation_revision/pilot_20260929/t12_revise_synthetic",
+   "kind": "tracked"
+  }
+ ]
+}
