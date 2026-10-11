@@ -1,0 +1,264 @@
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 1 /24 critic_label_modes_8192/fixed acrobot/nnknn_nnknn__hard__preserve_by_id/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 2 /24 critic_label_modes_8192/mutable acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 3 /24 critic_label_modes_8192/trainable acrobot/nnknn_nnknn__hard__preserve_by_id__labels_trainable/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 4 /24 critic_label_modes_8192/hybrid acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 5 /24 critic_label_modes_8192/fixed acrobot/nnknn_nnknn__hard__preserve_by_id/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 6 /24 critic_label_modes_8192/mutable acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 7 /24 critic_label_modes_8192/trainable acrobot/nnknn_nnknn__hard__preserve_by_id__labels_trainable/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 8 /24 critic_label_modes_8192/hybrid acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 9 /24 critic_label_modes_8192/fixed acrobot/nnknn_nnknn__hard__preserve_by_id/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 10 /24 critic_label_modes_8192/mutable acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 11 /24 critic_label_modes_8192/trainable acrobot/nnknn_nnknn__hard__preserve_by_id__labels_trainable/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 12 /24 critic_label_modes_8192/hybrid acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 13 /24 critic_matching_m025/mutable acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 14 /24 critic_matching_m025/hybrid acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 15 /24 critic_matching_m025/mutable acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 16 /24 critic_matching_m025/hybrid acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 17 /24 critic_matching_m025/mutable acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 18 /24 critic_matching_m025/hybrid acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 19 /24 critic_matching_m1/mutable acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 20 /24 critic_matching_m1/hybrid acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 21 /24 critic_matching_m1/mutable acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 22 /24 critic_matching_m1/hybrid acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 23 /24 critic_matching_m1/mutable acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+common policy 24 /24 critic_matching_m1/hybrid acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s10

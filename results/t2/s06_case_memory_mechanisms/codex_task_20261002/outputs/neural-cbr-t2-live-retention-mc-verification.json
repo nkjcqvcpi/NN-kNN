@@ -1,0 +1,290 @@
+{
+  "source": {
+    "fingerprint": "b1a804d18abf27f64200d7b0f66fd8e149d465c87105b663dc4599e026bef73b",
+    "head": "62184318f90f6cf230c0ba2d88c176fb54df8ee3",
+    "entries": 132,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_live_retention_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_live_retention_source_b1a804d18abf.zip",
+    "zip_sha256": "0d1a66302a8571ada60a41927cee0dd3d21902834df2df8e03a0251925c2515e"
+  },
+  "counts": {
+    "runs": 30,
+    "checkpoints": 60,
+    "events": 240,
+    "interventions": 1920
+  },
+  "runs": [
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 214.0,
+      "mc_mse": 2047.29052734375
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 181.6666717529297,
+      "mc_mse": 1948.0914306640625
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 339.0,
+      "mc_mse": 3435.76708984375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4464.85693359375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 3629.828125
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4347.6005859375
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 214.0,
+      "mc_mse": 2047.29052734375
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 181.6666717529297,
+      "mc_mse": 1948.0914306640625
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 339.0,
+      "mc_mse": 3435.76708984375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4464.85693359375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 3629.828125
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4347.6005859375
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 190.0,
+      "mc_mse": 563.4000854492188
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 104.33333587646484,
+      "mc_mse": 1390.0777587890625
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 151.0,
+      "mc_mse": 2759.406982421875
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4464.85693359375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 3629.828125
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4347.6005859375
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 293.0,
+      "mc_mse": 1794.3564453125
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 70.66666412353516,
+      "mc_mse": 1413.6373291015625
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 500.0,
+      "mc_mse": 3973.2958984375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4304.6044921875
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 3264.032958984375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4142.93994140625
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 222.0,
+      "mc_mse": 1584.853515625
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 128.6666717529297,
+      "mc_mse": 774.2008666992188
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 115.0,
+      "mc_mse": 306.8696594238281
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4304.6044921875
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 3264.032958984375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4142.93994140625
+    }
+  ],
+  "all_checks_passed": true,
+  "scope": "safe checkpoint restore; exact active IDs and unmasked retrieval; independently reconstructed fixed-set renormalized predictions/loss/credit and actual masked-core interventions"
+}

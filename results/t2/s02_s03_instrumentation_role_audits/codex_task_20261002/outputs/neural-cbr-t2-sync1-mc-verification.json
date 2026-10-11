@@ -1,0 +1,133 @@
+{
+  "source": {
+    "fingerprint": "f61d98c7833c1803d491c200324494b73840ae208c879dcf36be24d488b70d3a",
+    "head": "fd83666c9f800e6b7b927a982ba999fa01e671df",
+    "entries": 123,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_target_sync1_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_target_sync1_source_f61d98c7833c.zip",
+    "zip_sha256": "1e6f97a1bb6c6b30e53dd121d95f116fe583d763b9bea6d52ae9f69753264e0d"
+  },
+  "counts": {
+    "runs": 9,
+    "checkpoints": 18,
+    "events": 72,
+    "interventions": 576
+  },
+  "runs": [
+    {
+      "role": "acrobot/nnknn_nnknn__ema/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4438.26806640625
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__hard/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4442.33837890625
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__none/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4442.33837890625
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 3532.53662109375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__hard/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 3563.9599609375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__none/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 3563.9599609375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4313.50048828125
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__hard/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4310.3134765625
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__none/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4310.3134765625
+    }
+  ],
+  "all_checks_passed": true,
+  "scope": "safe checkpoint restore; exact active IDs and unmasked retrieval; independently reconstructed fixed-set renormalized predictions/loss/credit and actual masked-core interventions",
+  "executed_target_alignment": [
+    {
+      "role": "acrobot/nnknn_nnknn__ema/s8",
+      "sync_count": 4,
+      "max_target_parameter_lag": 0.0018524994375184178
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__hard/s8",
+      "sync_count": 4,
+      "max_target_parameter_lag": 0.0
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema/s9",
+      "sync_count": 4,
+      "max_target_parameter_lag": 0.0018524928018450737
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__hard/s9",
+      "sync_count": 4,
+      "max_target_parameter_lag": 0.0
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema/s10",
+      "sync_count": 4,
+      "max_target_parameter_lag": 0.0018524994375184178
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__hard/s10",
+      "sync_count": 4,
+      "max_target_parameter_lag": 0.0
+    }
+  ]
+}

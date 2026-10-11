@@ -39,7 +39,7 @@ GAE sign/coverage; test explicitly recorded baseline warm starts or separately
 declared scientific alternatives. Add real actor behavior/GAE contribution
 audits and optimizer-state alignment before the Stage A gate.
 
-Artifacts `results/t2_pi20260920/continuation_20261004/two_task_2048/`;
+Artifacts `results/t2/s02_s03_instrumentation_role_audits/pi20260920/continuation_20261004/two_task_2048/`;
 task reports `neural-cbr-t2-two-task-results.md` and
 `neural-cbr-t2-two-task-verification.json`.160 combined tests pass; test verifies
 real Acrobot spaces/rewards/time limit and separate return-ceiling overrides.

@@ -1,0 +1,21 @@
+{
+  "source": {
+    "fingerprint": "88fafd106c63d461d4e196e9f8e0272a83c2dd3cf7196ac674ef4371c124584f",
+    "head": "359e8643590bf95fe0b811134a3970798b9e0517",
+    "entries": 132,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_critic_label_matching_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_critic_label_matching_source_88fafd106c63.zip",
+    "zip_sha256": "66e3eaecf2342729bd9d5dd002f4536efb77ec05353b0ed36f78438459f53aab"
+  },
+  "counts": {
+    "runs": 24,
+    "snapshots": 201,
+    "events": 468,
+    "interventions": 3744,
+    "actor_policy_surrogate": 66,
+    "training_gae": 402,
+    "independent_mc": 0
+  },
+  "all_checks_passed": true,
+  "scope": "all recorded two-training-stream snapshot queries and actual fixed-set removal cores, plus independent renormalized predictions and direct loss credit"
+}

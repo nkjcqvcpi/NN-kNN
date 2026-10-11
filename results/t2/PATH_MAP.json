@@ -1,0 +1,1953 @@
+{
+ "description": "Old -> new locations after reorganizing rl results/ and logs/ by the T2 handoff on 2026-10-10. Run artifacts were moved unchanged; paths recorded inside them are the paths at run time.",
+ "moves": [
+  {
+   "old": "logs/g234/p16_nec_ale_pong_atari_hp.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p16_nec_ale_pong_atari_hp.log"
+  },
+  {
+   "old": "logs/g234/p16_pids.txt",
+   "new": "logs/t2/s09_stage_c_atari/g234/p16_pids.txt"
+  },
+  {
+   "old": "logs/g234/p17_cap1000_s0.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap1000_s0.err"
+  },
+  {
+   "old": "logs/g234/p17_cap1000_s0.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap1000_s0.log"
+  },
+  {
+   "old": "logs/g234/p17_cap1000_s1.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap1000_s1.err"
+  },
+  {
+   "old": "logs/g234/p17_cap1000_s1.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap1000_s1.log"
+  },
+  {
+   "old": "logs/g234/p17_cap1000_s2.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap1000_s2.err"
+  },
+  {
+   "old": "logs/g234/p17_cap1000_s2.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap1000_s2.log"
+  },
+  {
+   "old": "logs/g234/p17_cap1000_s3.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap1000_s3.err"
+  },
+  {
+   "old": "logs/g234/p17_cap1000_s3.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap1000_s3.log"
+  },
+  {
+   "old": "logs/g234/p17_cap1000_s4.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap1000_s4.err"
+  },
+  {
+   "old": "logs/g234/p17_cap1000_s4.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap1000_s4.log"
+  },
+  {
+   "old": "logs/g234/p17_cap100_s0.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap100_s0.err"
+  },
+  {
+   "old": "logs/g234/p17_cap100_s0.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap100_s0.log"
+  },
+  {
+   "old": "logs/g234/p17_cap100_s1.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap100_s1.err"
+  },
+  {
+   "old": "logs/g234/p17_cap100_s1.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap100_s1.log"
+  },
+  {
+   "old": "logs/g234/p17_cap100_s2.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap100_s2.err"
+  },
+  {
+   "old": "logs/g234/p17_cap100_s2.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap100_s2.log"
+  },
+  {
+   "old": "logs/g234/p17_cap100_s3.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap100_s3.err"
+  },
+  {
+   "old": "logs/g234/p17_cap100_s3.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap100_s3.log"
+  },
+  {
+   "old": "logs/g234/p17_cap100_s4.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap100_s4.err"
+  },
+  {
+   "old": "logs/g234/p17_cap100_s4.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap100_s4.log"
+  },
+  {
+   "old": "logs/g234/p17_cap2000_s0.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap2000_s0.err"
+  },
+  {
+   "old": "logs/g234/p17_cap2000_s0.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap2000_s0.log"
+  },
+  {
+   "old": "logs/g234/p17_cap2000_s1.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap2000_s1.err"
+  },
+  {
+   "old": "logs/g234/p17_cap2000_s1.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap2000_s1.log"
+  },
+  {
+   "old": "logs/g234/p17_cap2000_s2.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap2000_s2.err"
+  },
+  {
+   "old": "logs/g234/p17_cap2000_s2.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap2000_s2.log"
+  },
+  {
+   "old": "logs/g234/p17_cap2000_s3.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap2000_s3.err"
+  },
+  {
+   "old": "logs/g234/p17_cap2000_s3.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap2000_s3.log"
+  },
+  {
+   "old": "logs/g234/p17_cap2000_s4.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap2000_s4.err"
+  },
+  {
+   "old": "logs/g234/p17_cap2000_s4.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap2000_s4.log"
+  },
+  {
+   "old": "logs/g234/p17_cap500_s0.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap500_s0.err"
+  },
+  {
+   "old": "logs/g234/p17_cap500_s0.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap500_s0.log"
+  },
+  {
+   "old": "logs/g234/p17_cap500_s1.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap500_s1.err"
+  },
+  {
+   "old": "logs/g234/p17_cap500_s1.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap500_s1.log"
+  },
+  {
+   "old": "logs/g234/p17_cap500_s2.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap500_s2.err"
+  },
+  {
+   "old": "logs/g234/p17_cap500_s2.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap500_s2.log"
+  },
+  {
+   "old": "logs/g234/p17_cap500_s3.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap500_s3.err"
+  },
+  {
+   "old": "logs/g234/p17_cap500_s3.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap500_s3.log"
+  },
+  {
+   "old": "logs/g234/p17_cap500_s4.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap500_s4.err"
+  },
+  {
+   "old": "logs/g234/p17_cap500_s4.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_cap500_s4.log"
+  },
+  {
+   "old": "logs/g234/p17_driver.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_driver.log"
+  },
+  {
+   "old": "logs/g234/p17_driver2.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_driver2.log"
+  },
+  {
+   "old": "logs/g234/p17_driver3.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_driver3.log"
+  },
+  {
+   "old": "logs/g234/p17_driver4.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_driver4.log"
+  },
+  {
+   "old": "logs/g234/p17_pids.txt",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p17_pids.txt"
+  },
+  {
+   "old": "logs/g234/p18_timing.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p18_timing.log"
+  },
+  {
+   "old": "logs/g234/p20_dqn_s0.err",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_dqn_s0.err"
+  },
+  {
+   "old": "logs/g234/p20_dqn_s0.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_dqn_s0.log"
+  },
+  {
+   "old": "logs/g234/p20_dqn_s1.err",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_dqn_s1.err"
+  },
+  {
+   "old": "logs/g234/p20_dqn_s1.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_dqn_s1.log"
+  },
+  {
+   "old": "logs/g234/p20_dqn_s2.err",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_dqn_s2.err"
+  },
+  {
+   "old": "logs/g234/p20_dqn_s2.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_dqn_s2.log"
+  },
+  {
+   "old": "logs/g234/p20_dqn_s3.err",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_dqn_s3.err"
+  },
+  {
+   "old": "logs/g234/p20_dqn_s3.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_dqn_s3.log"
+  },
+  {
+   "old": "logs/g234/p20_dqn_s4.err",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_dqn_s4.err"
+  },
+  {
+   "old": "logs/g234/p20_dqn_s4.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_dqn_s4.log"
+  },
+  {
+   "old": "logs/g234/p20_driver.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_driver.log"
+  },
+  {
+   "old": "logs/g234/p20_driver2.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_driver2.log"
+  },
+  {
+   "old": "logs/g234/p20_driver3.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_driver3.log"
+  },
+  {
+   "old": "logs/g234/p20_driver4.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_driver4.log"
+  },
+  {
+   "old": "logs/g234/p20_pids.txt",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_pids.txt"
+  },
+  {
+   "old": "logs/g234/p20_ppo_s0.err",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_ppo_s0.err"
+  },
+  {
+   "old": "logs/g234/p20_ppo_s0.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_ppo_s0.log"
+  },
+  {
+   "old": "logs/g234/p20_ppo_s1.err",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_ppo_s1.err"
+  },
+  {
+   "old": "logs/g234/p20_ppo_s1.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_ppo_s1.log"
+  },
+  {
+   "old": "logs/g234/p20_ppo_s2.err",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_ppo_s2.err"
+  },
+  {
+   "old": "logs/g234/p20_ppo_s2.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_ppo_s2.log"
+  },
+  {
+   "old": "logs/g234/p20_ppo_s3.err",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_ppo_s3.err"
+  },
+  {
+   "old": "logs/g234/p20_ppo_s3.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_ppo_s3.log"
+  },
+  {
+   "old": "logs/g234/p20_ppo_s4.err",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_ppo_s4.err"
+  },
+  {
+   "old": "logs/g234/p20_ppo_s4.log",
+   "new": "logs/t2/s09_stage_c_atari/g234/p20_ppo_s4.log"
+  },
+  {
+   "old": "logs/g234/p22_cap1500_s0.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap1500_s0.err"
+  },
+  {
+   "old": "logs/g234/p22_cap1500_s0.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap1500_s0.log"
+  },
+  {
+   "old": "logs/g234/p22_cap1500_s1.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap1500_s1.err"
+  },
+  {
+   "old": "logs/g234/p22_cap1500_s1.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap1500_s1.log"
+  },
+  {
+   "old": "logs/g234/p22_cap1500_s2.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap1500_s2.err"
+  },
+  {
+   "old": "logs/g234/p22_cap1500_s2.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap1500_s2.log"
+  },
+  {
+   "old": "logs/g234/p22_cap1500_s3.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap1500_s3.err"
+  },
+  {
+   "old": "logs/g234/p22_cap1500_s3.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap1500_s3.log"
+  },
+  {
+   "old": "logs/g234/p22_cap1500_s4.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap1500_s4.err"
+  },
+  {
+   "old": "logs/g234/p22_cap1500_s4.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap1500_s4.log"
+  },
+  {
+   "old": "logs/g234/p22_cap250_s0.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap250_s0.err"
+  },
+  {
+   "old": "logs/g234/p22_cap250_s0.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap250_s0.log"
+  },
+  {
+   "old": "logs/g234/p22_cap250_s1.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap250_s1.err"
+  },
+  {
+   "old": "logs/g234/p22_cap250_s1.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap250_s1.log"
+  },
+  {
+   "old": "logs/g234/p22_cap250_s2.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap250_s2.err"
+  },
+  {
+   "old": "logs/g234/p22_cap250_s2.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap250_s2.log"
+  },
+  {
+   "old": "logs/g234/p22_cap250_s3.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap250_s3.err"
+  },
+  {
+   "old": "logs/g234/p22_cap250_s3.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap250_s3.log"
+  },
+  {
+   "old": "logs/g234/p22_cap250_s4.err",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap250_s4.err"
+  },
+  {
+   "old": "logs/g234/p22_cap250_s4.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_cap250_s4.log"
+  },
+  {
+   "old": "logs/g234/p22_driver.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/g234/p22_driver.log"
+  },
+  {
+   "old": "logs/r760/dqn_fast_s0.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/dqn_fast_s0.log"
+  },
+  {
+   "old": "logs/r760/dqn_fixA_s0.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/dqn_fixA_s0.log"
+  },
+  {
+   "old": "logs/r760/dqn_fixB_s0.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/dqn_fixB_s0.log"
+  },
+  {
+   "old": "logs/r760/nec300k_pid.txt",
+   "new": "logs/t2/s01_inventory_reproduction/r760/nec300k_pid.txt"
+  },
+  {
+   "old": "logs/r760/nec_fast_s0.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/nec_fast_s0.log"
+  },
+  {
+   "old": "logs/r760/nec_fast_s1.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/nec_fast_s1.log"
+  },
+  {
+   "old": "logs/r760/nec_s1_300k.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/nec_s1_300k.log"
+  },
+  {
+   "old": "logs/r760/p10_cap100_s3.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p10_cap100_s3.log"
+  },
+  {
+   "old": "logs/r760/p10_cap100_s4.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p10_cap100_s4.log"
+  },
+  {
+   "old": "logs/r760/p10_cap2000_s3.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p10_cap2000_s3.log"
+  },
+  {
+   "old": "logs/r760/p10_cap2000_s4.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p10_cap2000_s4.log"
+  },
+  {
+   "old": "logs/r760/p10_pids.txt",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p10_pids.txt"
+  },
+  {
+   "old": "logs/r760/p11_driver.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_driver.log"
+  },
+  {
+   "old": "logs/r760/p11_pids.txt",
+   "new": "logs/t2/s04_stage_a/r760/p11_pids.txt"
+  },
+  {
+   "old": "logs/r760/p11_ppo_acrobot_s0.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_acrobot_s0.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_acrobot_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_acrobot_s1.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_acrobot_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_acrobot_s2.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_acrobot_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_acrobot_s3.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_acrobot_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_acrobot_s4.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_cartpole_s0.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_cartpole_s0.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_cartpole_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_cartpole_s1.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_cartpole_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_cartpole_s2.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_cartpole_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_cartpole_s3.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_cartpole_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_cartpole_s4.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_lunarlander_s0.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_lunarlander_s0.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_lunarlander_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_lunarlander_s1.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_lunarlander_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_lunarlander_s2.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_lunarlander_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_lunarlander_s3.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_lunarlander_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p11_ppo_lunarlander_s4.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_minatar_breakout_s0.log",
+   "new": "logs/t2/s09_bridge_minatar/r760/p11_ppo_minatar_breakout_s0.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_minatar_breakout_s1.log",
+   "new": "logs/t2/s09_bridge_minatar/r760/p11_ppo_minatar_breakout_s1.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_minatar_breakout_s2.log",
+   "new": "logs/t2/s09_bridge_minatar/r760/p11_ppo_minatar_breakout_s2.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_minatar_breakout_s3.log",
+   "new": "logs/t2/s09_bridge_minatar/r760/p11_ppo_minatar_breakout_s3.log"
+  },
+  {
+   "old": "logs/r760/p11_ppo_minatar_breakout_s4.log",
+   "new": "logs/t2/s09_bridge_minatar/r760/p11_ppo_minatar_breakout_s4.log"
+  },
+  {
+   "old": "logs/r760/p12_driver.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_driver.log"
+  },
+  {
+   "old": "logs/r760/p12_pids.txt",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_pids.txt"
+  },
+  {
+   "old": "logs/r760/p12_ppo_lunarlander_continuous_s0.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_ppo_lunarlander_continuous_s0.log"
+  },
+  {
+   "old": "logs/r760/p12_ppo_lunarlander_continuous_s1.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_ppo_lunarlander_continuous_s1.log"
+  },
+  {
+   "old": "logs/r760/p12_ppo_lunarlander_continuous_s2.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_ppo_lunarlander_continuous_s2.log"
+  },
+  {
+   "old": "logs/r760/p12_ppo_pendulum_s0.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_ppo_pendulum_s0.log"
+  },
+  {
+   "old": "logs/r760/p12_ppo_pendulum_s1.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_ppo_pendulum_s1.log"
+  },
+  {
+   "old": "logs/r760/p12_ppo_pendulum_s2.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_ppo_pendulum_s2.log"
+  },
+  {
+   "old": "logs/r760/p12_td3_lunarlander_continuous_s0.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_td3_lunarlander_continuous_s0.log"
+  },
+  {
+   "old": "logs/r760/p12_td3_lunarlander_continuous_s1.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_td3_lunarlander_continuous_s1.log"
+  },
+  {
+   "old": "logs/r760/p12_td3_lunarlander_continuous_s2.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_td3_lunarlander_continuous_s2.log"
+  },
+  {
+   "old": "logs/r760/p12_td3_pendulum_s0.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_td3_pendulum_s0.log"
+  },
+  {
+   "old": "logs/r760/p12_td3_pendulum_s1.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_td3_pendulum_s1.log"
+  },
+  {
+   "old": "logs/r760/p12_td3_pendulum_s2.log",
+   "new": "logs/t2/s08_stage_b_continuous/r760/p12_td3_pendulum_s2.log"
+  },
+  {
+   "old": "logs/r760/p13_dqn_ale_pong.log",
+   "new": "logs/t2/s09_stage_c_atari/r760/p13_dqn_ale_pong.log"
+  },
+  {
+   "old": "logs/r760/p13_nec_ale_pong.cuda_aborted.log",
+   "new": "logs/t2/s09_stage_c_atari/r760/p13_nec_ale_pong.cuda_aborted.log"
+  },
+  {
+   "old": "logs/r760/p13_nec_ale_pong.log",
+   "new": "logs/t2/s09_stage_c_atari/r760/p13_nec_ale_pong.log"
+  },
+  {
+   "old": "logs/r760/p13_nec_sequencer.log",
+   "new": "logs/t2/s09_stage_c_atari/r760/p13_nec_sequencer.log"
+  },
+  {
+   "old": "logs/r760/p13_nnknn_ale_pong.log",
+   "new": "logs/t2/s09_stage_c_atari/r760/p13_nnknn_ale_pong.log"
+  },
+  {
+   "old": "logs/r760/p13_pids.txt",
+   "new": "logs/t2/s09_stage_c_atari/r760/p13_pids.txt"
+  },
+  {
+   "old": "logs/r760/p13_ppo_ale_pong.log",
+   "new": "logs/t2/s09_stage_c_atari/r760/p13_ppo_ale_pong.log"
+  },
+  {
+   "old": "logs/r760/p14_cap2000_s3.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p14_cap2000_s3.log"
+  },
+  {
+   "old": "logs/r760/p14_cap2000_s4.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p14_cap2000_s4.log"
+  },
+  {
+   "old": "logs/r760/p14_pids.txt",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p14_pids.txt"
+  },
+  {
+   "old": "logs/r760/p15_dqn_ale_pong_atari_hp.log",
+   "new": "logs/t2/s09_stage_c_atari/r760/p15_dqn_ale_pong_atari_hp.log"
+  },
+  {
+   "old": "logs/r760/p15_pids.txt",
+   "new": "logs/t2/s09_stage_c_atari/r760/p15_pids.txt"
+  },
+  {
+   "old": "logs/r760/p2_pids.txt",
+   "new": "logs/t2/s01_inventory_reproduction/r760/p2_pids.txt"
+  },
+  {
+   "old": "logs/r760/p2_v1_default.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/p2_v1_default.log"
+  },
+  {
+   "old": "logs/r760/p2_v2_nnknn_critic.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/p2_v2_nnknn_critic.log"
+  },
+  {
+   "old": "logs/r760/p2_v3_hybrid_labels.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/p2_v3_hybrid_labels.log"
+  },
+  {
+   "old": "logs/r760/p2_v4_mlp_ac.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/p2_v4_mlp_ac.log"
+  },
+  {
+   "old": "logs/r760/p2_v5_mlp_actor_nnknn_critic.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/p2_v5_mlp_actor_nnknn_critic.log"
+  },
+  {
+   "old": "logs/r760/p2_v6_thresh0_sync4.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/p2_v6_thresh0_sync4.log"
+  },
+  {
+   "old": "logs/r760/p3_hybrid_s1.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/p3_hybrid_s1.log"
+  },
+  {
+   "old": "logs/r760/p3_hybrid_s2.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/p3_hybrid_s2.log"
+  },
+  {
+   "old": "logs/r760/p3_hybrid_s3.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/p3_hybrid_s3.log"
+  },
+  {
+   "old": "logs/r760/p3_hybrid_s4.log",
+   "new": "logs/t2/s01_inventory_reproduction/r760/p3_hybrid_s4.log"
+  },
+  {
+   "old": "logs/r760/p3_pids.txt",
+   "new": "logs/t2/s01_inventory_reproduction/r760/p3_pids.txt"
+  },
+  {
+   "old": "logs/r760/p4_dqn_s0.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_dqn_s0.log"
+  },
+  {
+   "old": "logs/r760/p4_dqn_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_dqn_s1.log"
+  },
+  {
+   "old": "logs/r760/p4_dqn_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_dqn_s2.log"
+  },
+  {
+   "old": "logs/r760/p4_dqn_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_dqn_s3.log"
+  },
+  {
+   "old": "logs/r760/p4_dqn_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_dqn_s4.log"
+  },
+  {
+   "old": "logs/r760/p4_mlpac_s0.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_mlpac_s0.log"
+  },
+  {
+   "old": "logs/r760/p4_mlpac_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_mlpac_s1.log"
+  },
+  {
+   "old": "logs/r760/p4_mlpac_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_mlpac_s2.log"
+  },
+  {
+   "old": "logs/r760/p4_mlpac_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_mlpac_s3.log"
+  },
+  {
+   "old": "logs/r760/p4_mlpac_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_mlpac_s4.log"
+  },
+  {
+   "old": "logs/r760/p4_nec_s0.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_nec_s0.log"
+  },
+  {
+   "old": "logs/r760/p4_nec_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_nec_s1.log"
+  },
+  {
+   "old": "logs/r760/p4_nec_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_nec_s2.log"
+  },
+  {
+   "old": "logs/r760/p4_nec_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_nec_s3.log"
+  },
+  {
+   "old": "logs/r760/p4_nec_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_nec_s4.log"
+  },
+  {
+   "old": "logs/r760/p4_nnknn_s0.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_nnknn_s0.log"
+  },
+  {
+   "old": "logs/r760/p4_nnknn_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_nnknn_s1.log"
+  },
+  {
+   "old": "logs/r760/p4_nnknn_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_nnknn_s2.log"
+  },
+  {
+   "old": "logs/r760/p4_nnknn_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_nnknn_s3.log"
+  },
+  {
+   "old": "logs/r760/p4_nnknn_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p4_nnknn_s4.log"
+  },
+  {
+   "old": "logs/r760/p4_pids.txt",
+   "new": "logs/t2/s04_stage_a/r760/p4_pids.txt"
+  },
+  {
+   "old": "logs/r760/p5_dqn_s0.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_dqn_s0.log"
+  },
+  {
+   "old": "logs/r760/p5_dqn_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_dqn_s1.log"
+  },
+  {
+   "old": "logs/r760/p5_dqn_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_dqn_s2.log"
+  },
+  {
+   "old": "logs/r760/p5_dqn_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_dqn_s3.log"
+  },
+  {
+   "old": "logs/r760/p5_dqn_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_dqn_s4.log"
+  },
+  {
+   "old": "logs/r760/p5_hybrid_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_hybrid_s1.log"
+  },
+  {
+   "old": "logs/r760/p5_hybrid_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_hybrid_s2.log"
+  },
+  {
+   "old": "logs/r760/p5_hybrid_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_hybrid_s3.log"
+  },
+  {
+   "old": "logs/r760/p5_hybrid_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_hybrid_s4.log"
+  },
+  {
+   "old": "logs/r760/p5_mlpac_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_mlpac_s1.log"
+  },
+  {
+   "old": "logs/r760/p5_mlpac_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_mlpac_s2.log"
+  },
+  {
+   "old": "logs/r760/p5_mlpac_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_mlpac_s3.log"
+  },
+  {
+   "old": "logs/r760/p5_mlpac_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_mlpac_s4.log"
+  },
+  {
+   "old": "logs/r760/p5_nec_s0.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_nec_s0.log"
+  },
+  {
+   "old": "logs/r760/p5_nec_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_nec_s1.log"
+  },
+  {
+   "old": "logs/r760/p5_nec_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_nec_s2.log"
+  },
+  {
+   "old": "logs/r760/p5_nec_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_nec_s3.log"
+  },
+  {
+   "old": "logs/r760/p5_nec_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_nec_s4.log"
+  },
+  {
+   "old": "logs/r760/p5_pids.txt",
+   "new": "logs/t2/s04_stage_a/r760/p5_pids.txt"
+  },
+  {
+   "old": "logs/r760/p5_v1_default.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_v1_default.log"
+  },
+  {
+   "old": "logs/r760/p5_v2_nnknn_critic.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_v2_nnknn_critic.log"
+  },
+  {
+   "old": "logs/r760/p5_v3_hybrid.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_v3_hybrid.log"
+  },
+  {
+   "old": "logs/r760/p5_v4_mlpac.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_v4_mlpac.log"
+  },
+  {
+   "old": "logs/r760/p5_v5_mlp_nnknn.log",
+   "new": "logs/t2/s04_stage_a/r760/p5_v5_mlp_nnknn.log"
+  },
+  {
+   "old": "logs/r760/p5b_pids.txt",
+   "new": "logs/t2/s04_stage_a/r760/p5b_pids.txt"
+  },
+  {
+   "old": "logs/r760/p5c_pids.txt",
+   "new": "logs/t2/s04_stage_a/r760/p5c_pids.txt"
+  },
+  {
+   "old": "logs/r760/p6_mlp_nn_hybrid.log",
+   "new": "logs/t2/s04_stage_a/r760/p6_mlp_nn_hybrid.log"
+  },
+  {
+   "old": "logs/r760/p6_mlp_nn_mutable.log",
+   "new": "logs/t2/s04_stage_a/r760/p6_mlp_nn_mutable.log"
+  },
+  {
+   "old": "logs/r760/p6_mlp_nn_trainable.log",
+   "new": "logs/t2/s04_stage_a/r760/p6_mlp_nn_trainable.log"
+  },
+  {
+   "old": "logs/r760/p6_nn_mutable.log",
+   "new": "logs/t2/s04_stage_a/r760/p6_nn_mutable.log"
+  },
+  {
+   "old": "logs/r760/p6_nn_trainable.log",
+   "new": "logs/t2/s04_stage_a/r760/p6_nn_trainable.log"
+  },
+  {
+   "old": "logs/r760/p6_pids.txt",
+   "new": "logs/t2/s04_stage_a/r760/p6_pids.txt"
+  },
+  {
+   "old": "logs/r760/p7_knobA_expl02.log",
+   "new": "logs/t2/s04_stage_a/r760/p7_knobA_expl02.log"
+  },
+  {
+   "old": "logs/r760/p7_knobB_clr1e3.log",
+   "new": "logs/t2/s04_stage_a/r760/p7_knobB_clr1e3.log"
+  },
+  {
+   "old": "logs/r760/p7_knobC_caselr1e2.log",
+   "new": "logs/t2/s04_stage_a/r760/p7_knobC_caselr1e2.log"
+  },
+  {
+   "old": "logs/r760/p7_lbl_fix_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p7_lbl_fix_s1.log"
+  },
+  {
+   "old": "logs/r760/p7_lbl_fix_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p7_lbl_fix_s2.log"
+  },
+  {
+   "old": "logs/r760/p7_lbl_fix_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p7_lbl_fix_s3.log"
+  },
+  {
+   "old": "logs/r760/p7_lbl_fix_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p7_lbl_fix_s4.log"
+  },
+  {
+   "old": "logs/r760/p7_lbl_trn_s1.log",
+   "new": "logs/t2/s04_stage_a/r760/p7_lbl_trn_s1.log"
+  },
+  {
+   "old": "logs/r760/p7_lbl_trn_s2.log",
+   "new": "logs/t2/s04_stage_a/r760/p7_lbl_trn_s2.log"
+  },
+  {
+   "old": "logs/r760/p7_lbl_trn_s3.log",
+   "new": "logs/t2/s04_stage_a/r760/p7_lbl_trn_s3.log"
+  },
+  {
+   "old": "logs/r760/p7_lbl_trn_s4.log",
+   "new": "logs/t2/s04_stage_a/r760/p7_lbl_trn_s4.log"
+  },
+  {
+   "old": "logs/r760/p7_pids.txt",
+   "new": "logs/t2/s04_stage_a/r760/p7_pids.txt"
+  },
+  {
+   "old": "logs/r760/p7_probe_s1_300k.log",
+   "new": "logs/t2/s04_stage_a/r760/p7_probe_s1_300k.log"
+  },
+  {
+   "old": "logs/r760/p8_dqn_lunarlander.log",
+   "new": "logs/t2/s04_stage_a/r760/p8_dqn_lunarlander.log"
+  },
+  {
+   "old": "logs/r760/p8_dqn_minatar_breakout.log",
+   "new": "logs/t2/s09_bridge_minatar/r760/p8_dqn_minatar_breakout.log"
+  },
+  {
+   "old": "logs/r760/p8_gpu_chain.log",
+   "new": "logs/t2/s04_stage_a/r760/p8_gpu_chain.log"
+  },
+  {
+   "old": "logs/r760/p8_hybrid_lunarlander.log",
+   "new": "logs/t2/s04_stage_a/r760/p8_hybrid_lunarlander.log"
+  },
+  {
+   "old": "logs/r760/p8_hybrid_minatar.log",
+   "new": "logs/t2/s09_bridge_minatar/r760/p8_hybrid_minatar.log"
+  },
+  {
+   "old": "logs/r760/p8_mlpac_lunarlander.log",
+   "new": "logs/t2/s04_stage_a/r760/p8_mlpac_lunarlander.log"
+  },
+  {
+   "old": "logs/r760/p8_mlpac_minatar_breakout.log",
+   "new": "logs/t2/s09_bridge_minatar/r760/p8_mlpac_minatar_breakout.log"
+  },
+  {
+   "old": "logs/r760/p8_mlphyb_lunarlander.log",
+   "new": "logs/t2/s04_stage_a/r760/p8_mlphyb_lunarlander.log"
+  },
+  {
+   "old": "logs/r760/p8_mlphyb_minatar_breakout.log",
+   "new": "logs/t2/s09_bridge_minatar/r760/p8_mlphyb_minatar_breakout.log"
+  },
+  {
+   "old": "logs/r760/p8_nec_lunarlander.log",
+   "new": "logs/t2/s04_stage_a/r760/p8_nec_lunarlander.log"
+  },
+  {
+   "old": "logs/r760/p8_nec_minatar_breakout.log",
+   "new": "logs/t2/s09_bridge_minatar/r760/p8_nec_minatar_breakout.log"
+  },
+  {
+   "old": "logs/r760/p8_pids.txt",
+   "new": "logs/t2/s04_stage_a/r760/p8_pids.txt"
+  },
+  {
+   "old": "logs/r760/p8_v1_lunarlander.log",
+   "new": "logs/t2/s04_stage_a/r760/p8_v1_lunarlander.log"
+  },
+  {
+   "old": "logs/r760/p8b_pids.txt",
+   "new": "logs/t2/s04_stage_a/r760/p8b_pids.txt"
+  },
+  {
+   "old": "logs/r760/p9_cap100_s0.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p9_cap100_s0.log"
+  },
+  {
+   "old": "logs/r760/p9_cap100_s1.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p9_cap100_s1.log"
+  },
+  {
+   "old": "logs/r760/p9_cap100_s2.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p9_cap100_s2.log"
+  },
+  {
+   "old": "logs/r760/p9_cap2000_s0.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p9_cap2000_s0.log"
+  },
+  {
+   "old": "logs/r760/p9_cap2000_s1.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p9_cap2000_s1.log"
+  },
+  {
+   "old": "logs/r760/p9_cap2000_s2.log",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p9_cap2000_s2.log"
+  },
+  {
+   "old": "logs/r760/p9_pids.txt",
+   "new": "logs/t2/s06_case_memory_mechanisms/r760/p9_pids.txt"
+  },
+  {
+   "old": "logs/r760/python_version.txt",
+   "new": "logs/t2/s01_inventory_reproduction/r760/python_version.txt"
+  },
+  {
+   "old": "logs/r760/requirements.txt",
+   "new": "logs/t2/s01_inventory_reproduction/r760/requirements.txt"
+  },
+  {
+   "old": "logs/r760/tmp_eval_section.txt",
+   "new": "logs/t2/s01_inventory_reproduction/r760/tmp_eval_section.txt"
+  },
+  {
+   "old": "results/cartpole_run.mp4",
+   "new": "results/t2/s01_inventory_reproduction/legacy_cartpole_videos/cartpole_run.mp4"
+  },
+  {
+   "old": "results/g234/ale",
+   "new": "results/t2/s09_stage_c_atari/g234_p20_dqn_ppo_pong"
+  },
+  {
+   "old": "results/g234/ale_threadconfound",
+   "new": "results/t2/s09_stage_c_atari/g234_p20_threadconfound"
+  },
+  {
+   "old": "results/g234/capacity_cpu",
+   "new": "results/t2/s06_case_memory_mechanisms/g234_p17_p22_capacity_cpu"
+  },
+  {
+   "old": "results/g234/misc/dqn_cartpole_20260904_152952_898938",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/dqn_cartpole_20260904_152952_898938"
+  },
+  {
+   "old": "results/g234/misc/dqn_cartpole_20260904_152953_407364",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/dqn_cartpole_20260904_152953_407364"
+  },
+  {
+   "old": "results/g234/misc/dqn_cartpole_20260905_130432_151349",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/dqn_cartpole_20260905_130432_151349"
+  },
+  {
+   "old": "results/g234/misc/dqn_cartpole_20260905_130432_656243",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/dqn_cartpole_20260905_130432_656243"
+  },
+  {
+   "old": "results/g234/misc/nec_ale_pong_20260904_051405_609221",
+   "new": "results/t2/s09_stage_c_atari/g234_p16_nec_pong/nec_ale_pong_20260904_051405_609221"
+  },
+  {
+   "old": "results/g234/misc/nec_cartpole_20260903_173944_792316",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/nec_cartpole_20260903_173944_792316"
+  },
+  {
+   "old": "results/g234/misc/nec_cartpole_20260903_173945_672804",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/nec_cartpole_20260903_173945_672804"
+  },
+  {
+   "old": "results/g234/misc/nec_cartpole_20260904_152958_151696",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/nec_cartpole_20260904_152958_151696"
+  },
+  {
+   "old": "results/g234/misc/nec_cartpole_20260904_152958_927172",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/nec_cartpole_20260904_152958_927172"
+  },
+  {
+   "old": "results/g234/misc/nec_cartpole_20260904_153049_124492",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/nec_cartpole_20260904_153049_124492"
+  },
+  {
+   "old": "results/g234/misc/nec_cartpole_20260904_153050_006413",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/nec_cartpole_20260904_153050_006413"
+  },
+  {
+   "old": "results/g234/misc/nec_cartpole_20260904_153054_655993",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/nec_cartpole_20260904_153054_655993"
+  },
+  {
+   "old": "results/g234/misc/nec_cartpole_20260904_153055_544961",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/nec_cartpole_20260904_153055_544961"
+  },
+  {
+   "old": "results/g234/misc/nec_cartpole_20260904_153100_191900",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/nec_cartpole_20260904_153100_191900"
+  },
+  {
+   "old": "results/g234/misc/nec_cartpole_20260904_153100_939086",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/nec_cartpole_20260904_153100_939086"
+  },
+  {
+   "old": "results/g234/misc/nec_cartpole_20260905_130436_104074",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/nec_cartpole_20260905_130436_104074"
+  },
+  {
+   "old": "results/g234/misc/nec_cartpole_20260905_130436_862048",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/nec_cartpole_20260905_130436_862048"
+  },
+  {
+   "old": "results/g234/misc/ppo_cartpole_20260904_153013_833677",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/ppo_cartpole_20260904_153013_833677"
+  },
+  {
+   "old": "results/g234/misc/ppo_cartpole_20260904_153014_183796",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/ppo_cartpole_20260904_153014_183796"
+  },
+  {
+   "old": "results/g234/misc/ppo_cartpole_20260905_130446_229618",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/ppo_cartpole_20260905_130446_229618"
+  },
+  {
+   "old": "results/g234/misc/ppo_cartpole_20260905_130446_601576",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/ppo_cartpole_20260905_130446_601576"
+  },
+  {
+   "old": "results/g234/misc/ppo_pendulum_20260904_153014_969683",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/ppo_pendulum_20260904_153014_969683"
+  },
+  {
+   "old": "results/g234/misc/ppo_pendulum_20260905_130447_177586",
+   "new": "results/t2/s01_inventory_reproduction/g234_cpu_smoke_threads/ppo_pendulum_20260905_130447_177586"
+  },
+  {
+   "old": "results/nnknn_cartpole_explain.mp4",
+   "new": "results/t2/s01_inventory_reproduction/legacy_cartpole_videos/nnknn_cartpole_explain.mp4"
+  },
+  {
+   "old": "results/r760/dqn_acrobot_20260802_124352_342758",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/dqn_acrobot_20260802_124352_342758"
+  },
+  {
+   "old": "results/r760/dqn_acrobot_20260802_124432_945965",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/dqn_acrobot_20260802_124432_945965"
+  },
+  {
+   "old": "results/r760/dqn_acrobot_20260802_194643_946020",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/dqn_acrobot_20260802_194643_946020"
+  },
+  {
+   "old": "results/r760/dqn_acrobot_20260802_194643_975410",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/dqn_acrobot_20260802_194643_975410"
+  },
+  {
+   "old": "results/r760/dqn_acrobot_20260802_194643_975917",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/dqn_acrobot_20260802_194643_975917"
+  },
+  {
+   "old": "results/r760/dqn_acrobot_20260802_194644_017898",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/dqn_acrobot_20260802_194644_017898"
+  },
+  {
+   "old": "results/r760/dqn_ale_pong_20260828_013556_235637",
+   "new": "results/t2/s09_stage_c_atari/r760_p13_p15_pong/dqn_ale_pong_20260828_013556_235637"
+  },
+  {
+   "old": "results/r760/dqn_ale_pong_20260901_214758_636700",
+   "new": "results/t2/s09_stage_c_atari/r760_p13_p15_pong/dqn_ale_pong_20260901_214758_636700"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260731_162701_012310",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/dqn_cartpole_20260731_162701_012310"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260731_162701_693093",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/dqn_cartpole_20260731_162701_693093"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260731_162812_896944",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase1_dqn_nec_reference/dqn_cartpole_20260731_162812_896944"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260731_163156_271161",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase1_dqn_nec_reference/dqn_cartpole_20260731_163156_271161"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260731_163157_034916",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase1_dqn_nec_reference/dqn_cartpole_20260731_163157_034916"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260731_164019_170796_eval",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase1_dqn_nec_reference/dqn_cartpole_20260731_164019_170796_eval"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260801_100615_956106",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/dqn_cartpole_20260801_100615_956106"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260801_100616_101319",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/dqn_cartpole_20260801_100616_101319"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260801_100616_108720",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/dqn_cartpole_20260801_100616_108720"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260801_100616_224781",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/dqn_cartpole_20260801_100616_224781"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260801_100616_325950",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/dqn_cartpole_20260801_100616_325950"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260802_124338_788905",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/dqn_cartpole_20260802_124338_788905"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260802_124339_561052",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/dqn_cartpole_20260802_124339_561052"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260821_030918_111586",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/dqn_cartpole_20260821_030918_111586"
+  },
+  {
+   "old": "results/r760/dqn_cartpole_20260821_030922_810389",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/dqn_cartpole_20260821_030922_810389"
+  },
+  {
+   "old": "results/r760/dqn_lunarlander_20260821_030902_411351",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/dqn_lunarlander_20260821_030902_411351"
+  },
+  {
+   "old": "results/r760/dqn_lunarlander_20260821_031319_379688",
+   "new": "results/t2/s04_stage_a/r760_p8_lunarlander/dqn_lunarlander_20260821_031319_379688"
+  },
+  {
+   "old": "results/r760/dqn_minatar_breakout_20260821_031035_881202",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/dqn_minatar_breakout_20260821_031035_881202"
+  },
+  {
+   "old": "results/r760/dqn_minatar_breakout_20260821_031408_239268",
+   "new": "results/t2/s09_bridge_minatar/r760_p8_minatar/dqn_minatar_breakout_20260821_031408_239268"
+  },
+  {
+   "old": "results/r760/nec_acrobot_20260802_124356_352819",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nec_acrobot_20260802_124356_352819"
+  },
+  {
+   "old": "results/r760/nec_acrobot_20260802_124432_922588",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nec_acrobot_20260802_124432_922588"
+  },
+  {
+   "old": "results/r760/nec_acrobot_20260802_194643_955069",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nec_acrobot_20260802_194643_955069"
+  },
+  {
+   "old": "results/r760/nec_acrobot_20260802_194643_967743",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nec_acrobot_20260802_194643_967743"
+  },
+  {
+   "old": "results/r760/nec_acrobot_20260802_194643_983297",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nec_acrobot_20260802_194643_983297"
+  },
+  {
+   "old": "results/r760/nec_acrobot_20260802_194644_010208",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nec_acrobot_20260802_194644_010208"
+  },
+  {
+   "old": "results/r760/nec_ale_pong_20260828_023216_349590",
+   "new": "results/t2/s09_stage_c_atari/r760_p13_p15_pong/nec_ale_pong_20260828_023216_349590"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260731_162704_510780",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nec_cartpole_20260731_162704_510780"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260731_162705_982926",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nec_cartpole_20260731_162705_982926"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260731_162814_251462",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase1_dqn_nec_reference/nec_cartpole_20260731_162814_251462"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260731_163001_311753",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase1_dqn_nec_reference/nec_cartpole_20260731_163001_311753"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260731_163047_152956_eval",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase1_dqn_nec_reference/nec_cartpole_20260731_163047_152956_eval"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260731_163713_160969_eval",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase1_dqn_nec_reference/nec_cartpole_20260731_163713_160969_eval"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260731_173028_870343",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase1_dqn_nec_reference/nec_cartpole_20260731_173028_870343"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260801_100615_834204",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nec_cartpole_20260801_100615_834204"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260801_100616_193085",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nec_cartpole_20260801_100616_193085"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260801_100616_213584",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nec_cartpole_20260801_100616_213584"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260801_100616_217382",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nec_cartpole_20260801_100616_217382"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260801_100616_232715",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nec_cartpole_20260801_100616_232715"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260802_124342_284938",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nec_cartpole_20260802_124342_284938"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260802_124343_885655",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nec_cartpole_20260802_124343_885655"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260821_030927_752778",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nec_cartpole_20260821_030927_752778"
+  },
+  {
+   "old": "results/r760/nec_cartpole_20260821_030949_527901",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nec_cartpole_20260821_030949_527901"
+  },
+  {
+   "old": "results/r760/nec_lunarlander_20260821_030906_941126",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nec_lunarlander_20260821_030906_941126"
+  },
+  {
+   "old": "results/r760/nec_lunarlander_20260821_031408_337948",
+   "new": "results/t2/s04_stage_a/r760_p8_lunarlander/nec_lunarlander_20260821_031408_337948"
+  },
+  {
+   "old": "results/r760/nec_minatar_breakout_20260821_031040_599883",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nec_minatar_breakout_20260821_031040_599883"
+  },
+  {
+   "old": "results/r760/nec_minatar_breakout_20260821_031408_387828",
+   "new": "results/t2/s09_bridge_minatar/r760_p8_minatar/nec_minatar_breakout_20260821_031408_387828"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_124401_350416",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_acrobot_20260802_124401_350416"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_124433_765950",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_124433_765950"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_124433_789935",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_124433_789935"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_124433_832510",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_124433_832510"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_124433_833453",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_124433_833453"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_124433_945301",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_124433_945301"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_155944_342765",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_155944_342765"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_155944_352518",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_155944_352518"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_155944_353002",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_155944_353002"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_155944_359989",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_155944_359989"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_194645_135672",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_194645_135672"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_194645_154897",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_194645_154897"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_194645_174711",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_194645_174711"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260802_194645_177797",
+   "new": "results/t2/s04_stage_a/r760_phase5_acrobot/nnknn_rl_acrobot_20260802_194645_177797"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260821_030830_791862",
+   "new": "results/t2/s04_stage_a/r760_p7_label_modes/nnknn_rl_acrobot_20260821_030830_791862"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260821_030830_828518",
+   "new": "results/t2/s04_stage_a/r760_p7_label_modes/nnknn_rl_acrobot_20260821_030830_828518"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260821_030831_156807",
+   "new": "results/t2/s04_stage_a/r760_p7_label_modes/nnknn_rl_acrobot_20260821_030831_156807"
+  },
+  {
+   "old": "results/r760/nnknn_rl_acrobot_20260821_230330_093912",
+   "new": "results/t2/s04_stage_a/r760_p7_label_modes/nnknn_rl_acrobot_20260821_230330_093912"
+  },
+  {
+   "old": "results/r760/nnknn_rl_ale_pong_20260828_013603_084911",
+   "new": "results/t2/s09_stage_c_atari/r760_p13_p15_pong/nnknn_rl_ale_pong_20260828_013603_084911"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_162710_528184",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260731_162710_528184"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_162711_345941",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260731_162711_345941"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_162711_355481",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260731_162711_355481"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_162711_376292",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260731_162711_376292"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_162711_947776",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260731_162711_947776"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_162712_189329",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260731_162712_189329"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_162712_492702",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260731_162712_492702"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_162712_619603",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260731_162712_619603"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_162712_873275",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260731_162712_873275"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_164130_522501",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase2_nnknn_variants/nnknn_rl_cartpole_20260731_164130_522501"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_164130_544008",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase2_nnknn_variants/nnknn_rl_cartpole_20260731_164130_544008"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_164130_546970",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase2_nnknn_variants/nnknn_rl_cartpole_20260731_164130_546970"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_164130_652524",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase2_nnknn_variants/nnknn_rl_cartpole_20260731_164130_652524"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_164130_755582",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase2_nnknn_variants/nnknn_rl_cartpole_20260731_164130_755582"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_164130_973567",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase2_nnknn_variants/nnknn_rl_cartpole_20260731_164130_973567"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_173523_273146_eval",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase3_gate_g1/nnknn_rl_cartpole_20260731_173523_273146_eval"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_234506_777475",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase3_gate_g1/nnknn_rl_cartpole_20260731_234506_777475"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_234506_920011",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase3_gate_g1/nnknn_rl_cartpole_20260731_234506_920011"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_234506_952291",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase3_gate_g1/nnknn_rl_cartpole_20260731_234506_952291"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260731_234507_014001",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase3_gate_g1/nnknn_rl_cartpole_20260731_234507_014001"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100327_846141_eval",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase3_gate_g1/nnknn_rl_cartpole_20260801_100327_846141_eval"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100402_908979_eval",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase3_gate_g1/nnknn_rl_cartpole_20260801_100402_908979_eval"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100439_385973_eval",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase3_gate_g1/nnknn_rl_cartpole_20260801_100439_385973_eval"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100508_625372_eval",
+   "new": "results/t2/s01_inventory_reproduction/r760_phase3_gate_g1/nnknn_rl_cartpole_20260801_100508_625372_eval"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100617_191472",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nnknn_rl_cartpole_20260801_100617_191472"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100617_202061",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nnknn_rl_cartpole_20260801_100617_202061"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100617_223273",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nnknn_rl_cartpole_20260801_100617_223273"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100617_252466",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nnknn_rl_cartpole_20260801_100617_252466"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100617_279889",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nnknn_rl_cartpole_20260801_100617_279889"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100617_641145",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nnknn_rl_cartpole_20260801_100617_641145"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100617_727608",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nnknn_rl_cartpole_20260801_100617_727608"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100617_764055",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nnknn_rl_cartpole_20260801_100617_764055"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100617_914984",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nnknn_rl_cartpole_20260801_100617_914984"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260801_100617_944588",
+   "new": "results/t2/s04_stage_a/r760_phase4_cartpole/nnknn_rl_cartpole_20260801_100617_944588"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260802_124348_166039",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260802_124348_166039"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260802_124348_936596",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260802_124348_936596"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260802_124348_947061",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260802_124348_947061"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260802_124348_968866",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260802_124348_968866"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260802_124349_514428",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260802_124349_514428"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260802_124349_741933",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260802_124349_741933"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260802_124350_026701",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260802_124350_026701"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260802_124350_148812",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260802_124350_148812"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260802_124350_393251",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260802_124350_393251"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260820_075536_786053",
+   "new": "results/t2/s04_stage_a/r760_p6_label_modes/nnknn_rl_cartpole_20260820_075536_786053"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260820_075536_792772",
+   "new": "results/t2/s04_stage_a/r760_p6_label_modes/nnknn_rl_cartpole_20260820_075536_792772"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260820_075536_795975",
+   "new": "results/t2/s04_stage_a/r760_p6_label_modes/nnknn_rl_cartpole_20260820_075536_795975"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260820_075536_796147",
+   "new": "results/t2/s04_stage_a/r760_p6_label_modes/nnknn_rl_cartpole_20260820_075536_796147"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260820_075536_798185",
+   "new": "results/t2/s04_stage_a/r760_p6_label_modes/nnknn_rl_cartpole_20260820_075536_798185"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_030830_572858",
+   "new": "results/t2/s04_stage_a/r760_p7_label_modes/nnknn_rl_cartpole_20260821_030830_572858"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_030830_796126",
+   "new": "results/t2/s04_stage_a/r760_p7_label_modes/nnknn_rl_cartpole_20260821_030830_796126"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_030831_084262",
+   "new": "results/t2/s04_stage_a/r760_p7_label_modes/nnknn_rl_cartpole_20260821_030831_084262"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_030831_131475",
+   "new": "results/t2/s04_stage_a/r760_p7_label_modes/nnknn_rl_cartpole_20260821_030831_131475"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_030831_141162",
+   "new": "results/t2/s04_stage_a/r760_p7_label_modes/nnknn_rl_cartpole_20260821_030831_141162"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_030831_161272",
+   "new": "results/t2/s04_stage_a/r760_p7_label_modes/nnknn_rl_cartpole_20260821_030831_161272"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_030831_162011",
+   "new": "results/t2/s04_stage_a/r760_p7_label_modes/nnknn_rl_cartpole_20260821_030831_162011"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_030831_199772",
+   "new": "results/t2/s04_stage_a/r760_p7_label_modes/nnknn_rl_cartpole_20260821_030831_199772"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_030956_317613",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_030956_317613"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031021_023402",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031021_023402"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031021_234719",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031021_234719"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031021_919885",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031021_919885"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031042_798010",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031042_798010"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031053_117758",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031053_117758"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031101_827305",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031101_827305"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031104_749759",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031104_749759"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031117_191919",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031117_191919"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031118_251279",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031118_251279"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031149_405183",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031149_405183"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031149_837165",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031149_837165"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031151_202340",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031151_202340"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031201_915116",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031201_915116"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031212_132004",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031212_132004"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031220_867651",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031220_867651"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031225_511196",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031225_511196"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260821_031243_147928",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260821_031243_147928"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260822_161121_330404",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260822_161121_330404"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260822_161152_495843",
+   "new": "results/t2/s06_case_memory_mechanisms/r760_p9_p10_p14_capacity/nnknn_rl_cartpole_20260822_161152_495843"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260822_161152_506370",
+   "new": "results/t2/s06_case_memory_mechanisms/r760_p9_p10_p14_capacity/nnknn_rl_cartpole_20260822_161152_506370"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260822_161152_513956",
+   "new": "results/t2/s06_case_memory_mechanisms/r760_p9_p10_p14_capacity/nnknn_rl_cartpole_20260822_161152_513956"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260822_161152_516563",
+   "new": "results/t2/s06_case_memory_mechanisms/r760_p9_p10_p14_capacity/nnknn_rl_cartpole_20260822_161152_516563"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260822_161152_530160",
+   "new": "results/t2/s06_case_memory_mechanisms/r760_p9_p10_p14_capacity/nnknn_rl_cartpole_20260822_161152_530160"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260822_161152_533697",
+   "new": "results/t2/s06_case_memory_mechanisms/r760_p9_p10_p14_capacity/nnknn_rl_cartpole_20260822_161152_533697"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260828_011843_086637",
+   "new": "results/t2/s06_case_memory_mechanisms/r760_p9_p10_p14_capacity/nnknn_rl_cartpole_20260828_011843_086637"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260828_011843_317989",
+   "new": "results/t2/s06_case_memory_mechanisms/r760_p9_p10_p14_capacity/nnknn_rl_cartpole_20260828_011843_317989"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260901_213754_687194",
+   "new": "results/t2/s06_case_memory_mechanisms/r760_p9_p10_p14_capacity/nnknn_rl_cartpole_20260901_213754_687194"
+  },
+  {
+   "old": "results/r760/nnknn_rl_cartpole_20260901_213754_687202",
+   "new": "results/t2/s06_case_memory_mechanisms/r760_p9_p10_p14_capacity/nnknn_rl_cartpole_20260901_213754_687202"
+  },
+  {
+   "old": "results/r760/nnknn_rl_lunarlander_20260821_030912_677586",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_lunarlander_20260821_030912_677586"
+  },
+  {
+   "old": "results/r760/nnknn_rl_lunarlander_20260821_031320_475732",
+   "new": "results/t2/s04_stage_a/r760_p8_lunarlander/nnknn_rl_lunarlander_20260821_031320_475732"
+  },
+  {
+   "old": "results/r760/nnknn_rl_lunarlander_20260821_031409_861715",
+   "new": "results/t2/s04_stage_a/r760_p8_lunarlander/nnknn_rl_lunarlander_20260821_031409_861715"
+  },
+  {
+   "old": "results/r760/nnknn_rl_lunarlander_20260821_033321_141977",
+   "new": "results/t2/s04_stage_a/r760_p8_lunarlander/nnknn_rl_lunarlander_20260821_033321_141977"
+  },
+  {
+   "old": "results/r760/nnknn_rl_lunarlander_20260822_034913_129335",
+   "new": "results/t2/s04_stage_a/r760_p8_lunarlander/nnknn_rl_lunarlander_20260822_034913_129335"
+  },
+  {
+   "old": "results/r760/nnknn_rl_minatar_breakout_20260821_031046_407131",
+   "new": "results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_minatar_breakout_20260821_031046_407131"
+  },
+  {
+   "old": "results/r760/nnknn_rl_minatar_breakout_20260821_031320_216789",
+   "new": "results/t2/s09_bridge_minatar/r760_p8_minatar/nnknn_rl_minatar_breakout_20260821_031320_216789"
+  },
+  {
+   "old": "results/r760/nnknn_rl_minatar_breakout_20260821_031409_330415",
+   "new": "results/t2/s09_bridge_minatar/r760_p8_minatar/nnknn_rl_minatar_breakout_20260821_031409_330415"
+  },
+  {
+   "old": "results/r760/nnknn_rl_minatar_breakout_20260822_033231_147968",
+   "new": "results/t2/s09_bridge_minatar/r760_p8_minatar/nnknn_rl_minatar_breakout_20260822_033231_147968"
+  },
+  {
+   "old": "results/r760/ppo_acrobot_20260828_012117_678055",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_acrobot_20260828_012117_678055"
+  },
+  {
+   "old": "results/r760/ppo_acrobot_20260828_012117_711955",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_acrobot_20260828_012117_711955"
+  },
+  {
+   "old": "results/r760/ppo_acrobot_20260828_012244_804790",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_acrobot_20260828_012244_804790"
+  },
+  {
+   "old": "results/r760/ppo_acrobot_20260828_012245_818864",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_acrobot_20260828_012245_818864"
+  },
+  {
+   "old": "results/r760/ppo_acrobot_20260828_012303_284141",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_acrobot_20260828_012303_284141"
+  },
+  {
+   "old": "results/r760/ppo_ale_pong_20260828_013602_264626",
+   "new": "results/t2/s09_stage_c_atari/r760_p13_p15_pong/ppo_ale_pong_20260828_013602_264626"
+  },
+  {
+   "old": "results/r760/ppo_cartpole_20260828_011912_860851",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_cartpole_20260828_011912_860851"
+  },
+  {
+   "old": "results/r760/ppo_cartpole_20260828_012117_673599",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_cartpole_20260828_012117_673599"
+  },
+  {
+   "old": "results/r760/ppo_cartpole_20260828_012117_686042",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_cartpole_20260828_012117_686042"
+  },
+  {
+   "old": "results/r760/ppo_cartpole_20260828_012117_711646",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_cartpole_20260828_012117_711646"
+  },
+  {
+   "old": "results/r760/ppo_cartpole_20260828_012117_726888",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_cartpole_20260828_012117_726888"
+  },
+  {
+   "old": "results/r760/ppo_lunarlander_20260828_012303_674084",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_lunarlander_20260828_012303_674084"
+  },
+  {
+   "old": "results/r760/ppo_lunarlander_20260828_012305_166197",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_lunarlander_20260828_012305_166197"
+  },
+  {
+   "old": "results/r760/ppo_lunarlander_20260828_012306_260485",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_lunarlander_20260828_012306_260485"
+  },
+  {
+   "old": "results/r760/ppo_lunarlander_20260828_012425_812273",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_lunarlander_20260828_012425_812273"
+  },
+  {
+   "old": "results/r760/ppo_lunarlander_20260828_012439_599442",
+   "new": "results/t2/s04_stage_a/r760_p11_ppo/ppo_lunarlander_20260828_012439_599442"
+  },
+  {
+   "old": "results/r760/ppo_lunarlander_continuous_20260828_013934_638679",
+   "new": "results/t2/s08_stage_b_continuous/r760_p12_ppo_td3/ppo_lunarlander_continuous_20260828_013934_638679"
+  },
+  {
+   "old": "results/r760/ppo_lunarlander_continuous_20260828_014049_098248",
+   "new": "results/t2/s08_stage_b_continuous/r760_p12_ppo_td3/ppo_lunarlander_continuous_20260828_014049_098248"
+  },
+  {
+   "old": "results/r760/ppo_lunarlander_continuous_20260828_014320_192811",
+   "new": "results/t2/s08_stage_b_continuous/r760_p12_ppo_td3/ppo_lunarlander_continuous_20260828_014320_192811"
+  },
+  {
+   "old": "results/r760/ppo_minatar_breakout_20260828_012442_373731",
+   "new": "results/t2/s09_bridge_minatar/r760_p11_ppo/ppo_minatar_breakout_20260828_012442_373731"
+  },
+  {
+   "old": "results/r760/ppo_minatar_breakout_20260828_012550_960402",
+   "new": "results/t2/s09_bridge_minatar/r760_p11_ppo/ppo_minatar_breakout_20260828_012550_960402"
+  },
+  {
+   "old": "results/r760/ppo_minatar_breakout_20260828_012604_101636",
+   "new": "results/t2/s09_bridge_minatar/r760_p11_ppo/ppo_minatar_breakout_20260828_012604_101636"
+  },
+  {
+   "old": "results/r760/ppo_minatar_breakout_20260828_012621_889452",
+   "new": "results/t2/s09_bridge_minatar/r760_p11_ppo/ppo_minatar_breakout_20260828_012621_889452"
+  },
+  {
+   "old": "results/r760/ppo_minatar_breakout_20260828_012624_871410",
+   "new": "results/t2/s09_bridge_minatar/r760_p11_ppo/ppo_minatar_breakout_20260828_012624_871410"
+  },
+  {
+   "old": "results/r760/ppo_pendulum_20260828_013619_979472",
+   "new": "results/t2/s08_stage_b_continuous/r760_p12_ppo_td3/ppo_pendulum_20260828_013619_979472"
+  },
+  {
+   "old": "results/r760/ppo_pendulum_20260828_013718_693369",
+   "new": "results/t2/s08_stage_b_continuous/r760_p12_ppo_td3/ppo_pendulum_20260828_013718_693369"
+  },
+  {
+   "old": "results/r760/ppo_pendulum_20260828_013835_942546",
+   "new": "results/t2/s08_stage_b_continuous/r760_p12_ppo_td3/ppo_pendulum_20260828_013835_942546"
+  },
+  {
+   "old": "results/r760/td3_lunarlander_continuous_20260828_012324_480587",
+   "new": "results/t2/s08_stage_b_continuous/r760_p12_ppo_td3/td3_lunarlander_continuous_20260828_012324_480587"
+  },
+  {
+   "old": "results/r760/td3_lunarlander_continuous_20260828_013552_039148",
+   "new": "results/t2/s08_stage_b_continuous/r760_p12_ppo_td3/td3_lunarlander_continuous_20260828_013552_039148"
+  },
+  {
+   "old": "results/r760/td3_lunarlander_continuous_20260828_013607_528145",
+   "new": "results/t2/s08_stage_b_continuous/r760_p12_ppo_td3/td3_lunarlander_continuous_20260828_013607_528145"
+  },
+  {
+   "old": "results/r760/td3_pendulum_20260828_012324_142534",
+   "new": "results/t2/s08_stage_b_continuous/r760_p12_ppo_td3/td3_pendulum_20260828_012324_142534"
+  },
+  {
+   "old": "results/r760/td3_pendulum_20260828_012324_189717",
+   "new": "results/t2/s08_stage_b_continuous/r760_p12_ppo_td3/td3_pendulum_20260828_012324_189717"
+  },
+  {
+   "old": "results/r760/td3_pendulum_20260828_012324_308119",
+   "new": "results/t2/s08_stage_b_continuous/r760_p12_ppo_td3/td3_pendulum_20260828_012324_308119"
+  },
+  {
+   "old": "results/rl_case_maintenance",
+   "new": "results/t2/s06_case_memory_mechanisms/rl_case_maintenance"
+  },
+  {
+   "old": "results/rl_mcb_campaign",
+   "new": "results/t2/s06_case_memory_mechanisms/rl_mcb_campaign"
+  },
+  {
+   "old": "results/t2_pi20260920",
+   "new": "results/t2/s02_s03_instrumentation_role_audits/pi20260920"
+  }
+ ]
+}

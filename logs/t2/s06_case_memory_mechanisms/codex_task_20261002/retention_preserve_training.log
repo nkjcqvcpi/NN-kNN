@@ -1,0 +1,36 @@
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+trained cartpole/nnknn_nnknn__ema__reset/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+trained cartpole/nnknn_nnknn__ema__reset/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+trained cartpole/nnknn_nnknn__ema__reset/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+trained acrobot/nnknn_nnknn__ema__reset/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+trained acrobot/nnknn_nnknn__ema__reset/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+trained acrobot/nnknn_nnknn__ema__reset/s10

@@ -1,0 +1,181 @@
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 1/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 2/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 3/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 4/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 5/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 6/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 7/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 8/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 9/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 10/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 11/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 12/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 13/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 14/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 15/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 16/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 17/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 18/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 19/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 20/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 21/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 22/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 23/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 24/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 25/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 26/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 27/30 cartpole/nnknn_nnknn__ema__preserve_by_id/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 28/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 29/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 30/30 acrobot/nnknn_nnknn__ema__preserve_by_id/s10
+{"runs": 30, "checkpoints": 60, "events": 240, "interventions": 1920}

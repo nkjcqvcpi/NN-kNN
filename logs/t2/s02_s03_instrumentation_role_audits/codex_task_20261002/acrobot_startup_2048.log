@@ -1,0 +1,54 @@
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+completed 1/9 acrobot/nnknn_nnknn__ema__preserve_by_id/s8 events=8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+completed 2/9 acrobot/nnknn_nnknn__hard__preserve_by_id/s8 events=8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+completed 3/9 acrobot/nnknn_nnknn__none__preserve_by_id/s8 events=8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+completed 4/9 acrobot/nnknn_nnknn__ema__preserve_by_id/s9 events=8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+completed 5/9 acrobot/nnknn_nnknn__hard__preserve_by_id/s9 events=8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+completed 6/9 acrobot/nnknn_nnknn__none__preserve_by_id/s9 events=8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+completed 7/9 acrobot/nnknn_nnknn__ema__preserve_by_id/s10 events=8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+completed 8/9 acrobot/nnknn_nnknn__hard__preserve_by_id/s10 events=8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+completed 9/9 acrobot/nnknn_nnknn__none__preserve_by_id/s10 events=8

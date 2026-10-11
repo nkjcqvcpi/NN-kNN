@@ -1,0 +1,411 @@
+{
+  "rows": [
+    {
+      "package": "critic_label_modes_8192",
+      "seed": 8,
+      "mode": "fixed",
+      "threshold": 0,
+      "first_ready_step": 7001,
+      "action_counts": [
+        2,
+        3,
+        4
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 4047.965576171875,
+      "own_policy_mse": 4047.965576171875,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_label_modes_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id\\s8"
+    },
+    {
+      "package": "critic_label_modes_8192",
+      "seed": 8,
+      "mode": "mutable",
+      "threshold": 0,
+      "first_ready_step": 7001,
+      "action_counts": [
+        2,
+        3,
+        4
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 4047.965576171875,
+      "own_policy_mse": 4047.965576171875,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_label_modes_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_mutable\\s8"
+    },
+    {
+      "package": "critic_label_modes_8192",
+      "seed": 8,
+      "mode": "trainable",
+      "threshold": 0,
+      "first_ready_step": 7001,
+      "action_counts": [
+        2,
+        3,
+        4
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 4062.708740234375,
+      "own_policy_mse": 4062.79150390625,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_label_modes_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_trainable\\s8"
+    },
+    {
+      "package": "critic_label_modes_8192",
+      "seed": 8,
+      "mode": "hybrid",
+      "threshold": 0,
+      "first_ready_step": 7001,
+      "action_counts": [
+        2,
+        3,
+        4
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 4062.708740234375,
+      "own_policy_mse": 4062.79150390625,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_label_modes_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_hybrid\\s8"
+    },
+    {
+      "package": "critic_label_modes_8192",
+      "seed": 9,
+      "mode": "fixed",
+      "threshold": 0,
+      "first_ready_step": 7001,
+      "action_counts": [
+        42,
+        24,
+        30
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 1014.7584228515625,
+      "own_policy_mse": 1014.7584228515625,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_label_modes_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id\\s9"
+    },
+    {
+      "package": "critic_label_modes_8192",
+      "seed": 9,
+      "mode": "mutable",
+      "threshold": 0,
+      "first_ready_step": 7001,
+      "action_counts": [
+        42,
+        24,
+        30
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 1014.7584228515625,
+      "own_policy_mse": 1014.7584228515625,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_label_modes_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_mutable\\s9"
+    },
+    {
+      "package": "critic_label_modes_8192",
+      "seed": 9,
+      "mode": "trainable",
+      "threshold": 0,
+      "first_ready_step": 7001,
+      "action_counts": [
+        45,
+        16,
+        61
+      ],
+      "greedy_return": -110.66666412353516,
+      "common_policy_mse": 1011.2338256835938,
+      "own_policy_mse": 722.6861572265625,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_label_modes_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_trainable\\s9"
+    },
+    {
+      "package": "critic_label_modes_8192",
+      "seed": 9,
+      "mode": "hybrid",
+      "threshold": 0,
+      "first_ready_step": 7001,
+      "action_counts": [
+        45,
+        16,
+        61
+      ],
+      "greedy_return": -110.66666412353516,
+      "common_policy_mse": 1011.2338256835938,
+      "own_policy_mse": 722.6861572265625,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_label_modes_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_hybrid\\s9"
+    },
+    {
+      "package": "critic_label_modes_8192",
+      "seed": 10,
+      "mode": "fixed",
+      "threshold": 0,
+      "first_ready_step": null,
+      "action_counts": [
+        1,
+        4,
+        4
+      ],
+      "greedy_return": -458.0,
+      "common_policy_mse": 3981.669677734375,
+      "own_policy_mse": 3981.669677734375,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_label_modes_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id\\s10"
+    },
+    {
+      "package": "critic_label_modes_8192",
+      "seed": 10,
+      "mode": "mutable",
+      "threshold": 0,
+      "first_ready_step": null,
+      "action_counts": [
+        1,
+        4,
+        4
+      ],
+      "greedy_return": -458.0,
+      "common_policy_mse": 3981.669677734375,
+      "own_policy_mse": 3981.669677734375,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_label_modes_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_mutable\\s10"
+    },
+    {
+      "package": "critic_label_modes_8192",
+      "seed": 10,
+      "mode": "trainable",
+      "threshold": 0,
+      "first_ready_step": null,
+      "action_counts": [
+        1,
+        4,
+        4
+      ],
+      "greedy_return": -458.0,
+      "common_policy_mse": 3981.02685546875,
+      "own_policy_mse": 3981.10546875,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_label_modes_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_trainable\\s10"
+    },
+    {
+      "package": "critic_label_modes_8192",
+      "seed": 10,
+      "mode": "hybrid",
+      "threshold": 0,
+      "first_ready_step": null,
+      "action_counts": [
+        1,
+        4,
+        4
+      ],
+      "greedy_return": -458.0,
+      "common_policy_mse": 3981.02685546875,
+      "own_policy_mse": 3981.10546875,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_label_modes_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_hybrid\\s10"
+    },
+    {
+      "package": "critic_matching_m025",
+      "seed": 8,
+      "mode": "mutable",
+      "threshold": -0.25,
+      "first_ready_step": 8001,
+      "action_counts": [
+        3,
+        3,
+        5
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 3855.52294921875,
+      "own_policy_mse": 3399.6513671875,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_matching_m025\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_mutable\\s8"
+    },
+    {
+      "package": "critic_matching_m025",
+      "seed": 8,
+      "mode": "hybrid",
+      "threshold": -0.25,
+      "first_ready_step": 8001,
+      "action_counts": [
+        3,
+        3,
+        5
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 3854.80322265625,
+      "own_policy_mse": 3399.0703125,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_matching_m025\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_hybrid\\s8"
+    },
+    {
+      "package": "critic_matching_m025",
+      "seed": 9,
+      "mode": "mutable",
+      "threshold": -0.25,
+      "first_ready_step": 7001,
+      "action_counts": [
+        54,
+        23,
+        45
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 919.6676025390625,
+      "own_policy_mse": 864.2282104492188,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_matching_m025\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_mutable\\s9"
+    },
+    {
+      "package": "critic_matching_m025",
+      "seed": 9,
+      "mode": "hybrid",
+      "threshold": -0.25,
+      "first_ready_step": 7001,
+      "action_counts": [
+        29,
+        20,
+        47
+      ],
+      "greedy_return": -370.0,
+      "common_policy_mse": 920.193115234375,
+      "own_policy_mse": 975.8181762695312,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_matching_m025\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_hybrid\\s9"
+    },
+    {
+      "package": "critic_matching_m025",
+      "seed": 10,
+      "mode": "mutable",
+      "threshold": -0.25,
+      "first_ready_step": null,
+      "action_counts": [
+        2,
+        2,
+        6
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 3496.8134765625,
+      "own_policy_mse": 3594.3564453125,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_matching_m025\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_mutable\\s10"
+    },
+    {
+      "package": "critic_matching_m025",
+      "seed": 10,
+      "mode": "hybrid",
+      "threshold": -0.25,
+      "first_ready_step": null,
+      "action_counts": [
+        2,
+        2,
+        6
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 3496.1962890625,
+      "own_policy_mse": 3593.781494140625,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_matching_m025\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_hybrid\\s10"
+    },
+    {
+      "package": "critic_matching_m1",
+      "seed": 8,
+      "mode": "mutable",
+      "threshold": -1.0,
+      "first_ready_step": null,
+      "action_counts": [
+        1,
+        2,
+        0
+      ],
+      "greedy_return": -458.0,
+      "common_policy_mse": 2084.3466796875,
+      "own_policy_mse": 2338.756103515625,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_matching_m1\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_mutable\\s8"
+    },
+    {
+      "package": "critic_matching_m1",
+      "seed": 8,
+      "mode": "hybrid",
+      "threshold": -1.0,
+      "first_ready_step": null,
+      "action_counts": [
+        1,
+        2,
+        0
+      ],
+      "greedy_return": -458.0,
+      "common_policy_mse": 2083.978271484375,
+      "own_policy_mse": 2338.393798828125,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_matching_m1\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_hybrid\\s8"
+    },
+    {
+      "package": "critic_matching_m1",
+      "seed": 9,
+      "mode": "mutable",
+      "threshold": -1.0,
+      "first_ready_step": null,
+      "action_counts": [
+        1,
+        5,
+        6
+      ],
+      "greedy_return": -458.0,
+      "common_policy_mse": 496.2602844238281,
+      "own_policy_mse": 1669.109130859375,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_matching_m1\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_mutable\\s9"
+    },
+    {
+      "package": "critic_matching_m1",
+      "seed": 9,
+      "mode": "hybrid",
+      "threshold": -1.0,
+      "first_ready_step": null,
+      "action_counts": [
+        1,
+        6,
+        6
+      ],
+      "greedy_return": -458.0,
+      "common_policy_mse": 497.8961181640625,
+      "own_policy_mse": 1658.43505859375,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_matching_m1\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_hybrid\\s9"
+    },
+    {
+      "package": "critic_matching_m1",
+      "seed": 10,
+      "mode": "mutable",
+      "threshold": -1.0,
+      "first_ready_step": 8001,
+      "action_counts": [
+        2,
+        3,
+        3
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 1928.449951171875,
+      "own_policy_mse": 2075.9716796875,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_matching_m1\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_mutable\\s10"
+    },
+    {
+      "package": "critic_matching_m1",
+      "seed": 10,
+      "mode": "hybrid",
+      "threshold": -1.0,
+      "first_ready_step": 8001,
+      "action_counts": [
+        2,
+        3,
+        3
+      ],
+      "greedy_return": -500.0,
+      "common_policy_mse": 1928.111083984375,
+      "own_policy_mse": 2075.650634765625,
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\critic_matching_m1\\acrobot\\nnknn_nnknn__hard__preserve_by_id__labels_hybrid\\s10"
+    }
+  ],
+  "exact_label_control_pairs": 6,
+  "sources": [
+    {
+      "fingerprint": "cb51041421800574e0193514fdc78027528cdb256af10aa11c07f30cb48de347",
+      "head": "b9302c78bcdc4bf546cee5bb700eef19d9aa126b",
+      "entries": 132,
+      "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_critic_label_modes_complete_source_archive",
+      "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_critic_label_modes_complete_source_cb5104142180.zip",
+      "zip_sha256": "d727a1cf024d1e9c1c2e381ce97a53c65e1bb1831f2338a32d3a5291f67cb922"
+    },
+    {
+      "fingerprint": "88fafd106c63d461d4e196e9f8e0272a83c2dd3cf7196ac674ef4371c124584f",
+      "head": "359e8643590bf95fe0b811134a3970798b9e0517",
+      "entries": 132,
+      "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_critic_label_matching_source_archive",
+      "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_critic_label_matching_source_88fafd106c63.zip",
+      "zip_sha256": "66e3eaecf2342729bd9d5dd002f4536efb77ec05353b0ed36f78438459f53aab"
+    }
+  ],
+  "changed_source_files": [
+    "tools/t2_role_pilot.py"
+  ],
+  "all_checks_passed": true
+}

@@ -1,0 +1,128 @@
+{
+  "source": {
+    "fingerprint": "bd1521b04c6bc91b6b7709e7a920d9315d9101eaa64ab88387bd13c26b7b1043",
+    "head": "03bf8f7da04d025ec8215753c8b91736de45844a",
+    "entries": 124,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_optimizer_alignment_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_optimizer_alignment_source_bd1521b04c6b.zip",
+    "zip_sha256": "af3f9c3fd63a62aa00e89a5bc6cc5e9ef8f75328685ae3723ef1c8e100ead88d"
+  },
+  "counts": {
+    "runs": 12,
+    "checkpoints": 24,
+    "events": 96,
+    "interventions": 768
+  },
+  "runs": [
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 103.33333587646484,
+      "mc_mse": 857.0075073242188
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 287.3333435058594,
+      "mc_mse": 975.3072509765625
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 86.0,
+      "mc_mse": 768.9697875976562
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 153.0,
+      "mc_mse": 2187.9384765625
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 246.0,
+      "mc_mse": 1414.195556640625
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 462.6666564941406,
+      "mc_mse": 3580.4228515625
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__reset/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4464.02685546875
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4464.85693359375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__reset/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 3551.03759765625
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 3629.828125
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__reset/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4336.8974609375
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4347.6005859375
+    }
+  ],
+  "all_checks_passed": true,
+  "scope": "safe checkpoint restore; exact active IDs and unmasked retrieval; independently reconstructed fixed-set renormalized predictions/loss/credit and actual masked-core interventions"
+}

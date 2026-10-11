@@ -1,0 +1,55 @@
+{
+  "source": {
+    "fingerprint": "847e751d081c0116832304a20d5613799fe26ca8b81af04da9de1442389a0355",
+    "head": "718537eac85a53fbb5fb773695cd9cd16d11318d",
+    "entries": 131,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_retention_reference_guard_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_retention_reference_guard_source_847e751d081c.zip",
+    "zip_sha256": "4fac8324126e7bcfab762f13db04d7338c61d4af75c595d9ac69115f662b8a14"
+  },
+  "counts": {
+    "control": {
+      "conditions": 36,
+      "candidates": 3758,
+      "reached": 6,
+      "removed": 364,
+      "moment_tensors": 144,
+      "mc_worse": 20,
+      "greedy_worse": 4,
+      "queries": [
+        2
+      ],
+      "max_reference_age": 0
+    },
+    "wide": {
+      "conditions": 36,
+      "candidates": 14533,
+      "reached": 19,
+      "removed": 629,
+      "moment_tensors": 144,
+      "mc_worse": 15,
+      "greedy_worse": 6,
+      "queries": [
+        4,
+        16
+      ],
+      "max_reference_age": 1553
+    },
+    "guard": {
+      "conditions": 36,
+      "candidates": 11368,
+      "reached": 10,
+      "removed": 392,
+      "moment_tensors": 144,
+      "mc_worse": 6,
+      "greedy_worse": 6,
+      "queries": [
+        4,
+        16
+      ],
+      "max_reference_age": 1553
+    }
+  },
+  "exact_control_repeats": 36,
+  "all_checks_passed": true
+}

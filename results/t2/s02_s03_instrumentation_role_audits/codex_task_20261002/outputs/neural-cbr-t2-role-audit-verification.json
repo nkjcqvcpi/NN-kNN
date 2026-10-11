@@ -1,0 +1,92 @@
+{
+  "source": {
+    "fingerprint": "9ab43109e73d52904fa69b58ed406ef5024961b7bdfda9fb4efe22bde739d084",
+    "head": "a2a5da9860963c3d78268184e0aa64a1611cc7d7",
+    "entries": 120,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_role_audit_restore_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_role_audit_restore_source_9ab43109e73d.zip",
+    "zip_sha256": "9046402b47ab86d5d0b44c73d1ac0f6fc515b40e60e69e3cbbeaeab8ab4178b6"
+  },
+  "counts": {
+    "runs": 12,
+    "checkpoints": 24,
+    "events": 48,
+    "interventions": 384
+  },
+  "runs": [
+    {
+      "role": "mlp_mlp/s8",
+      "passed": true,
+      "mean_return": 376.3333435058594,
+      "mc_mse": 231.1453094482422
+    },
+    {
+      "role": "nnknn_mlp/s8",
+      "passed": true,
+      "mean_return": 100.66666412353516,
+      "mc_mse": 473.71612548828125
+    },
+    {
+      "role": "mlp_nnknn/s8",
+      "passed": true,
+      "mean_return": 9.0,
+      "mc_mse": 9.605443954467773
+    },
+    {
+      "role": "nnknn_nnknn/s8",
+      "passed": true,
+      "mean_return": 44.0,
+      "mc_mse": 15.370336532592773
+    },
+    {
+      "role": "mlp_mlp/s9",
+      "passed": true,
+      "mean_return": 45.33333206176758,
+      "mc_mse": 96.7596435546875
+    },
+    {
+      "role": "nnknn_mlp/s9",
+      "passed": true,
+      "mean_return": 47.66666793823242,
+      "mc_mse": 236.3573455810547
+    },
+    {
+      "role": "mlp_nnknn/s9",
+      "passed": true,
+      "mean_return": 41.0,
+      "mc_mse": 49.611488342285156
+    },
+    {
+      "role": "nnknn_nnknn/s9",
+      "passed": true,
+      "mean_return": 102.0,
+      "mc_mse": 181.22134399414062
+    },
+    {
+      "role": "mlp_mlp/s10",
+      "passed": true,
+      "mean_return": 13.333333015441895,
+      "mc_mse": 109.33702087402344
+    },
+    {
+      "role": "nnknn_mlp/s10",
+      "passed": true,
+      "mean_return": 277.3333435058594,
+      "mc_mse": 863.8182983398438
+    },
+    {
+      "role": "mlp_nnknn/s10",
+      "passed": true,
+      "mean_return": 49.66666793823242,
+      "mc_mse": 45.37815475463867
+    },
+    {
+      "role": "nnknn_nnknn/s10",
+      "passed": true,
+      "mean_return": 461.6666564941406,
+      "mc_mse": 2262.612060546875
+    }
+  ],
+  "all_checks_passed": true,
+  "scope": "safe checkpoint restore; exact active IDs and unmasked retrieval; independently reconstructed fixed-set renormalized predictions/loss/credit and actual masked-core interventions"
+}

@@ -1,0 +1,1682 @@
+{
+  "source": {
+    "fingerprint": "dc26517dfadb6d13be47acd74e974d1a3444ce75b848431e97a3ecadbfda9add",
+    "head": "62184318f90f6cf230c0ba2d88c176fb54df8ee3",
+    "entries": 132,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_live_retention_ready_guard_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_live_retention_ready_guard_source_dc26517dfadb.zip",
+    "zip_sha256": "c0828c5fabe1bf5b9571372a915a46d93d3f0d72d3fd7860d4094bb898d02ba0"
+  },
+  "counts": {
+    "actual_retrainings": 18,
+    "batches": 111,
+    "training_samples": 92160,
+    "raw_positive_samples": 351
+  },
+  "runs": [
+    {
+      "budget": 2048,
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "seed": 8,
+      "mode": "ema",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "bd9bccd7ce59799f0d390c25a36404db28451ca6e71e02a75f4ef91fde017b50"
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.419574737548828,
+          "raw_advantage_max": -0.15376055240631104,
+          "bootstrap_value_mean": -15.19297981262207,
+          "training_target_mean": -28.936052322387695,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2048,
+          "samples": 48,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -13.141159057617188,
+          "raw_advantage_max": -0.8137931823730469,
+          "bootstrap_value_mean": -16.786291122436523,
+          "training_target_mean": -26.38579750061035,
+          "ready_behavior_samples": 0
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_2048\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 2048,
+      "role": "acrobot/nnknn_nnknn__hard__preserve_by_id/s8",
+      "seed": 8,
+      "mode": "hard",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "bd9bccd7ce59799f0d390c25a36404db28451ca6e71e02a75f4ef91fde017b50"
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.419574737548828,
+          "raw_advantage_max": -0.15376055240631104,
+          "bootstrap_value_mean": -15.19297981262207,
+          "training_target_mean": -28.936052322387695,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2048,
+          "samples": 48,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -13.141268730163574,
+          "raw_advantage_max": -0.8137950897216797,
+          "bootstrap_value_mean": -16.78624153137207,
+          "training_target_mean": -26.385770797729492,
+          "ready_behavior_samples": 0
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_2048\\acrobot\\nnknn_nnknn__hard__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 2048,
+      "role": "acrobot/nnknn_nnknn__none__preserve_by_id/s8",
+      "seed": 8,
+      "mode": "none",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "bd9bccd7ce59799f0d390c25a36404db28451ca6e71e02a75f4ef91fde017b50"
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.419574737548828,
+          "raw_advantage_max": -0.15376055240631104,
+          "bootstrap_value_mean": -15.19297981262207,
+          "training_target_mean": -28.936052322387695,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2048,
+          "samples": 48,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -13.141268730163574,
+          "raw_advantage_max": -0.8137950897216797,
+          "bootstrap_value_mean": -16.78624153137207,
+          "training_target_mean": -26.385770797729492,
+          "ready_behavior_samples": 0
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_2048\\acrobot\\nnknn_nnknn__none__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 2048,
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "seed": 9,
+      "mode": "ema",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "51bbf5d293de1e1772b61d6575b1aaca8bf27ca307da2bbc6988fc94e8fdbea0"
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -17.34988784790039,
+          "raw_advantage_max": 0.6972160339355469,
+          "bootstrap_value_mean": -15.646829605102539,
+          "training_target_mean": -29.316617965698242,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2048,
+          "samples": 48,
+          "positive": 2,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 2,
+          "raw_advantage_min": -12.73731803894043,
+          "raw_advantage_max": 0.13371381163597107,
+          "bootstrap_value_mean": -25.857040405273438,
+          "training_target_mean": -33.506996154785156,
+          "ready_behavior_samples": 0
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_2048\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 2048,
+      "role": "acrobot/nnknn_nnknn__hard__preserve_by_id/s9",
+      "seed": 9,
+      "mode": "hard",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "51bbf5d293de1e1772b61d6575b1aaca8bf27ca307da2bbc6988fc94e8fdbea0"
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -17.34988784790039,
+          "raw_advantage_max": 0.6972160339355469,
+          "bootstrap_value_mean": -15.646829605102539,
+          "training_target_mean": -29.316617965698242,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2048,
+          "samples": 48,
+          "positive": 2,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 2,
+          "raw_advantage_min": -12.736784934997559,
+          "raw_advantage_max": 0.13476112484931946,
+          "bootstrap_value_mean": -25.856224060058594,
+          "training_target_mean": -33.505550384521484,
+          "ready_behavior_samples": 0
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_2048\\acrobot\\nnknn_nnknn__hard__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 2048,
+      "role": "acrobot/nnknn_nnknn__none__preserve_by_id/s9",
+      "seed": 9,
+      "mode": "none",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "51bbf5d293de1e1772b61d6575b1aaca8bf27ca307da2bbc6988fc94e8fdbea0"
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -17.34988784790039,
+          "raw_advantage_max": 0.6972160339355469,
+          "bootstrap_value_mean": -15.646829605102539,
+          "training_target_mean": -29.316617965698242,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2048,
+          "samples": 48,
+          "positive": 2,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 2,
+          "raw_advantage_min": -12.736784934997559,
+          "raw_advantage_max": 0.13476112484931946,
+          "bootstrap_value_mean": -25.856224060058594,
+          "training_target_mean": -33.505550384521484,
+          "ready_behavior_samples": 0
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_2048\\acrobot\\nnknn_nnknn__none__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 2048,
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "seed": 10,
+      "mode": "ema",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "e9990958cdb23dac77f3da8ab7e1d683687a6d00a96669e5cbb1939bb1078b31"
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -17.156784057617188,
+          "raw_advantage_max": -0.4992046356201172,
+          "bootstrap_value_mean": -15.633734703063965,
+          "training_target_mean": -29.301437377929688,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2048,
+          "samples": 48,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -13.311169624328613,
+          "raw_advantage_max": -0.43231379985809326,
+          "bootstrap_value_mean": -16.85594367980957,
+          "training_target_mean": -26.451446533203125,
+          "ready_behavior_samples": 0
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_2048\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 2048,
+      "role": "acrobot/nnknn_nnknn__hard__preserve_by_id/s10",
+      "seed": 10,
+      "mode": "hard",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "e9990958cdb23dac77f3da8ab7e1d683687a6d00a96669e5cbb1939bb1078b31"
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -17.156784057617188,
+          "raw_advantage_max": -0.4992046356201172,
+          "bootstrap_value_mean": -15.633734703063965,
+          "training_target_mean": -29.301437377929688,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2048,
+          "samples": 48,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -13.311090469360352,
+          "raw_advantage_max": -0.43412041664123535,
+          "bootstrap_value_mean": -16.855802536010742,
+          "training_target_mean": -26.45135498046875,
+          "ready_behavior_samples": 0
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_2048\\acrobot\\nnknn_nnknn__hard__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 2048,
+      "role": "acrobot/nnknn_nnknn__none__preserve_by_id/s10",
+      "seed": 10,
+      "mode": "none",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "e9990958cdb23dac77f3da8ab7e1d683687a6d00a96669e5cbb1939bb1078b31"
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -17.156784057617188,
+          "raw_advantage_max": -0.4992046356201172,
+          "bootstrap_value_mean": -15.633734703063965,
+          "training_target_mean": -29.301437377929688,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2048,
+          "samples": 48,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -13.311090469360352,
+          "raw_advantage_max": -0.43412041664123535,
+          "bootstrap_value_mean": -16.855802536010742,
+          "training_target_mean": -26.45135498046875,
+          "ready_behavior_samples": 0
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_2048\\acrobot\\nnknn_nnknn__none__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 8192,
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "seed": 8,
+      "mode": "ema",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "bd9bccd7ce59799f0d390c25a36404db28451ca6e71e02a75f4ef91fde017b50"
+        },
+        {
+          "first_ready_step": 7001,
+          "case_entries": 8,
+          "action_counts": [
+            2,
+            3,
+            3
+          ],
+          "behavior_epsilon": 0.05
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.419574737548828,
+          "raw_advantage_max": -0.15376055240631104,
+          "bootstrap_value_mean": -15.19297981262207,
+          "training_target_mean": -28.936052322387695,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 3000,
+          "samples": 1000,
+          "positive": 4,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 4,
+          "raw_advantage_min": -15.225922584533691,
+          "raw_advantage_max": 0.8811929225921631,
+          "bootstrap_value_mean": -16.941234588623047,
+          "training_target_mean": -30.483989715576172,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 4000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.53703498840332,
+          "raw_advantage_max": -0.8383331298828125,
+          "bootstrap_value_mean": -17.871456146240234,
+          "training_target_mean": -31.336299896240234,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 5000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -17.205137252807617,
+          "raw_advantage_max": -0.9404544830322266,
+          "bootstrap_value_mean": -17.719749450683594,
+          "training_target_mean": -31.14471435546875,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 6000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -16.75457191467285,
+          "raw_advantage_max": 0.05228433012962341,
+          "bootstrap_value_mean": -18.86766242980957,
+          "training_target_mean": -32.04527282714844,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 7000,
+          "samples": 1000,
+          "positive": 3,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 3,
+          "raw_advantage_min": -16.33420181274414,
+          "raw_advantage_max": 0.9000254273414612,
+          "bootstrap_value_mean": -18.09074592590332,
+          "training_target_mean": -31.400121688842773,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 8000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.39466094970703,
+          "raw_advantage_max": -0.16916275024414062,
+          "bootstrap_value_mean": -18.873367309570312,
+          "training_target_mean": -32.08102798461914,
+          "ready_behavior_samples": 1000
+        },
+        {
+          "step": 8192,
+          "samples": 192,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -17.885738372802734,
+          "raw_advantage_max": 1.6484413146972656,
+          "bootstrap_value_mean": -21.5887508392334,
+          "training_target_mean": -33.54328918457031,
+          "ready_behavior_samples": 192
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_8192\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 8192,
+      "role": "acrobot/nnknn_nnknn__hard__preserve_by_id/s8",
+      "seed": 8,
+      "mode": "hard",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "bd9bccd7ce59799f0d390c25a36404db28451ca6e71e02a75f4ef91fde017b50"
+        },
+        {
+          "first_ready_step": 7001,
+          "case_entries": 8,
+          "action_counts": [
+            2,
+            3,
+            3
+          ],
+          "behavior_epsilon": 0.05
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.419574737548828,
+          "raw_advantage_max": -0.15376055240631104,
+          "bootstrap_value_mean": -15.19297981262207,
+          "training_target_mean": -28.936052322387695,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 3000,
+          "samples": 1000,
+          "positive": 4,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 4,
+          "raw_advantage_min": -15.224287033081055,
+          "raw_advantage_max": 0.8784863948822021,
+          "bootstrap_value_mean": -16.939990997314453,
+          "training_target_mean": -30.48288917541504,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 4000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.551822662353516,
+          "raw_advantage_max": -0.8383388519287109,
+          "bootstrap_value_mean": -17.868494033813477,
+          "training_target_mean": -31.33382225036621,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 5000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -17.20550537109375,
+          "raw_advantage_max": -0.9392642974853516,
+          "bootstrap_value_mean": -17.718425750732422,
+          "training_target_mean": -31.143619537353516,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 6000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -16.756011962890625,
+          "raw_advantage_max": 0.053270041942596436,
+          "bootstrap_value_mean": -18.86464500427246,
+          "training_target_mean": -32.043479919433594,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 7000,
+          "samples": 1000,
+          "positive": 3,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 3,
+          "raw_advantage_min": -16.339279174804688,
+          "raw_advantage_max": 0.9052534103393555,
+          "bootstrap_value_mean": -18.09760093688965,
+          "training_target_mean": -31.405759811401367,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 8000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.399675369262695,
+          "raw_advantage_max": -0.16903305053710938,
+          "bootstrap_value_mean": -18.879579544067383,
+          "training_target_mean": -32.086280822753906,
+          "ready_behavior_samples": 1000
+        },
+        {
+          "step": 8192,
+          "samples": 192,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -17.88210678100586,
+          "raw_advantage_max": 1.6529369354248047,
+          "bootstrap_value_mean": -21.58472442626953,
+          "training_target_mean": -33.54032897949219,
+          "ready_behavior_samples": 192
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 8192,
+      "role": "acrobot/nnknn_nnknn__none__preserve_by_id/s8",
+      "seed": 8,
+      "mode": "none",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "bd9bccd7ce59799f0d390c25a36404db28451ca6e71e02a75f4ef91fde017b50"
+        },
+        {
+          "first_ready_step": 7001,
+          "case_entries": 8,
+          "action_counts": [
+            2,
+            3,
+            3
+          ],
+          "behavior_epsilon": 0.05
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.419574737548828,
+          "raw_advantage_max": -0.15376055240631104,
+          "bootstrap_value_mean": -15.19297981262207,
+          "training_target_mean": -28.936052322387695,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 3000,
+          "samples": 1000,
+          "positive": 4,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 4,
+          "raw_advantage_min": -15.224287033081055,
+          "raw_advantage_max": 0.8784863948822021,
+          "bootstrap_value_mean": -16.939990997314453,
+          "training_target_mean": -30.48288917541504,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 4000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.551822662353516,
+          "raw_advantage_max": -0.8383388519287109,
+          "bootstrap_value_mean": -17.868494033813477,
+          "training_target_mean": -31.33382225036621,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 5000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -17.20550537109375,
+          "raw_advantage_max": -0.9392642974853516,
+          "bootstrap_value_mean": -17.718425750732422,
+          "training_target_mean": -31.143619537353516,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 6000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -16.756011962890625,
+          "raw_advantage_max": 0.053270041942596436,
+          "bootstrap_value_mean": -18.86464500427246,
+          "training_target_mean": -32.043479919433594,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 7000,
+          "samples": 1000,
+          "positive": 3,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 3,
+          "raw_advantage_min": -16.339279174804688,
+          "raw_advantage_max": 0.9052534103393555,
+          "bootstrap_value_mean": -18.09760093688965,
+          "training_target_mean": -31.405759811401367,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 8000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.399675369262695,
+          "raw_advantage_max": -0.16903305053710938,
+          "bootstrap_value_mean": -18.879579544067383,
+          "training_target_mean": -32.086280822753906,
+          "ready_behavior_samples": 1000
+        },
+        {
+          "step": 8192,
+          "samples": 192,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -17.88210678100586,
+          "raw_advantage_max": 1.6529369354248047,
+          "bootstrap_value_mean": -21.58472442626953,
+          "training_target_mean": -33.54032897949219,
+          "ready_behavior_samples": 192
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_8192\\acrobot\\nnknn_nnknn__none__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 8192,
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "seed": 9,
+      "mode": "ema",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "51bbf5d293de1e1772b61d6575b1aaca8bf27ca307da2bbc6988fc94e8fdbea0"
+        },
+        {
+          "first_ready_step": 7001,
+          "case_entries": 9,
+          "action_counts": [
+            3,
+            2,
+            4
+          ],
+          "behavior_epsilon": 0.05
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -17.34988784790039,
+          "raw_advantage_max": 0.6972160339355469,
+          "bootstrap_value_mean": -15.646829605102539,
+          "training_target_mean": -29.316617965698242,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 3000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -18.647960662841797,
+          "raw_advantage_max": 2.782167434692383,
+          "bootstrap_value_mean": -22.30184555053711,
+          "training_target_mean": -34.81578063964844,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 4000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.128196716308594,
+          "raw_advantage_max": -0.7167205810546875,
+          "bootstrap_value_mean": -23.995044708251953,
+          "training_target_mean": -36.22581100463867,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 5000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.802350997924805,
+          "raw_advantage_max": -0.5772664546966553,
+          "bootstrap_value_mean": -26.1280460357666,
+          "training_target_mean": -38.05498504638672,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 6000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -20.76146697998047,
+          "raw_advantage_max": -0.24401164054870605,
+          "bootstrap_value_mean": -28.849504470825195,
+          "training_target_mean": -40.30292510986328,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 7000,
+          "samples": 1000,
+          "positive": 7,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 7,
+          "raw_advantage_min": -21.397687911987305,
+          "raw_advantage_max": 3.918118715286255,
+          "bootstrap_value_mean": -31.131004333496094,
+          "training_target_mean": -42.14508819580078,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 7500,
+          "samples": 500,
+          "positive": 30,
+          "positive_true_terminal": 2,
+          "positive_last32_in_episode": 29,
+          "raw_advantage_min": -20.62619972229004,
+          "raw_advantage_max": 26.934877395629883,
+          "bootstrap_value_mean": -26.69124412536621,
+          "training_target_mean": -36.051490783691406,
+          "ready_behavior_samples": 500
+        },
+        {
+          "step": 7849,
+          "samples": 349,
+          "positive": 39,
+          "positive_true_terminal": 2,
+          "positive_last32_in_episode": 39,
+          "raw_advantage_min": -26.586528778076172,
+          "raw_advantage_max": 28.576868057250977,
+          "bootstrap_value_mean": -26.79024887084961,
+          "training_target_mean": -34.87569808959961,
+          "ready_behavior_samples": 349
+        },
+        {
+          "step": 8192,
+          "samples": 343,
+          "positive": 18,
+          "positive_true_terminal": 1,
+          "positive_last32_in_episode": 18,
+          "raw_advantage_min": -22.028547286987305,
+          "raw_advantage_max": 33.295318603515625,
+          "bootstrap_value_mean": -26.948108673095703,
+          "training_target_mean": -36.08414840698242,
+          "ready_behavior_samples": 343
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_8192\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 8192,
+      "role": "acrobot/nnknn_nnknn__hard__preserve_by_id/s9",
+      "seed": 9,
+      "mode": "hard",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "51bbf5d293de1e1772b61d6575b1aaca8bf27ca307da2bbc6988fc94e8fdbea0"
+        },
+        {
+          "first_ready_step": 7001,
+          "case_entries": 9,
+          "action_counts": [
+            3,
+            2,
+            4
+          ],
+          "behavior_epsilon": 0.05
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -17.34988784790039,
+          "raw_advantage_max": 0.6972160339355469,
+          "bootstrap_value_mean": -15.646829605102539,
+          "training_target_mean": -29.316617965698242,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 3000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -18.647029876708984,
+          "raw_advantage_max": 2.7846927642822266,
+          "bootstrap_value_mean": -22.297266006469727,
+          "training_target_mean": -34.81188201904297,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 4000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.159109115600586,
+          "raw_advantage_max": -0.7170333862304688,
+          "bootstrap_value_mean": -24.000347137451172,
+          "training_target_mean": -36.230140686035156,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 5000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.803531646728516,
+          "raw_advantage_max": -0.5873368382453918,
+          "bootstrap_value_mean": -26.134117126464844,
+          "training_target_mean": -38.06026077270508,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 6000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -20.76317596435547,
+          "raw_advantage_max": -0.24305486679077148,
+          "bootstrap_value_mean": -28.847532272338867,
+          "training_target_mean": -40.3012809753418,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 7000,
+          "samples": 1000,
+          "positive": 7,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 7,
+          "raw_advantage_min": -21.39463996887207,
+          "raw_advantage_max": 3.7843778133392334,
+          "bootstrap_value_mean": -31.118038177490234,
+          "training_target_mean": -42.13792037963867,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 7500,
+          "samples": 500,
+          "positive": 30,
+          "positive_true_terminal": 2,
+          "positive_last32_in_episode": 29,
+          "raw_advantage_min": -20.574384689331055,
+          "raw_advantage_max": 26.9344482421875,
+          "bootstrap_value_mean": -26.671632766723633,
+          "training_target_mean": -36.03546142578125,
+          "ready_behavior_samples": 500
+        },
+        {
+          "step": 7849,
+          "samples": 349,
+          "positive": 39,
+          "positive_true_terminal": 2,
+          "positive_last32_in_episode": 39,
+          "raw_advantage_min": -26.56208038330078,
+          "raw_advantage_max": 28.573875427246094,
+          "bootstrap_value_mean": -26.78959083557129,
+          "training_target_mean": -34.8748893737793,
+          "ready_behavior_samples": 349
+        },
+        {
+          "step": 8192,
+          "samples": 343,
+          "positive": 18,
+          "positive_true_terminal": 1,
+          "positive_last32_in_episode": 18,
+          "raw_advantage_min": -21.777538299560547,
+          "raw_advantage_max": 32.147884368896484,
+          "bootstrap_value_mean": -26.95827293395996,
+          "training_target_mean": -36.09334182739258,
+          "ready_behavior_samples": 343
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 8192,
+      "role": "acrobot/nnknn_nnknn__none__preserve_by_id/s9",
+      "seed": 9,
+      "mode": "none",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "51bbf5d293de1e1772b61d6575b1aaca8bf27ca307da2bbc6988fc94e8fdbea0"
+        },
+        {
+          "first_ready_step": 7001,
+          "case_entries": 9,
+          "action_counts": [
+            3,
+            2,
+            4
+          ],
+          "behavior_epsilon": 0.05
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -17.34988784790039,
+          "raw_advantage_max": 0.6972160339355469,
+          "bootstrap_value_mean": -15.646829605102539,
+          "training_target_mean": -29.316617965698242,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 3000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -18.647029876708984,
+          "raw_advantage_max": 2.7846927642822266,
+          "bootstrap_value_mean": -22.297266006469727,
+          "training_target_mean": -34.81188201904297,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 4000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.159109115600586,
+          "raw_advantage_max": -0.7170333862304688,
+          "bootstrap_value_mean": -24.000347137451172,
+          "training_target_mean": -36.230140686035156,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 5000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -18.803531646728516,
+          "raw_advantage_max": -0.5873368382453918,
+          "bootstrap_value_mean": -26.134117126464844,
+          "training_target_mean": -38.06026077270508,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 6000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -20.76317596435547,
+          "raw_advantage_max": -0.24305486679077148,
+          "bootstrap_value_mean": -28.847532272338867,
+          "training_target_mean": -40.3012809753418,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 7000,
+          "samples": 1000,
+          "positive": 7,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 7,
+          "raw_advantage_min": -21.39463996887207,
+          "raw_advantage_max": 3.7843778133392334,
+          "bootstrap_value_mean": -31.118038177490234,
+          "training_target_mean": -42.13792037963867,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 7500,
+          "samples": 500,
+          "positive": 30,
+          "positive_true_terminal": 2,
+          "positive_last32_in_episode": 29,
+          "raw_advantage_min": -20.574384689331055,
+          "raw_advantage_max": 26.9344482421875,
+          "bootstrap_value_mean": -26.671632766723633,
+          "training_target_mean": -36.03546142578125,
+          "ready_behavior_samples": 500
+        },
+        {
+          "step": 7849,
+          "samples": 349,
+          "positive": 39,
+          "positive_true_terminal": 2,
+          "positive_last32_in_episode": 39,
+          "raw_advantage_min": -26.56208038330078,
+          "raw_advantage_max": 28.573875427246094,
+          "bootstrap_value_mean": -26.78959083557129,
+          "training_target_mean": -34.8748893737793,
+          "ready_behavior_samples": 349
+        },
+        {
+          "step": 8192,
+          "samples": 343,
+          "positive": 18,
+          "positive_true_terminal": 1,
+          "positive_last32_in_episode": 18,
+          "raw_advantage_min": -21.777538299560547,
+          "raw_advantage_max": 32.147884368896484,
+          "bootstrap_value_mean": -26.95827293395996,
+          "training_target_mean": -36.09334182739258,
+          "ready_behavior_samples": 343
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_8192\\acrobot\\nnknn_nnknn__none__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 8192,
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "seed": 10,
+      "mode": "ema",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "e9990958cdb23dac77f3da8ab7e1d683687a6d00a96669e5cbb1939bb1078b31"
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -17.156784057617188,
+          "raw_advantage_max": -0.4992046356201172,
+          "bootstrap_value_mean": -15.633734703063965,
+          "training_target_mean": -29.301437377929688,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 3000,
+          "samples": 1000,
+          "positive": 3,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 3,
+          "raw_advantage_min": -16.43729019165039,
+          "raw_advantage_max": 0.9068660736083984,
+          "bootstrap_value_mean": -18.323726654052734,
+          "training_target_mean": -31.606050491333008,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 4000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.021759033203125,
+          "raw_advantage_max": -1.1599407196044922,
+          "bootstrap_value_mean": -17.986169815063477,
+          "training_target_mean": -31.39207649230957,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 5000,
+          "samples": 1000,
+          "positive": 3,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 3,
+          "raw_advantage_min": -17.264617919921875,
+          "raw_advantage_max": 4.577308177947998,
+          "bootstrap_value_mean": -19.11432647705078,
+          "training_target_mean": -32.302310943603516,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 6000,
+          "samples": 1000,
+          "positive": 2,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 2,
+          "raw_advantage_min": -17.39715576171875,
+          "raw_advantage_max": 1.5688029527664185,
+          "bootstrap_value_mean": -20.62334442138672,
+          "training_target_mean": -33.57536697387695,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 7000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -17.440162658691406,
+          "raw_advantage_max": 0.25972557067871094,
+          "bootstrap_value_mean": -23.221811294555664,
+          "training_target_mean": -35.800384521484375,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 8000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -17.250356674194336,
+          "raw_advantage_max": -1.342813491821289,
+          "bootstrap_value_mean": -23.60917854309082,
+          "training_target_mean": -36.08693313598633,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 8192,
+          "samples": 192,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -15.719100952148438,
+          "raw_advantage_max": -0.808807373046875,
+          "bootstrap_value_mean": -25.40398406982422,
+          "training_target_mean": -37.27933883666992,
+          "ready_behavior_samples": 0
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_8192\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 8192,
+      "role": "acrobot/nnknn_nnknn__hard__preserve_by_id/s10",
+      "seed": 10,
+      "mode": "hard",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "e9990958cdb23dac77f3da8ab7e1d683687a6d00a96669e5cbb1939bb1078b31"
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -17.156784057617188,
+          "raw_advantage_max": -0.4992046356201172,
+          "bootstrap_value_mean": -15.633734703063965,
+          "training_target_mean": -29.301437377929688,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 3000,
+          "samples": 1000,
+          "positive": 3,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 3,
+          "raw_advantage_min": -16.435577392578125,
+          "raw_advantage_max": 0.9052200317382812,
+          "bootstrap_value_mean": -18.317323684692383,
+          "training_target_mean": -31.600717544555664,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 4000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.020442962646484,
+          "raw_advantage_max": -1.1601715087890625,
+          "bootstrap_value_mean": -17.985260009765625,
+          "training_target_mean": -31.3913516998291,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 5000,
+          "samples": 1000,
+          "positive": 3,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 3,
+          "raw_advantage_min": -17.268680572509766,
+          "raw_advantage_max": 4.573947906494141,
+          "bootstrap_value_mean": -19.116485595703125,
+          "training_target_mean": -32.30413818359375,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 6000,
+          "samples": 1000,
+          "positive": 2,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 2,
+          "raw_advantage_min": -17.397159576416016,
+          "raw_advantage_max": 1.5639413595199585,
+          "bootstrap_value_mean": -20.629802703857422,
+          "training_target_mean": -33.58094787597656,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 7000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -17.468889236450195,
+          "raw_advantage_max": 0.2581501007080078,
+          "bootstrap_value_mean": -23.22532081604004,
+          "training_target_mean": -35.80333709716797,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 8000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -17.2421875,
+          "raw_advantage_max": -1.3380851745605469,
+          "bootstrap_value_mean": -23.616336822509766,
+          "training_target_mean": -36.09297180175781,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 8192,
+          "samples": 192,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -15.708984375,
+          "raw_advantage_max": -0.8075103759765625,
+          "bootstrap_value_mean": -25.411178588867188,
+          "training_target_mean": -37.2851676940918,
+          "ready_behavior_samples": 0
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_8192\\acrobot\\nnknn_nnknn__hard__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "budget": 8192,
+      "role": "acrobot/nnknn_nnknn__none__preserve_by_id/s10",
+      "seed": 10,
+      "mode": "none",
+      "selection_events": [
+        {
+          "prefix2048_sha256": "e9990958cdb23dac77f3da8ab7e1d683687a6d00a96669e5cbb1939bb1078b31"
+        }
+      ],
+      "batches": [
+        {
+          "step": 1000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.806705474853516,
+          "raw_advantage_max": -1.0,
+          "bootstrap_value_mean": 0.0,
+          "training_target_mean": -16.2753963470459,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 2000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -17.156784057617188,
+          "raw_advantage_max": -0.4992046356201172,
+          "bootstrap_value_mean": -15.633734703063965,
+          "training_target_mean": -29.301437377929688,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 3000,
+          "samples": 1000,
+          "positive": 3,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 3,
+          "raw_advantage_min": -16.435577392578125,
+          "raw_advantage_max": 0.9052200317382812,
+          "bootstrap_value_mean": -18.317323684692383,
+          "training_target_mean": -31.600717544555664,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 4000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -16.020442962646484,
+          "raw_advantage_max": -1.1601715087890625,
+          "bootstrap_value_mean": -17.985260009765625,
+          "training_target_mean": -31.3913516998291,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 5000,
+          "samples": 1000,
+          "positive": 3,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 3,
+          "raw_advantage_min": -17.268680572509766,
+          "raw_advantage_max": 4.573947906494141,
+          "bootstrap_value_mean": -19.116485595703125,
+          "training_target_mean": -32.30413818359375,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 6000,
+          "samples": 1000,
+          "positive": 2,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 2,
+          "raw_advantage_min": -17.397159576416016,
+          "raw_advantage_max": 1.5639413595199585,
+          "bootstrap_value_mean": -20.629802703857422,
+          "training_target_mean": -33.58094787597656,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 7000,
+          "samples": 1000,
+          "positive": 1,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 1,
+          "raw_advantage_min": -17.468889236450195,
+          "raw_advantage_max": 0.2581501007080078,
+          "bootstrap_value_mean": -23.22532081604004,
+          "training_target_mean": -35.80333709716797,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 8000,
+          "samples": 1000,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -17.2421875,
+          "raw_advantage_max": -1.3380851745605469,
+          "bootstrap_value_mean": -23.616336822509766,
+          "training_target_mean": -36.09297180175781,
+          "ready_behavior_samples": 0
+        },
+        {
+          "step": 8192,
+          "samples": 192,
+          "positive": 0,
+          "positive_true_terminal": 0,
+          "positive_last32_in_episode": 0,
+          "raw_advantage_min": -15.708984375,
+          "raw_advantage_max": -0.8075103759765625,
+          "bootstrap_value_mean": -25.411178588867188,
+          "training_target_mean": -37.2851676940918,
+          "ready_behavior_samples": 0
+        }
+      ],
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\acrobot_startup_8192\\acrobot\\nnknn_nnknn__none__preserve_by_id\\s10",
+      "all_checks_passed": true
+    }
+  ],
+  "identical_2048_experience_prefix_pairs": 9,
+  "all_checks_passed": true
+}

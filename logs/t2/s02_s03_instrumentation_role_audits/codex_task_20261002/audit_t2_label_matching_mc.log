@@ -1,0 +1,145 @@
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 1/24 acrobot/nnknn_nnknn__hard__preserve_by_id/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 2/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 3/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_trainable/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 4/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 5/24 acrobot/nnknn_nnknn__hard__preserve_by_id/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 6/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 7/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_trainable/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 8/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 9/24 acrobot/nnknn_nnknn__hard__preserve_by_id/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 10/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 11/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_trainable/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 12/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 13/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 14/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 15/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 16/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 17/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 18/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 19/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 20/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s8
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 21/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 22/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s9
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 23/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_mutable/s10
+cases trainable: False
+labels trainable: False
+cases trainable: False
+labels trainable: False
+Enforcing normalize_over_cases = True for regression task.
+audited 24/24 acrobot/nnknn_nnknn__hard__preserve_by_id__labels_hybrid/s10
+{"runs": 24, "checkpoints": 48, "events": 192, "interventions": 1536}

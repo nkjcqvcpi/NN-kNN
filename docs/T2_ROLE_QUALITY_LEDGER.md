@@ -41,8 +41,8 @@ Acrobot512 provides no pre-gradient quality evidence before its first insertion;
 2,048 was added explicitly. A finite-input accumulated-mass overflow guard was
 then added and the complete source used for all12 paired real trainings,
 with learning states matching earlier source. Raw experimental runs remain in
-`results/t2_pi20260920/continuation_20261005/quality_ledger[_2048]/`; completed
-paired replays reside in this task's `work/quality_complete/`. Task reports
+`results/t2/s02_s03_instrumentation_role_audits/pi20260920/continuation_20261005/quality_ledger[_2048]/`; completed
+paired replays reside in this task's `results/t2/s02_s03_instrumentation_role_audits/codex_task_20261002/runs/quality_complete/`. Task reports
 `neural-cbr-t2-quality-results.md`, observer and direct verification JSONs.
 
 This is quality/provenance infrastructure, not an activated quality selector.

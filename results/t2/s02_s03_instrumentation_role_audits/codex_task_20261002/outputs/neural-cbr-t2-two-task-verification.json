@@ -1,0 +1,472 @@
+{
+  "source": {
+    "fingerprint": "39906b4043b44b338e52b2622c40ed6689c11313c8874f16f76d5d998a1f1650",
+    "head": "66a658d15d0cfe85d6eff89fde1ed1ffb83b1dcb",
+    "entries": 121,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_two_task_2048_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_two_task_2048_source_39906b4043b4.zip",
+    "zip_sha256": "b88c3d010ea81d62aaad549aeebcdf5d376b879726d62fa38d5a5054024fed69"
+  },
+  "counts": {
+    "runs": 24,
+    "checkpoints": 48,
+    "events": 96,
+    "interventions": 768
+  },
+  "runs": [
+    {
+      "role": "cartpole/mlp_mlp/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 349.3333435058594,
+      "mc_mse": 213.49667358398438
+    },
+    {
+      "role": "cartpole/nnknn_mlp/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 139.0,
+      "mc_mse": 3126.516845703125
+    },
+    {
+      "role": "cartpole/mlp_nnknn/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 74.0,
+      "mc_mse": 50.467491149902344
+    },
+    {
+      "role": "cartpole/nnknn_nnknn/s8",
+      "task": "cartpole",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 103.33333587646484,
+      "mc_mse": 857.0075073242188
+    },
+    {
+      "role": "cartpole/mlp_mlp/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 98.33333587646484,
+      "mc_mse": 389.2958679199219
+    },
+    {
+      "role": "cartpole/nnknn_mlp/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 89.66666412353516,
+      "mc_mse": 791.2838134765625
+    },
+    {
+      "role": "cartpole/mlp_nnknn/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 64.66666412353516,
+      "mc_mse": 68.0426025390625
+    },
+    {
+      "role": "cartpole/nnknn_nnknn/s9",
+      "task": "cartpole",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 86.0,
+      "mc_mse": 768.9697875976562
+    },
+    {
+      "role": "cartpole/mlp_mlp/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 72.66666412353516,
+      "mc_mse": 236.4360809326172
+    },
+    {
+      "role": "cartpole/nnknn_mlp/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 132.6666717529297,
+      "mc_mse": 1626.51904296875
+    },
+    {
+      "role": "cartpole/mlp_nnknn/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 102.33333587646484,
+      "mc_mse": 22.781110763549805
+    },
+    {
+      "role": "cartpole/nnknn_nnknn/s10",
+      "task": "cartpole",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": 246.0,
+      "mc_mse": 1414.195556640625
+    },
+    {
+      "role": "acrobot/mlp_mlp/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": -500.0,
+      "mc_mse": 6988.35595703125
+    },
+    {
+      "role": "acrobot/nnknn_mlp/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 7012.560546875
+    },
+    {
+      "role": "acrobot/mlp_nnknn/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": -500.0,
+      "mc_mse": 4752.3330078125
+    },
+    {
+      "role": "acrobot/nnknn_nnknn/s8",
+      "task": "acrobot",
+      "seed": 8,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4464.02685546875
+    },
+    {
+      "role": "acrobot/mlp_mlp/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": -500.0,
+      "mc_mse": 7019.94384765625
+    },
+    {
+      "role": "acrobot/nnknn_mlp/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 6795.69287109375
+    },
+    {
+      "role": "acrobot/mlp_nnknn/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": -500.0,
+      "mc_mse": 3587.28955078125
+    },
+    {
+      "role": "acrobot/nnknn_nnknn/s9",
+      "task": "acrobot",
+      "seed": 9,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 3551.03759765625
+    },
+    {
+      "role": "acrobot/mlp_mlp/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": -500.0,
+      "mc_mse": 6996.62744140625
+    },
+    {
+      "role": "acrobot/nnknn_mlp/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 6984.677734375
+    },
+    {
+      "role": "acrobot/mlp_nnknn/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": true,
+      "mean_return": -500.0,
+      "mc_mse": 4224.74951171875
+    },
+    {
+      "role": "acrobot/nnknn_nnknn/s10",
+      "task": "acrobot",
+      "seed": 10,
+      "passed": true,
+      "actor_evaluation_ready": false,
+      "mean_return": -458.0,
+      "mc_mse": 4336.8974609375
+    }
+  ],
+  "all_checks_passed": true,
+  "scope": "safe checkpoint restore; exact active IDs and unmasked retrieval; independently reconstructed fixed-set renormalized predictions/loss/credit and actual masked-core interventions",
+  "admission_diagnosis": [
+    {
+      "role": "acrobot/mlp_mlp/s8",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 0,
+      "actor_case_entries": null,
+      "action_counts": null,
+      "evaluation_ready": true
+    },
+    {
+      "role": "acrobot/mlp_mlp/s9",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 0,
+      "actor_case_entries": null,
+      "action_counts": null,
+      "evaluation_ready": true
+    },
+    {
+      "role": "acrobot/mlp_mlp/s10",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 0,
+      "actor_case_entries": null,
+      "action_counts": null,
+      "evaluation_ready": true
+    },
+    {
+      "role": "acrobot/mlp_nnknn/s8",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 4,
+      "actor_case_entries": null,
+      "action_counts": null,
+      "evaluation_ready": true
+    },
+    {
+      "role": "acrobot/mlp_nnknn/s9",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 0,
+      "actor_case_entries": null,
+      "action_counts": null,
+      "evaluation_ready": true
+    },
+    {
+      "role": "acrobot/mlp_nnknn/s10",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 0,
+      "actor_case_entries": null,
+      "action_counts": null,
+      "evaluation_ready": true
+    },
+    {
+      "role": "acrobot/nnknn_mlp/s8",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 0,
+      "actor_case_entries": 0,
+      "action_counts": [
+        0,
+        0,
+        0
+      ],
+      "evaluation_ready": false
+    },
+    {
+      "role": "acrobot/nnknn_mlp/s9",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 0,
+      "actor_case_entries": 0,
+      "action_counts": [
+        0,
+        0,
+        0
+      ],
+      "evaluation_ready": false
+    },
+    {
+      "role": "acrobot/nnknn_mlp/s10",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 0,
+      "actor_case_entries": 0,
+      "action_counts": [
+        0,
+        0,
+        0
+      ],
+      "evaluation_ready": false
+    },
+    {
+      "role": "acrobot/nnknn_nnknn/s8",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 0,
+      "actor_case_entries": 0,
+      "action_counts": [
+        0,
+        0,
+        0
+      ],
+      "evaluation_ready": false
+    },
+    {
+      "role": "acrobot/nnknn_nnknn/s9",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 3,
+      "actor_case_entries": 3,
+      "action_counts": [
+        2,
+        1,
+        0
+      ],
+      "evaluation_ready": false
+    },
+    {
+      "role": "acrobot/nnknn_nnknn/s10",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 0,
+      "actor_case_entries": 0,
+      "action_counts": [
+        0,
+        0,
+        0
+      ],
+      "evaluation_ready": false
+    },
+    {
+      "role": "cartpole/mlp_mlp/s8",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 1979,
+      "actor_case_entries": null,
+      "action_counts": null,
+      "evaluation_ready": true
+    },
+    {
+      "role": "cartpole/mlp_mlp/s9",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 1992,
+      "actor_case_entries": null,
+      "action_counts": null,
+      "evaluation_ready": true
+    },
+    {
+      "role": "cartpole/mlp_mlp/s10",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 1968,
+      "actor_case_entries": null,
+      "action_counts": null,
+      "evaluation_ready": true
+    },
+    {
+      "role": "cartpole/mlp_nnknn/s8",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 1287,
+      "actor_case_entries": null,
+      "action_counts": null,
+      "evaluation_ready": true
+    },
+    {
+      "role": "cartpole/mlp_nnknn/s9",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 1233,
+      "actor_case_entries": null,
+      "action_counts": null,
+      "evaluation_ready": true
+    },
+    {
+      "role": "cartpole/mlp_nnknn/s10",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 1175,
+      "actor_case_entries": null,
+      "action_counts": null,
+      "evaluation_ready": true
+    },
+    {
+      "role": "cartpole/nnknn_mlp/s8",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 2031,
+      "actor_case_entries": 128,
+      "action_counts": [
+        61,
+        67
+      ],
+      "evaluation_ready": true
+    },
+    {
+      "role": "cartpole/nnknn_mlp/s9",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 2031,
+      "actor_case_entries": 128,
+      "action_counts": [
+        58,
+        70
+      ],
+      "evaluation_ready": true
+    },
+    {
+      "role": "cartpole/nnknn_mlp/s10",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 2021,
+      "actor_case_entries": 128,
+      "action_counts": [
+        55,
+        73
+      ],
+      "evaluation_ready": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn/s8",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 1605,
+      "actor_case_entries": 128,
+      "action_counts": [
+        47,
+        81
+      ],
+      "evaluation_ready": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn/s9",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 1575,
+      "actor_case_entries": 128,
+      "action_counts": [
+        65,
+        63
+      ],
+      "evaluation_ready": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn/s10",
+      "samples": 2048,
+      "positive_raw_advantage_samples": 1771,
+      "actor_case_entries": 128,
+      "action_counts": [
+        60,
+        68
+      ],
+      "evaluation_ready": true
+    }
+  ]
+}

@@ -1,0 +1,206 @@
+{
+  "source": {
+    "fingerprint": "b1a804d18abf27f64200d7b0f66fd8e149d465c87105b663dc4599e026bef73b",
+    "head": "62184318f90f6cf230c0ba2d88c176fb54df8ee3",
+    "entries": 132,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_live_retention_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_live_retention_source_b1a804d18abf.zip",
+    "zip_sha256": "0d1a66302a8571ada60a41927cee0dd3d21902834df2df8e03a0251925c2515e"
+  },
+  "counts": {
+    "actual_retrainings": 30,
+    "noop_pairs": 6,
+    "reference_batches": 257,
+    "training_queries": 7418,
+    "retention_calls": 99,
+    "candidates": 47701,
+    "removed": 821,
+    "moment_tensors": 2588,
+    "other_optimizer_states": 7108,
+    "target_alignments": 589,
+    "snapshots": 99
+  },
+  "runs": [
+    {
+      "mode": "off",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_off\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "off",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_off\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "off",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_off\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "off",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_off\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "off",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_off\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "off",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_off\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "noop",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_noop\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "noop",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_noop\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "noop",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_noop\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "noop",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_noop\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "noop",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_noop\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "noop",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_noop\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "actor",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_actor\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "actor",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_actor\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "actor",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_actor\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "actor",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_actor\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "actor",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_actor\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "actor",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_actor\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "critic",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_critic\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "critic",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_critic\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "critic",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_critic\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "critic",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_critic\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "critic",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_critic\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "critic",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_critic\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "both",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_both\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "both",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_both\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "both",
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_both\\cartpole\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "both",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_both\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s8",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "both",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_both\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s9",
+      "all_checks_passed": true
+    },
+    {
+      "mode": "both",
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\live_retention_both\\acrobot\\nnknn_nnknn__ema__preserve_by_id\\s10",
+      "all_checks_passed": true
+    }
+  ],
+  "all_checks_passed": true
+}

@@ -1,0 +1,79 @@
+{
+  "counts": {
+    "runs": 9,
+    "snapshots": 18,
+    "critic_gae_events": 36,
+    "actor_surrogate_events": 0,
+    "interventions": 288,
+    "exact_online_reference_pairs": 3
+  },
+  "runs": [
+    {
+      "role": "acrobot/nnknn_nnknn__ema/s8",
+      "training_events": 4,
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__hard/s8",
+      "training_events": 4,
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__none/s8",
+      "training_events": 4,
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema/s9",
+      "training_events": 4,
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__hard/s9",
+      "training_events": 4,
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__none/s9",
+      "training_events": 4,
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema/s10",
+      "training_events": 4,
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__hard/s10",
+      "training_events": 4,
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__none/s10",
+      "training_events": 4,
+      "passed": true
+    }
+  ],
+  "all_checks_passed": true,
+  "snapshot_sha256": {
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__ema\\s8\\case_audit_states\\step_2000.pt": "61ec6deb560c030c87c6898bf4d7c8f47cb409835f710acc39ba6a2aa044d085",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__ema\\s8\\case_audit_states\\step_2048.pt": "05de61d68c70d0725ae9b5c2c05260f58776c44a18b1dd7f6aa9469f067a93f9",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__hard\\s8\\case_audit_states\\step_2000.pt": "53a541734fc1a4f8e7d5c55d8352162b81d46ae58e70434259d3a3a4652180a9",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__hard\\s8\\case_audit_states\\step_2048.pt": "8ce882dac7b5b8fd4523344ff1d6d0b3a189c25e402a2baa1d852309af5590eb",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__none\\s8\\case_audit_states\\step_2000.pt": "8dd29edd716327e13e001be7d562c8d1cdfa093000f72f444df49a6040767d55",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__none\\s8\\case_audit_states\\step_2048.pt": "66fc2a4cdc2bdd9e873d16bd89d2bb370852fa6bf48fd450128917f7ef364831",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__ema\\s9\\case_audit_states\\step_2000.pt": "28174c3ca93a40b60370375559765b6b339ff7f8ce913fee21fffea17d60bbcf",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__ema\\s9\\case_audit_states\\step_2048.pt": "d057fc4988dfba94798210aa51c4b32d7d3e9531af2fc132845a94b5649b14e2",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__hard\\s9\\case_audit_states\\step_2000.pt": "31e370b72f8e37e148313ec7e99e8bff2384f613f81f52e62cbf03e01f8e37a5",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__hard\\s9\\case_audit_states\\step_2048.pt": "7757e31f7a2e8956e53a5afc692b25eadf241e607f7ec52ff2aeeba5a00765e0",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__none\\s9\\case_audit_states\\step_2000.pt": "d3bd0e353f8f85eb53c278ee02b51c07a72747234fcb547822a42ce80733056e",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__none\\s9\\case_audit_states\\step_2048.pt": "23b4283919bdfcb3116abc92eeea54809a082304b68da508053cd636e10f97a9",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__ema\\s10\\case_audit_states\\step_2000.pt": "a46998678c36da7b91d7898d8af329bb76fc9f9216adad79e69baef597f4a58d",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__ema\\s10\\case_audit_states\\step_2048.pt": "140156aeb95138476c2af4d9cedae264b21aef339ea5acf0265163d8adfc16ab",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__hard\\s10\\case_audit_states\\step_2000.pt": "39100238ad0f15b835d5bf0664bd21e10f83a36d28a4670ffe0ee376ffc74f35",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__hard\\s10\\case_audit_states\\step_2048.pt": "4aa9862bfdab3e4abcb471c961c2817ffeda105fd8447654470344b81c31f688",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__none\\s10\\case_audit_states\\step_2000.pt": "5ed465bdfab2828e4980795e41d07c50714fa01e171cd80c64a6927694ee1a82",
+    "C:\\Users\\Administrator\\NN-KNN\\nnknn-work\\results\\t2_pi20260920\\continuation_20261004\\target_sync1\\acrobot\\nnknn_nnknn__none\\s10\\case_audit_states\\step_2048.pt": "a0f3accec2b2306c09a1b187c530b67259410f674d51bb8b91b563d0700d6911"
+  },
+  "scope": "all recorded GAE and epsilon-mixed policy surrogate pre-gradient snapshots/events/direct deletions; six exact old/new EMA optimizer-path outputs"
+}

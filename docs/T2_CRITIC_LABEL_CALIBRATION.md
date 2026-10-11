@@ -59,9 +59,9 @@ comparison; excluding caches follows the frozen-source manifest and verifies
 all actual source files. A common-policy helper initially used the older2,048
 global step; its failed check is preserved,then corrected to8,192 and rerun.
 
-Task evidence: `work/critic_label_modes_8192/`, `work/critic_matching_{m025,m1}/`,
-`work/label_matching_replayed/`, and
-`outputs/neural-cbr-t2-label-matching-{results.md,verification.json,training-verification.json,mc-verification.json,report-verification.json}`;
-common-policy evidence `outputs/neural-cbr-t2-label-fixed-policy-verification.json`.
+Task evidence: `results/t2/s02_s03_instrumentation_role_audits/codex_task_20261002/runs/critic_label_modes_8192/`, `results/t2/s02_s03_instrumentation_role_audits/codex_task_20261002/runs/critic_matching_{m025,m1}/`,
+`results/t2/s02_s03_instrumentation_role_audits/codex_task_20261002/runs/label_matching_replayed/`, and
+`results/t2/s02_s03_instrumentation_role_audits/codex_task_20261002/outputs/neural-cbr-t2-label-matching-{results.md,verification.json,training-verification.json,mc-verification.json,report-verification.json}`;
+common-policy evidence `results/t2/s02_s03_instrumentation_role_audits/codex_task_20261002/outputs/neural-cbr-t2-label-fixed-policy-verification.json`.
 Broader matched cost/500-case budgets,actor utility and full-cycle Stage A gate
 remain open. Imported18 authority documents are unchanged.

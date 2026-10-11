@@ -1,0 +1,48 @@
+{
+  "before": {
+    "outer": [
+      0,
+      1
+    ],
+    "core": [
+      0,
+      1
+    ]
+  },
+  "online_outer": [
+    1,
+    2
+  ],
+  "online_core": [
+    1,
+    2
+  ],
+  "target_outer": [
+    1,
+    2
+  ],
+  "target_core": [
+    1,
+    2
+  ],
+  "target_labels": [
+    200.0,
+    30.0
+  ],
+  "target_biases": [
+    8.0,
+    0.0
+  ],
+  "loo_weights": [
+    [
+      0.0,
+      1.0
+    ]
+  ],
+  "core_case_indices": [
+    0,
+    1
+  ],
+  "shared_raw_cases": true,
+  "distinct_labels": true
+}

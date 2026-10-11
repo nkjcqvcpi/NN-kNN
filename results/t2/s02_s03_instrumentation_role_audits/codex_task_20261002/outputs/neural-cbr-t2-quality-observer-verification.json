@@ -1,0 +1,170 @@
+{
+  "source": {
+    "fingerprint": "63f0eee9ad5a0bf0c92ba44d9b28b999a8c64d2120c0f4219242eb0bbef27562",
+    "head": "cb8cd96ef3c02640a135a85c25c90e2a97b39d7d",
+    "entries": 128,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_quality_ledger_complete_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_quality_ledger_complete_source_63f0eee9ad5a.zip",
+    "zip_sha256": "504d1535a34379d672f8b7da84a29ad1c5ff62674a36b09c0d1b4b013775c0c7"
+  },
+  "counts": {
+    "pairs": 6,
+    "actual_trainings": 12,
+    "events": 306,
+    "quality_rows": 930
+  },
+  "runs": [
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s8",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\quality_complete\\tracked\\cartpole\\nnknn_nnknn__ema__reset\\s8",
+      "source_fingerprint": "63f0eee9ad5a0bf0c92ba44d9b28b999a8c64d2120c0f4219242eb0bbef27562",
+      "events": 102,
+      "quality_rows": 287,
+      "active": {
+        "actor/actor_policy_surrogate": {
+          "active_cases": 128,
+          "observed_active": 30,
+          "unknown_active": 98
+        },
+        "critic/training_gae": {
+          "active_cases": 128,
+          "observed_active": 22,
+          "unknown_active": 106
+        },
+        "critic/independent_mc": {
+          "active_cases": 128,
+          "observed_active": 22,
+          "unknown_active": 106
+        }
+      },
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s9",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\quality_complete\\tracked\\cartpole\\nnknn_nnknn__ema__reset\\s9",
+      "source_fingerprint": "63f0eee9ad5a0bf0c92ba44d9b28b999a8c64d2120c0f4219242eb0bbef27562",
+      "events": 108,
+      "quality_rows": 312,
+      "active": {
+        "actor/actor_policy_surrogate": {
+          "active_cases": 128,
+          "observed_active": 33,
+          "unknown_active": 95
+        },
+        "critic/training_gae": {
+          "active_cases": 128,
+          "observed_active": 18,
+          "unknown_active": 110
+        },
+        "critic/independent_mc": {
+          "active_cases": 128,
+          "observed_active": 21,
+          "unknown_active": 107
+        }
+      },
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s10",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\quality_complete\\tracked\\cartpole\\nnknn_nnknn__ema__reset\\s10",
+      "source_fingerprint": "63f0eee9ad5a0bf0c92ba44d9b28b999a8c64d2120c0f4219242eb0bbef27562",
+      "events": 72,
+      "quality_rows": 244,
+      "active": {
+        "actor/actor_policy_surrogate": {
+          "active_cases": 128,
+          "observed_active": 31,
+          "unknown_active": 97
+        },
+        "critic/training_gae": {
+          "active_cases": 128,
+          "observed_active": 25,
+          "unknown_active": 103
+        },
+        "critic/independent_mc": {
+          "active_cases": 128,
+          "observed_active": 24,
+          "unknown_active": 104
+        }
+      },
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__reset/s8",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\quality_complete\\tracked\\acrobot\\nnknn_nnknn__ema__reset\\s8",
+      "source_fingerprint": "63f0eee9ad5a0bf0c92ba44d9b28b999a8c64d2120c0f4219242eb0bbef27562",
+      "events": 8,
+      "quality_rows": 25,
+      "active": {
+        "actor/actor_policy_surrogate": {
+          "active_cases": 0,
+          "observed_active": 0,
+          "unknown_active": 0
+        },
+        "critic/training_gae": {
+          "active_cases": 128,
+          "observed_active": 11,
+          "unknown_active": 117
+        },
+        "critic/independent_mc": {
+          "active_cases": 128,
+          "observed_active": 10,
+          "unknown_active": 118
+        }
+      },
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__reset/s9",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\quality_complete\\tracked\\acrobot\\nnknn_nnknn__ema__reset\\s9",
+      "source_fingerprint": "63f0eee9ad5a0bf0c92ba44d9b28b999a8c64d2120c0f4219242eb0bbef27562",
+      "events": 8,
+      "quality_rows": 38,
+      "active": {
+        "actor/actor_policy_surrogate": {
+          "active_cases": 3,
+          "observed_active": 0,
+          "unknown_active": 3
+        },
+        "critic/training_gae": {
+          "active_cases": 128,
+          "observed_active": 15,
+          "unknown_active": 113
+        },
+        "critic/independent_mc": {
+          "active_cases": 128,
+          "observed_active": 14,
+          "unknown_active": 114
+        }
+      },
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__reset/s10",
+      "run_dir": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\quality_complete\\tracked\\acrobot\\nnknn_nnknn__ema__reset\\s10",
+      "source_fingerprint": "63f0eee9ad5a0bf0c92ba44d9b28b999a8c64d2120c0f4219242eb0bbef27562",
+      "events": 8,
+      "quality_rows": 24,
+      "active": {
+        "actor/actor_policy_surrogate": {
+          "active_cases": 0,
+          "observed_active": 0,
+          "unknown_active": 0
+        },
+        "critic/training_gae": {
+          "active_cases": 128,
+          "observed_active": 14,
+          "unknown_active": 114
+        },
+        "critic/independent_mc": {
+          "active_cases": 128,
+          "observed_active": 8,
+          "unknown_active": 120
+        }
+      },
+      "passed": true
+    }
+  ],
+  "all_checks_passed": true,
+  "scope": "six actual on/off observer training pairs and old/new bounded-overflow-guard invariance; selected model/target/optimizer/quality restore, all recorded snapshot hashes and independently summed separated C/H/Q; unknown active cases explicit"
+}

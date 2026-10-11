@@ -56,6 +56,6 @@ Frozen source `dc26517dfadb6d13be47acd74e974d1a3444ce75b848431e97a3ecadbfda9add`
 132 files; ZIP SHA256
 `c0828c5fabe1bf5b9571372a915a46d93d3f0d72d3fd7860d4094bb898d02ba0`.
 Existing187-test implementation boundary remains; no learner change in this
-package. Evidence:task `work/acrobot_startup_{2048,8192}/`, `work/startup_replayed/`,
-`outputs/neural-cbr-t2-startup-{results.md,verification.json}` and separate
+package. Evidence:task `results/t2/s02_s03_instrumentation_role_audits/codex_task_20261002/runs/acrobot_startup_{2048,8192}/`, `results/t2/s02_s03_instrumentation_role_audits/codex_task_20261002/runs/startup_replayed/`,
+`results/t2/s02_s03_instrumentation_role_audits/codex_task_20261002/outputs/neural-cbr-t2-startup-{results.md,verification.json}` and separate
 training/MC verification JSONs. Imported18 authority documents remain unchanged.

@@ -29,7 +29,7 @@ reset/preserve are128/117,128/128,128/128 on CartPole; optimizer batches
 equal compute, update count or final capacity. Changed visitation prevents
 interpreting cross-condition MC MSE as fixed-data critic degradation.
 
-Artifacts `results/t2_pi20260920/continuation_20261004/optimizer_alignment/`;
+Artifacts `results/t2/s02_s03_instrumentation_role_audits/pi20260920/continuation_20261004/optimizer_alignment/`;
 task outputs `neural-cbr-t2-optimizer-results.md`, MC and actual retraining
 verification JSONs. The optional preservation mechanism is not a Q selector,
 an approved gate condition or evidence of general suitability. Keep reset as

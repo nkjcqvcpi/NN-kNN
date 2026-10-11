@@ -1,0 +1,142 @@
+{
+  "counts": {
+    "runs": 12,
+    "actual_alignment_calls": 141,
+    "tensor_states_checked": 496,
+    "scalar_steps_checked": 248,
+    "untouched_states_checked": 377,
+    "reset_reference_pairs": 6
+  },
+  "runs": [
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s8",
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s8",
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s9",
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s9",
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s10",
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__preserve_by_id/s10",
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__reset/s8",
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s8",
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__reset/s9",
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s9",
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__reset/s10",
+      "passed": true
+    },
+    {
+      "role": "acrobot/nnknn_nnknn__ema__preserve_by_id/s10",
+      "passed": true
+    }
+  ],
+  "all_checks_passed": true,
+  "scope": "all twelve actual training reruns; every ID-preserving maintenance moment row/scalar step and other-role/shared state checked; exact final actor/critic/target and evaluation; six historical reset controls",
+  "paired_results": [
+    {
+      "task": "acrobot",
+      "seed": 8,
+      "return_improvement": 0.0,
+      "capacities": [
+        0,
+        0
+      ],
+      "batches": [
+        3,
+        3
+      ]
+    },
+    {
+      "task": "acrobot",
+      "seed": 9,
+      "return_improvement": 0.0,
+      "capacities": [
+        3,
+        3
+      ],
+      "batches": [
+        3,
+        3
+      ]
+    },
+    {
+      "task": "acrobot",
+      "seed": 10,
+      "return_improvement": 0.0,
+      "capacities": [
+        0,
+        0
+      ],
+      "batches": [
+        3,
+        3
+      ]
+    },
+    {
+      "task": "cartpole",
+      "seed": 8,
+      "return_improvement": 184.00000762939453,
+      "capacities": [
+        128,
+        117
+      ],
+      "batches": [
+        18,
+        16
+      ]
+    },
+    {
+      "task": "cartpole",
+      "seed": 9,
+      "return_improvement": 67.0,
+      "capacities": [
+        128,
+        128
+      ],
+      "batches": [
+        19,
+        17
+      ]
+    },
+    {
+      "task": "cartpole",
+      "seed": 10,
+      "return_improvement": 216.66665649414062,
+      "capacities": [
+        128,
+        128
+      ],
+      "batches": [
+        13,
+        18
+      ]
+    }
+  ]
+}

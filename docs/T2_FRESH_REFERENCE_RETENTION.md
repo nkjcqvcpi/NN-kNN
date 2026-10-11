@@ -48,9 +48,9 @@ Both references and diagnostics are small and reused; no gate/generalization
 claim. Increase explicit training-reference coverage next, study stale targets
 and advantages, then validate optional live maintenance against matched controls.
 
-Evidence is in task `work/retention_pilot_v3/`,
-`work/retention_preserve_training/`, `work/retention_preserve_pilot_v3/` and
-`outputs/neural-cbr-t2-retention-{results.md,verification.json}`. Initial failed
+Evidence is in task `results/t2/s06_case_memory_mechanisms/codex_task_20261002/runs/retention_pilot_v3/`,
+`results/t2/s06_case_memory_mechanisms/codex_task_20261002/runs/retention_preserve_training/`, `results/t2/s06_case_memory_mechanisms/codex_task_20261002/runs/retention_preserve_pilot_v3/` and
+`results/t2/s06_case_memory_mechanisms/codex_task_20261002/outputs/neural-cbr-t2-retention-{results.md,verification.json}`. Initial failed
 pilot attempts (optimizer-key/task metadata handling) remain preserved; corrected
 frozen source runs all conditions. The upstream18 authoritative documents remain
 pinned to career-2027 cd77277600841438d98ac5793867da28b8ec6dd0, rechecked Oct5.

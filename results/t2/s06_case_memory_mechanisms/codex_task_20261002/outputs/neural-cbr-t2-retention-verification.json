@@ -1,0 +1,26 @@
+{
+  "source": {
+    "fingerprint": "6645e6d173eb639f47998c5e232d4d41c42dfcb9bd5421aa7364bc32d00ddf23",
+    "head": "393f47dba0a393a587aa9c6c516fc28013da40ea",
+    "entries": 131,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_retention_pilot_v3_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_retention_pilot_v3_source_6645e6d173eb.zip",
+    "zip_sha256": "e88951fda8ee9bcc50818efe22d3fa772f91933b945aaece31a30137d56d3c2d"
+  },
+  "counts": {
+    "conditions": 72,
+    "actual_new_trainings": 6,
+    "skipped_conditions": 24,
+    "candidates": 7468,
+    "removed": 737,
+    "reached": 16,
+    "moment_tensors": 144,
+    "mc_worse": 34,
+    "greedy_worse": 4
+  },
+  "manifests": [
+    "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\retention_pilot_v3\\manifest.json",
+    "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\retention_preserve_pilot_v3\\manifest.json"
+  ],
+  "all_checks_passed": true
+}

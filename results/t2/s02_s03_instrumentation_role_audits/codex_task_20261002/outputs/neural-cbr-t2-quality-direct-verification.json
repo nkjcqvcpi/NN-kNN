@@ -1,0 +1,21 @@
+{
+  "source": {
+    "fingerprint": "63f0eee9ad5a0bf0c92ba44d9b28b999a8c64d2120c0f4219242eb0bbef27562",
+    "head": "cb8cd96ef3c02640a135a85c25c90e2a97b39d7d",
+    "entries": 128,
+    "archive": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_quality_ledger_complete_source_archive",
+    "zip": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-02\\neural-cbr-xiaomeng-document-https-github\\work\\t2_quality_ledger_complete_source_63f0eee9ad5a.zip",
+    "zip_sha256": "504d1535a34379d672f8b7da84a29ad1c5ff62674a36b09c0d1b4b013775c0c7"
+  },
+  "counts": {
+    "runs": 6,
+    "snapshots": 106,
+    "events": 306,
+    "interventions": 2448,
+    "actor_policy_surrogate": 94,
+    "training_gae": 106,
+    "independent_mc": 106
+  },
+  "all_checks_passed": true,
+  "scope": "all recorded three-stream snapshot queries and actual fixed-set removal cores, plus independent renormalized predictions and direct loss credit"
+}

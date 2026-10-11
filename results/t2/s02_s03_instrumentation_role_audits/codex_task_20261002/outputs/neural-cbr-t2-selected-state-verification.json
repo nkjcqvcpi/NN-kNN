@@ -1,0 +1,123 @@
+{
+  "counts": {
+    "runs": 12,
+    "nonfinal_phase_selected": 5,
+    "earlier_environment_step_selected": 4,
+    "same_step_before_final_update_selected": 1,
+    "target_states": 6,
+    "optimizer_states": 21,
+    "continuation_steps": 12
+  },
+  "runs": [
+    {
+      "role": "cartpole/mlp_mlp__ema__reset/s8",
+      "selected_source": "final",
+      "selected_step": 512,
+      "actual_timesteps": 512,
+      "final_return": 376.3333435058594,
+      "selected_return": 376.3333435058594,
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_mlp__ema__reset/s8",
+      "selected_source": "final",
+      "selected_step": 512,
+      "actual_timesteps": 512,
+      "final_return": 100.66666412353516,
+      "selected_return": 100.66666412353516,
+      "passed": true
+    },
+    {
+      "role": "cartpole/mlp_nnknn__ema__reset/s8",
+      "selected_source": "final",
+      "selected_step": 512,
+      "actual_timesteps": 512,
+      "final_return": 9.0,
+      "selected_return": 9.0,
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s8",
+      "selected_source": "best_eval",
+      "selected_step": 256,
+      "actual_timesteps": 512,
+      "final_return": 44.0,
+      "selected_return": 73.66666412353516,
+      "passed": true
+    },
+    {
+      "role": "cartpole/mlp_mlp__ema__reset/s9",
+      "selected_source": "best_eval",
+      "selected_step": 256,
+      "actual_timesteps": 512,
+      "final_return": 45.33333206176758,
+      "selected_return": 60.33333206176758,
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_mlp__ema__reset/s9",
+      "selected_source": "best_eval",
+      "selected_step": 256,
+      "actual_timesteps": 512,
+      "final_return": 47.66666793823242,
+      "selected_return": 94.0,
+      "passed": true
+    },
+    {
+      "role": "cartpole/mlp_nnknn__ema__reset/s9",
+      "selected_source": "best_eval",
+      "selected_step": 512,
+      "actual_timesteps": 512,
+      "final_return": 41.0,
+      "selected_return": 41.66666793823242,
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s9",
+      "selected_source": "final",
+      "selected_step": 512,
+      "actual_timesteps": 512,
+      "final_return": 102.0,
+      "selected_return": 102.0,
+      "passed": true
+    },
+    {
+      "role": "cartpole/mlp_mlp__ema__reset/s10",
+      "selected_source": "final",
+      "selected_step": 512,
+      "actual_timesteps": 512,
+      "final_return": 13.333333015441895,
+      "selected_return": 13.333333015441895,
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_mlp__ema__reset/s10",
+      "selected_source": "final",
+      "selected_step": 512,
+      "actual_timesteps": 512,
+      "final_return": 277.3333435058594,
+      "selected_return": 277.3333435058594,
+      "passed": true
+    },
+    {
+      "role": "cartpole/mlp_nnknn__ema__reset/s10",
+      "selected_source": "best_eval",
+      "selected_step": 128,
+      "actual_timesteps": 512,
+      "final_return": 49.66666793823242,
+      "selected_return": 79.66666412353516,
+      "passed": true
+    },
+    {
+      "role": "cartpole/nnknn_nnknn__ema__reset/s10",
+      "selected_source": "final",
+      "selected_step": 512,
+      "actual_timesteps": 512,
+      "final_return": 461.6666564941406,
+      "selected_return": 461.6666564941406,
+      "passed": true
+    }
+  ],
+  "all_checks_passed": true,
+  "scope": "safe selected actor/critic/target/Adam restoration and identical real continuation steps; earlier forced-stage tests cover exact historical state selection; rollout/environment/RNG resumption excluded"
+}
