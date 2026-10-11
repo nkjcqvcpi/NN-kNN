@@ -7,7 +7,7 @@ repository. It is not a full paper summary. Its goal is to answer:
 
 - what the NN-kNN model is in this codebase
 - where the important code lives
-- which workflow entry points matter for classification, regression, and RL
+- which workflow entry points matter for classification and regression
   reporting
 - which files are legacy versus current
 
@@ -47,256 +47,26 @@ The key practical distinction in the current Table 1 work is:
 - [model/classification_workflow.py](model/classification_workflow.py)
   This is the maintained orchestration layer for classification experiments,
   image comparisons, and small-dataset benchmark checks.
-- [model/rl_workflow.py](model/rl_workflow.py)
-  This is the maintained DQN baseline workflow for CartPole and future
-  RL-family extensions.
-- [model/nnknn_rl_workflow.py](model/nnknn_rl_workflow.py)
-  This is the maintained NN-kNN actor-critic workflow for CartPole.
+- [model/common/](model/common)
+  Shared construction/training (`core`), learned distances (`geometry`),
+  prediction and loss (`outcomes`), nominal schema (`nominal`), and
+  fingerprints/manifests (`artifacts`) used by every stage branch.
 - [datasets/classification_data.py](datasets/classification_data.py)
   This contains portable classification loaders with train-only preprocessing.
-- [datasets/rl_tasks.py](datasets/rl_tasks.py)
-  This contains the RL task registry and task metadata.
+
+These files form the shared NN-kNN core. They are byte-identical on `main`,
+`neural-cbr`, `rl`, and `LLM`; see [docs/NNKNN_CORE.md](docs/NNKNN_CORE.md)
+before changing them. RL (T2), neural CBR (T1), and LLM (T3) code lives on
+those branches, not here.
 
 Important anchors:
 
-- `GlocalFeatureWeight` at [model/nnknn_model.py](model/nnknn_model.py#L97)
-- `MLPFeatureProjector` at [model/nnknn_model.py](model/nnknn_model.py#L185)
-- `NN_KNN_Model` at [model/nnknn_model.py](model/nnknn_model.py#L517)
-- `train_model(...)` at [model/nnknn_model.py](model/nnknn_model.py#L1126)
-- `add_to_pair_list(...)` at [model/nn_cdh.py](model/nn_cdh.py#L43)
-- `NNCDHAdapter` at [model/nn_cdh.py](model/nn_cdh.py#L112)
-
-## RL / DQN / NEC Workflow Files
-
-The current RL path includes repo-native DQN, NEC, and NN-kNN actor-critic
-workflows on `CartPole-v1`.
-Do not use `Outdated NN-kNN Reinforcement Learning.ipynb` or
-`OutdatedNewCartpole.ipynb` as implementation references.
-
-Important entry points in `model/rl_workflow.py`:
-
-- `RLTaskSpec`
-- `DQNConfig`
-- `make_dqn_config(...)`
-- `train_dqn(...)`
-- `evaluate_dqn(...)`
-- `load_dqn_checkpoint(...)`
-- `list_supported_rl_tasks(...)`
-
-Important entry points in `model/nec_workflow.py`:
-
-- `NECConfig`
-- `make_nec_config(...)`
-- `train_nec(...)`
-- `evaluate_nec(...)`
-- `load_nec_checkpoint(...)`
-
-Important entry points in `model/nnknn_rl_workflow.py`:
-
-- `ALGORITHM_NAME`
-- `NNKNNRLConfig`
-- `MLPPolicyNetwork`
-- `NNKNNPolicyNetwork`
-- `ValueNetwork`
-- `NNKNNValueNetwork`
-- `compute_gae(...)`
-- `make_nnknn_rl_config(...)`
-- `train_nnknn_rl(...)`
-- `evaluate_nnknn_rl(...)`
-- `load_nnknn_rl_checkpoint(...)`
-
-Current NN-kNN-RL algorithm:
-
-- `ALGORITHM_NAME` is `nnknn_actor_critic_separate_memory_gae`.
-- The actor is selectable with `actor_type="nnknn"` or `actor_type="mlp"`;
-  `policy_probs(...)` returns action probabilities for both.
-- The default NN-kNN actor preserves existing behavior. The MLP actor is for
-  baseline actor-critic comparisons and uses standard stochastic policy
-  sampling without epsilon-uniform mixing.
-- The critic is selectable with `critic_type="mlp"` or `critic_type="nnknn"`;
-  the default MLP `ValueNetwork` preserves existing behavior.
-- NN-kNN actor and critic memories are always separate. With both selected, the
-  state feature extractor/global feature-distance module is shared, while case
-  buffers, labels, biases, and per-case glocal weights remain private.
-- `NNKNNValueNetwork` is a standalone `V(s)` critic for either actor type.
-- NN-kNN critic value labels default to fixed GAE targets. Set
-  `critic_mutable_value_labels=True` to update cases satisfying raw
-  `case_bias - distance >= critic_value_label_activation_threshold`, set
-  `critic_trainable_value_labels=True` to train value labels as parameters, and
-  enable both for the hybrid label mode.
-- Trainable value labels share the NN-kNN case-level optimizer group with case
-  biases and per-case glocal weights. Use `case_learning_rate` or
-  `--case-learning-rate` to tune that whole case-parameter group.
-- This hybrid is intentionally close to Neural Episodic Control: NEC combines
-  fast updates to matching memory values with slower gradient updates through a
-  differentiable key-value memory. For this repo, keep the stored value labels as
-  GAE/TD-style expected value targets, not max-return episodic memory.
-- Shared-case-base and reward-to-go checkpoints are intentionally incompatible
-  with the current algorithm and should be retrained.
-- Actor updates use GAE advantages from the selected value critic. Raw
-  environment reward is the default; `reward_shaping` is off unless explicitly
-  set to `cartpole_potential`. Unknown reward-shaping strings are invalid.
-- Old reward-to-go NN-kNN-RL checkpoints do not load into the actor-critic
-  workflow. Retrain them instead of attempting compatibility shims.
-- NN-kNN regression as the critic and an MLP actor are available for direct
-  actor/critic ablation comparisons.
-
-Training by actor/critic choice:
-
-- The workflow stages complete episodes without mutating case memory. It runs an
-  update every `policy_update_episodes` episodes, then changes memory only after
-  actor/critic optimization. The final partial rollout follows the same path.
-- Before the actor update, the selected critic predicts `V(s)` and `V(s')`,
-  then GAE computes actor advantages and critic value targets for the full batch.
-  GAE uses `terminated` to mask value bootstrapping and a separate
-  episode-boundary mask to stop lambda recursion across terminated, truncated,
-  and final partial rollout boundaries.
-- NN-kNN actor policy loss uses every raw advantage. After optimization, only
-  samples with raw `A(s,a) > 0` are inserted as
-  `(state, recommended_action)` cases. Negative-advantage actions train the
-  policy but are not stored as recommendations.
-- If `actor_type="mlp"` and `critic_type="nnknn"`, the MLP actor is optimized
-  by policy loss, while `NNKNNValueNetwork` trains on all rollout targets before
-  updating/appending `(state, V_target)` memory cases.
-- When both sides are NN-kNN, actor and critic losses are computed before one
-  joint optimizer step so their shared representation remains consistent with
-  the rollout policy. Both use the actor base learning rate; case parameters use
-  `case_learning_rate` when configured.
-- Every NN-kNN critic can bootstrap GAE with a lagged target critic.
-  Online and target critics share raw state cases and stable structural IDs;
-  target value labels, biases, per-case weights, and encoder/global metric remain
-  separate and EMA-update on the configured target schedule. Compaction aligns
-  both parameter views by stable ID.
-- During training, action selection should remain stochastic (`greedy=False`);
-  greedy action selection is for evaluation. MLP actors sample directly from
-  `pi(a|s)` and use entropy regularization with effective epsilon `0`. Once an
-  NN-kNN actor is ready, the
-  behavior policy samples from `(1 - epsilon) * pi(a|s) + epsilon / action_dim`.
-  Epsilon decays from `exploration_initial_epsilon` to
-  `exploration_final_epsilon` over `exploration_fraction` of the fixed step
-  budget. Before readiness, behavior is fully random and the stored epsilon is
-  `1.0`; staged positive-advantage recommendations populate actor memory after
-  the batch update.
-- NN-kNN actor readiness requires both `min_case_entries` active cases and at
-  least `min_cases_per_action` cases for every discrete action. This avoids
-  switching to policy-influenced sampling after only one case for an action.
-- Sampling improves exploration and coverage, but it does not justify
-  max-return labels. The critic target should remain an expected value target
-  from GAE/TD-style computation.
-- Actor and critic case maintenance runs at batch boundaries. Run artifacts
-  report per-store actor/critic prune and replacement counts, and compaction
-  clears stale Adam state for per-case parameters. All profiles default to
-  `case_capacity=500`; larger capacities should be explicit ablations.
-- `loss_metrics.csv` distinguishes the MSE used for the final critic optimizer
-  step (`critic_optimization_mse`) from optional post-update in-sample training
-  diagnostics (`critic_train_mse`, `critic_train_explained_variance`, and
-  `critic_train_value_mean`). These are training-fit reports, not held-out
-  critic validation metrics.
-- `critic_holdout_metrics.csv` is the separate critic generalization report.
-  At `critic_holdout_episode_frequency`, it samples new stochastic
-  behavior-policy episodes using an independent seed block, excludes every
-  transition from gradients and actor/critic case insertion, and compares the
-  online critic with discounted Monte Carlo returns. Terminated episodes use a
-  zero tail; time-limit truncations bootstrap from the lagged target critic when
-  available. Configure it with `critic_holdout_episode_frequency`,
-  `critic_holdout_episodes`, and `critic_holdout_seed`; frequency `0` disables
-  it. These extra environment steps do not count toward the training budget.
-
-Task metadata lives in `datasets/rl_tasks.py`; currently supported:
-
-- `cartpole` -> `CartPole-v1`
-
-CLI and notebook surfaces:
-
-- `tools/run_rl_dqn.py` is the source-of-truth CLI.
-- `tools/run_rl_nec.py` is the source-of-truth NEC CLI.
-- `tools/run_rl_nnknn.py` is the source-of-truth NN-kNN-RL CLI.
-- `dqn_cartpole_demo.ipynb` is a thin debugging notebook that calls the Python
-  workflow functions.
-- `nec_cartpole_demo.ipynb` and `nnknn_cartpole_demo.ipynb` follow the same
-  thin-notebook pattern for NEC and NN-kNN-RL.
-
-Routine RL checks:
-
-```bash
-.venv/bin/python codex/smoke_test.py --mode rl
-.venv/bin/python codex/smoke_test.py --mode nec
-.venv/bin/python codex/smoke_test.py --mode nnknn_rl
-.venv/bin/python tools/run_rl_dqn.py cartpole --profile smoke --seed 0
-.venv/bin/python tools/run_rl_dqn.py cartpole --profile fast --seed 0
-.venv/bin/python tools/run_rl_dqn.py cartpole --eval-only --checkpoint <checkpoint.pt>
-.venv/bin/python tools/run_rl_nec.py cartpole --profile smoke --seed 0
-.venv/bin/python tools/run_rl_nec.py cartpole --profile debug --seed 0
-.venv/bin/python tools/run_rl_nec.py cartpole --profile fast --seed 0
-.venv/bin/python tools/run_rl_nec.py cartpole --eval-only --checkpoint <checkpoint.pt>
-.venv/bin/python tools/run_rl_nnknn.py cartpole --profile smoke --seed 0
-.venv/bin/python tools/run_rl_nnknn.py cartpole --profile fast --seed 0
-.venv/bin/python tools/run_rl_nnknn.py cartpole --profile fast --seed 0 --critic-type nnknn
-.venv/bin/python tools/run_rl_nnknn.py cartpole --profile fast --seed 0 --actor-type mlp --critic-type mlp
-.venv/bin/python tools/run_rl_nnknn.py cartpole --profile fast --seed 0 --actor-type mlp --critic-type nnknn
-.venv/bin/python tools/run_rl_nnknn.py cartpole --profile debug --gamma 0.99 --gae-lambda 0.95 --critic-learning-rate 1e-3 --critic-update-epochs 1
-.venv/bin/python tools/run_rl_nnknn.py cartpole --eval-only --checkpoint <checkpoint.pt>
-```
-
-RL protocol for DQN, NEC, and NN-kNN-RL comparisons:
-
-- Use `gold` or `--no-early-stopping` for strict fixed environment-step
-  comparisons. `fast` enables common evaluation-based early stopping for every
-  workflow, as does `debug` where available; `smoke` and `gold` disable it.
-- Common defaults are patience `30`, minimum mean-return improvement `1.0`,
-  patience counting after `25_000` steps, and immediate stopping at the task's
-  maximum mean return (`500` for CartPole).
-- Evaluate periodically and save the best evaluated checkpoint.
-- Keep the final evaluation for diagnosis, including after an early stop.
-- Read `configured_total_timesteps`, `actual_timesteps`, and `early_stopping`
-  from `summary.json` before comparing sample use.
-- Use `training_efficiency` in `summary.json` before interpreting results.
-- Treat `best_model_step` and `first_success_step` as sample-efficiency proxies.
-- If `budget_interpretation` is `unsolved_or_underfit`, or if the best model is
-  the final model and the curve is still rising, increase the budget or tune
-  before making paper-style comparisons.
-
-Current CartPole DQN fast result:
-
-- run folder: `results/rl/dqn_cartpole_20260702_135146_537913/`
-- selected checkpoint step: `110000`
-- selected eval mean return: `110.85` over 20 episodes
-- last/end-of-budget eval mean return: `89.45`
-- interpretation: the latest fast DQN artifact did not reach the `475.0`
-  success threshold. Treat it as `unsolved_or_underfit`; do not use it as a
-  solved CartPole reference without further reproduction/debugging.
-
-Current CartPole NEC reference result:
-
-- run folder: `results/rl/nec_cartpole_20260703_173129_688189/`
-- selected checkpoint step: `150000`
-- selected eval mean return: `450.55` over 20 episodes
-- last/end-of-budget eval mean return: `450.55`
-- dictionary entries: `20000`
-- interpretation: the 150k-step NEC `fast` profile now substantially improves
-  over the earlier debug-sized run (`281.2` best mean return) and includes
-  individual 500-return episodes, but the mean remains below the `475.0`
-  success threshold. Because the selected checkpoint is the final model, treat
-  it as `unsolved_or_underfit` or possible under-budget before paper-style
-  claims.
-
-Current NN-kNN-RL status:
-
-- The expanded `codex/smoke_test.py --mode nnknn_rl` validates all actor/critic
-  variants, checkpoint reloads, final partial-rollout training,
-  episode-boundary-aware GAE, staged positive-advantage actor cases, separate
-  actor/critic memories with a shared representation, EMA target critics,
-  activation-threshold mutable/trainable labels, and maintenance reporting.
-- Smoke results are plumbing checks only. They are not competitive CartPole
-  results.
-- The previous fast NN-kNN-critic artifact
-  `results/rl/nnknn_rl_cartpole_20260626_150805_689987/` selected mean return
-  `369.5` over 20 episodes at step `150000`; it remains below the `475.0`
-  threshold and predates the current separate-memory architecture.
-- A smaller local CUDA debug variant sweep may exist under
-  `results/rl/cartpole_variant_debug_gpu_sweep_*/` with logs in
-  `results/rl/debug_gpu_sweep_logs/`. Treat it as fast diagnostics, not a
-  paper-style benchmark.
+- `GlocalFeatureWeight` at [model/nnknn_model.py](model/nnknn_model.py#L109)
+- `MLPFeatureProjector` at [model/nnknn_model.py](model/nnknn_model.py#L197)
+- `NN_KNN_Model` at [model/nnknn_model.py](model/nnknn_model.py#L529)
+- `train_model(...)` at [model/nnknn_model.py](model/nnknn_model.py#L1493)
+- `add_to_pair_list(...)` at [model/nn_cdh.py](model/nn_cdh.py#L46)
+- `NNCDHAdapter` at [model/nn_cdh.py](model/nn_cdh.py#L115)
 
 ## Classification Workflow Files
 
@@ -594,12 +364,6 @@ Primary notebooks:
   for classification single-run inspection and opt-in benchmark checks.
 - [nnknn_sample_regression.ipynb](nnknn_sample_regression.ipynb)
   for regression single-run inspection and workflow calls.
-- [dqn_cartpole_demo.ipynb](dqn_cartpole_demo.ipynb)
-  for DQN CartPole inspection while keeping implementation logic in
-  `model/rl_workflow.py`.
-- [nnknn_cartpole_demo.ipynb](nnknn_cartpole_demo.ipynb)
-  for NN-kNN-RL CartPole inspection while keeping implementation logic in
-  `model/nnknn_rl_workflow.py`.
 
 The notebooks are still useful for interactive debugging and single-run
 inspection, but serious repeated reporting now belongs in the workflow/helper
@@ -611,12 +375,12 @@ Legacy or specialized files:
   Older standalone script with dataset-specific experimentation history.
 - `older versions/`
   Historical code snapshots.
-- `Copy_nnknn_model.py`, `nnknn_model_1_4.py`
-  Older variants, usually not the first place to edit.
-- `Outdated NN-kNN Reinforcement Learning.ipynb` and
-  `OutdatedNewCartpole.ipynb`
-  Archival RL notebooks. Do not use these as current implementation
-  references.
+- `model/Copy_nnknn_model.py`, `model/nnknn_model_1_4.py`,
+  `model/nnknn_model_with_post_mlp.py`, `model/nn_cdh_old.py`,
+  `model/train_GMM3.py`, and the original `model/cls_model.py`,
+  `model/reg_model.py`, `model/module.py`
+  Older variants kept on `main` only. They are outside the shared core and
+  are not imported by maintained code.
 
 ## Current Practical Conventions
 
@@ -636,11 +400,6 @@ Legacy or specialized files:
   `run_repeated_regression_model_benchmarks(...)`.
 - For paper-style Table 1 reruns with 5-fold CV and std reporting, use
   `run_table1_kfold(...)` from `tools/table1_nnknn_kfold.py`.
-- For RL/DQN/NEC/NN-kNN-RL runs, use the corresponding `tools/run_rl_*.py`
-  script and inspect `summary.json`, `eval_metrics.csv`, and
-  `training_efficiency` before comparing methods. For NN-kNN-RL also inspect
-  `partial_rollout_samples`, `critic_target_value_syncs`, and the separate
-  actor/critic case-maintenance counters when debugging variants.
 - Use `datasets/reg_data.py` as the source of truth for tabular regression
   datasets.
 - Treat `HANDOFF.md` as the current experiment-status document.
@@ -654,8 +413,6 @@ Legacy or specialized files:
 - Long experiments write progress to `stdout.log` and errors to `stderr.log`
   under timestamped folders in `results/`.
 - `MLKR` depends on `metric-learn` and `scikit-learn`.
-- RL/DQN depends on `gymnasium[classic_control]`.
-- RL outputs are timestamped under `results/rl/`.
 - `bike_sharing` depends on `ucimlrepo`; verify the active environment before
   launching a full Table 1 run that includes it.
 - Table 1 baseline defaults are encoded in `tools/table1_nnknn_kfold.py` to
@@ -671,9 +428,8 @@ Legacy or specialized files:
 ## If You Are Picking Up Mid-Run
 
 - Check [HANDOFF.md](HANDOFF.md) first.
-- Then check the newest `results/table1_kfold_*` folder.
-- For RL work, also check the newest `results/rl/dqn_*` folder and read
-  `summary.json` before trusting a checkpoint.
+- Then check the newest `results/table1_kfold_*` folder (completed reruns are
+  filed under `results/prior_baseline/`; see `results/README.md`).
 - Tail:
   - `stdout.log`
   - `stderr.log`
@@ -690,8 +446,3 @@ If you need to understand the repo quickly, read in this order:
 5. [model/nn_cdh.py](model/nn_cdh.py)
 6. [datasets/reg_data.py](datasets/reg_data.py)
 
-For RL work, read these immediately after `HANDOFF.md`:
-
-1. [model/rl_workflow.py](model/rl_workflow.py)
-2. [datasets/rl_tasks.py](datasets/rl_tasks.py)
-3. [tools/run_rl_dqn.py](tools/run_rl_dqn.py)
