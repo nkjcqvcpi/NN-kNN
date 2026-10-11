@@ -1295,7 +1295,7 @@ class NN_KNN_Model(nn.Module):
                 w = weighted_activations.unsqueeze(2)  # [B, N_sel, 1]
                 z_bar = torch.sum(w * case_features.unsqueeze(0), dim=1)  # [B, D]
                 Delta_z_q = query_features - z_bar
-                from model.t1.nominal import nominal_difference
+                from model.common.nominal import nominal_difference
                 Delta_u_q = nominal_difference(cls_adapter, self, r, query_nominal)
                 r_hat_q, s_q = cls_adapter(Delta_z_q, p0_q, Delta_u_q)
                 final_predictions = s_q
