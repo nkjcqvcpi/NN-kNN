@@ -134,7 +134,10 @@ def kth_neighbor_learned_distance(model: NN_KNN_Model, k: int) -> float:
     """b_default^(0) = mean_i r_i^(k): k-th nearest non-self learned distance (plan section 7)."""
     D = case_case_distance(model)
     D.fill_diagonal_(float("inf"))
-    D = torch.where(D < 1e-8, torch.full_like(D, float("inf")), D)  # exact duplicates are not neighbours
+    if k < 1:
+        raise ValueError("k must be positive")
+    # Identity, not equality of inputs, defines a self pair. Distinct duplicate
+    # cases are valid zero-distance neighbors in the PI's initializer.
     kk = min(k, D.shape[1] - 1)
     r = torch.topk(D, kk, dim=1, largest=False).values[:, -1]
     r = r[torch.isfinite(r)]
