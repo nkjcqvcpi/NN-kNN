@@ -27,7 +27,7 @@ The original rl branch was merged with the mixed neural-cbr tip before removing 
 
 ## Git recovery boundary
 
-Git fsck found no object corruption. The previous filter-repo pass rewrote local branches and upstream tracking refs, while origin still advertised the original commits. It left tracked checkpoints, so ordinary pushes would reject the divergent history. The parent directory NN-KNN is not a Git repository; run Git inside nnknn-work or the explicit worktree directories.
+Git fsck found no object corruption. The previous filter-repo pass rewrote local branches and upstream tracking refs, while origin still advertised the original commits. It left tracked checkpoints, so ordinary pushes would reject the divergent history. The parent directory NN-KNN is not a Git repository; run Git inside neural-cbr, rl, llm, or nnknn (main).
 
 The full pre-change .git directory, a verified all-ref bundle, old filter maps, local checkpoint copies, validation logs, and repair scripts are preserved outside the repository in `../recovery-20261009/`. That backup intentionally retains old checkpoint history. Local ignored datasets/checkpoints and original untracked experiment artifacts are preserved.
 
