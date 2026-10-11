@@ -120,8 +120,7 @@ def rank_conditions(rows: list[dict], seeds: list[int] | None = None):
 
 
 def select(args) -> None:
-    exp = Path(args.exp_dir)
-    rows = load_rows(exp)
+    rows = [r for d in args.exp_dir for r in load_rows(Path(d))]
     table, winners, glob, n_seeds = rank_conditions(rows)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -150,9 +149,16 @@ def select(args) -> None:
 
 
 def write_confirmation(args, finalists: list[str]) -> None:
-    stage = load_config(Path(args.stage_config))
+    stages = [load_config(Path(p)) for p in args.stage_config]
+    stage = stages[0]
     conf = yaml.safe_load(Path(args.confirm_template).read_text(encoding="utf-8"))
-    by_name = {c.get("name", c["schedule"]): c for c in stage["conditions"]}
+    by_name = {}
+    for st in stages:
+        for c in st["conditions"]:
+            name = c.get("name", c["schedule"])
+            if name in by_name and by_name[name] != c:
+                raise SystemExit(f"condition {name} differs between stages")
+            by_name[name] = c
     arms = {a["name"]: a for a in stage.get("arms", [])}
     wanted_arms, sync_conds = [], []
     for f in finalists:
@@ -237,11 +243,11 @@ def main() -> None:
     p.add_argument("--grid", required=True)
     p.add_argument("--out", required=True)
     s = sub.add_parser("select")
-    s.add_argument("exp_dir")
+    s.add_argument("exp_dir", nargs="+", help="one or more stage experiment directories (same seeds)")
     s.add_argument("--out", required=True)
     s.add_argument("--finalists", type=int, default=3)
     s.add_argument("--reference", action="append", help="condition id always confirmed, e.g. tuned::alternating_default")
-    s.add_argument("--stage-config")
+    s.add_argument("--stage-config", action="append", help="every stage config whose conditions may be finalists")
     s.add_argument("--confirm-template")
     s.add_argument("--confirm-config")
     r = sub.add_parser("report")
