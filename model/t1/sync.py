@@ -13,6 +13,14 @@ Schedules compared (Phase 4):
     independent        retrieval on L_pre, then adapter on (L_post, L_delta) with retrieval frozen
     alternating_rr     alternate blocks of L_R and L_A updates (retrieval-reuse synchronized)
     alternating_rrr    alternating_rr + checkpoint-discrete maintenance (retrieval-reuse-retain)
+    joint_rr           end-to-end: every minibatch updates retrieval and adapter together
+    joint_rrr          joint_rr + checkpoint-discrete maintenance
+
+Joint schedules share one forward pass per minibatch, so L_post's gradient
+reaches retrieval through the current adapter. ``joint_objective="separated"``
+keeps the plan's split (L_R -> retrieval parameters, L_A -> adapter parameters);
+``"summed"`` backpropagates L_R + L_A into every trainable parameter.
+``adapter_warmup_epochs`` trains a fresh adapter alone before joint updates.
 
 Every term is logged separately each epoch. Training queries are training cases
 with leave-one-out retrieval. Early stopping uses the validation stream only.
@@ -36,9 +44,12 @@ from .core import CoreConfig, make_optimizer
 from .nominal import NominalSchema, NominalClassificationAdapter, nominal_difference, fit_nominal_schema
 
 
+SCHEDULES = {"independent", "alternating_rr", "alternating_rrr", "joint_rr", "joint_rrr"}
+
+
 @dataclass
 class SyncConfig:
-    schedule: str  # independent | alternating_rr | alternating_rrr
+    schedule: str  # independent | alternating_rr | alternating_rrr | joint_rr | joint_rrr
     w_pre: float
     w_post: float
     w_near: float
@@ -53,12 +64,25 @@ class SyncConfig:
     hidden_dims: tuple[int, int] = (64, 32)
     seed: int = 0
     nominal_fields: tuple[dict[str, Any], ...] = ()
+    joint_objective: str = "separated"  # separated | summed (joint schedules only)
+    adapter_warmup_epochs: int = 0  # joint schedules: adapter-only epochs before joint updates
+
+    @property
+    def maintains(self) -> bool:
+        return self.schedule.endswith("_rrr")
 
     def validate(self, task_type):
-        if self.schedule not in {"independent", "alternating_rr", "alternating_rrr"}:
+        if self.schedule not in SCHEDULES:
             raise ValueError("Unknown synchronization schedule")
-        if self.epochs < 2 or self.block_epochs < 1 or (self.schedule != "independent" and self.block_epochs >= self.epochs) or self.patience < 0:
+        alternating = self.schedule.startswith("alternating")
+        if self.epochs < 2 or self.block_epochs < 1 or (alternating and self.block_epochs >= self.epochs) or self.patience < 0:
             raise ValueError("Synchronization must include retrieval and adapter updates")
+        if self.joint_objective not in {"separated", "summed"}:
+            raise ValueError("joint_objective must be 'separated' or 'summed'")
+        if self.adapter_warmup_epochs < 0 or self.adapter_warmup_epochs >= self.epochs:
+            raise ValueError("adapter warm-up must leave joint epochs")
+        if self.adapter_warmup_epochs and not self.schedule.startswith("joint"):
+            raise ValueError("adapter warm-up applies to joint schedules only")
         if min(self.w_pre, self.w_post, self.w_near, self.v_post, self.v_delta, self.v_small) < 0:
             raise ValueError("Synchronization loss weights must be nonnegative")
         if self.v_post + self.v_delta <= 0 or self.w_pre + self.w_post + self.w_near <= 0:
@@ -115,6 +139,22 @@ def _forward_terms(model, adapter, X, y, fr: FreeRadius | None, *, output_mode: 
     return {"L_pre": L_pre, "L_post": L_post, "L_near": L_near, "L_delta": L_delta, "L_small": L_sm, "correction_norm": c_q.mean()}
 
 
+def joint_backward(T: dict[str, torch.Tensor], cfg: SyncConfig, retrieval_params, adapter_params) -> None:
+    """Accumulate one joint step's gradients from a single forward pass ``T``.
+
+    ``separated``: L_A reaches adapter parameters only and L_R retrieval
+    parameters only; L_post still differentiates through the adapter into
+    retrieval. ``summed``: L_R + L_A reaches every trainable parameter.
+    """
+    L_R = cfg.w_pre * T["L_pre"] + cfg.w_post * T["L_post"] + cfg.w_near * T["L_near"]
+    L_A = cfg.v_post * T["L_post"] + cfg.v_delta * T["L_delta"] + cfg.v_small * T["L_small"]
+    if cfg.joint_objective == "summed":
+        (L_R + L_A).backward()
+    else:
+        L_A.backward(inputs=list(adapter_params), retain_graph=True)
+        L_R.backward(inputs=list(retrieval_params))
+
+
 def train_synchronized(
     model,
     data,
@@ -162,9 +202,14 @@ def train_synchronized(
     bad = 0
     maintenance_epochs = maintenance_epochs or set()
 
+    retrieval_params = [p for p in model.parameters() if p.requires_grad]
+    adapter_params = [p for p in adapter.parameters() if p.requires_grad]
+
     def phase_of(ep: int) -> str:
         if cfg.schedule == "independent":
             return "retrieval" if ep <= cfg.epochs // 2 else "adapter"
+        if cfg.schedule.startswith("joint"):
+            return "adapter" if ep <= cfg.adapter_warmup_epochs else "joint"
         return "retrieval" if ((ep - 1) // cfg.block_epochs) % 2 == 0 else "adapter"
 
     for ep in range(1, cfg.epochs + 1):
@@ -209,6 +254,16 @@ def train_synchronized(
                 ropt.step()  # adapter grads are discarded: L_R updates retrieval only
                 if core_cfg.mcb_enabled:
                     model.update_momentum_encoder(core_cfg.mcb_momentum)
+            elif ph == "joint":
+                T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b, query_nominal=None if nominal_train is None else nominal_train[b])
+                ropt.zero_grad()
+                aopt.zero_grad()
+                joint_backward(T, cfg, retrieval_params, adapter_params)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), core_cfg.grad_clip)
+                ropt.step()
+                aopt.step()
+                if core_cfg.mcb_enabled:
+                    model.update_momentum_encoder(core_cfg.mcb_momentum)
             else:
                 model.eval()  # frozen retrieval, LOO still enforced explicitly
                 with frozen_parameters(model):
@@ -228,7 +283,7 @@ def train_synchronized(
                "training_examples": len(y), "retrieval_query_case_pairs": query_case_pairs,
                "train_before_update": before_update, "train_after_update": diagnostic_terms(),
                **{k: v / max(nb, 1) for k, v in agg.items()}}
-        if ep in maintenance_epochs and maintenance_hook is not None and cfg.schedule == "alternating_rrr":
+        if ep in maintenance_epochs and maintenance_hook is not None and cfg.maintains:
             before_count = model.case_count()
             before_state = copy.deepcopy(model.state_dict())
             rec["maintenance"] = maintenance_hook(ep, model, ropt, adapter)
@@ -257,12 +312,13 @@ def train_synchronized(
             rec["stability"] = epoch_observer(ep, model, adapter)
         hist.append(rec)
         # select on post loss only after the adapter has trained at least once
-        if any(h["phase"] == "adapter" for h in hist) and v_post < best[0] - 1e-9:
+        adapter_trained = any(h["phase"] in {"adapter", "joint"} for h in hist)
+        if adapter_trained and v_post < best[0] - 1e-9:
             best, bad = (v_post, copy.deepcopy(model.state_dict()), copy.deepcopy(adapter.state_dict()), ep,
                          copy.deepcopy(ropt.state_dict()), copy.deepcopy(aopt.state_dict()), copy.deepcopy(fr)), 0
-        elif any(h["phase"] == "adapter" for h in hist):
+        elif adapter_trained:
             bad += 1
-            pending_maintenance = (cfg.schedule == "alternating_rrr" and maintenance_hook is not None and
+            pending_maintenance = (cfg.maintains and maintenance_hook is not None and
                                    any(ep < e <= cfg.epochs for e in maintenance_epochs))
             if bad > cfg.patience and not pending_maintenance:
                 break
@@ -274,7 +330,7 @@ def train_synchronized(
         aopt.load_state_dict(best[5])
         fr = best[6]
     adapter.eval()
-    return adapter, {"history": hist, "best_epoch": best[3],
+    return adapter, {"history": hist, "best_epoch": best[3], "best_val_L_post": best[0],
                      "elapsed_seconds": time.perf_counter() - started,
                      "retrieval_optimizer_state": copy.deepcopy(ropt.state_dict()),
                      "adapter_optimizer_state": copy.deepcopy(aopt.state_dict()),
