@@ -61,7 +61,7 @@ def test_selection_uses_validation_error_then_loss_and_ignores_test():
 
 
 def test_confirmation_config_carries_finalist_definitions(tmp_path):
-    args = SimpleNamespace(stage_config=str(STAGE), confirm_template="configs/t1/schedule_search_confirm_20261011.yaml",
+    args = SimpleNamespace(stage_config=[str(STAGE)], confirm_template="configs/t1/schedule_search_confirm_20261011.yaml",
                            confirm_config=str(tmp_path / "confirm.yaml"), out=str(tmp_path))
     finalists = ["tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=0.3",
                  "tuned::frozen_reuse__combined", "tuned::alternating_default"]
