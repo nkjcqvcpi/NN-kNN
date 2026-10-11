@@ -1,14 +1,17 @@
 # Branch scope: RL and T2
 
-Keep T1/T3 stage implementations on neural-cbr and LLM. Read docs/BRANCH_ORGANIZATION.md. Shared helpers live in model/common.
+This checkout is `rl/` on branch `rl`: the shared NN-kNN core plus RL (T2), including NN-kNN-RL. Keep T1/T3 stage implementations on neural-cbr and LLM, and standalone NN-kNN material on main. Read docs/BRANCH_ORGANIZATION.md.
+
+- The core files listed in `tools/check_nnknn_core.py` are owned by main. Do not edit them here; make the change on main and sync it (docs/NNKNN_CORE.md). `tests/test_nnknn_core.py` fails if they drift.
+- File results and logs by T2 handoff step under `results/t2/<step>/` and `logs/t2/<step>/` (see results/README.md). Pass `--output-dir` explicitly; `results/rl/` is unfiled scratch.
 
 # AGENTS.md
 
 ## Repository expectations
 
-- This repository is primarily a Python regression/classification research workflow centered on `model/` and `datasets/`, with RL/DQN, RL/NEC, and NN-kNN-RL paths for CartPole and future RL work.
+- This branch centers on RL/DQN, RL/NEC, PPO, TD3, and NN-kNN-RL workflows over the shared NN-kNN core in `model/` and `datasets/`.
 - For regression work, prefer the helpers in `model/regression_workflow.py` instead of calling low-level training code directly.
-- Regression configs must explicitly set `task_type="regression"`. The notebook does this already; ad hoc scripts should too.
+- Regression configs must explicitly set `task_type="regression"`. The regression notebook on main does this already; ad hoc scripts should too.
 - For RL baseline work, prefer `model/rl_workflow.py`, `model/nec_workflow.py`, `model/nnknn_rl_workflow.py`, `datasets/rl_tasks.py`, `tools/run_rl_dqn.py`, `tools/run_rl_nec.py`, and `tools/run_rl_nnknn.py` instead of notebook-only implementations.
 - Current NN-kNN-RL is an on-policy actor-critic workflow: the actor and critic are selectable between NN-kNN and MLP variants, and GAE supplies actor advantages and value targets.
 - MLP actors are standard stochastic-policy baselines: sample directly from their softmax policy during training, use entropy regularization, and keep effective epsilon at zero. Reserve readiness-driven uniform sampling and scheduled epsilon mixing for NN-kNN actors.
@@ -38,10 +41,11 @@ Keep T1/T3 stage implementations on neural-cbr and LLM. Read docs/BRANCH_ORGANIZ
 - Fast RL smoke test: `python codex/smoke_test.py --mode rl`
 - Fast NEC smoke test: `python codex/smoke_test.py --mode nec`
 - Fast NN-kNN-RL smoke test: `python codex/smoke_test.py --mode nnknn_rl`
+- Core contract: `python -m pytest tests/test_nnknn_core.py -q` and `python tools/check_nnknn_core.py`
 
 ## Notes
 
 - `checkpoints/` and transient artifacts are expected and are gitignored.
-- RL runs write timestamped artifacts under `results/rl/`.
+- RL runs write timestamped artifacts under `results/rl/` unless `--output-dir` is given; move finished campaigns under `results/t2/<step>/`.
 - `matplotlib` should run headlessly in cloud tasks with `MPLBACKEND=Agg`.
 - Avoid full multi-run benchmarks for routine verification; they are intentionally expensive.
