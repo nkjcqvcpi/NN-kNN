@@ -228,9 +228,9 @@
   `first_success_step`, training fractions, best-vs-last return gap, and
   `budget_interpretation`.
 - The June 1 representative rerun is in
-  `results/classification_nnknn_rerun_20260601_103353/`. Its completed
+  `results/prior_baseline/ijcai2025_classification/classification_nnknn_rerun_20260601_103353/`. Its completed
   `manifest.json`, `summary.csv`, and `runs.csv` record 30 NN-kNN fold rows.
-- `results/` contains completed Table 1 output folders. Keep old run folders
+- `results/prior_baseline/ijcai2026_regression/` contains completed Table 1 output folders. Keep old run folders
   for comparison and postmortem context rather than overwriting them.
 
 ## Where Durable Guidance Lives
