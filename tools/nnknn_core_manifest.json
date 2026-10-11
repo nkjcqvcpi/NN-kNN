@@ -1,0 +1,31 @@
+{
+  "description": "SHA-256 (CRLF normalized to LF) of the shared NN-kNN core. Edit the core on main, refresh with --write, then copy the core files and this manifest unchanged to neural-cbr, rl and LLM.",
+  "origin_branch": "main",
+  "files": {
+    "model/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "model/nnknn_model.py": "f628f4ccc79693ced9cd7ea646211f303fccafbca64cfa6d25ce816a6cfa8022",
+    "model/nn_cdh.py": "eba0b2fa3e8ca185add142f4abd0da3e9ba270cd228641735d8bb5282a24e61c",
+    "model/device_utils.py": "f2e807db98c35e2da8e58f9718b5d75289b1267a33f2f1befe7453488c09f300",
+    "model/feature_extractors.py": "a1411f2121eb4877a9b97a2f71af401ad701a14248c1b00037a903d8e4a1e0e6",
+    "model/common/__init__.py": "18233732578ba21c849d7fe8aa2b3641f539022365d44b20e463d07263fc2fab",
+    "model/common/artifacts.py": "6dba0ef9f347ce46c5740035011f1a472a8b2d2ffccd87e506be193191b01bf1",
+    "model/common/core.py": "8832848be1790f36298bce65955adc1cb631d2161af7a8122c38698d5b791a52",
+    "model/common/geometry.py": "653e56af549b7d715ca04e6791b8e4f7ea63bae3bbeafd51ddb7d15470f4ba10",
+    "model/common/nominal.py": "89923adf0290cf04569c424ec188b4817baffc859646680cfa14dd23597a8927",
+    "model/common/outcomes.py": "72327315ed2e7afc86b12d94f76e07f7c1a86c2c8e1378c37ba70cb4f6bde2da",
+    "model/classification_workflow.py": "ebfe2ecbe9469a6b2f8b8e622c6e3dcde161168def48a069ddf9cbf02d5e36af",
+    "model/regression_workflow.py": "26c2138b9a0753c9adae9f692e9840d6ef41e001bfd5bac21c70338b5516ce02",
+    "model/mlkr.py": "01dab3f0062f3b28d7401d64cfff664b87b05b400e77dc3bbcab9c2d45ce1172",
+    "datasets/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "datasets/classification_data.py": "17eb5528ad1604c4f3b8f427a19a11dc794327f62b87cc98d53a80a97a723e8b",
+    "datasets/cls_small_data.py": "400d2ca46c60adbd17961de294a45251c06e8643e3fa18d8b0090c79ea031562",
+    "datasets/reg_data.py": "5df1d12fa8f58f257de4aff8ea1bec4813263bf83b7a01b1224c71c1485e69ca",
+    "tools/run_classification_benchmarks.py": "fe928d3fcf9ad879f8a6bf38b89e041bb7e336f5ed605dfb71506bfcddc5c79b",
+    "tools/run_table1_kfold.py": "ed4ef3ff06759dd152f5b147c77ae9d572872bb7ec57744a8d4f4ce9905354a9",
+    "tools/resume_table1_kfold.py": "09fa726ed039be877ee60dbd92020458c9d1b9c7a6cf785133b85147ac52fbd5",
+    "tools/table1_nnknn_kfold.py": "1eea58c4d866185f80bf1d0b7e2f8e5ed467a527528053a0171f3cf4233a1e4e",
+    "tools/check_nnknn_core.py": "ebddbb6c76b3d20bca0eda077d505361a1b0c632c8e6367562533317082d06d9",
+    "tests/test_nnknn_core.py": "1e978884c7b6bb8e0f8a4affa847d93a5c9dd7c61b1b7d938917c28fe721a038",
+    "docs/NNKNN_CORE.md": "c6d7da5b7705a997319e1b11b3c6a28c876d5451247b3c8081ee0d40de8cff54"
+  }
+}
