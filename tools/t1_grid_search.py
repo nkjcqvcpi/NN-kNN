@@ -85,13 +85,22 @@ def prediction(model, family, X, task):
     return torch.cat(parts).numpy()
 
 
+def nnknn_core_settings(params):
+    """CoreConfig fields of an NN-kNN candidate exactly as this grid trains it.
+
+    Experiments that reuse a selected candidate must rebuild it with these
+    settings: the selection is only valid for them (e.g. the batch size).
+    """
+    return {**params, "batch_size": 64, "lr_glocal": params["lr_case"], "lr_feature": params["lr_case"] * .1}
+
+
 def fit_candidate(family, params, data, seed, epochs, patience):
     # data intentionally contains train/validation only.
     torch.manual_seed(seed)
     np.random.seed(seed)
     if family == "nnknn":
         cc = CoreConfig(task_type=data["task"], seed=seed, epochs=epochs, patience=patience,
-            batch_size=64, lr_glocal=params["lr_case"], lr_feature=params["lr_case"] * .1, **params)
+                        **nnknn_core_settings(params))
         model = build_model(data["X_train"], data["y_train"], cc, data["classes"])
         tr = train_retrieval(model, data["X_train"], data["y_train"], data["X_val"], data["y_val"], cc)
         return model, dict(core=dataclasses.asdict(cc), best_epoch=tr.best_epoch, epochs_run=tr.epochs_run,

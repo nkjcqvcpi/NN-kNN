@@ -23,6 +23,7 @@ from scipy import stats
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
+from tools.t1_grid_search import nnknn_core_settings  # noqa: E402
 from tools.t1_run import load_config  # noqa: E402
 
 
@@ -76,10 +77,10 @@ def prepare(args) -> None:
         sel = json.loads(path.read_text())
         if sel["test_stream_used"]:
             raise SystemExit(f"{key}: test-based selection is prohibited")
-        p = sel["parameters"]
-        # Same learning-rate ratios as tools/t1_execute_study.py.
-        core_by_dataset[key] = {**p, "lr_glocal": p["lr_case"], "lr_feature": p["lr_case"] * .1}
+        core_by_dataset[key] = nnknn_core_settings(sel["parameters"])
         sources[key] = {"selection": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+    if args.experiment:
+        template["experiment"] = args.experiment
     template["core_by_dataset"] = core_by_dataset
     template["core_selection_source"] = {"grid": str(grid), "files": sources}
     out = Path(args.out)
@@ -309,6 +310,7 @@ def main() -> None:
     p.add_argument("--template", required=True)
     p.add_argument("--grid", required=True)
     p.add_argument("--out", required=True)
+    p.add_argument("--experiment", help="experiment name of the generated config")
     s = sub.add_parser("select")
     s.add_argument("exp_dir", nargs="+", help="one or more stage experiment directories (same seeds)")
     s.add_argument("--out", required=True)
