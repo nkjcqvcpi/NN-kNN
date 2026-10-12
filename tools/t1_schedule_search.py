@@ -19,6 +19,7 @@ from pathlib import Path
 
 import numpy as np
 import yaml
+from scipy import stats
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
@@ -191,6 +192,13 @@ def write_confirmation(args, finalists: list[str]) -> None:
 
 # ----------------------------------------------------------------------------- report
 
+def pre_error(row: dict, stream: str) -> float:
+    """Pre-adaptation (retrieval-only) error of the same run."""
+    if row["task_type"] == "classification":
+        return 1.0 - float(row[f"{stream}_accuracy_pre"])
+    return float(row[f"{stream}_rmse_pre"])
+
+
 def report(args) -> None:
     rows, seen = [], set()
     for d in args.exp_dir:  # later batches may repeat the retrieval-only/reuse rows of earlier ones
@@ -200,50 +208,86 @@ def report(args) -> None:
                 seen.add(key)
                 rows.append(r)
     selection = json.loads(Path(args.selection).read_text())
-    err = mean_by(rows, lambda r: (r["dataset"], condition_id(r)), lambda r: error_of(r, "test"))
-    per_seed = {(r["dataset"], condition_id(r), r["seed"]): error_of(r, "test") for r in rows}
-    tasks = sorted({t for t, _ in err})
-    conds = sorted({c for _, c in err})
+    post = {(r["dataset"], condition_id(r), r["seed"]): error_of(r, "test") for r in rows}
+    pre = {(r["dataset"], condition_id(r), r["seed"]): pre_error(r, "test") for r in rows}
+    tasks = sorted({k[0] for k in post})
+    conds = sorted({k[1] for k in post})
+
+    def mean(store, t, c):
+        v = [x for (tt, cc, _), x in store.items() if (tt, cc) == (t, c)]
+        return float(np.mean(v)) if v else None
+
+    def pick(name, t):
+        return {"global_selected": selection["global_winner"],
+                "per_task_selected": selection["per_task_winner"].get(t)}.get(name, name)
+
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    lines = ["| task | " + " | ".join(conds) + " | per-task selected |", "|---" * (len(conds) + 2) + "|"]
-    summary = []
+    summary = [{"task": t, "condition": c, "test_error_mean": mean(post, t, c), "test_pre_error_mean": mean(pre, t, c),
+                "n": sum(1 for k in post if k[:2] == (t, c))} for t in tasks for c in conds if mean(post, t, c) is not None]
+    # Test ranks per task (reported only; selection was fixed beforehand).
+    ranks = {c: [] for c in conds}
     for t in tasks:
-        cells = []
-        for c in conds:
-            v = err.get((t, c))
-            cells.append("" if v is None else f"{np.mean(v):.4f} ± {np.std(v, ddof=1) if len(v) > 1 else 0:.4f}")
-            if v is not None:
-                summary.append({"task": t, "condition": c, "test_error_mean": float(np.mean(v)),
-                                "test_error_sd": float(np.std(v, ddof=1)) if len(v) > 1 else 0.0, "n": len(v)})
-        lines.append(f"| {t} | " + " | ".join(cells) + f" | {selection['per_task_winner'].get(t, '')} |")
+        present = [c for c in conds if mean(post, t, c) is not None]
+        for i, c in enumerate(sorted(present, key=lambda c: mean(post, t, c)), 1):
+            ranks[c].append(i)
+    base = args.baseline
+    agg = []
+    for c in conds:
+        rel = [(mean(post, t, c) - mean(post, t, base)) / mean(post, t, base) for t in tasks
+               if mean(post, t, c) is not None and mean(post, t, base)]
+        rel_pre = [(mean(pre, t, c) - mean(pre, t, base)) / mean(pre, t, base) for t in tasks
+                   if mean(pre, t, c) is not None and mean(pre, t, base)]
+        agg.append({"condition": c, "mean_test_rank": float(np.mean(ranks[c])), "tasks": len(ranks[c]),
+                    "tasks_better_than_baseline": sum(x < 0 for x in rel), "tasks_worse_than_baseline": sum(x > 0 for x in rel),
+                    "median_relative_error_vs_baseline": float(np.median(rel)) if rel else float("nan"),
+                    "median_relative_pre_error_vs_baseline": float(np.median(rel_pre)) if rel_pre else float("nan")})
+    agg.sort(key=lambda g: g["mean_test_rank"])
     paired = []
-    contenders = [("global_selected", lambda t: selection["global_winner"]),
-                  ("per_task_selected", lambda t: selection["per_task_winner"].get(t))]
-    for ref in selection["references"]:
-        for name, pick in contenders:
-            diffs_by_task = []
+    for ref in selection["references"] + [c for c in conds if c.endswith("retrieval_only")]:
+        for name in ("global_selected", "per_task_selected"):
+            per_task = []
             for t in tasks:
-                c = pick(t)
-                seeds = sorted({s for (tt, cc, s) in per_seed if tt == t and cc == c})
-                d = [per_seed[t, c, s] - per_seed[t, ref, s] for s in seeds if (t, ref, s) in per_seed]
+                c = pick(name, t)
+                d = [post[t, c, s] - post[t, ref, s] for (tt, cc, s) in post if (tt, cc) == (t, c) and (t, ref, s) in post]
                 if d:
-                    diffs_by_task.append((t, float(np.mean(d)), sum(x < 0 for x in d), sum(x > 0 for x in d), len(d)))
+                    per_task.append({"task": t, "condition": c, "mean_error_difference": float(np.mean(d)),
+                                     "seeds_better": sum(x < 0 for x in d), "seeds_worse": sum(x > 0 for x in d), "n": len(d)})
+            rel = [p["mean_error_difference"] / mean(post, p["task"], ref) for p in per_task if mean(post, p["task"], ref)]
             paired.append({"contender": name, "reference": ref,
-                           "tasks_better": sum(m < 0 for _, m, *_ in diffs_by_task),
-                           "tasks_worse": sum(m > 0 for _, m, *_ in diffs_by_task),
-                           "tasks_tied": sum(m == 0 for _, m, *_ in diffs_by_task),
-                           "per_task": [{"task": t, "mean_error_difference": m, "seeds_better": b, "seeds_worse": w, "n": n}
-                                        for t, m, b, w, n in diffs_by_task]})
-    (out / "test_summary.json").write_text(json.dumps({"rows": summary, "paired": paired,
-                                                        "error": "1-accuracy (classification) or standardized RMSE (regression)",
-                                                        "selection": args.selection}, indent=2))
+                           "tasks_better": sum(p["mean_error_difference"] < 0 for p in per_task),
+                           "tasks_worse": sum(p["mean_error_difference"] > 0 for p in per_task),
+                           "tasks_tied": sum(p["mean_error_difference"] == 0 for p in per_task),
+                           "median_relative_difference": float(np.median(rel)) if rel else float("nan"),
+                           "wilcoxon_p": float(stats.wilcoxon(rel).pvalue) if len(rel) > 1 and any(rel) else float("nan"),
+                           "per_task": per_task})
+    (out / "test_summary.json").write_text(json.dumps({"rows": summary, "aggregate": agg, "paired": paired,
+        "error": "1-accuracy (classification) or standardized RMSE (regression)", "baseline": base,
+        "selection": args.selection}, indent=2))
+    short = lambda c: c.split("::", 1)[-1]
     md = ["# Schedule confirmation (test stream, evaluation seeds)", "",
-          "Mean ± sd of test error: 1 - accuracy for classification, train-standardized RMSE for regression; lower is better.", "",
-          *lines, "", "## Selected schedules vs references (negative difference = lower error)", ""]
+          "Error: 1 - accuracy (classification) or train-standardized RMSE (regression), mean over seeds; lower is better. "
+          f"Relative columns are medians over tasks of (condition - `{short(base)}`) / `{short(base)}`; "
+          "\"pre\" is the same runs' retrieval-only output. Selection used validation only, before these results.", "",
+          "| condition | mean test rank | better / worse tasks vs baseline | median rel. error | median rel. pre-adaptation error |",
+          "|---|---|---|---|---|"]
+    for g in agg:
+        md.append(f"| {short(g['condition'])} | {g['mean_test_rank']:.2f} | {g['tasks_better_than_baseline']} / "
+                  f"{g['tasks_worse_than_baseline']} | {g['median_relative_error_vs_baseline']:+.1%} | "
+                  f"{g['median_relative_pre_error_vs_baseline']:+.1%} |")
+    key = [c for c in conds if c.endswith("retrieval_only")] + list(selection["references"]) + ["global_selected", "per_task_selected"]
+    md += ["", "## Per task", "", "| task | " + " | ".join(short(k) for k in key) + " | per-task selection |",
+           "|---" * (len(key) + 2) + "|"]
+    for t in tasks:
+        cells = [mean(post, t, pick(k, t)) for k in key]
+        best = min(v for v in cells if v is not None)
+        md.append(f"| {t} | " + " | ".join("" if v is None else (f"**{v:.4f}**" if v == best else f"{v:.4f}") for v in cells)
+                  + f" | {short(selection['per_task_winner'].get(t, ''))} |")
+    md += ["", "## Selected schedules vs references", ""]
     for p in paired:
-        md.append(f"- {p['contender']} vs {p['reference']}: better on {p['tasks_better']}, worse on {p['tasks_worse']}, "
-                  f"tied on {p['tasks_tied']} tasks")
+        md.append(f"- {p['contender']} vs `{short(p['reference'])}`: better on {p['tasks_better']}, worse on {p['tasks_worse']}, "
+                  f"tied on {p['tasks_tied']} tasks; median relative difference {p['median_relative_difference']:+.1%}, "
+                  f"Wilcoxon p = {p['wilcoxon_p']:.3f}")
     (out / "test_summary.md").write_text("\n".join(md) + "\n", encoding="utf-8")
     print("\n".join(md))
 
@@ -270,6 +314,7 @@ def main() -> None:
     r.add_argument("exp_dir", nargs="+")
     r.add_argument("--selection", required=True)
     r.add_argument("--out", required=True)
+    r.add_argument("--baseline", default="tuned::alternating_default", help="condition for relative columns")
     args = ap.parse_args()
     {"prepare": prepare, "select": select, "report": report}[args.cmd](args)
 
