@@ -122,6 +122,15 @@ def rank_conditions(rows: list[dict], seeds: list[int] | None = None):
 
 def select(args) -> None:
     rows = [r for d in args.exp_dir for r in load_rows(Path(d))]
+    # Retrieval-only rows repeat in every stage; other repeats are dropped by name.
+    drop = set(args.exclude_condition or [])
+    seen, kept = set(), []
+    for r in rows:
+        key = (r["dataset"], condition_id(r), r["seed"])
+        if condition_id(r) not in drop and key not in seen:
+            seen.add(key)
+            kept.append(r)
+    rows = kept
     table, winners, glob, n_seeds = rank_conditions(rows)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -310,6 +319,7 @@ def main() -> None:
     s.add_argument("--confirm-experiment")
     s.add_argument("--skip-condition", action="append", help="schedule name confirmed in an earlier batch")
     s.add_argument("--skip-reuse", action="store_true", help="frozen reuse confirmed in an earlier batch")
+    s.add_argument("--exclude-condition", action="append", help="condition id left out of ranking (e.g. an exact repeat)")
     r = sub.add_parser("report")
     r.add_argument("exp_dir", nargs="+")
     r.add_argument("--selection", required=True)
