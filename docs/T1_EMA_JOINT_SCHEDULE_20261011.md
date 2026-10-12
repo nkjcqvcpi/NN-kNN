@@ -155,35 +155,37 @@ tabular tasks trained from scratch. The MCB manuscript's evidence is on CUB imag
 with a pretrained backbone, where an encoder is unavoidable; that setting is not
 tested here.
 
-### EMA where the tuned core uses the MLP encoder (30/30 jobs)
+### EMA where the tuned core uses the MLP encoder
 
-`configs/t1/ema_tuned_mlp_20261012.yaml`; files in
-`results/t1/p5_mcb_interaction/ema_tuned_mlp_20261012/`. The six tasks where the
-full-study HPO grid selected the MLP (balance, wine, anneal, abalone, airfoil,
-concrete), each starting from its tuned core (no embedding normalization), five
-seeds. Arms differ only in the EMA case encoder.
+`configs/t1/ema_tuned_mlp_bs64_20261012.yaml` (30/30 jobs); files in
+`results/t1/p5_mcb_interaction/ema_tuned_mlp_bs64_20261012/`. The six tasks where
+the full-study HPO grid selected the MLP (balance, wine, anneal, abalone, airfoil,
+concrete), each starting from its tuned core trained exactly as the grid trained
+it (batch 64, no embedding normalization), five seeds. Arms differ only in the
+EMA case encoder. Relative error is (EMA − shared) / shared per task; median and
+Wilcoxon signed-rank test over the six tasks.
 
-| Setting | EMA 0.9 vs shared (tasks better / worse / tied) | Significant (paired t, p < 0.05) |
-|---|---|---|
-| Retrieval only | 2 / 3 / 1 | worse on airfoil (both momenta) |
-| Frozen-core reuse | 3 / 3 / 0 | worse on airfoil; at 0.99 better on balance, worse on anneal |
-| Alternating | 3 / 3 / 0 | better on balance, worse on airfoil |
-| Joint (summed, warm-up 5) | 1 / 5 / 0 | worse on airfoil (both momenta) |
+| Setting | EMA 0.9: better / worse tasks, median, p | EMA 0.99 | Significant per task (paired t, p < 0.05) |
+|---|---|---|---|
+| Retrieval only | 2 / 4, +17.0%, 0.22 | 3 / 3, +0.4%, 0.69 | worse on airfoil (both momenta) |
+| Frozen-core reuse | 2 / 4, +14.3%, 0.31 | 3 / 3, +0.6%, 1.00 | better on balance (0.9) and abalone (0.99); worse on airfoil |
+| Alternating | 3 / 3, +2.6%, 0.84 | 3 / 3, +0.9%, 0.69 | worse on airfoil and anneal (both) |
+| Joint (summed, warm-up 5) | 1 / 5, +12.2%, 0.16 | 1 / 5, +13.1%, 0.16 | worse on airfoil and wine (0.9), abalone and airfoil (0.99) |
 
-Momentum 0.99 is similar or worse (retrieval only 2 better / 4 worse). Balance is
-the one task where EMA consistently lowers error (retrieval only 0.066 → 0.054 at
-0.9, 0.046 at 0.99); airfoil is consistently and significantly worse (0.251 →
-0.297). EMA reduces case-embedding drift on five of six tasks, but neighbor churn
-is not lower than with the shared encoder on most of them. Under joint training,
-where the online encoder keeps moving with the adapter, EMA is worse on five of
-six tasks.
+Balance is the task where EMA most consistently lowers error (retrieval only
+0.062 → 0.048 at 0.9); airfoil is significantly worse in every setting (0.235 →
+0.301). Under joint training, where the online encoder keeps moving with the
+adapter, EMA is worse on five of six tasks. The earlier run of this check with
+batch-32 cores (`ema_tuned_mlp_20261012`, see the batch-size section below) gave
+the same picture.
 
 ### Conclusion for the EMA question
 
 EMA is not useful as a default on these supervised tabular tasks. With retrieval
 only and with retrieval + reuse, at default settings (13 tasks) and on tuned
-encoder cores (6 tasks), it is not significantly better than the same encoder
-without EMA, apart from balance. It is significantly worse on airfoil. The
+encoder cores (6 tasks), it is never significantly better than the same encoder
+without EMA across tasks; per-task gains are isolated (balance, once abalone),
+and it is significantly worse on airfoil in every tuned setting. The
 raw-feature NN-kNN remains the stronger default for most of these tasks. EMA's
 stabilizing effect on stored-case embeddings is real, so it remains a candidate
 where an encoder is required (images, text) or where the case base changes during
