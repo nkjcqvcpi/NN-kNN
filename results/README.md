@@ -30,6 +30,16 @@ Inside a phase, `pilot_20260929/<experiment>/` holds the 2026-09-29 pilot runs, 
 | P5 | `p5_mcb` | — | `t1_spec/supporting/MCB_*` |
 | P6 / T1.2 | `t12_revise_synthetic` | `continuation_20261004/alignment_revision*`, `alignment_synthetic_reliability`, `reviewer_probes*`; full study: `grid_preflight_20261009`, `grid_full_20261009`, `plan_iris_20261009`, `plan_full_20261009`, `runner_preflight_20261009`, `full_study_20261009` | `T1_FULL_STUDY_20261009.md`, `T1_REVIEWER_UI.md`, `T1_REVIEWER_INTERVENTION_DESIGN.md`, `T1_COMMON_KNOWLEDGE_UI_PROTOCOL.md`, `experiments/2026-10-04-revision-artifacts.md`, `experiments/2026-10-04-synthetic-reliability.md`, `experiments/2026-10-04-reviewer-controls.md` |
 
+## EMA ablation, joint training and schedule search (2026-10-11)
+
+Documented in `../docs/T1_EMA_JOINT_SCHEDULE_20261011.md`. Per-run directories are local under `results/t1/<phase>/pi20260920/<experiment>/`; the versioned folders below hold run shards, reports and selections. Logs: `logs/t1/<phase>/<experiment>/`.
+
+| Phase | Versioned folder | Contents |
+| --- | --- | --- |
+| P5 | `p5_mcb_interaction/ema_ablation_20261010/` | EMA vs shared encoder vs raw NN-kNN, retrieval only and retrieval + reuse, 13 tasks × 5 seeds |
+| P5 | `p5_mcb_interaction/ema_tuned_mlp_20261012/` | EMA vs shared encoder on the six tasks whose tuned core uses the MLP |
+| P4 | `p4_component_sync/schedule_search_20261011/` | training-schedule search: stage A and B validation selections, confirmation on seeds 30–34 |
+
 Cross-phase records: `T1_EXPERIMENT_PLAN.md`, `T1_ALIGNMENT_STATUS.md`, `T1_EXECUTION_LEDGER.md`, `T1_PLAN_IMPLEMENTATION.md`, and `../handoff/NEURAL_CBR_PROGRESS_10-06.md`.
 
 ## Moving the local artifacts

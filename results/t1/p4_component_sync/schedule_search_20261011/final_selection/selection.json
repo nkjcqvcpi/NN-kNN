@@ -1,0 +1,421 @@
+{
+  "rule": "per task: mean validation error (1-accuracy_post or rmse_post), then mean validation post-adaptation loss, then name; global: mean per-task rank, then tasks won, then name",
+  "test_stream_used": false,
+  "development_seeds": [
+    20,
+    21
+  ],
+  "seeds_per_condition": 2,
+  "global_winner": "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+  "global_ranking": [
+    {
+      "condition": "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 17.6875,
+      "tasks_won": 3
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.001",
+      "mean_rank": 22.6875,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.25__w_near=0.0__v_small=0.0__adapter_lr=0.001",
+      "mean_rank": 23.9375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 26.875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.001",
+      "mean_rank": 27.9375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 28.3125,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.0__adapter_lr=0.001",
+      "mean_rank": 28.5,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.001",
+      "mean_rank": 29.5,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 29.75,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.001",
+      "mean_rank": 29.9375,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.001",
+      "mean_rank": 30.0625,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.25__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 30.1875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 30.4375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.1__adapter_lr=0.001",
+      "mean_rank": 30.5625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 31.0,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.001",
+      "mean_rank": 31.75,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.5__w_near=0.1__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 31.75,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.001",
+      "mean_rank": 32.0625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=1.0",
+      "mean_rank": 32.3125,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=1.0__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 32.375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=1.0",
+      "mean_rank": 32.625,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.25__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 32.75,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.25__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 32.9375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.25__w_near=0.0__v_small=0.1__adapter_lr=0.001",
+      "mean_rank": 33.0,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=1.0__w_near=0.0__v_small=0.0__adapter_lr=0.001",
+      "mean_rank": 33.625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.25__w_near=0.0__v_small=0.0__adapter_lr=0.001",
+      "mean_rank": 33.6875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.1__adapter_lr=0.001",
+      "mean_rank": 33.75,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 33.875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.001",
+      "mean_rank": 33.9375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.001",
+      "mean_rank": 34.0625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.3",
+      "mean_rank": 34.25,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 34.5,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.25__w_near=0.1__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 34.6875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 34.8125,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 35.125,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+      "mean_rank": 35.5,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.1",
+      "mean_rank": 35.75,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=0.3",
+      "mean_rank": 35.75,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 36.0625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 36.3125,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=1.0__w_near=0.1__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 36.375,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=0.1",
+      "mean_rank": 36.4375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.25__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 36.6875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 37.1875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=1.0__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 37.5625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.001",
+      "mean_rank": 37.625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_scratch__joint_objective=separated",
+      "mean_rank": 37.875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=0.1",
+      "mean_rank": 38.375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=0.3",
+      "mean_rank": 38.4375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 38.9375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=1.0__w_near=0.1__v_small=0.1__adapter_lr=0.001",
+      "mean_rank": 39.3125,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.25__w_near=0.1__v_small=0.1__adapter_lr=0.001",
+      "mean_rank": 39.375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.25__w_near=0.1__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 39.625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=1.0__w_near=0.0__v_small=0.1__adapter_lr=0.001",
+      "mean_rank": 39.6875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_scratch__joint_objective=summed",
+      "mean_rank": 39.9375,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::frozen_reuse__combined",
+      "mean_rank": 39.9375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.25__w_near=0.1__v_small=0.1__adapter_lr=0.001",
+      "mean_rank": 40.5625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.25__w_near=0.0__v_small=0.1__adapter_lr=0.001",
+      "mean_rank": 41.875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+      "mean_rank": 43.3125,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::alternating__block_epochs=1__retrieval_lr_scale=0.1",
+      "mean_rank": 44.5625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0",
+      "mean_rank": 44.75,
+      "tasks_won": 2
+    },
+    {
+      "condition": "tuned::alternating__block_epochs=1__retrieval_lr_scale=0.3",
+      "mean_rank": 47.125,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::alternating__block_epochs=1__retrieval_lr_scale=1.0",
+      "mean_rank": 47.25,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::alternating_b2__retrieval_lr_scale=1.0",
+      "mean_rank": 47.75,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=0.1",
+      "mean_rank": 47.875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::alternating_default",
+      "mean_rank": 47.9375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::alternating_b2__retrieval_lr_scale=0.3",
+      "mean_rank": 50.0,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::sequential__retrieval_lr_scale=0.1",
+      "mean_rank": 50.0625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::alternating__block_epochs=5__retrieval_lr_scale=0.3",
+      "mean_rank": 51.875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::alternating__block_epochs=5__retrieval_lr_scale=0.1",
+      "mean_rank": 52.0625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=0.3",
+      "mean_rank": 52.25,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::sequential__retrieval_lr_scale=0.3",
+      "mean_rank": 52.3125,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::sequential__retrieval_lr_scale=1.0",
+      "mean_rank": 61.4375,
+      "tasks_won": 0
+    }
+  ],
+  "per_task_winner": {
+    "abalone": "tuned::joint_separated_w5__w_post=1.0__w_near=0.1__v_small=0.1__adapter_lr=0.003",
+    "airfoil": "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.1__adapter_lr=0.001",
+    "balance": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=1.0",
+    "breast_cancer": "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0",
+    "digits": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.001",
+    "energy_efficiency": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.1",
+    "iris": "tuned::joint_summed_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.001",
+    "student_performance": "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0",
+    "tabarena_363614": "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.0__adapter_lr=0.001",
+    "tabarena_363625": "tuned::joint_scratch__joint_objective=summed",
+    "tabarena_363626": "tuned::alternating__block_epochs=1__retrieval_lr_scale=1.0",
+    "tabarena_363675": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.3",
+    "wine": "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "yacht": "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "zebra": "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "zebra_special": "tuned::joint_separated_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.001"
+  },
+  "finalists": [
+    "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.001",
+    "tuned::joint_summed_w5__w_post=0.25__w_near=0.0__v_small=0.0__adapter_lr=0.001",
+    "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+    "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.001",
+    "tuned::joint_separated_w5__w_post=1.0__w_near=0.1__v_small=0.1__adapter_lr=0.003",
+    "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.1__adapter_lr=0.001",
+    "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=1.0",
+    "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0",
+    "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.1",
+    "tuned::joint_summed_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.001",
+    "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.0__adapter_lr=0.001",
+    "tuned::joint_scratch__joint_objective=summed",
+    "tuned::alternating__block_epochs=1__retrieval_lr_scale=1.0",
+    "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.3",
+    "tuned::joint_separated_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.001",
+    "tuned::alternating_default",
+    "tuned::frozen_reuse__combined",
+    "tuned::sequential__retrieval_lr_scale=0.1"
+  ],
+  "references": [
+    "tuned::alternating_default",
+    "tuned::frozen_reuse__combined",
+    "tuned::sequential__retrieval_lr_scale=0.1"
+  ]
+}
