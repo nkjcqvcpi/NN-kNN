@@ -190,3 +190,48 @@ where an encoder is required (images, text) or where the case base changes durin
 training; neither condition is tested here. For the next step, compare case-base
 maintenance policies without EMA (raw or the tuned core), with EMA kept as an
 optional factor.
+
+### Batch-size mismatch for HPO-selected cores (found 2026-10-12)
+
+The HPO grid trains NN-kNN candidates with batch size 64
+(`tools/t1_grid_search.py`), but `tools/t1_execute_study.py` and the schedule
+search rebuilt the selected cores with `configs/t1/_base.yaml`'s batch size 32.
+The difference matters: on digits (selected raw core, top-k 10, temperature 0.5,
+four feature-weight sets) retrieval collapses to chance in the first epoch at
+batch 32 on seeds 21, 30, 31 and 34 (seed 30: validation accuracy 0.119 at batch
+32 vs 0.956 at batch 64, the grid's own value). `nnknn_core_settings` in
+`tools/t1_grid_search.py` now defines the grid's settings once, and the study
+executor and the schedule search use it (commit `7b978a4`).
+
+Consequence for the running full study in `neural-cbr/`: its plan stage
+(`t1_execute_study.py`, queued after the grid) still uses batch 32 for every
+tuned-core experiment family. It should be rerun with this fix, or its tuned-core
+results labeled accordingly. The study's frozen source was not modified.
+
+### Schedule search on batch-32 cores (recorded, superseded)
+
+Files: `results/t1/p4_component_sync/schedule_search_20261011/`. Schedules within a
+task start from identical cores, so the comparison is matched, but the cores are
+not the grid's tuned ones (see above).
+
+- Stage A (27 candidates, seeds 20 and 21, validation only): joint schedules took
+  global ranks 1–9; the current default (alternating, block 2, scale 0.1) ranked
+  14th and the sequential schedules 21st, 24th and 27th.
+- Stage B (48 loss-weight and adapter-rate candidates around the two stage-A
+  leaders) reproduced stage A exactly on all 96 repeated runs. Pooled selection
+  over 73 candidates chose joint training with the summed objective, adapter
+  warm-up 5, retrieval scale 1.0, `w_post` 1.0, `w_near` 0.1, `v_small` 0 and
+  adapter learning rate 0.003 (mean rank 17.7; next 22.7). All of the top ten set
+  `v_small` = 0.
+- Confirmation on seeds 30–34 (26 conditions; batch B confirmed the 10 finalists
+  not in batch A): the selected schedule beat the current default on 13 of 16
+  tasks (median −11.6% error, Wilcoxon p = 0.008), frozen-core reuse on 12
+  (−4.9%, p = 0.005), sequential on 14 (−8.2%, p < 0.001) and retrieval only on
+  13 (−9.4%, p = 0.001). Its retrieval-only error stayed level with the default's
+  (median −0.3%), so the adapter is not compensating for worse retrieval.
+  Per-task selection gained little over the single global schedule (−11.0% vs the
+  default). Joint schedules held 22 of the top 24 test ranks.
+
+The batch-64 rerun (`schedule_search_bs64_20261012`, `schedule_search_b_bs64_20261012`,
+then confirmation) replaces these as the recommendation. Its stage B keeps the
+neighborhood chosen from the batch-32 stage A; both stages are ranked together.
