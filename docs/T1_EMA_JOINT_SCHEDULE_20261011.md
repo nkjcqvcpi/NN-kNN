@@ -230,7 +230,9 @@ not the grid's tuned ones (see above).
   13 (−9.4%, p = 0.001). Its retrieval-only error stayed level with the default's
   (median −0.3%), so the adapter is not compensating for worse retrieval.
   Per-task selection gained little over the single global schedule (−11.0% vs the
-  default). Joint schedules held 22 of the top 24 test ranks.
+  default). By mean test rank the top 17 of 28 conditions were all joint
+  schedules; the default ranked 25th, the sequential schedules 26th and 27th, and
+  retrieval only last.
 
 The batch-64 rerun (`schedule_search_bs64_20261012`, `schedule_search_b_bs64_20261012`,
 then confirmation) replaces these as the recommendation. Its stage B keeps the
