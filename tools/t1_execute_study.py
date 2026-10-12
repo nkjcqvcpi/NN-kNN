@@ -17,6 +17,7 @@ import yaml
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from model.common.artifacts import write_json, config_id, source_fingerprint
+from tools.t1_grid_search import nnknn_core_settings
 from tools.t1_run import load_config
 
 
@@ -63,7 +64,7 @@ def main():
         if selection["test_stream_used"]:
             raise ValueError("Test-based HPO is prohibited")
         params = selection["parameters"]
-        selected[key] = {**params, "lr_glocal": params["lr_case"], "lr_feature": params["lr_case"]*.1}
+        selected[key] = nnknn_core_settings(params)  # same settings the grid selected under
     classification = [d for d in study["datasets"] if d["task_type"] == "classification"]
     regression = [d for d in study["datasets"] if d["task_type"] == "regression"]
     # Core experiments evaluate real full datasets; no max_train cap here.

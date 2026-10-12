@@ -70,3 +70,21 @@ def test_confirmation_config_carries_finalist_definitions(tmp_path):
     assert conf["seeds"] == [30, 31, 32, 33, 34] and conf["arms"] == [{"name": "tuned"}]
     assert [c["name"] for c in conf["conditions"]] == [finalists[0].split("::")[1], "alternating_default"]
     assert conf["conditions"][0]["retrieval_lr_scale"] == 0.3 and conf["reuse_conditions"]
+
+
+def test_tuned_cores_reuse_the_grid_training_settings(tmp_path):
+    import json
+    from tools.t1_grid_search import nnknn_core_settings
+    from tools.t1_schedule_search import prepare
+    params = {"representation": "raw", "top_k": 10, "lr_case": 0.01, "glocal_fw_set_num": 4, "tau": 0.5}
+    settings = nnknn_core_settings(params)
+    assert settings["batch_size"] == 64 and settings["lr_glocal"] == .01 and settings["lr_feature"] == pytest.approx(.001)
+    template = tmp_path / "template.yaml"
+    template.write_text(yaml.safe_dump({"experiment": "x", "datasets": [{"name": "iris", "task_type": "classification"}]}))
+    sel = tmp_path / "grid" / "classification__iris" / "nnknn"
+    sel.mkdir(parents=True)
+    (sel / "selection.json").write_text(json.dumps({"parameters": params, "test_stream_used": False}))
+    out = tmp_path / "tuned.yaml"
+    prepare(SimpleNamespace(template=str(template), grid=str(tmp_path / "grid"), out=str(out), experiment="y"))
+    tuned = yaml.safe_load(out.read_text())
+    assert tuned["core_by_dataset"]["classification__iris"] == settings and tuned["experiment"] == "y"
