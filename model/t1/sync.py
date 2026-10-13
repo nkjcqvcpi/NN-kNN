@@ -66,6 +66,10 @@ class SyncConfig:
     nominal_fields: tuple[dict[str, Any], ...] = ()
     joint_objective: str = "separated"  # separated | summed (joint schedules only)
     adapter_warmup_epochs: int = 0  # joint schedules: adapter-only epochs before joint updates
+    # Logging-only full passes over the training stream before/after each epoch's
+    # update: every epoch (1), every k-th epoch and epoch 1 (k), or never (0).
+    # They run in eval mode without gradients and never change training.
+    diagnostics_every: int = 1
 
     @property
     def maintains(self) -> bool:
@@ -81,6 +85,8 @@ class SyncConfig:
             raise ValueError("joint_objective must be 'separated' or 'summed'")
         if self.adapter_warmup_epochs < 0 or self.adapter_warmup_epochs >= self.epochs:
             raise ValueError("adapter warm-up must leave joint epochs")
+        if self.diagnostics_every < 0:
+            raise ValueError("diagnostics_every must be nonnegative")
         if self.adapter_warmup_epochs and not self.schedule.startswith("joint"):
             raise ValueError("adapter warm-up applies to joint schedules only")
         if min(self.w_pre, self.w_post, self.w_near, self.v_post, self.v_delta, self.v_small) < 0:
@@ -230,7 +236,8 @@ def train_synchronized(
                     for key, value in terms.items():
                         totals[key] = totals.get(key, 0.) + float(value) * (stop - start) / len(y)
             return totals
-        before_update = diagnostic_terms()
+        log_terms = bool(cfg.diagnostics_every) and (ep == 1 or ep % cfg.diagnostics_every == 0)
+        before_update = diagnostic_terms() if log_terms else None
         model.train()
         adapter.train()
         perm = torch.randperm(y.numel(), generator=g)
@@ -281,7 +288,7 @@ def train_synchronized(
             nb += 1
         rec = {"epoch": ep, "phase": ph, "optimizer_updates": nb,
                "training_examples": len(y), "retrieval_query_case_pairs": query_case_pairs,
-               "train_before_update": before_update, "train_after_update": diagnostic_terms(),
+               **({"train_before_update": before_update, "train_after_update": diagnostic_terms()} if log_terms else {}),
                **{k: v / max(nb, 1) for k, v in agg.items()}}
         if ep in maintenance_epochs and maintenance_hook is not None and cfg.maintains:
             before_count = model.case_count()
