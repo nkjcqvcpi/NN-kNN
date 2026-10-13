@@ -25,6 +25,7 @@ from model.device_utils import adam_kwargs_for_device
 from model.nn_cdh import ClassificationNNCDHAdapter, NNCDHAdapter
 
 from .core import expected_calibration_error
+from .chunked import retrieve_chunked
 from .nominal import NominalSchema, NominalClassificationAdapter, nominal_difference, fit_nominal_schema
 
 
@@ -81,7 +82,7 @@ class ReuseConfig:
 def neighborhood_inputs(model, X: torch.Tensor, *, exclude_identical: bool, X_nominal: torch.Tensor | None = None, nominal_case: torch.Tensor | None = None, query_case_ids=None, nominal_adapter=None) -> dict[str, torch.Tensor]:
     """Frozen-retrieval neighborhood quantities for queries X."""
     model.eval()
-    r = model.retrieve(X.to(model.cases.device), exclude_identical=exclude_identical if query_case_ids is None else False, query_case_ids=query_case_ids)
+    r = retrieve_chunked(model, X.to(model.cases.device), exclude_identical=exclude_identical if query_case_ids is None else False, query_case_ids=query_case_ids)
     w = r["weights"]
     labels = model.labels[r["case_indices"]].float()
     p0 = w @ labels
@@ -278,7 +279,7 @@ def train_regression_adapter(model, data, cfg: ReuseConfig):
     def inputs(X, ids=None):
         with torch.no_grad():
             model.eval()
-            r = model.retrieve(X.to(device), exclude_identical=False, query_case_ids=ids)
+            r = retrieve_chunked(model, X.to(device), exclude_identical=False, query_case_ids=ids)
             p0 = r["weights"] @ model.labels[r["case_indices"]].float()
             dz = r["query_features"]-r["weights"] @ r["case_features"]
         return dz.detach(), p0.detach()

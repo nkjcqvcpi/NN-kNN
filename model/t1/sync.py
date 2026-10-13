@@ -48,6 +48,7 @@ import torch.nn.functional as F
 from model.nn_cdh import ClassificationNNCDHAdapter, NNCDHAdapter
 
 from .calibration import FreeRadius, l_small
+from .chunked import retrieve_chunked
 from .core import CoreConfig, make_optimizer
 from .nominal import NominalSchema, NominalClassificationAdapter, nominal_difference, fit_nominal_schema
 from .reuse import adapter_optimizer
@@ -149,7 +150,7 @@ def _forward_terms(model, adapter, X, y, fr: FreeRadius | None, *, output_mode: 
     Errors are the argmax error rate (classification) or RMSE in training-
     standardized units (regression); they never enter a gradient.
     """
-    r = model.retrieve(X, exclude_identical=False, query_case_ids=query_case_ids)
+    r = retrieve_chunked(model, X, exclude_identical=False, query_case_ids=query_case_ids)
     w = r["weights"]
     labels = model.labels[r["case_indices"]].float()
     L_near = (w * r["distances"]).sum(1).mean() / max(near_scale, 1e-8)
