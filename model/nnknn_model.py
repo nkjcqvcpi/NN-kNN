@@ -931,9 +931,12 @@ class NN_KNN_Model(nn.Module):
                         (len(self.cases), self.feature_dim), dtype=torch.float32, device=selected_cases.device # type: ignore
                     ) # type: ignore
 
-                # Check which indices need to be computed
-                uncached_indices = [idx.item() for idx in case_indices if self.cached_features[idx].sum() == 0]
-                if uncached_indices:
+                # Requested cases not yet cached (all-zero rows), found in one
+                # vectorized step: a per-case Python loop forces a host sync per
+                # case on accelerators. Same rows, order and values as before.
+                idx = case_indices.long()
+                uncached_indices = idx[self.cached_features[idx].sum(dim=-1) == 0]
+                if uncached_indices.numel():
                     uncached_cases = self.cases[uncached_indices]
                     uncached_features = self.feature_extractor(uncached_cases)  # Extract features for uncached cases
                     if getattr(self, "mcb_normalize_embeddings", False):
