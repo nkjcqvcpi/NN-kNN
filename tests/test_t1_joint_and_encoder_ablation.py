@@ -184,3 +184,29 @@ def test_sync_arms_keep_unarmed_labels(tmp_path):
     rows = [json.loads(line) for line in next(tmp_path.rglob("runs__tiny.jsonl")).read_text().splitlines()]
     assert [r["condition"] for r in rows] == ["joint_rr"]
     assert "arm" not in rows[0] and "val_rmse_post" in rows[0]
+
+
+@pytest.mark.parametrize("schedule", ["alternating_rr", "joint_rr"])
+@pytest.mark.parametrize("representation,mcb", [("raw", False), ("mlp", False), ("mlp", True)])
+def test_skipping_logging_passes_leaves_training_unchanged(schedule, representation, mcb):
+    data = classification_data()
+    cc = CoreConfig(task_type="classification", batch_size=8, top_k=4, representation=representation, mcb_enabled=mcb)
+    runs = []
+    for every in (1, 3, 0):
+        model = build_model(data.X_train, data.y_train, cc, 2)
+        fr, _ = calibrate_free_radius(model, s_task=.5, snapshot_step=0)
+        adapter, info = train_synchronized(model, data, cc, sync_cfg(schedule, epochs=6, diagnostics_every=every), fr, near_scale=1.)
+        runs.append((model.state_dict(), adapter.state_dict(), [h["val_L_post"] for h in info["history"]], info))
+    (m1, a1, v1, i1), (m3, a3, v3, i3), (m0, a0, v0, i0) = runs
+    for m, a, v in ((m3, a3, v3), (m0, a0, v0)):
+        assert v == v1
+        assert all(torch.equal(t, m[k]) for k, t in m1.items())
+        assert all(torch.equal(t, a[k]) for k, t in a1.items())
+    assert all("train_before_update" in h for h in i1["history"])
+    assert [h["epoch"] for h in i3["history"] if "train_before_update" in h] == [1, 3, 6]
+    assert not any("train_before_update" in h for h in i0["history"])
+
+
+def test_negative_diagnostics_interval_is_rejected():
+    with pytest.raises(ValueError):
+        sync_cfg("joint_rr", diagnostics_every=-1).validate("classification")

@@ -350,6 +350,7 @@ class Runner:
         man["run"]["source_changed_during_run"] = man["run"]["source_fingerprint_sha256"] != self.source_hash
         man["run"]["source_fingerprint_sha256"] = self.source_hash
         man["run"]["source_snapshot"] = str(self.source_path)
+        man["run"]["device"] = str(model.cases.device)
         write_json(run_dir / "run_manifest.json", man)
         write_json(run_dir / "metrics.json", metrics)
         write_json(run_dir / "history.json", history)

@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import json
+import os
 import subprocess
 import sys
 import time
@@ -23,20 +24,23 @@ sys.path.insert(0, str(REPO))
 from tools.t1_run import load_config  # noqa: E402
 
 
-def run_job(config: Path, name: str, seed: int, out: Path, logs: Path) -> dict:
+def run_job(config: Path, name: str, seed: int, out: Path, logs: Path, device: str | None = None) -> dict:
     log = logs / f"{name}__s{seed}.log"
     receipt = log.with_suffix(".json")
     if receipt.exists():
         previous = json.loads(receipt.read_text())
         if previous["exit_code"] == 0:
             return {**previous, "reused": True}
+    env = dict(os.environ)
+    if device:
+        env["NNKNN_DEVICE"] = device  # tools/t1_run.py defaults to cpu otherwise
     t0 = time.time()
     with log.open("w", encoding="utf-8") as fh:
         proc = subprocess.run([sys.executable, "-u", str(REPO / "tools/t1_run.py"), str(config),
                                "--only-dataset", name, "--seeds", str(seed), "--out", str(out)],
-                              cwd=REPO, stdout=fh, stderr=subprocess.STDOUT)
+                              cwd=REPO, stdout=fh, stderr=subprocess.STDOUT, env=env)
     result = {"config": str(config), "dataset": name, "seed": seed, "exit_code": proc.returncode,
-              "seconds": time.time() - t0, "log": str(log)}
+              "seconds": time.time() - t0, "log": str(log), "device": device or env.get("NNKNN_DEVICE", "cpu")}
     receipt.write_text(json.dumps(result, indent=2))
     return result
 
@@ -49,6 +53,7 @@ def main() -> None:
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--seeds", type=int, nargs="*")
     ap.add_argument("--datasets", nargs="*", help="subset of dataset names, in launch order")
+    ap.add_argument("--device", help="NNKNN_DEVICE for every job, e.g. cpu or xpu (one device per batch)")
     args = ap.parse_args()
     config = Path(args.config).resolve()
     cfg = load_config(config)
@@ -67,7 +72,7 @@ def main() -> None:
     jobs = [(n, int(s)) for n in names for s in seeds]
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futures = {pool.submit(run_job, config, n, s, out, logs): (n, s) for n, s in jobs}
+        futures = {pool.submit(run_job, config, n, s, out, logs, args.device): (n, s) for n, s in jobs}
         for future in concurrent.futures.as_completed(futures):
             r = future.result()
             results.append(r)
