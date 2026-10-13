@@ -10,16 +10,21 @@ seed-paired runs of log((e_F + eps) / (e_ref + eps)), eps = 0.5 / n_test
 (classification) or 0 (regression), with within-task variance var / n_seeds. Tasks
 are pooled by random-effects meta-analysis (REML tau^2, Hartung-Knapp interval with
 t(k-1)); GMR = exp(pooled effect), < 1 favours F. E1/E2 are one-sided superiority
-tests, E3a/E3b non-inferiority at the pre-registered margin; Holm over the four, so
-an E3 endpoint needs both its one-sided 95% upper bound below 1 + delta and a
-Holm-adjusted p <= 0.05. Secondary analyses (ECE_T, flips, six-method ranks) use
-Benjamini-Hochberg. Writes ``report.json`` (every number) and ``report.md``.
+tests (Holm-significant over {E1, E2, E3a, E3b}, GMR <= 0.97, E2's guards); E3a/E3b
+are non-inferiority at the pre-registered margin and, as the prereg's "Supported if"
+column says, are decided by the one-sided 95% upper bound of the GMR alone (< 1 +
+delta); their Holm-adjusted p is reported, not a criterion. Secondary analyses
+(ECE_T, flips, six-method ranks) use Benjamini-Hochberg. Writes ``report.json``
+(every number) and ``report.md``.
 
 Refused: a prereg file whose sha256 differs from --prereg-sha256; an analysed row or
 baseline entry on a seed outside the evaluation seeds (plus the small-task seeds for
-small tasks); duplicate rows that differ; rows from different run source
-fingerprints (unless --allow-mixed-code); missing primary evidence (unless
---allow-incomplete).
+small tasks); a bare small-task name shared by several analysed tasks; a declared
+small task whose test set has 100 or more rows; duplicate rows that differ; rows from
+different run source fingerprints (unless --allow-mixed-code); a neural-CBR
+comparison (E1 or E2 on one task) whose arms ran on different device types (unless
+--allow-mixed-device); missing primary evidence, including an undeclared non-OpenML
+task with fewer than 100 test rows (unless --allow-incomplete).
 """
 from __future__ import annotations
 
@@ -45,6 +50,14 @@ EXTRA_METRIC_TASKS = ("classification__tabarena_363623", "classification__tabare
 EXTRA_METRIC_PREFIXES = ("test_log_loss", "test_logloss", "test_macro_f1")
 PRE = "@pre"  # suffix of a condition's pre-adaptation error series
 NAN = float("nan")
+SMALL_TEST_ROWS = 100  # prereg: small tasks are non-OpenML tasks with fewer test rows than this
+UNKNOWN_DEVICE = "unknown"
+DECISION_RULES = {
+    "superiority": "Holm-adjusted one-sided p <= alpha and GMR <= gmr_max (E2: and every evaluable guard "
+                   "holds); with both groups, no claim if the transfer group's 95% CI lies above 1",
+    "noninferiority": "one-sided 95% upper bound of GMR < 1 + delta (the prereg's 'Supported if' column); "
+                      "the Holm-adjusted p is reported but is not a criterion",
+}
 
 
 # ----------------------------------------------------------------------------- inputs
@@ -72,6 +85,7 @@ class Evidence:
     rows: dict[tuple[str, str], dict[int, dict]] = field(default_factory=dict)  # (task, condition) -> seed -> row
     n_test: dict[tuple[str, int], int] = field(default_factory=dict)
     n_test_baseline: dict[tuple[str, int], int] = field(default_factory=dict)
+    devices: dict[tuple[str, str], dict[int, str]] = field(default_factory=dict)  # (task, condition) -> seed -> device type
     provenance: dict = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
@@ -138,35 +152,53 @@ def small_task_names(items: list[str], prereg: dict) -> set[str]:
     return names
 
 
+def is_openml(name: str) -> bool:
+    return name.startswith(("tabarena_", "openml_"))
+
+
 def plan_tasks(prereg: dict, groups: list[str], small: set[str]) -> tuple[list[Task], list[str]]:
     seeds = prereg["seeds"]
     base, extra = set(seeds["evaluation"]), set(seeds.get("evaluation_small_tasks", []))
-    tasks, matched = [], set()
+    tasks, matched, listed_all = [], set(), []
     if len(set(groups)) != len(groups):
         raise SystemExit(f"repeated group in {groups}")
     for g in groups:
         listed = prereg["tasks"].get(GROUP_KEYS.get(g, g))
         if not isinstance(listed, list) or not all(isinstance(t, dict) for t in listed):
             raise SystemExit(f"group {g} has no task list in the prereg; task groups: {sorted(prereg['tasks'])}")
-        for t in listed:
-            key = f"{t['task_type']}__{t['name']}"
-            hit = {key, t["name"]} & small
-            if hit and t["name"].startswith(("tabarena_", "openml_")):
-                raise SystemExit(f"{key} is an OpenML task; the prereg's extra seeds are for non-OpenML tasks only")
-            matched |= hit
-            tasks.append(Task(key, t["name"], t["task_type"], g, bool(hit), tuple(sorted(base | (extra if hit else set())))))
+        listed_all += [(g, t) for t in listed]
+    # A bare name such as 'wine' can name a classification and a regression task.
+    keys_by_name: dict[str, list[str]] = {}
+    for _, t in listed_all:
+        keys_by_name.setdefault(t["name"], []).append(f"{t['task_type']}__{t['name']}")
+    if ambiguous := {n: keys_by_name[n] for n in sorted(small) if len(keys_by_name.get(n, [])) > 1}:
+        raise SystemExit(f"small-task name(s) {sorted(ambiguous)} match several analysed tasks {ambiguous}; "
+                         "name small tasks by their <task_type>__<name> key")
+    for g, t in listed_all:
+        key = f"{t['task_type']}__{t['name']}"
+        hit = {key, t["name"]} & small
+        if hit and is_openml(t["name"]):
+            raise SystemExit(f"{key} is an OpenML task; the prereg's extra seeds are for non-OpenML tasks only")
+        matched |= hit
+        tasks.append(Task(key, t["name"], t["task_type"], g, bool(hit), tuple(sorted(base | (extra if hit else set())))))
     if len({t.key for t in tasks}) != len(tasks):
         raise SystemExit("a task appears in more than one selected group")
     return tasks, sorted(small - matched)
 
 
-def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Conditions, allow_mixed_code: bool) -> None:
+def device_type(value) -> str:
+    """'xpu:0' -> 'xpu'; a manifest without a device (older runs) -> 'unknown'."""
+    text = "" if value is None else str(value).strip().lower()
+    return text.split(":", 1)[0] if text and text != "none" else UNKNOWN_DEVICE
+
+
+def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Conditions, allow_mixed_code: bool,
+              allow_mixed_device: bool = False) -> None:
     by_key = {t.key: t for t in tasks}
     wanted = {cond.final, cond.retrieval_only, cond.default}
     counts = {"rows_analysed": 0, "rows_ignored": 0, "duplicate_rows": 0, "run_manifests_found": 0,
               "run_manifests_absent": 0}
     fingerprints: dict[str, dict[str, int]] = {}
-    devices: dict[str, int] = {}
     bad_seed, conflicts = [], []
     for d in dirs:
         shards = sorted(d.glob("runs__*.jsonl"))
@@ -200,14 +232,16 @@ def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Condition
                     if ev.n_test.setdefault((t.key, s), int(row["test_n"])) != int(row["test_n"]):
                         raise SystemExit(f"{t.key} seed {s}: rows disagree on test_n; the splits differ")
                 manifest = d / row["dataset"] / row["condition"] / f"s{s}" / "run_manifest.json"
+                device = UNKNOWN_DEVICE
                 if manifest.exists():
                     run = json.loads(manifest.read_text(encoding="utf-8"))["run"]
                     fp = fingerprints.setdefault(str(run.get("source_fingerprint_sha256")), {})
                     fp[c] = fp.get(c, 0) + 1
-                    devices[str(run.get("device"))] = devices.get(str(run.get("device")), 0) + 1
+                    device = device_type(run.get("device"))
                     counts["run_manifests_found"] += 1
                 else:
                     counts["run_manifests_absent"] += 1
+                ev.devices.setdefault((t.key, c), {})[s] = device
     if bad_seed:
         raise SystemExit(f"{len(bad_seed)} row(s) on seeds outside the pre-registered evaluation seeds, e.g. {bad_seed[:5]}")
     if conflicts:
@@ -217,9 +251,40 @@ def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Condition
                          "pass --allow-mixed-code to analyse them together")
     if not any(c == cond.final for _, c in ev.rows):
         raise SystemExit(f"no rows for the final condition {cond.final}")
-    if len(devices) > 1:
-        ev.warnings.append(f"neural-CBR rows ran on several devices {devices}; the prereg forbids pooling CPU and XPU arms")
-    ev.provenance.update(counts, source_fingerprints=fingerprints, devices=devices)
+    ev.provenance.update(counts, source_fingerprints=fingerprints)
+    check_devices(ev, tasks, cond, allow_mixed_device)
+
+
+def check_devices(ev: Evidence, tasks: list[Task], cond: Conditions, allow_mixed_device: bool) -> None:
+    """The prereg forbids pooling CPU and XPU arms within a comparison: on each task, the
+    neural-CBR arms of E1 (F, retrieval-only) and of E2 and its guards (F, default) must
+    share one device type over all seeds. Rows whose manifest records no device are unknown."""
+    pairs = {"E1": (cond.final, cond.retrieval_only), "E2": (cond.final, cond.default)}
+    totals: dict[str, int] = {}
+    for series in ev.devices.values():
+        for dev in series.values():
+            totals[dev] = totals.get(dev, 0) + 1
+    by_task, mixed = {}, []
+    for t in tasks:
+        seen = {c: sorted(set(ev.devices.get((t.key, c), {}).values())) for c in dict.fromkeys(sum(pairs.values(), ()))}
+        if any(seen.values()):
+            by_task[t.key] = {c: v for c, v in seen.items() if v}
+        for name, pair in pairs.items():
+            known = sorted({d for c in pair for d in seen[c] if d != UNKNOWN_DEVICE})
+            if len(known) > 1:
+                mixed.append(f"{t.key} {name}: {known}")
+    unknown = totals.get(UNKNOWN_DEVICE, 0)
+    ev.provenance.update(devices=totals, devices_by_task=by_task,
+                         device_check={"mixed_comparisons": mixed, "allow_mixed_device": allow_mixed_device,
+                                       "rows_without_device": unknown})
+    if mixed and not allow_mixed_device:
+        raise SystemExit(f"{len(mixed)} comparison(s) pool neural-CBR arms run on different device types, which the "
+                         f"prereg forbids, e.g. {mixed[:5]}; pass --allow-mixed-device to analyse them anyway")
+    if mixed:
+        ev.warnings.append(f"analysed with --allow-mixed-device: {len(mixed)} comparison(s) pool device types, e.g. {mixed[:3]}")
+    if unknown:
+        ev.warnings.append(f"no recorded device for {unknown} of {sum(totals.values())} neural-CBR rows; "
+                           "the per-comparison CPU/XPU check covers only rows whose run manifest records one")
 
 
 def load_baselines(ev: Evidence, dirs: list[Path], tasks: list[Task], families: list[str]) -> None:
@@ -287,6 +352,36 @@ def resolve_n_test(ev: Evidence, tasks: list[Task], fallback: dict) -> None:
     if missing:
         raise SystemExit(f"no n_test for {len(missing)} classification run(s), e.g. {missing[:5]}; pass --n-test")
     ev.provenance["n_test_sources"] = counts
+
+
+def check_small_tasks(ev: Evidence, tasks: list[Task], allow_incomplete: bool) -> None:
+    """Cross-check the small-task declaration against the test-set sizes that were read.
+
+    The prereg's small tasks are the non-OpenML tasks with fewer than 100 test rows. A
+    declared small task with a larger test set is refused; an undeclared one would lack
+    its pre-registered small-task seeds, so it is incomplete evidence."""
+    known: dict[str, list[int]] = {}
+    for (key, _), n in [*ev.n_test_baseline.items(), *ev.n_test.items()]:
+        known.setdefault(key, []).append(n)
+    wrong, undeclared = [], []
+    for t in tasks:
+        if not (sizes := known.get(t.key)):
+            continue
+        if t.small and max(sizes) >= SMALL_TEST_ROWS:
+            wrong.append(f"{t.key} ({max(sizes)} test rows)")
+        elif not t.small and not is_openml(t.name) and max(sizes) < SMALL_TEST_ROWS:
+            undeclared.append(f"{t.key} ({max(sizes)} test rows)")
+    ev.provenance["small_task_check"] = {"declared_but_large": wrong, "small_but_undeclared": undeclared,
+                                         "tasks_without_test_size": [t.key for t in tasks if t.key not in known]}
+    if wrong:
+        raise SystemExit(f"declared small task(s) with {SMALL_TEST_ROWS} or more test rows: {wrong}; the prereg's "
+                         "extra seeds are for tasks with fewer")
+    if undeclared:
+        msg = (f"task(s) with fewer than {SMALL_TEST_ROWS} test rows not declared small, so their pre-registered "
+               f"small-task seeds are not analysed: {undeclared}")
+        if not allow_incomplete:
+            raise SystemExit(msg + "; pass --small-tasks (e.g. the seed audit JSON) or --allow-incomplete")
+        ev.warnings.append(msg)
 
 
 def missing_evidence(ev: Evidence, tasks: list[Task], methods: list[str]) -> list[dict]:
@@ -469,7 +564,8 @@ def guards(ev: Evidence, tasks: list[Task], cond: Conditions, prereg: dict, min_
     pre = pre_cmp["pooled"].summary()
     loc = ratio_of_means(ev, tasks, cond.final, cond.default, "test_locality_input")
     cor = ratio_of_means(ev, tasks, cond.final, cond.default, "test_correction_l1_mean")
-    loc_value = float(np.exp(np.mean(np.log([x["ratio"] for x in loc])))) if loc else NAN
+    with np.errstate(divide="ignore", invalid="ignore"):  # a zero or infinite ratio stays 0 / inf
+        loc_value = float(np.exp(np.mean(np.log([x["ratio"] for x in loc])))) if loc else NAN
     cor_value = float(np.median([x["ratio"] for x in cor])) if cor else NAN
     out = {
         "pre_adaptation": {"method": "REML/Hartung-Knapp GMR of F's pre-adaptation error vs retrieval-only",
@@ -493,22 +589,23 @@ def decide(primary: dict, guard: dict, transfer: dict | None, prereg: dict) -> N
     """Pre-registered decisions and the prereg's wording, mechanically, in place."""
     for name, r in primary.items():
         spec = prereg["endpoints"][name]
-        crit = {"holm_significant": r["p_holm"] <= ALPHA}
+        r["holm_significant"] = r["p_holm"] <= ALPHA
+        r["decision_rule"] = DECISION_RULES["superiority" if spec["test"] == "superiority" else "noninferiority"]
         if spec["test"] == "superiority":
-            crit["gmr_at_most_max"] = r["gmr"] <= spec["gmr_max"]
+            crit = {"holm_significant": r["holm_significant"], "gmr_at_most_max": r["gmr"] <= spec["gmr_max"]}
             if transfer is not None:
                 crit["transfer_not_opposite"] = not transfer[name]["gmr_ci95"][0] > 1.0
             if name == "E2":
                 crit["guards_hold"] = guard["hold"]
-        else:
-            crit["upper_bound_below_margin"] = r["gmr_upper95_one_sided"] < 1 + spec["delta"]
+        else:  # the bound alone, as pre-registered; p_holm stays a reported number
+            crit = {"upper_bound_below_margin": r["gmr_upper95_one_sided"] < 1 + spec["delta"]}
         r["criteria"], r["supported"] = crit, all(crit.values())
         r["wording"] = wording(name, r, spec, guard)
 
 
 def wording(name: str, r: dict, spec: dict, guard: dict) -> str:
     g, (lo, hi) = r["gmr"], r["gmr_ci95"]
-    if not math.isfinite(g):
+    if r["k"] < 2 or not math.isfinite(g):
         return "not evaluable (fewer than two tasks with paired evidence)"
     ci = f"GMR {g:.3f} [95% CI {lo:.3f}, {hi:.3f}]"
     label = LABELS.get(spec["vs"], spec["vs"])
@@ -521,6 +618,9 @@ def wording(name: str, r: dict, spec: dict, guard: dict) -> str:
         return "no detectable gain from reuse on tuned cores"
     if name == "E2":
         return "gate 5 fails" if not guard["hold"] else "no detectable schedule effect"
+    if g < 1:  # F's error is lower but the bound reaches the margin: "trails" would misstate the direction
+        return (f"non-inferiority to tuned {label} not shown at delta = {spec['delta']:g}: {ci}, "
+                f"one-sided 95% upper bound {r['gmr_upper95_one_sided']:.3f}")
     return f"trails tuned {label} by {100 * (g - 1):+.1f}% [95% CI {100 * (lo - 1):+.1f}%, {100 * (hi - 1):+.1f}%]"
 
 
@@ -553,8 +653,9 @@ def secondary(ev: Evidence, tasks: list[Task], cond: Conditions) -> dict:
     if flips:
         w, c = sum(f["wrong_to_correct"] for f in flips), sum(f["correct_to_wrong"] for f in flips)
         active = [f for f in flips if f["wrong_to_correct"] + f["correct_to_wrong"] > 0]
-        out["flips"].update(wrong_to_correct=w, correct_to_wrong=c, ratio=w / c if c else math.inf,
-                            holds=w >= FLIP_FACTOR * c,
+        # No flips at all: the ratio is undefined and the criterion is not evaluable (not vacuously met).
+        out["flips"].update(wrong_to_correct=w, correct_to_wrong=c, ratio=w / c if c else (math.inf if w else NAN),
+                            holds=w >= FLIP_FACTOR * c if w + c else None,
                             test="Wilcoxon signed-rank over tasks with flips of log((W+0.5)/(C+0.5)) - log 2, H1: > 0",
                             p=_wilcoxon([math.log((f["wrong_to_correct"] + .5) / (f["correct_to_wrong"] + .5))
                                          - math.log(FLIP_FACTOR) for f in active], "greater"))
@@ -642,7 +743,14 @@ def clean(x):
 
 
 def _f(x, fmt: str = ".3f") -> str:
-    return "n/a" if x is None or (isinstance(x, float) and math.isnan(x)) else format(x, fmt)
+    """Format a cleaned number: None/NaN -> 'n/a'; clean()'s "inf"/"-inf" strings pass through."""
+    if x is None or (isinstance(x, float) and math.isnan(x)):
+        return "n/a"
+    return x if isinstance(x, str) else format(x, fmt)
+
+
+def _yes(x) -> str:
+    return "n/a" if x is None else "yes" if x else "no"
 
 
 def render_md(rep: dict) -> str:
@@ -667,6 +775,8 @@ def render_md(rep: dict) -> str:
                   f"{_f(r['p_holm'], '.4f')} | {'yes' if r['supported'] else 'no'} |")
     md += [""] + [f"- **{k}**: {r['wording']}" + ("" if r["supported"] else " (failed: " + ", ".join(
         c for c, ok in r["criteria"].items() if not ok) + ")") for k, r in prim["endpoints"].items()]
+    md += ["", "Decision rules: E1/E2 " + rep["decision_rules"]["superiority"] + "; E3a/E3b "
+           + rep["decision_rules"]["noninferiority"] + "."]
     g = prim["guards"]
     md += ["", "## E2 guards", "", "| guard | value | limit | holds |", "|---|---|---|---|"]
     for name in ("pre_adaptation", "locality", "correction"):
@@ -690,10 +800,11 @@ def render_md(rep: dict) -> str:
         e, fl, rk = res["ece"], res["flips"], res["ranks"]
         if e["available"]:
             md.append(f"| {scope} | ECE_T | median {_f(e['median_ece_post_T'], '.4f')} vs pre {_f(e['median_ece_pre'], '.4f')} "
-                      f"+ {ECE_MARGIN} | {'yes' if e['holds'] else 'no'} | {_f(e['p'], '.4f')} | {_f(e.get('p_bh'), '.4f')} |")
+                      f"+ {ECE_MARGIN} | {_yes(e['holds'])} | {_f(e['p'], '.4f')} | {_f(e.get('p_bh'), '.4f')} |")
         if fl["available"]:
             md.append(f"| {scope} | flips | {fl['wrong_to_correct']} / {fl['correct_to_wrong']} = {_f(fl['ratio'], '.2f')} | "
-                      f"{'yes' if fl['holds'] else 'no'} | {_f(fl['p'], '.4f')} | {_f(fl.get('p_bh'), '.4f')} |")
+                      f"{'n/a (no flips)' if fl['holds'] is None else _yes(fl['holds'])} | {_f(fl['p'], '.4f')} | "
+                      f"{_f(fl.get('p_bh'), '.4f')} |")
         md.append(f"| {scope} | ranks (Friedman) | {rk['tasks']} tasks | | {_f(rk['p'], '.4f')} | {_f(rk.get('p_bh'), '.4f')} |")
     names = list(next(iter(rep["secondary"].values()))["ranks"]["mean_rank"])
     md += ["", "Six-method mean ranks (1 = lowest error)", "", "| scope | " + " | ".join(names) + " |",
@@ -714,6 +825,8 @@ def render_md(rep: dict) -> str:
            f"- neural-CBR rows analysed {pv['rows_analysed']}, ignored {pv['rows_ignored']}, identical duplicates "
            f"{pv['duplicate_rows']}; run manifests found {pv['run_manifests_found']}, absent {pv['run_manifests_absent']}",
            f"- run source fingerprints: {', '.join(f'{k[:12]} ({sum(v.values())} rows)' for k, v in pv['source_fingerprints'].items()) or 'none recorded'}",
+           f"- devices (rows): {pv.get('devices', {})}; comparisons pooling device types: "
+           f"{len(pv.get('device_check', {}).get('mixed_comparisons', []))}",
            f"- n_test sources: {pv.get('n_test_sources', {})}"]
     md += [f"- warning: {w}" for w in rep["warnings"]]
     return "\n".join(md) + "\n"
@@ -734,6 +847,8 @@ def main(argv: list[str] | None = None) -> dict:
     ap.add_argument("--n-test", help="fallback JSON {task key or name: n_test or {seed: n_test}}")
     ap.add_argument("--min-within-var", type=float, help="within-task variance floor (default: smallest positive)")
     ap.add_argument("--allow-mixed-code", action="store_true")
+    ap.add_argument("--allow-mixed-device", action="store_true",
+                    help="analyse E1/E2 comparisons whose neural-CBR arms ran on different device types")
     ap.add_argument("--allow-incomplete", action="store_true")
     args = ap.parse_args(argv)
     if args.min_within_var is not None and not args.min_within_var > 0:
@@ -747,10 +862,11 @@ def main(argv: list[str] | None = None) -> dict:
     ev = Evidence()
     if unknown_small:
         ev.warnings.append(f"small tasks not among the analysed tasks: {unknown_small}")
-    load_runs(ev, [Path(d) for d in args.runs], tasks, cond, args.allow_mixed_code)
+    load_runs(ev, [Path(d) for d in args.runs], tasks, cond, args.allow_mixed_code, args.allow_mixed_device)
     families = list(dict.fromkeys([prereg["endpoints"][e]["vs"] for e in ("E3a", "E3b")] + list(RANK_FAMILIES)))
     load_baselines(ev, [Path(d) for d in args.baselines], tasks, families)
     resolve_n_test(ev, tasks, json.loads(Path(args.n_test).read_text(encoding="utf-8")) if args.n_test else {})
+    check_small_tasks(ev, tasks, args.allow_incomplete)
     required = [cond.final, cond.retrieval_only, cond.default, *endpoint_refs(prereg, cond).values()]
     missing = missing_evidence(ev, tasks, list(dict.fromkeys(required)))
     if missing and not args.allow_incomplete:
@@ -761,19 +877,21 @@ def main(argv: list[str] | None = None) -> dict:
         "inputs": {"prereg": args.prereg, "runs": args.runs, "baselines": args.baselines, "final": cond.final,
                    "retrieval_only": cond.retrieval_only, "default": cond.default, "groups": args.groups,
                    "small_tasks": sorted(t.key for t in tasks if t.small), "allow_mixed_code": args.allow_mixed_code,
-                   "allow_incomplete": args.allow_incomplete, "min_within_var": args.min_within_var},
+                   "allow_mixed_device": args.allow_mixed_device, "allow_incomplete": args.allow_incomplete,
+                   "min_within_var": args.min_within_var},
         "constants": {"alpha": ALPHA, "bh_q": BH_Q, "sensitivity_deltas": SENSITIVITY_DELTAS, "ece_margin": ECE_MARGIN,
-                      "flip_factor": FLIP_FACTOR},
+                      "flip_factor": FLIP_FACTOR, "small_test_rows": SMALL_TEST_ROWS},
+        "decision_rules": DECISION_RULES,
         "tasks": [{"key": t.key, "group": t.group, "small": t.small, "expected_seeds": list(t.seeds)} for t in tasks],
         "missing": missing,
         **analyse(ev, tasks, cond, prereg, args.groups, args.min_within_var),
         "provenance": ev.provenance, "warnings": ev.warnings,
     }
     report = clean(report)
+    md = render_md(report)  # before writing anything, so a rendering error leaves no half-written report
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
-    md = render_md(report)
     (out / "report.md").write_text(md, encoding="utf-8")
     print(md)
     return report
