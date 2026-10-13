@@ -87,3 +87,27 @@ def test_tasks_filter_limits_the_evaluation(tmp_path):
     better = stage(tmp_path, "better", {"new": .18}, rng)
     out = block_main(args(pool=[str(pool)], block=[str(better)], rule=["err", "pertask"], tasks=["t0", "t1"]))
     assert out["tasks"] == ["t0", "t1"] and out["after_vs_before"]["n_tasks"] == 2
+
+
+def test_split_mode_pools_classification_and_regression_cells(tmp_path):
+    from tools.t1_block_accept import split_main
+    rng = np.random.default_rng(4)
+
+    def typed(name, conds, tt, gain=None):
+        rows = []
+        for t in ("a", "b", "c"):
+            for s in SEEDS:
+                rows.append(full_row(f"{tt[:3]}_{t}", "retrieval_only", s, .3, test_err=.3, task_type=tt))
+                for c, base in conds.items():
+                    e = base * (gain if gain and c.startswith("new") else 1.0) * np.exp(rng.normal(0, .02))
+                    rows.append(full_row(f"{tt[:3]}_{t}", c, s, e, val_loss=e, test_err=e, task_type=tt))
+        return write_stage(tmp_path / name, rows)
+    cls_pool = typed("cp", {"ref__kappa10": .3, "inc__kappa10": .25}, "classification")
+    cls_block = typed("cb", {"new__kappa10": .15}, "classification")
+    reg_pool = typed("rp", {"ref": .3, "inc": .25}, "regression")
+    reg_block = typed("rb", {"new": .15}, "regression")
+    out = split_main(SimpleNamespace(cls_pool=[str(cls_pool)], cls_block=[str(cls_block)], cls_reference="tuned::ref__kappa10",
+                                     reg_pool=[str(reg_pool)], reg_conditions_from=None, reg_block=[str(reg_block)],
+                                     reference="tuned::ref", rule=["err", "pertask"], seeds=SEEDS, feasibility_pre=None, prereg=None))
+    assert out["after_vs_before"]["n_tasks"] == 6 and out["after_vs_before"]["adopt"]
+    assert set(out["block_conditions_selected_held_out"]) == {"tuned::new__kappa10", "tuned::new"}

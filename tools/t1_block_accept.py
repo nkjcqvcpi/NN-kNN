@@ -140,6 +140,37 @@ def block_main(args) -> dict:
                              "after vs before is below -1 task-clustered SE"}
 
 
+def typed_rows(dirs, conditions_from, seeds, prereg, task_type, block=False):
+    rows = (selection_rows(dirs, None, seeds, prereg) if block else pool_rows(dirs, conditions_from, seeds, prereg))
+    return [r for r in rows if r["task_type"] == task_type and not (block and condition_id(r).endswith("retrieval_only"))]
+
+
+def split_main(args) -> dict:
+    """A block over both task types: classification on its pool (e.g. kappa 10), regression on its own;
+    held-out cells of both are pooled into one paired, task-clustered comparison."""
+    seeds = sorted(args.seeds)
+    rule, scope = args.rule
+    before, after, picks = {}, {}, set()
+    for tt, pool, cfrom, block, ref in (("classification", args.cls_pool, None, args.cls_block, args.cls_reference),
+                                        ("regression", args.reg_pool, args.reg_conditions_from, args.reg_block, args.reference)):
+        base = typed_rows(pool, cfrom, seeds, args.prereg, tt)
+        have = {(r["dataset"], condition_id(r), r["seed"]) for r in base}
+        new = [r for r in typed_rows(block, None, seeds, args.prereg, tt, block=True)
+               if (r["dataset"], condition_id(r), r["seed"]) not in have]
+        b = loso_cells(base, seeds, rule, scope, ref, args.feasibility_pre)
+        a = loso_cells(base + new, seeds, rule, scope, ref, args.feasibility_pre)
+        before.update(b)
+        after.update(a)
+        picks |= {c["selected"] for c in a.values()} - {c["selected"] for c in b.values()}
+    return {"mode": "split", "rule": f"{rule}/{scope}", "seeds": seeds, "feasibility_pre": args.feasibility_pre,
+            "references": {"classification": args.cls_reference, "regression": args.reference},
+            "before": summary(before), "after": summary(after), "after_vs_before": paired(after, before),
+            "block_conditions_selected_held_out": sorted(picks),
+            "selections_after": {f"{t} s{s}": c["selected"] for (s, t), c in sorted(after.items())},
+            "decision_rule": "accept the block iff the mean paired held-out log ratio after vs before is below "
+                             "-1 task-clustered SE, over both task types"}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -159,7 +190,29 @@ def main() -> None:
         else:
             p.add_argument("--block", nargs="+", required=True)
             p.add_argument("--rule", nargs=2, required=True, metavar=("RULE", "SCOPE"))
+    sp = sub.add_parser("split")
+    sp.add_argument("--cls-pool", nargs="+", required=True)
+    sp.add_argument("--cls-block", nargs="+", required=True)
+    sp.add_argument("--cls-reference", required=True)
+    sp.add_argument("--reg-pool", nargs="+", required=True)
+    sp.add_argument("--reg-conditions-from", nargs="*")
+    sp.add_argument("--reg-block", nargs="+", required=True)
+    sp.add_argument("--reference", required=True, help="regression reference")
+    sp.add_argument("--rule", nargs=2, required=True, metavar=("RULE", "SCOPE"))
+    sp.add_argument("--seeds", type=int, nargs="+", required=True)
+    sp.add_argument("--feasibility-pre", type=float)
+    sp.add_argument("--prereg")
+    sp.add_argument("--out", required=True)
     args = ap.parse_args()
+    if args.cmd == "split":
+        out = split_main(args)
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(json.dumps(out, indent=2))
+        d = out["after_vs_before"]
+        print(f"{out['rule']}: GMR {out['before']['gmr']:.3f} -> {out['after']['gmr']:.3f}; diff {d['mean_difference']:+.4f} "
+              f"(task-SE {d['se_task_clustered']:.4f}, z {d['z_task_clustered']:+.2f}, tasks {d['tasks_better']}/{d['tasks_worse']}); "
+              f"accept: {d['adopt']}; block picks: {len(out['block_conditions_selected_held_out'])}")
+        return
     if args.prereg:
         args.prereg = str(args.prereg)
     out = rules_main(args) if args.cmd == "rules" else block_main(args)
