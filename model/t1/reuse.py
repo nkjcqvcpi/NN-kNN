@@ -13,6 +13,7 @@ Raw z_q, individual z_i, z_bar_q and raw cases are never passed.
 from __future__ import annotations
 
 import copy
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,10 +21,18 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from model.device_utils import adam_kwargs_for_device
 from model.nn_cdh import ClassificationNNCDHAdapter, NNCDHAdapter
 
 from .core import expected_calibration_error
 from .nominal import NominalSchema, NominalClassificationAdapter, nominal_difference, fit_nominal_schema
+
+
+def adapter_optimizer(params, lr: float, weight_decay: float, device) -> torch.optim.Optimizer:
+    """Adam without weight decay (unchanged default); decoupled AdamW otherwise."""
+    if weight_decay == 0:
+        return torch.optim.Adam(params, lr=lr, **adam_kwargs_for_device(device))
+    return torch.optim.AdamW(params, lr=lr, weight_decay=weight_decay, **adam_kwargs_for_device(device))
 
 
 @dataclass
@@ -41,6 +50,9 @@ class ReuseConfig:
     seed: int = 0
     nominal_fields_covered_by_representation: bool = True  # declared, not inferred (section 5.2)
     nominal_fields: tuple[dict[str, Any], ...] = ()  # explicit per-field coverage
+    score_scale: float = 1.0  # kappa: l_cls = cross_entropy(kappa * s, y) (nominal_residual_scores only)
+    weight_decay: float = 0.0  # > 0 switches the adapter optimizer from Adam to AdamW
+    dropout: float = 0.0  # classification adapters only
 
     def validate(self) -> None:
         if self.output_mode not in {"nominal_residual_scores", "logit_residual"}:
@@ -51,6 +63,12 @@ class ReuseConfig:
             raise ValueError("combined loss requires lambda_diff > 0 and lambda_cls > 0 (plan 5.4)")
         if self.epochs < 1 or self.patience < 0 or self.batch_size < 1:
             raise ValueError("adapter training needs positive epochs/batch size and nonnegative patience")
+        if not (math.isfinite(self.score_scale) and self.score_scale > 0):
+            raise ValueError("score_scale must be finite and positive")
+        if self.score_scale != 1.0 and self.output_mode != "nominal_residual_scores":
+            raise ValueError("score_scale applies to nominal_residual_scores only")
+        if not self.weight_decay >= 0 or not 0 <= self.dropout < 1:
+            raise ValueError("adapter weight decay must be nonnegative and dropout in [0, 1)")
         if not self.nominal_fields and not self.nominal_fields_covered_by_representation:
             raise ValueError("uncovered nominal inputs require explicit field-by-field declarations")
         if self.nominal_fields:
@@ -87,13 +105,53 @@ def _probs_from_scores(s: torch.Tensor, mode: str) -> torch.Tensor:
     raise ValueError(mode)
 
 
+def calibration_logits(s: torch.Tensor, cfg: ReuseConfig) -> torch.Tensor:
+    """Logits of the adapted output: kappa * s for scores, log p for ``logit_residual`` probabilities."""
+    if cfg.output_mode == "logit_residual":
+        return torch.log(s.clamp_min(1e-8))
+    return cfg.score_scale * s
+
+
+def fit_temperature(logits: torch.Tensor, y: torch.Tensor, *, bounds: tuple[float, float] = (1e-2, 1e2),
+                    max_iter: int = 100) -> float:
+    """One temperature T > 0 minimizing the NLL of softmax(logits / T) on the given stream.
+
+    LBFGS on log T in float64, started at T = 1. T is kept within ``bounds`` (a
+    separable stream would drive it to 0) and falls back to 1 unless it lowers
+    the NLL. Dividing by T > 0 never changes an argmax.
+    """
+    z = logits.detach().to("cpu", torch.float64)
+    t = y.detach().to("cpu").long().view(-1)
+    lo, hi = math.log(bounds[0]), math.log(bounds[1])
+
+    def nll(log_t):
+        return F.cross_entropy(z / log_t.clamp(lo, hi).exp(), t)
+
+    with torch.enable_grad():
+        log_t = torch.zeros((), dtype=torch.float64, requires_grad=True)
+        opt = torch.optim.LBFGS([log_t], lr=1.0, max_iter=max_iter, line_search_fn="strong_wolfe")
+
+        def closure():
+            opt.zero_grad()
+            loss = nll(log_t)
+            loss.backward()
+            return loss
+
+        opt.step(closure)
+    with torch.no_grad():
+        fitted = log_t.detach().clamp(lo, hi)
+        if not torch.isfinite(fitted) or not float(nll(fitted)) < float(nll(torch.zeros((), dtype=torch.float64))):
+            return 1.0
+    return math.exp(float(fitted))
+
+
 def _adapter_losses(adapter, out_r, out_s, p0, y, cfg: ReuseConfig) -> dict[str, torch.Tensor]:
     C = p0.size(1)
     y1 = F.one_hot(y.long(), C).float()
     r_star = y1 - p0
     if cfg.output_mode == "nominal_residual_scores":
         l_diff = F.mse_loss(out_r, r_star)
-        l_cls = F.cross_entropy(out_s, y.long())  # plan 5.4: cross_entropy(s_q, y_q)
+        l_cls = F.cross_entropy(cfg.score_scale * out_s, y.long())  # plan 5.4: cross_entropy(s_q, y_q), kappa = 1
     else:
         # logit mode: residual target is not a literal nominal difference; measure the
         # implied probability change against r* for the diff term.
@@ -120,7 +178,8 @@ def train_classification_adapter(model, data, cfg: ReuseConfig) -> tuple[Classif
     elif getattr(data, "nominal_train", None):
         raise ValueError("nominal data requires explicit field-by-field representation coverage")
     tr = neighborhood_inputs(model, data.X_train, exclude_identical=True, query_case_ids=torch.arange(len(data.y_train)))
-    kwargs = dict(feature_dim=tr["dz"].shape[1], num_classes=C, hidden_dims=cfg.hidden_dims, output_mode=cfg.output_mode)
+    kwargs = dict(feature_dim=tr["dz"].shape[1], num_classes=C, hidden_dims=cfg.hidden_dims, output_mode=cfg.output_mode,
+                  dropout=cfg.dropout)
     if schema is not None:
         adapter = NominalClassificationAdapter(schema=schema, case_ids=torch.arange(len(data.y_train)),
                                               case_values=train_nominal, **kwargs)
@@ -131,7 +190,7 @@ def train_classification_adapter(model, data, cfg: ReuseConfig) -> tuple[Classif
         tr = neighborhood_inputs(model, data.X_train, exclude_identical=True, query_case_ids=torch.arange(len(data.y_train)),
                                  X_nominal=train_nominal, nominal_adapter=adapter)
     va = neighborhood_inputs(model, data.X_val, exclude_identical=False, X_nominal=val_nominal, nominal_adapter=adapter)
-    opt = torch.optim.Adam(adapter.parameters(), lr=cfg.lr)
+    opt = adapter_optimizer(adapter.parameters(), cfg.lr, cfg.weight_decay, tr["dz"].device)
     ytr = data.y_train.to(tr["dz"].device)
     yva = data.y_val.to(tr["dz"].device)
     g = torch.Generator().manual_seed(cfg.seed)
@@ -189,6 +248,8 @@ def train_regression_adapter(model, data, cfg: ReuseConfig):
     cfg.validate()
     if model.task_type != "regression" or data.task_type != "regression" or cfg.nominal_fields:
         raise ValueError("Regression reuse needs an explicit regression task and continuous inputs")
+    if cfg.dropout > 0 or cfg.score_scale != 1.0:
+        raise ValueError("adapter dropout and score_scale apply to classification adapters only")
     device = model.cases.device
     torch.manual_seed(cfg.seed)
     def inputs(X, ids=None):
@@ -202,7 +263,7 @@ def train_regression_adapter(model, data, cfg: ReuseConfig):
     va = inputs(data.X_val)
     adapter = NNCDHAdapter(tr[0].shape[1], 1, cfg.hidden_dims).to(device)
     adapter.adapt_net_pair.requires_grad_(False)
-    opt = torch.optim.Adam([p for p in adapter.parameters() if p.requires_grad], lr=cfg.lr)
+    opt = adapter_optimizer([p for p in adapter.parameters() if p.requires_grad], cfg.lr, cfg.weight_decay, device)
     ytr, yva = data.y_train.to(device), data.y_val.to(device)
     generator = torch.Generator().manual_seed(cfg.seed)
     best, bad, history = (float("inf"), None, None, -1), 0, []
@@ -242,15 +303,28 @@ def train_regression_adapter(model, data, cfg: ReuseConfig):
 
 
 @torch.no_grad()
-def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseConfig, *, query_nominal=None, test_groups=None) -> dict[str, Any]:
-    """Pre (retrieval-only) vs post (adapted) on the same case set; flip accounting."""
+def reuse_logits(model, adapter, X: torch.Tensor, cfg: ReuseConfig, *, query_nominal=None) -> torch.Tensor:
+    """``calibration_logits`` of the adapted output on one stream (frozen retrieval, no LOO)."""
+    nb = neighborhood_inputs(model, X, exclude_identical=False, X_nominal=query_nominal, nominal_adapter=adapter)
+    return calibration_logits(adapter(nb["dz"], nb["p0"], nb["du"])[1], cfg)
+
+
+@torch.no_grad()
+def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseConfig, *, query_nominal=None, test_groups=None,
+                   temperature: float | None = None) -> dict[str, Any]:
+    """Pre (retrieval-only) vs post (adapted) on the same case set; flip accounting.
+
+    ``temperature`` (fitted on another stream) adds ``ece_post_T``/``nll_post_T`` of
+    softmax(calibration_logits / T); predictions (argmax) are unchanged.
+    """
     nb = neighborhood_inputs(model, X, exclude_identical=False, X_nominal=query_nominal, nominal_adapter=adapter)
     p0 = nb["p0"]
     y = y.to(p0.device).long()
     r, s = adapter(nb["dz"], p0, nb["du"])
     pre = p0.argmax(1)
     post = s.argmax(1)
-    probs_post = s if cfg.output_mode == "logit_residual" else _probs_from_scores(s, cfg.probability_mode)
+    # kappa * s is the trained softmax input; 1.0 * s == s keeps the default exact
+    probs_post = s if cfg.output_mode == "logit_residual" else _probs_from_scores(cfg.score_scale * s, cfg.probability_mode)
     ok_pre, ok_post = pre == y, post == y
     flips = {
         "wrong_to_correct": int((~ok_pre & ok_post).sum()),
@@ -270,6 +344,12 @@ def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseC
         "correction_l1_mean": float(mag.mean()),
         "n": int(y.numel()),
     }
+    if temperature is not None:
+        if not (math.isfinite(temperature) and temperature > 0):
+            raise ValueError("temperature must be finite and positive")
+        z = calibration_logits(s, cfg).double() / temperature  # float64, as in fit_temperature
+        metrics["ece_post_T"] = expected_calibration_error(F.softmax(z, dim=1).cpu(), y.cpu())
+        metrics["nll_post_T"] = float(F.cross_entropy(z, y))
     for group, mask in (test_groups or {}).items():
         mask = torch.as_tensor(mask, dtype=torch.bool, device=y.device)
         if mask.shape != y.shape:

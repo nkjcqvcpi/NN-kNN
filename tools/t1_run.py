@@ -11,6 +11,7 @@ and appends one row to ``results/t1/<experiment>/runs__<dataset>.jsonl``.
 
 Values required by the plan that remain unresolved PI decisions must be given
 explicitly in the config; ``null`` or ``"..."`` aborts the run.
+``NNKNN_DETERMINISTIC=1`` enables ``torch.use_deterministic_algorithms`` for the run.
 """
 
 from __future__ import annotations
@@ -42,7 +43,7 @@ from model.t1.maintenance import CaseArchive, run_maintenance  # noqa: E402
 from model.t1.mcb import StabilityTracker  # noqa: E402
 from model.t1.provenance import CaseStatisticsStore, ScoreConfig, active_cohorts, audit_provenance, score_cases  # noqa: E402
 from model.t1.retention import RetentionConfig  # noqa: E402
-from model.t1.reuse import ReuseConfig, evaluate_reuse, evaluate_regression_reuse, train_classification_adapter, train_regression_adapter  # noqa: E402
+from model.t1.reuse import ReuseConfig, evaluate_reuse, evaluate_regression_reuse, fit_temperature, reuse_logits, train_classification_adapter, train_regression_adapter  # noqa: E402
 from model.t1.revise import flagging_ablation  # noqa: E402
 from model.t1.sync import SyncConfig, train_synchronized  # noqa: E402
 from model.common.nominal import encoded_queries  # noqa: E402
@@ -195,11 +196,20 @@ def val_metrics(model, data):
 
 
 def adapted_metrics(model, adapter, data, stream, cfg, rc=None):
-    """Pre/post-adaptation metrics on one evaluation stream (``test`` or ``val``)."""
+    """Pre/post-adaptation metrics on one evaluation stream (``test`` or ``val``).
+
+    Classification also reports ``ece_post_T``/``nll_post_T`` under one temperature
+    fitted on the validation stream's adapted outputs (``temperature``, reported
+    with the validation stream); predictions are unchanged.
+    """
     X, y = getattr(data, f"X_{stream}"), getattr(data, f"y_{stream}")
     if data.task_type == "classification":
+        temperature = fit_temperature(reuse_logits(model, adapter, data.X_val, rc,
+                                                   query_nominal=encoded_queries(adapter, data, "val")), data.y_val)
         out = evaluate_reuse(model, adapter, X, y, rc, query_nominal=encoded_queries(adapter, data, stream),
-                             test_groups=data.test_groups if stream == "test" else None)
+                             test_groups=data.test_groups if stream == "test" else None, temperature=temperature)
+        if stream == "val":
+            out["temperature"] = temperature
     else:
         out = evaluate_regression_reuse(model, adapter, X, y,
                                         success_tolerance=cfg["statistics"]["regression_success_tolerance"])
@@ -209,12 +219,58 @@ def adapted_metrics(model, adapter, data, stream, cfg, rc=None):
     from model.t1.sync import _forward_terms
     device = model.cases.device
     nominal = encoded_queries(adapter, data, stream)
+    classification = data.task_type == "classification"
     with frozen_evaluation(model, adapter):
         T = _forward_terms(model, adapter, X.to(device), y.to(device), None,
-                           output_mode=rc.output_mode if data.task_type == "classification" else "aggregate_regression",
-                           near_scale=1.0, query_nominal=None if nominal is None else nominal.to(device))
+                           output_mode=rc.output_mode if classification else "aggregate_regression",
+                           near_scale=1.0, query_nominal=None if nominal is None else nominal.to(device),
+                           score_scale=rc.score_scale if classification else 1.0)
     out["L_post"] = float(T["L_post"])
     return out
+
+
+@torch.no_grad()
+def input_locality(model, X, batch_size=256):
+    """Fixed-metric locality: mean over queries of sum_i w_qi * ||x_q - x_i||_2.
+
+    Input space (every stream is train-standardized), with the prediction's
+    weights: eval-mode retrieval without leave-one-out (queries are not cases).
+    """
+    from model.common.outcomes import frozen_evaluation
+    device, total = model.cases.device, 0.0
+    with frozen_evaluation(model):
+        for start in range(0, len(X), batch_size):
+            xb = X[start:start + batch_size].to(device)
+            r = model.retrieve(xb, exclude_identical=False)
+            d = torch.cdist(xb.flatten(1), model.cases[r["case_indices"]].flatten(1),
+                            compute_mode="donot_use_mm_for_euclid_dist")
+            total += float((r["weights"].double() * d.double()).sum())
+    return total / len(X)
+
+
+def to_cpu(obj):
+    """``obj`` with every tensor in nested dicts, lists and tuples moved to the CPU.
+
+    Containers without device tensors are returned unchanged, so CPU runs save
+    exactly what they saved before; a rebuilt state dict keeps its ``_metadata``.
+    """
+    if isinstance(obj, torch.Tensor):
+        return obj if obj.device.type == "cpu" else obj.detach().cpu()
+    if isinstance(obj, dict):
+        moved = {k: to_cpu(v) for k, v in obj.items()}
+        if all(moved[k] is v for k, v in obj.items()):
+            return obj
+        out = copy.copy(obj)
+        out.update(moved)
+        return out
+    if isinstance(obj, (list, tuple)):
+        moved = [to_cpu(v) for v in obj]
+        if all(m is v for m, v in zip(moved, obj)):
+            return obj
+        if isinstance(obj, list):
+            return moved
+        return type(obj)(*moved) if hasattr(obj, "_fields") else type(obj)(moved)
+    return obj
 
 
 class EveryEpoch:
@@ -310,7 +366,8 @@ class Runner:
 
     def data_for(self, ds: dict[str, Any], seed: int):
         sp = self.cfg["splits"]
-        return make_splits(ds["name"], ds["task_type"], seed, test_frac=sp["test_frac"], val_frac=sp["val_frac"], maint_frac=sp.get("maint_frac", 0.0), reg_cohort_bins=sp.get("reg_cohort_bins", 5), max_train=ds.get("max_train"), synthetic=ds.get("synthetic"))
+        # A per-dataset cap wins; otherwise splits.max_train applies, as in tools/t1_grid_search.py.
+        return make_splits(ds["name"], ds["task_type"], seed, test_frac=sp["test_frac"], val_frac=sp["val_frac"], maint_frac=sp.get("maint_frac", 0.0), reg_cohort_bins=sp.get("reg_cohort_bins", 5), max_train=ds.get("max_train", sp.get("max_train")), synthetic=ds.get("synthetic"))
 
     def dataset_key(self, ds):
         roles = {d["task_type"] for d in self.cfg["datasets"] if d["name"] == ds["name"]}
@@ -351,13 +408,15 @@ class Runner:
         man["run"]["source_fingerprint_sha256"] = self.source_hash
         man["run"]["source_snapshot"] = str(self.source_path)
         man["run"]["device"] = str(model.cases.device)
+        man["run"]["deterministic"] = torch.are_deterministic_algorithms_enabled()
         write_json(run_dir / "run_manifest.json", man)
         write_json(run_dir / "metrics.json", metrics)
         write_json(run_dir / "history.json", history)
         write_jsonl(run_dir / "case_statistics.jsonl", [] if store is None else case_statistics_rows(model, store, archive or CaseArchive()))
         write_jsonl(run_dir / "case_maintenance.jsonl", events or [])
         write_jsonl(run_dir / "retrieval_events.jsonl", retrieval_events(model, data.X_test, data.y_test, stream="test", run_id=run_id, adapter=prediction_adapter, query_nominal=encoded_queries(prediction_adapter, data, "test")))
-        torch.save({"model_state": model.state_dict(), "active_case_count": model.case_count(),
+        # CPU tensors only, so accelerator runs reload anywhere (a no-op on CPU).
+        torch.save(to_cpu({"model_state": model.state_dict(), "active_case_count": model.case_count(),
                     "case_statistics": None if store is None else store.state_dict(),
                     "archive": None if archive is None else archive.state_dict(),
                     "adapter_state": None if prediction_adapter is None else prediction_adapter.state_dict(),
@@ -367,7 +426,7 @@ class Runner:
                     "requires_grad": {n: p.requires_grad for n, p in model.named_parameters()},
                     "adapter_requires_grad": None if prediction_adapter is None else
                         {n: p.requires_grad for n, p in prediction_adapter.named_parameters()},
-                    "model_description": model_desc}, run_dir / "checkpoint.pt")
+                    "model_description": model_desc}), run_dir / "checkpoint.pt")
         data_path = self.out / dataset_key / f"data_snapshot_s{seed}.pt"
         if not data_path.exists():
             snapshot = {name: getattr(data, name) for name in
@@ -375,13 +434,13 @@ class Runner:
                          "X_maint", "y_maint", "y_scale", "meta", "nominal_train", "nominal_val", "nominal_test", "nominal_maint")}
             snapshot.update({name: {k: torch.as_tensor(v) for k, v in getattr(data, name).items()}
                              for name in ("case_truth", "test_groups")})
-            torch.save(snapshot, data_path)
+            torch.save(to_cpu(snapshot), data_path)
         for name, obj in (extra_files or {}).items():
             write_json(run_dir / name, obj)
         if getattr(prediction_adapter, "nominal_schema", None) is not None:
             write_json(run_dir / "adapter_nominal_schema.json", prediction_adapter.nominal_schema.state_dict())
         for name, obj in (binary_files or {}).items():
-            torch.save(obj, run_dir / name)
+            torch.save(to_cpu(obj), run_dir / name)
         row = {"run_id": run_id, "experiment": self.exp, "dataset": dataset_key, "dataset_name": ds["name"], "task_type": data.task_type, "seed": seed, "condition": cond_label, **{k: v for k, v in cond.items() if not isinstance(v, (dict, list))}, **{k: v for k, v in metrics.items() if not isinstance(v, (dict, list))}}
         # one shard per dataset: parallel jobs (one per dataset) never share a file
         with (self.out / f"runs__{dataset_key}.jsonl").open("a", encoding="utf-8") as fh:
@@ -459,8 +518,12 @@ class Runner:
                 self.reuse_condition(ds, seed, data, model, cc, tr, cond, arm)
 
     def reuse_condition(self, ds, seed, data, model, cc, tr, cond, arm=None):
-        """Train one frozen-retrieval adapter on ``model`` and record pre/post outcomes."""
-        rc = ReuseConfig(seed=seed, **{**self.cfg["reuse"], **cond})
+        """Train one frozen-retrieval adapter on ``model`` and record pre/post outcomes.
+
+        An optional ``name`` labels the condition (default ``<output_mode>_<loss>``);
+        every other key is a ``ReuseConfig`` field.
+        """
+        rc = ReuseConfig(seed=seed, **{**self.cfg["reuse"], **{k: v for k, v in cond.items() if k != "name"}})
         if data.task_type == "classification":
             adapter, info = train_classification_adapter(model, data, rc)
             output_mode = cond["output_mode"]
@@ -471,12 +534,13 @@ class Runner:
         vev = adapted_metrics(model, adapter, data, "val", self.cfg, rc)
         store_b = CaseStatisticsStore(data.task_type)
         ainfo = audit(model, data, self.cfg, store_b, 0, adapter=adapter)
-        label = arm_label(arm, f"{output_mode}_{cond['loss']}")
+        label = arm_label(arm, cond.get("name", f"{output_mode}_{cond['loss']}"))
         m = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
              **{f"test_flip_{k}": v for k, v in ev.get("flips", {}).items()},
              **{f"val_{k}": v for k, v in vev.items() if not isinstance(v, dict)},
              "audit_mean_loss_final": ainfo["mean_loss_final"],
-             "provenance_semantics": ainfo["provenance_semantics"]}
+             "provenance_semantics": ainfo["provenance_semantics"],
+             "test_locality_input": input_locality(model, data.X_test)}
         self.finish(ds=ds, seed=seed, cond_label=label, cond={**arm_fields(arm), **cond}, data=data, model=model, store=store_b, archive=None, metrics=m, history={"core": tr.history, "adapter": info["history"]}, events=[],
                     components={"retrieve": "trained NN-kNN core (frozen)", "reuse_or_adapter": f"aggregate label-conditioned NN-CDH ({output_mode}, {cond['loss']})", "revise": "off", "retain": "none", "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": "off (retrieval frozen first)"},
                     budgets={"case_capacity": model.case_count(), "adapter_epochs_max": rc.epochs,
@@ -501,7 +565,8 @@ class Runner:
             base, cc, tr, tracker = self.observed_core(data, seed, **arm_core(arm))
             m = {**test_metrics(base, data), **val_metrics(base, data), "n_cases": base.case_count(),
                  "core_epochs_run": tr.epochs_run, "core_best_epoch": tr.best_epoch,
-                 **stability_summary(tracker.records, "core"), **online_ema_gap(base)}
+                 **stability_summary(tracker.records, "core"), **online_ema_gap(base),
+                 "test_locality_input": input_locality(base, data.X_test)}
             self.finish(ds=ds, seed=seed, cond_label=arm_label(arm, "retrieval_only"),
                         cond={**arm_fields(arm), "setting": "retrieval_only"}, data=data, model=base,
                         store=None, archive=None, metrics=m, history={"core": tr.history}, events=[],
@@ -654,8 +719,8 @@ class Runner:
         base, cc, tr = self.trained_core(data, seed)
         initial = self.out / ds["name"] / f"starting_checkpoint_s{seed}.pt"
         initial.parent.mkdir(parents=True, exist_ok=True)
-        torch.save({"model_state": base.state_dict(), "optimizer_state": tr.optimizer.state_dict(),
-                    "core": cc.__dict__}, initial)
+        torch.save(to_cpu({"model_state": base.state_dict(), "optimizer_state": tr.optimizer.state_dict(),
+                           "core": cc.__dict__}), initial)
         budget = self.cfg["retraining"]
         for kspec in self.cfg["K"]:
             K = resolve_K(kspec, base.case_count())
@@ -827,7 +892,8 @@ class Runner:
                 "achieved": model.case_count() == matched_K}
         rc = None
         if data.task_type == "classification":
-            rc = ReuseConfig(output_mode=sc.output_mode, loss="combined", lambda_diff=1.0, lambda_cls=1.0, probability_mode=self.cfg["sync"].get("probability_mode", "softmax"), seed=seed)
+            rc = ReuseConfig(output_mode=sc.output_mode, loss="combined", lambda_diff=1.0, lambda_cls=1.0, probability_mode=self.cfg["sync"].get("probability_mode", "softmax"), seed=seed,
+                             score_scale=sc.score_scale)
         ev = adapted_metrics(model, adapter, data, "test", self.cfg, rc)
         vev = adapted_metrics(model, adapter, data, "val", self.cfg, rc)
         audit(model, data, self.cfg, store, info["best_epoch"], adapter=adapter)
@@ -837,7 +903,10 @@ class Runner:
              "tau_task_final": info["free_radius"]["tau_task"], "n_cases": model.case_count(),
              **{f"val_{k}": v for k, v in vev.items() if not isinstance(v, dict)},
              "best_val_L_post": info["best_val_L_post"], "sync_best_epoch": info["best_epoch"],
-             **online_ema_gap(model)}
+             **online_ema_gap(model),
+             "best_val_err": info["best_val_err"], "sync_val_L_pre_epoch0": info["v_pre0"],
+             "sync_val_err_pre_epoch0": info["v_err_pre0"], "sync_guard_rejected_epochs": info["guard_rejected_epochs"],
+             "test_locality_input": input_locality(model, data.X_test)}
         for key in ("representation_drift", "neighborhood_churn", "selection_churn"):
             values = [r[key] for r in tracker.records if key in r]
             if values:
@@ -942,6 +1011,9 @@ def main() -> None:
     ap.add_argument("--only-dataset", default=None)
     ap.add_argument("--seeds", type=int, nargs="*", default=None)
     args = ap.parse_args()
+    if os.environ.get("NNKNN_DETERMINISTIC") == "1":
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")  # required by deterministic cuBLAS
+        torch.use_deterministic_algorithms(True)
     cfg = load_config(Path(args.config))
     if args.seeds is not None:
         cfg["seeds"] = args.seeds
