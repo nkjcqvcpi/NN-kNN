@@ -1,0 +1,143 @@
+{
+  "mode": "rules",
+  "current": "err/global",
+  "reference": "tuned::alternating_default",
+  "seeds": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+  ],
+  "conditions": [
+    "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0",
+    "tuned::alternating_b2__retrieval_lr_scale=1.0",
+    "tuned::alternating_default",
+    "tuned::frozen_reuse__combined",
+    "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=0.3",
+    "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+    "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+    "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.3",
+    "tuned::joint_separated_w5__w_post=0.25__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+    "tuned::joint_separated_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "tuned::joint_separated_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+    "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "tuned::joint_summed_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+    "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+    "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.0__adapter_lr=0.001",
+    "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+    "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "tuned::sequential__retrieval_lr_scale=0.1"
+  ],
+  "tasks": [
+    "abalone",
+    "airfoil",
+    "balance",
+    "body_fat",
+    "breast_cancer",
+    "diabets",
+    "digits",
+    "energy_efficiency",
+    "iris",
+    "student_performance",
+    "tabarena_363614",
+    "tabarena_363625",
+    "tabarena_363626",
+    "tabarena_363675",
+    "wine",
+    "yacht",
+    "zebra",
+    "zebra_special"
+  ],
+  "rules": {
+    "err/global": {
+      "mean_log_ratio": -0.03399653731174176,
+      "gmr": 0.9665748515791012,
+      "n_cells": 108
+    },
+    "err/pertask": {
+      "mean_log_ratio": -0.11085761312650154,
+      "gmr": 0.8950661855318981,
+      "n_cells": 108,
+      "vs_current": {
+        "mean_difference": -0.07686107581475979,
+        "se_cells": 0.03505907690446984,
+        "se_task_clustered": 0.04628511969631076,
+        "z_task_clustered": -1.660600130648169,
+        "tasks_better": 12,
+        "tasks_worse": 5,
+        "n_cells": 108,
+        "n_tasks": 18,
+        "adopt": true
+      }
+    },
+    "loss/global": {
+      "mean_log_ratio": -0.03710252085715479,
+      "gmr": 0.9635773435098364,
+      "n_cells": 108,
+      "vs_current": {
+        "mean_difference": -0.0031059835454130403,
+        "se_cells": 0.006182567038748025,
+        "se_task_clustered": 0.006294836661167785,
+        "z_task_clustered": -0.49341765523060205,
+        "tasks_better": 6,
+        "tasks_worse": 5,
+        "n_cells": 108,
+        "n_tasks": 18,
+        "adopt": false
+      }
+    },
+    "loss/pertask": {
+      "mean_log_ratio": -0.0981792215471017,
+      "gmr": 0.9064864272947881,
+      "n_cells": 108,
+      "vs_current": {
+        "mean_difference": -0.06418268423535994,
+        "se_cells": 0.02972258270656191,
+        "se_task_clustered": 0.031399281233661556,
+        "z_task_clustered": -2.044081320133946,
+        "tasks_better": 12,
+        "tasks_worse": 5,
+        "n_cells": 108,
+        "n_tasks": 18,
+        "adopt": true
+      }
+    },
+    "rank/global": {
+      "mean_log_ratio": -0.04433309466771152,
+      "gmr": 0.9566352542946783,
+      "n_cells": 108,
+      "vs_current": {
+        "mean_difference": -0.010336557355969764,
+        "se_cells": 0.017546873865043784,
+        "se_task_clustered": 0.015354710566229206,
+        "z_task_clustered": -0.673184773583668,
+        "tasks_better": 9,
+        "tasks_worse": 7,
+        "n_cells": 108,
+        "n_tasks": 18,
+        "adopt": false
+      }
+    },
+    "rank/pertask": {
+      "mean_log_ratio": -0.09786328931993962,
+      "gmr": 0.9067728608150631,
+      "n_cells": 108,
+      "vs_current": {
+        "mean_difference": -0.06386675200819784,
+        "se_cells": 0.03222478555583403,
+        "se_task_clustered": 0.043287446840286334,
+        "z_task_clustered": -1.475410463542492,
+        "tasks_better": 10,
+        "tasks_worse": 7,
+        "n_cells": 108,
+        "n_tasks": 18,
+        "adopt": true
+      }
+    }
+  },
+  "decision": "err/pertask",
+  "decision_rule": "adopt the rule/scope with the most negative mean paired held-out log ratio among those beating the current rule by more than 1 task-clustered SE; otherwise keep the current rule"
+}
