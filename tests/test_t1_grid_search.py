@@ -115,19 +115,27 @@ def test_receipts_hash_split_indices_and_old_receipts_still_resume(tmp_path, mon
 
 
 def test_deterministic_environment_flag(monkeypatch):
+    import os
     import tools.t1_grid_search as search
     calls = []
     monkeypatch.setattr(search.torch, "use_deterministic_algorithms", calls.append)
     monkeypatch.delenv("NNKNN_DETERMINISTIC", raising=False)
+    monkeypatch.setenv("CUBLAS_WORKSPACE_CONFIG", "")  # records the original value for teardown
+    monkeypatch.delenv("CUBLAS_WORKSPACE_CONFIG")
     search.apply_determinism()
-    assert calls == []
+    assert calls == [] and "CUBLAS_WORKSPACE_CONFIG" not in os.environ
     monkeypatch.setenv("NNKNN_DETERMINISTIC", "1")
     search.apply_determinism()
-    assert calls == [True]
+    # Same convention as tools/t1_run.py: deterministic cuBLAS needs a fixed workspace.
+    assert calls == [True] and os.environ["CUBLAS_WORKSPACE_CONFIG"] == ":4096:8"
+    monkeypatch.setenv("CUBLAS_WORKSPACE_CONFIG", ":16:8")
+    search.apply_determinism()
+    assert calls == [True, True] and os.environ["CUBLAS_WORKSPACE_CONFIG"] == ":16:8"
 
 
 def test_evaluate_refits_the_frozen_winner_without_reselection(tmp_path, monkeypatch, request):
     import concurrent.futures
+    import shutil
     import pytest
     import yaml
     import tools.t1_grid_search as search
@@ -182,6 +190,36 @@ def test_evaluate_refits_the_frozen_winner_without_reselection(tmp_path, monkeyp
         search.main(evaluate + ["--families", "tabm", "--seeds", "30"])
     with pytest.raises(ValueError, match="outside the grid"):
         search.main(["evaluate", "--grid", str(grid), "--out", str(grid / "x"), "--families", "knn", "--seeds", "30"])
+    # Another grid's directory holds stale evaluation receipts: it is refused and left untouched.
+    foreign = tmp_path / "foreign"
+    shutil.copytree(grid, foreign)
+    assert list((foreign / key / "knn/evaluation").rglob("s30/receipt.json"))
+    snapshot = {p: p.read_bytes() for p in foreign.rglob("*") if p.is_file()}
+    with pytest.raises(ValueError, match="not empty"):
+        search.main(["evaluate", "--grid", str(grid), "--out", str(foreign), "--families", "knn", "--seeds", "30"])
+    assert {p: p.read_bytes() for p in foreign.rglob("*") if p.is_file()} == snapshot
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    search.main(["evaluate", "--grid", str(grid), "--out", str(empty), "--workers", "1", "--families", "knn",
+                 "--seeds", "30", "--datasets", key])
+    assert (json.loads((empty / key / "knn/evaluation.json").read_text())["evaluation"][0]["test_metrics"]
+            == json.loads((grid / key / "knn/completed.json").read_text())["evaluation"][0]["test_metrics"])
+    # NNKNN_DETERMINISTIC is recorded and an output directory may not be resumed under another setting.
+    determinism = []
+    monkeypatch.setattr(search.torch, "use_deterministic_algorithms", determinism.append)
+    assert "deterministic_algorithms" not in json.loads((grid / "study.json").read_text())
+    monkeypatch.setenv("NNKNN_DETERMINISTIC", "1")
+    with pytest.raises(ValueError, match="NNKNN_DETERMINISTIC"):
+        search.main(evaluate + ["--families", "knn", "--seeds", "30"])
+    with pytest.raises(ValueError, match="NNKNN_DETERMINISTIC"):
+        search.main([str(config), "--out", str(grid), "--workers", "1", "--only-family", "knn"])
+    deterministic_grid = tmp_path / "deterministic_grid"
+    search.main([str(config), "--out", str(deterministic_grid), "--workers", "1", "--only-dataset", "none"])
+    assert json.loads((deterministic_grid / "study.json").read_text())["deterministic_algorithms"] is True
+    monkeypatch.delenv("NNKNN_DETERMINISTIC")
+    with pytest.raises(ValueError, match="NNKNN_DETERMINISTIC"):
+        search.main([str(config), "--out", str(deterministic_grid), "--workers", "1", "--only-dataset", "none"])
+    assert determinism == []
     monkeypatch.setattr(search, "source_fingerprint", lambda repo: "changed")
     with pytest.raises(ValueError, match="fresh output"):
         search.main(evaluate + ["--families", "knn", "--seeds", "30"])
