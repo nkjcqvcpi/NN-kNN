@@ -161,17 +161,17 @@ def test_criteria_order_by_error_loss_or_mean_seed_rank():
 def test_feasibility_excludes_candidates_whose_pre_adaptation_error_drifts(tmp_path):
     rows = []
     for s in (20, 21):
-        rows += [full_row("a", "retrieval_only", s, .10), full_row("a", "p", s, .01, pre_err=.13),
+        rows += [full_row("a", "retrieval_only", s, .10), full_row("a", "p", s, .02, pre_err=.14),
                  full_row("a", "q", s, .05, pre_err=.12), full_row("a", "z", s, .08, pre_err=.10),
                  full_row("b", "retrieval_only", s, .5, task_type="regression")]
         rows += [full_row("b", c, s, .4, pre_err=.5, task_type="regression", n_val=100) for c in ("p", "q", "z")]
-    bad = pre_feasibility(rows, 1.02)  # task a: limit 1.02 * 0.10 + 1/50
+    bad = pre_feasibility(rows, 1.02)  # task a (n_val 50: 5, 7, 6, 5 errors): limit 1.02 * 0.10 + 1/50
     assert list(bad) == ["tuned::p"] and [w["task"] for w in bad["tuned::p"]] == ["a"]
     assert bad["tuned::p"][0]["limit"] == pytest.approx(.122) and bad["tuned::p"][0]["n_val"] == 50
     select(sel_args(tmp_path / "sel", [write_stage(tmp_path / "stage", rows)], feasibility_pre=1.02))
     sel = json.loads((tmp_path / "sel" / "selection.json").read_text())
     assert sel["global_winner"] == "tuned::q" and "tuned::p" not in [g["condition"] for g in sel["global_ranking"]]
-    assert sel["feasibility_pre"]["ineligible"]["tuned::p"][0]["val_pre_error"] == pytest.approx(.13)
+    assert sel["feasibility_pre"]["ineligible"]["tuned::p"][0]["val_pre_error"] == pytest.approx(.14)
     import csv
     with (tmp_path / "sel" / "validation_table.csv").open() as fh:
         table = list(csv.DictReader(fh))
@@ -180,13 +180,35 @@ def test_feasibility_excludes_candidates_whose_pre_adaptation_error_drifts(tmp_p
         pre_feasibility([r for r in rows if not (r["condition"].endswith("retrieval_only") and r["seed"] == 21)], 1.02)
 
 
+def test_feasibility_counts_classification_errors_in_whole_validation_cases():
+    """One extra validation error over a perfect retrieval-only lies exactly on the bound and stays feasible."""
+    acc32 = lambda k, n: float(np.float32((n - k) / n))  # noqa: E731  accuracy as the runner stores it
+    assert 1 - acc32(1, 30) > 1 / 30 and 1 - acc32(1, 36) > 1 / 36  # an exact float comparison refuses the bound
+    rows = []
+    for s in (20, 21, 22):
+        for task, n in (("iris", 30), ("wine", 36)):
+            rows.append(full_row(task, "retrieval_only", s, 0.))
+            for cond, k in (("one", 1), ("two", 2)):
+                rows.append({**full_row(task, cond, s, 0., n_val=n), "val_accuracy_pre": acc32(k, n)})
+    bad = pre_feasibility(rows, 1.02)
+    assert list(bad) == ["tuned::two"] and [w["task"] for w in bad["tuned::two"]] == ["iris", "wine"]
+    assert bad["tuned::two"][0]["val_pre_error"] == pytest.approx(2 / 30) and bad["tuned::two"][0]["limit"] == pytest.approx(1 / 30)
+    rows[1]["val_accuracy_pre"] = 0.95  # 1.5 errors in 30 cases: val_n does not fit the accuracy
+    with pytest.raises(SystemExit, match="does not fit"):
+        pre_feasibility(rows, 1.02)
+
+
 def loso_rows():
-    """Validation always prefers p on task a and q on task b; on task a's test stream q is better than p."""
+    """Seeds 20, 21, 22. Task a's validation depends on the seed, so leaving out a seed changes its
+    winner: seeds 21+22 pick q, 20+22 pick p, 20+21 pick q, while all three seeds would pick p
+    (and each seed alone p, q, p). Task b's validation always prefers q, then ref, then p.
+    On task a's test stream q beats p."""
     test = {("a", "p"): (.10, .20, .30), ("a", "q"): (.05, .05, .05), ("a", "ref"): (.20, .20, .20),
             ("b", "p"): (.6, .6, .6), ("b", "q"): (.4, .5, .6), ("b", "ref"): (.5, .5, .5)}
-    val = {("a", "p"): .1, ("a", "q"): .2, ("a", "ref"): .3, ("b", "p"): .5, ("b", "q"): .3, ("b", "ref"): .4}
-    return [full_row(t, c, s, val[t, c], test_err=e, task_type="classification" if t == "a" else "regression")
-            for (t, c), es in test.items() for s, e in zip((20, 21, 22), es)]
+    val = {("a", "p"): (.0, .5, .1), ("a", "q"): (.4, .0, .3), ("a", "ref"): (.6, .6, .6),
+           ("b", "p"): (.5,) * 3, ("b", "q"): (.3,) * 3, ("b", "ref"): (.4,) * 3}
+    return [full_row(t, c, s, v, test_err=e, task_type="classification" if t == "a" else "regression")
+            for (t, c), es in test.items() for s, v, e in zip((20, 21, 22), val[t, c], es)]
 
 
 def loso_args(dirs, out, **kw):
@@ -203,19 +225,26 @@ def test_loso_selects_on_other_seeds_validation_and_scores_held_out_test(tmp_pat
     eps = .5 / 40  # classification task a; regression task b has eps 0
     a = lambda e: np.log((e + eps) / (.2 + eps))  # noqa: E731
     b = [np.log(x / .5) for x in (.4, .5, .6)]
-    glob, per = [a(.05)] * 3 + b, [a(e) for e in (.1, .2, .3)] + b  # global picks q (mean rank 1.5); per task p on a
+    # Global always picks q (task b's winner keeps the lower mean rank); per task, task a follows the
+    # other seeds' validation: q, p, q for held-out seeds 20, 21, 22, scored on that seed's test row.
+    glob, per = [a(.05)] * 3 + b, [a(.05), a(.20), a(.05)] + b
 
     def check(r, cells):
         v = np.array(cells)
         assert r["n"] == 6 and r["mean_log_ratio"] == pytest.approx(v.mean())
         assert r["se"] == pytest.approx(v.std(ddof=1) / np.sqrt(6)) and r["gmr"] == pytest.approx(np.exp(v.mean()))
 
-    check(res["err", "global"], glob)
-    check(res["err", "pertask"], per)
-    check(res["rank", "global"], glob)
-    assert {c["selected"] for c in res["err", "global"]["per_task"]["a"]["cells"]} == {"tuned::q"}
-    assert {c["selected"] for c in res["err", "pertask"]["per_task"]["a"]["cells"]} == {"tuned::p"}
-    assert [c["seed"] for c in res["err", "pertask"]["per_task"]["a"]["cells"]] == [20, 21, 22]
+    def picks(rule, scope, task="a"):
+        cells = res[rule, scope]["per_task"][task]["cells"]
+        return [(c["seed"], c["selected"].split("::")[1]) for c in cells], [c["error"] for c in cells]
+
+    for rule in ("err", "rank"):
+        check(res[rule, "global"], glob)
+        check(res[rule, "pertask"], per)
+        # Selecting on every seed would pick p three times, on the held-out seed alone p, q, p.
+        assert picks(rule, "pertask") == ([(20, "q"), (21, "p"), (22, "q")], pytest.approx([.05, .20, .05]))
+        assert picks(rule, "global") == ([(20, "q"), (21, "q"), (22, "q")], pytest.approx([.05, .05, .05]))
+        assert picks(rule, "pertask", "b")[0] == [(20, "q"), (21, "q"), (22, "q")]
     assert res["err", "pertask"]["difference_vs_first"]["mean_log_ratio"] == pytest.approx(np.mean(per) - np.mean(glob))
     assert rep["first"] == {"rule": "err", "scope": "global"} and "difference_vs_first" not in res["err", "global"]
 

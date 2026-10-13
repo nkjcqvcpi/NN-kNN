@@ -8,10 +8,11 @@ OpenML tasks (``tabarena_<task id>``): seed s selects the outer split
 retired or reserved seed uses, and to no split twice. Other tasks draw a fresh random
 holdout per seed; their test sizes are reported and tasks under 100 test rows listed
 (they get the pre-registration's extra small-task seeds). A pre-registered training cap
-(``max_train``) must reach both code paths. ``--check-splits`` builds every split through
-the runner (``Runner.data_for``) and the HPO grid's call (``make_splits(name, task_type,
-seed, **splits)`` with the dataset's own ``max_train``) and requires identical index
-hashes. Exits 1 on any violation.
+(``max_train``) must reach both code paths: the runner reads only the dataset entry's
+``max_train``, the HPO grid only ``splits.max_train``. ``--check-splits`` builds every split
+through the runner (``Runner.data_for``) and the grid's own call
+(``make_splits(name, task_type, seed, **splits)``, ``tools/t1_grid_search.py``, which ignores
+the dataset entry) and requires identical index hashes. Exits 1 on any violation.
 """
 from __future__ import annotations
 
@@ -107,12 +108,11 @@ def quiet(fn, *args, **kwargs):
         return fn(*args, **kwargs)
 
 
-def grid_splits(cfg: dict, ds: dict) -> dict:
-    """Keyword arguments of the HPO grid's ``make_splits`` call, with the dataset's own ``max_train``."""
-    sp = dict(cfg["splits"])
-    if ds.get("max_train") is not None:
-        sp["max_train"] = ds["max_train"]
-    return sp
+def grid_splits(cfg: dict) -> dict:
+    """Keyword arguments of the HPO grid's ``make_splits`` call: ``splits`` verbatim, as
+    ``tools/t1_grid_search.py`` passes ``**study["splits"]``. A dataset entry's ``max_train``
+    does not reach the grid."""
+    return dict(cfg["splits"])
 
 
 def split_hashes(data) -> dict[str, str]:
@@ -154,9 +154,10 @@ def audit(config_paths, prereg_path, check_splits=False, split_seeds=None) -> di
             if ds.get("max_train") != cap:
                 violations.append(f"{path} {key}: dataset-entry max_train {ds.get('max_train')} != pre-registered {cap} "
                                   "(Runner.data_for reads only the entry, not splits.max_train)")
-            grid_cap = grid_splits(cfg, ds).get("max_train") if "splits" in cfg else cap
+            grid_cap = cfg.get("splits", {}).get("max_train")
             if grid_cap != cap:
-                violations.append(f"{path} {key}: grid max_train {grid_cap} != pre-registered {cap}")
+                violations.append(f"{path} {key}: splits.max_train {grid_cap} != pre-registered {cap} "
+                                  "(the HPO grid reads only splits.max_train, not the dataset entry)")
         tid = openml_task_id(ds["name"])
         if tid is not None:
             if key in report["openml_tasks"]:
@@ -196,7 +197,7 @@ def audit(config_paths, prereg_path, check_splits=False, split_seeds=None) -> di
                 continue
             seeds = split_seeds or sorted(set(base_seeds) | set(config_seeds(cfg))
                                           | (set(by_role.get("evaluation_small_tasks", [])) if key in report["small_tasks"] else set()))
-            runner, kwargs, tid = runner_for(cfg), grid_splits(cfg, ds), openml_task_id(ds["name"])
+            runner, kwargs, tid = runner_for(cfg), grid_splits(cfg), openml_task_id(ds["name"])
             for s in seeds:
                 a, b = quiet(runner.data_for, ds, s), quiet(make_splits, ds["name"], ds["task_type"], s, **kwargs)
                 ha, hb = split_hashes(a), split_hashes(b)
@@ -205,6 +206,7 @@ def audit(config_paths, prereg_path, check_splits=False, split_seeds=None) -> di
                 if ha != hb:
                     differ = sorted(k for k in set(ha) | set(hb) if ha.get(k) != hb.get(k))
                     check["grid_hashes"] = hb
+                    check["grid_n"] = {k: len(v) for k, v in (b.meta.get("split_indices") or {}).items()}
                     violations.append(f"{path} {key} seed {s}: runner and grid splits differ in {differ}")
                 if tid is not None:
                     dims = report["openml_tasks"][key]
