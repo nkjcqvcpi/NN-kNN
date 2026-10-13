@@ -10,7 +10,10 @@ a matched local comparison, not certification against a live leaderboard.
 
 ``evaluate`` re-fits each frozen winner (``selection.json``) of an existing grid
 on further seeds through the grid's own evaluation stage; it never re-selects.
-NNKNN_DETERMINISTIC=1 turns on ``torch.use_deterministic_algorithms`` in workers.
+Its --out must be new, empty or an earlier evaluate output of the same grid.
+NNKNN_DETERMINISTIC=1 turns on ``torch.use_deterministic_algorithms`` in workers
+(and sets CUBLAS_WORKSPACE_CONFIG as tools/t1_run.py); an output directory is
+resumed only under the setting it was started with.
 """
 from __future__ import annotations
 
@@ -201,9 +204,14 @@ def split_loader(study, ds):
     return data
 
 
+def deterministic_requested():
+    return os.environ.get("NNKNN_DETERMINISTIC") == "1"
+
+
 def apply_determinism():
     """NNKNN_DETERMINISTIC=1 forces deterministic torch kernels in this process, as tools/t1_run.py."""
-    if os.environ.get("NNKNN_DETERMINISTIC") == "1":
+    if deterministic_requested():
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")  # required by deterministic cuBLAS
         torch.use_deterministic_algorithms(True)
 
 
@@ -405,10 +413,13 @@ def evaluate_main(argv):
     unknown = sorted(set(keys) - set(datasets)) + sorted(set(families) - set(study["families"]))
     if unknown:
         raise ValueError(f"Not in the grid's frozen study: {unknown}")
+    record_path = out / "evaluate.json"
+    # Receipts found under --out are reused unchecked, so only an evaluate output of this grid may be resumed.
+    if not record_path.exists() and out.is_dir() and any(out.iterdir()):
+        raise ValueError(f"--out {out} is not empty and holds no evaluate.json; use a fresh output directory")
     out.mkdir(parents=True, exist_ok=True)
     source = source_fingerprint(REPO)
-    record_path = out / "evaluate.json"
-    deterministic = os.environ.get("NNKNN_DETERMINISTIC") == "1"
+    deterministic = deterministic_requested()
     invocation = dict(families=args.families, seeds=args.seeds, datasets=args.datasets,
                       deterministic_algorithms=deterministic, started=time.strftime("%Y-%m-%dT%H:%M:%S%z"))
     if record_path.exists():
@@ -416,6 +427,8 @@ def evaluate_main(argv):
         if (record["source_sha256"] != source or record["grid_configuration_id"] != frozen["configuration_id"]
                 or record["grid"] != str(grid)):
             raise ValueError("Source or grid changed; use a fresh output directory")
+        if any(i["deterministic_algorithms"] != deterministic for i in record["invocations"]):
+            raise ValueError("NNKNN_DETERMINISTIC differs from earlier invocations; use a fresh output directory")
         record["invocations"].append(invocation)
     else:
         record = dict(grid=str(grid), grid_configuration_id=frozen["configuration_id"],
@@ -446,14 +459,18 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     source = source_fingerprint(REPO)
     frozen = out / "study.json"
+    # Recorded only when on, so default study.json files are unchanged; a resume may not switch it.
+    deterministic = dict(deterministic_algorithms=True) if deterministic_requested() else {}
     if frozen.exists():
         old = json.loads(frozen.read_text())
         if old["source_sha256"] != source or old["configuration_id"] != config_id(study):
             raise ValueError("Source or configuration changed; use a fresh output directory")
+        if old.get("deterministic_algorithms", False) != bool(deterministic):
+            raise ValueError("NNKNN_DETERMINISTIC differs from the grid's study.json; resume with the same setting")
     else:
         write_json(frozen, dict(configuration=study, configuration_id=config_id(study), source_sha256=source,
             environment=baseline_environment(), git=git_state(REPO), test_based_selection=False,
-            expected_jobs=len(study["datasets"])*len(study["families"])))
+            expected_jobs=len(study["datasets"])*len(study["families"]), **deterministic))
         write_source_zip(out / "source.zip")
     study["source_sha256"] = source
     tasks = [(ds, fam) for ds in study["datasets"] for fam in study["families"]
