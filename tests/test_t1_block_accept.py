@@ -25,7 +25,7 @@ def stage(tmp_path, name, conds, rng, gain=None):
 
 def args(**kw):
     return SimpleNamespace(seeds=SEEDS, reference="tuned::ref", prereg=None, exclude_condition=None,
-                           conditions_from=None, **kw)
+                           conditions_from=None, **{"feasibility_pre": None, **kw})
 
 
 def test_paired_uses_task_clustered_se_and_requires_equal_cells():
@@ -62,3 +62,20 @@ def test_rules_mode_keeps_the_current_rule_without_a_clear_gain(tmp_path):
     pool = stage(tmp_path, "pool", {"ref": .30, "inc": .25, "alt": .26}, rng)
     out = rules_main(args(pool=[str(pool)], current=["err", "global"]))
     assert set(out["rules"]) >= {"err/global", "err/pertask"} and out["decision"] in out["rules"]
+
+
+def test_pertask_feasibility_excludes_a_candidate_only_where_it_degrades_retrieval(tmp_path):
+    from tools.t1_block_accept import loso_cells
+    rows = []
+    for t in TASKS:
+        for s in SEEDS:
+            rows.append(full_row(t, "retrieval_only", s, .30, test_err=.30))
+            rows.append(full_row(t, "ref", s, .30, val_loss=.3, test_err=.30))
+            # "hide" wins on validation everywhere but wrecks retrieval on t0 only
+            rows.append(full_row(t, "hide", s, .10, val_loss=.1, test_err=.12, pre_err=.90 if t == "t0" else .30))
+    free = loso_cells(rows, SEEDS, "err", "pertask", "tuned::ref")
+    guarded = loso_cells(rows, SEEDS, "err", "pertask", "tuned::ref", feasibility=1.02)
+    assert {c["selected"] for c in free.values()} == {"tuned::hide"}
+    assert all(c["selected"] == ("tuned::ref" if t == "t0" else "tuned::hide") for (s, t), c in guarded.items())
+    every = loso_cells(rows, SEEDS, "err", "global", "tuned::ref", feasibility=1.02)
+    assert {c["selected"] for c in every.values()} == {"tuned::ref"}  # the prereg's "on every task" form
