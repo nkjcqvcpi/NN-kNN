@@ -11,9 +11,9 @@ seed-paired runs of log((e_F + eps) / (e_ref + eps)), eps = 0.5 / n_test
 are pooled by random-effects meta-analysis (REML tau^2, Hartung-Knapp interval with
 t(k-1)); GMR = exp(pooled effect), < 1 favours F. E1/E2 are one-sided superiority
 tests (Holm-significant over {E1, E2, E3a, E3b}, GMR <= 0.97, E2's guards); E3a/E3b
-are non-inferiority at the pre-registered margin and, as the prereg's "Supported if"
-column says, are decided by the one-sided 95% upper bound of the GMR alone (< 1 +
-delta); their Holm-adjusted p is reported, not a criterion. Secondary analyses
+are non-inferiority at the pre-registered margin (H0: GMR >= 1 + delta), decided by
+their Holm-adjusted one-sided p (prereg addendum 1); the unadjusted one-sided 95%
+upper bound is reported alongside. Secondary analyses
 (ECE_T, flips, six-method ranks) use Benjamini-Hochberg. Writes ``report.json``
 (every number) and ``report.md``.
 
@@ -55,8 +55,8 @@ UNKNOWN_DEVICE = "unknown"
 DECISION_RULES = {
     "superiority": "Holm-adjusted one-sided p <= alpha and GMR <= gmr_max (E2: and every evaluable guard "
                    "holds); with both groups, no claim if the transfer group's 95% CI lies above 1",
-    "noninferiority": "one-sided 95% upper bound of GMR < 1 + delta (the prereg's 'Supported if' column); "
-                      "the Holm-adjusted p is reported but is not a criterion",
+    "noninferiority": "Holm-adjusted one-sided non-inferiority p (H0: GMR >= 1 + delta) <= alpha "
+                      "(prereg addendum 1); the unadjusted one-sided 95% upper bound is reported",
 }
 
 
@@ -225,6 +225,9 @@ def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Condition
                     continue
                 seen[s] = row
                 counts["rows_analysed"] += 1
+                if row.get("sync_no_eligible_checkpoint"):  # untrained adapter: the guard rejected every epoch
+                    ev.warnings.append(f"{t.key} {c} seed {s}: retrieval guard left no eligible checkpoint; "
+                                       "post-adaptation metrics come from the epoch-0 state")
                 ev.put(t.key, c, s, check_error(row_error(row), t, str(shard)))
                 if c != cond.retrieval_only:
                     ev.put(t.key, c + PRE, s, check_error(row_error(row, "pre"), t, str(shard)))
@@ -597,8 +600,9 @@ def decide(primary: dict, guard: dict, transfer: dict | None, prereg: dict) -> N
                 crit["transfer_not_opposite"] = not transfer[name]["gmr_ci95"][0] > 1.0
             if name == "E2":
                 crit["guards_hold"] = guard["hold"]
-        else:  # the bound alone, as pre-registered; p_holm stays a reported number
-            crit = {"upper_bound_below_margin": r["gmr_upper95_one_sided"] < 1 + spec["delta"]}
+        else:  # prereg addendum 1: E3 is in the Holm family; the unadjusted bound is reported only
+            r["upper_bound_below_margin"] = r["gmr_upper95_one_sided"] < 1 + spec["delta"]
+            crit = {"holm_significant": r["holm_significant"]}
         r["criteria"], r["supported"] = crit, all(crit.values())
         r["wording"] = wording(name, r, spec, guard)
 

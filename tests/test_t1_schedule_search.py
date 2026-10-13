@@ -180,6 +180,20 @@ def test_feasibility_excludes_candidates_whose_pre_adaptation_error_drifts(tmp_p
         pre_feasibility([r for r in rows if not (r["condition"].endswith("retrieval_only") and r["seed"] == 21)], 1.02)
 
 
+def test_guard_fallback_runs_make_their_condition_ineligible(tmp_path):
+    """A guarded run with no eligible checkpoint returns its untrained epoch-0 state; never selectable."""
+    rows = []
+    for s in (20, 21):
+        rows += [full_row("a", "retrieval_only", s, .10), full_row("a", "p", s, .02, pre_err=.10),
+                 full_row("a", "q", s, .05, pre_err=.10)]
+    rows[1]["sync_no_eligible_checkpoint"] = True  # condition p, seed 20
+    select(sel_args(tmp_path / "sel", [write_stage(tmp_path / "stage", rows)], feasibility_pre=1.02))
+    sel = json.loads((tmp_path / "sel" / "selection.json").read_text())
+    assert sel["global_winner"] == "tuned::q" and "tuned::p" not in [g["condition"] for g in sel["global_ranking"]]
+    assert sel["guard_fallback_ineligible"]["tuned::p"] == [
+        {"task": "a", "seed": 20, "reason": "no eligible checkpoint under the retrieval guard"}]
+
+
 def test_feasibility_counts_classification_errors_in_whole_validation_cases():
     """One extra validation error over a perfect retrieval-only lies exactly on the bound and stays feasible."""
     acc32 = lambda k, n: float(np.float32((n - k) / n))  # noqa: E731  accuracy as the runner stores it

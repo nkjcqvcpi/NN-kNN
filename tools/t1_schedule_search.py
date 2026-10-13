@@ -268,12 +268,29 @@ def pre_feasibility(rows: list[dict], bound: float) -> dict[str, list[dict]]:
     return out
 
 
+def guard_fallbacks(rows: list[dict]) -> dict[str, list[dict]]:
+    """Conditions with a run whose retrieval guard left no eligible checkpoint.
+
+    Such a run returns its epoch-0 state (``sync_no_eligible_checkpoint``): post-adaptation
+    metrics come from an untrained adapter and pre-adaptation error equals retrieval-only, so
+    it would pass the pre-adaptation feasibility test without being a trained candidate.
+    """
+    out: dict[str, list[dict]] = {}
+    for r in rows:
+        if r.get("sync_no_eligible_checkpoint"):
+            out.setdefault(condition_id(r), []).append({"task": r["dataset"], "seed": r["seed"],
+                                                        "reason": "no eligible checkpoint under the retrieval guard"})
+    return out
+
+
 def select(args) -> None:
     seeds, prereg = getattr(args, "seeds", None), getattr(args, "prereg", None)
     criterion, bound = getattr(args, "criterion", None), getattr(args, "feasibility_pre", None)
     rows = selection_rows(args.exp_dir, args.exclude_condition, seeds, prereg)
     ineligible = pre_feasibility(rows, bound) if bound is not None else {}
-    table, winners, glob, n_seeds = rank_conditions(rows, criterion=criterion or "err", ineligible=set(ineligible))
+    fallbacks = guard_fallbacks(rows)
+    table, winners, glob, n_seeds = rank_conditions(rows, criterion=criterion or "err",
+                                                    ineligible=set(ineligible) | set(fallbacks))
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     finalists = [g["condition"] for g in glob[: args.finalists]]
@@ -299,6 +316,8 @@ def select(args) -> None:
                                     "bound * same-arm retrieval-only mean validation error + 1/n_val; "
                                     "classification errors counted in whole validation cases per seed",
             "ineligible": ineligible}
+    if fallbacks:
+        selection["guard_fallback_ineligible"] = fallbacks
     (out / "selection.json").write_text(json.dumps(selection, indent=2))
     import csv
     with (out / "validation_table.csv").open("w", newline="", encoding="utf-8") as fh:
@@ -423,7 +442,8 @@ def loso(args) -> None:
         cells = {}
         for rule in args.rules:
             for held in seeds:
-                _, winners, glob, _ = rank_conditions(rows, seeds=[s for s in seeds if s != held], criterion=rule)
+                _, winners, glob, _ = rank_conditions(rows, seeds=[s for s in seeds if s != held], criterion=rule,
+                                                      ineligible=set(guard_fallbacks(rows)))
                 for scope in args.scope:
                     for t, w in sorted(winners.items()):
                         sel = glob[0]["condition"] if scope == "global" else w

@@ -169,3 +169,12 @@ host,including withholding; four real-core archived-output replays preserve
 all four new events and exact delivered prompt payloads.34 focused tests pass.
 `T3_HOST_FAILURE_JOURNAL.md` records old evidence gaps and pending public outcomes;
 no replacement host needs or reconstructed original IDs are claimed.
+
+## T1 pre-registration, 2026-10-13
+
+`docs/T1_PREREG_20261013.md` froze the tuning and confirmation phase before any run:
+JSON `configs/t1/prereg_20261013.json` sha256 `b6a10acf5717391440667348cafc02c0af52a09faa74785eb760b8cc8517d2fb`
+(commit `79dbb31`). Addendum 1 (E3 decided by its Holm-adjusted non-inferiority p;
+guard fallbacks ineligible), written before any evaluation-seed result, changed the JSON to
+sha256 `e48a064051c0140b71b2bed09e92299c85716c2856c354b111f690835300f370`; use this
+value for `tools/t1_confirm_report.py --prereg-sha256`.
