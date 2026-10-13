@@ -178,3 +178,4 @@ JSON `configs/t1/prereg_20261013.json` sha256 `b6a10acf5717391440667348cafc02c0a
 guard fallbacks ineligible), written before any evaluation-seed result, changed the JSON to
 sha256 `e48a064051c0140b71b2bed09e92299c85716c2856c354b111f690835300f370`; use this
 value for `tools/t1_confirm_report.py --prereg-sha256`.
+Addendum 2 (step-D tuning on 18 legacy tasks; car and regression wine in confirmation only) changed the JSON to sha256 `7c27c51036315b054f91ffa9c46f0e137ec18134eac33847ccec2e930783f479`; this value supersedes the one above for `--prereg-sha256`.
