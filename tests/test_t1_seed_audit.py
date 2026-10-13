@@ -52,13 +52,26 @@ def test_small_holdout_tasks_and_runner_grid_split_agreement(tmp_path):
     assert json.loads((tmp_path / "a.json").read_text())["split_checks"][0]["n"]["train"] == 50
 
 
-def test_preregistered_training_cap_must_reach_the_dataset_entry(tmp_path):
+def test_preregistered_training_cap_must_reach_the_dataset_entry_and_the_grid(tmp_path):
+    from model.t1.data import make_splits
     prereg = load_prereg(PREREG)
     prereg["tasks"]["primary_legacy"] = [{"name": "iris", "task_type": "classification", "max_train": 50}]
     path = tmp_path / "prereg.json"
     path.write_text(json.dumps(prereg))
-    report = audit([write_config(tmp_path / "c.yaml", [{"name": "iris", "task_type": "classification"}], max_train=50)], path)
+    iris = {"name": "iris", "task_type": "classification"}
+    report = audit([write_config(tmp_path / "c.yaml", [iris], max_train=50)], path)
     assert len(report["violations"]) == 1 and "dataset-entry max_train None != pre-registered 50" in report["violations"][0]
+    # Cap only in the dataset entry: the runner trains on 50 rows, the grid's real call
+    # (tools/t1_grid_search.py: make_splits(..., **study["splits"])) ignores the entry and trains on 90.
+    entry_only = write_config(tmp_path / "e.yaml", [{**iris, "max_train": 50}])
+    report = audit([entry_only], path, check_splits=True, split_seeds=[20])
+    assert len(report["violations"]) == 2 and "splits.max_train None != pre-registered 50" in report["violations"][0]
+    assert report["violations"][1].endswith("seed 20: runner and grid splits differ in ['train']")
+    check = report["split_checks"][0]
+    real = make_splits("iris", "classification", 20, **yaml.safe_load(Path(entry_only).read_text())["splits"])
+    assert (check["n"]["train"], check["grid_n"]["train"]) == (50, len(real.meta["split_indices"]["train"])) == (50, 90)
+    both = write_config(tmp_path / "b.yaml", [{**iris, "max_train": 50}], max_train=50)
+    assert audit([both], path, check_splits=True, split_seeds=[20])["violations"] == []
 
 
 def test_cached_tabarena_task_uses_the_audited_outer_split(tmp_path):

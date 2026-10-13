@@ -225,17 +225,34 @@ def per_seed_ranks(pool: list[dict], tasks: list[str], conds: list[str]) -> dict
     return out
 
 
+FEASIBILITY_TOL = 1e-9  # float64 rounding of the means; classification errors are whole cases first
+
+
 def pre_feasibility(rows: list[dict], bound: float) -> dict[str, list[dict]]:
     """Conditions whose mean validation pre-adaptation error exceeds ``bound`` x retrieval-only + 1/n_val on a task.
 
     Means are over the condition's seeds, paired with the same arm's retrieval-only rows;
-    n_val is the validation size of those seeds (mean, if folds differ).
+    n_val is the validation size of those seeds (mean, if folds differ). Classification
+    errors are first rounded to whole validation cases, round((1 - accuracy) * n_val) / n_val,
+    because the runner stores accuracies as float32 (29/30 -> 0.96666664), which would
+    otherwise put a candidate exactly on the bound (one extra error) a few 1e-8 above it.
     """
     n_val = stream_sizes(rows, "val")
-    ref = {(r["dataset"], r.get("arm", ""), r["seed"]): pre_error(r, "val")
+
+    def val_pre(r):
+        e, n = pre_error(r, "val"), n_val.get((r["dataset"], r["seed"]))
+        if r["task_type"] != "classification" or n is None:  # a missing n_val is refused below
+            return e
+        cases = e * n
+        if abs(cases - round(cases)) > 1e-2 + 1e-7 * n:  # float32 accuracy: relative error <= 6e-8
+            raise SystemExit(f"val_n {n} of {r['dataset']} seed {r['seed']} does not fit its validation accuracy "
+                             f"({cases:.4f} errors in {condition_id(r)})")
+        return round(cases) / n
+
+    ref = {(r["dataset"], r.get("arm", ""), r["seed"]): val_pre(r)
            for r in rows if condition_id(r).endswith("retrieval_only")}
     pre = mean_by([r for r in rows if not condition_id(r).endswith("retrieval_only")],
-                  lambda r: (r["dataset"], condition_id(r)), lambda r: (r.get("arm", ""), r["seed"], pre_error(r, "val")))
+                  lambda r: (r["dataset"], condition_id(r)), lambda r: (r.get("arm", ""), r["seed"], val_pre(r)))
     out: dict[str, list[dict]] = {}
     for (t, c), values in sorted(pre.items()):
         gaps = [s for arm, s, _ in values if (t, arm, s) not in ref or (t, s) not in n_val]
@@ -245,7 +262,7 @@ def pre_feasibility(rows: list[dict], bound: float) -> dict[str, list[dict]]:
         base = float(np.mean([ref[t, arm, s] for arm, s, _ in values]))
         nv = float(np.mean([n_val[t, s] for _, s, _ in values]))
         limit = bound * base + 1.0 / nv
-        if cand > limit:
+        if cand > limit + FEASIBILITY_TOL:
             out.setdefault(c, []).append({"task": t, "val_pre_error": cand, "retrieval_only_val_error": base,
                                           "n_val": nv, "limit": limit, "seeds": sorted(s for _, s, _ in values)})
     return out
@@ -279,7 +296,8 @@ def select(args) -> None:
     if bound is not None:
         selection["feasibility_pre"] = {
             "bound": bound, "rule": "ineligible if on any task mean validation pre-adaptation error > "
-                                    "bound * same-arm retrieval-only mean validation error + 1/n_val",
+                                    "bound * same-arm retrieval-only mean validation error + 1/n_val; "
+                                    "classification errors counted in whole validation cases per seed",
             "ineligible": ineligible}
     (out / "selection.json").write_text(json.dumps(selection, indent=2))
     import csv
