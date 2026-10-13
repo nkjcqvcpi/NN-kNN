@@ -18,8 +18,9 @@ and the three newly tuned tasks have all six seeds from H6.
 | H2a, nominal score scale (5 candidates) | `h2a_block.json`: paired −0.004, z −0.38 | Not accepted on error |
 | H2b, logit residual (2 candidates, reported separately) | `h2b_block_separate.json`: paired 0.000 | Not accepted |
 | H2, output scale for calibration | Validation streams, seeds 22–25, 9 classification tasks: F0 (κ 1) ECE post 0.241 (pre 0.030), with temperature 0.061, correction L1 0.997; κ 10, `v_small` 0.1: ECE post 0.016, with temperature 0.011, correction 0.220, accuracy 0.932 vs 0.928 | κ 10 chosen among accuracy-equivalent settings; **H2c** reruns the classification pool at κ 10, adopted only if held-out error is non-inferior |
-| H5, budget and stopping (8 candidates) | regression half running; classification half after H2c | pending |
-| H3, adapter capacity (9 candidates; dropout on classification only) | regression half running; classification half after H2c | pending |
+| H2c, classification pool at κ 10 (19 conditions) | `h2c_compare.json`: held-out GMR 0.842 (κ 1) → 0.822 (κ 10), paired −0.023 (task-SE 0.036, tasks 5/3); median validation ECE of the per-task selections 0.239 → 0.012. Iris seed 21 crashed natively once (0xC0000409) and was rerun; its 7 overlapping rows reproduced bitwise | **Adopt κ 10 for classification** (non-inferior; calibration fixed) |
+| H5, budget and stopping (8 candidates) | regression and classification (κ 10) halves running | pending |
+| H3, adapter capacity (9 regression / 11 classification candidates incl. dropout) | both halves running | pending |
 
 **Transfer group.** Per-task selection needs development runs on a task, which the pre-registration
 forbids on transfer tasks. F on transfer tasks is therefore one global schedule chosen on the legacy
