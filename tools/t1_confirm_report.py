@@ -105,6 +105,11 @@ def condition_id(row: dict) -> str:
         name = "retrieval_only"
     elif "schedule" not in row:  # frozen-core reuse
         name = f"frozen_reuse__{row['loss']}"
+        # non-default classification output settings are distinct candidates
+        if row.get("task_type") == "classification" and row.get("output_mode", "nominal_residual_scores") != "nominal_residual_scores":
+            name += f"__{row['output_mode']}"
+        if float(row.get("score_scale", 1.0)) != 1.0:
+            name += f"__kappa={float(row['score_scale']):g}"
     return f"{arm}::{name}" if arm else name
 
 

@@ -279,3 +279,12 @@ def test_loso_compare_mode_and_prereg_refusal(tmp_path):
     late = write_stage(tmp_path / "late", [full_row("a", "p", 35, .1)])
     with pytest.raises(SystemExit, match=r"35 \(reserved\)"):
         loso(loso_args([stage, late], out, prereg=PREREG, reference="tuned::ref"))
+
+
+def test_reuse_rows_with_other_output_settings_are_distinct_candidates():
+    base = row("t", "nominal_residual_scores_combined", 1, .1, .1, loss="combined")
+    scaled = {**base, "condition": "tuned__kappa10", "score_scale": 10.0}
+    logit = {**base, "condition": "tuned__logit_residual_combined", "output_mode": "logit_residual"}
+    assert condition_id(base) == "tuned::frozen_reuse__combined"
+    assert condition_id(scaled) == "tuned::frozen_reuse__combined__kappa=10"
+    assert condition_id(logit) == "tuned::frozen_reuse__combined__logit_residual"
