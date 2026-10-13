@@ -66,3 +66,122 @@ def test_regression_metric_records_original_target_units():
     metrics = numeric_metrics(np.array([1., 2.]), np.array([0., 1.]), "regression", (10., 3.))
     assert metrics["rmse_standardized"] == 1.
     assert metrics["rmse_original"] == 3.
+
+
+def test_dataset_max_train_overrides_the_study_cap():
+    import tools.t1_grid_search as search
+    splits = dict(test_frac=.2, val_frac=.2, maint_frac=0., reg_cohort_bins=5, max_train=3000)
+    plain = dict(name="iris", task_type="classification")
+    assert search.dataset_splits(dict(splits=splits), plain) == splits
+    assert search.dataset_splits(dict(splits=splits), {**plain, "max_train": 40}) == {**splits, "max_train": 40}
+    assert search.dataset_splits(dict(splits=splits), {**plain, "max_train": None})["max_train"] is None
+    assert search.dataset_splits(dict(splits=dict(test_frac=.2)), plain) == dict(test_frac=.2)
+    assert splits["max_train"] == 3000
+    load = lambda ds: search.split_loader(dict(splits=dict(test_frac=.2, val_frac=.2)), ds)(30)  # noqa: E731
+    capped, full = load({**plain, "max_train": 40}), load(plain)
+    assert (len(capped.y_train), len(full.y_train)) == (40, 90)
+    assert capped.meta["split_indices"]["test"] == full.meta["split_indices"]["test"]
+    assert set(capped.meta["split_indices"]["train"]) < set(full.meta["split_indices"]["train"])
+
+
+def test_receipts_hash_split_indices_and_old_receipts_still_resume(tmp_path, monkeypatch):
+    import tools.t1_grid_search as search
+    from model.t1.data import T1Data
+    x = torch.arange(12).float().reshape(-1, 1)
+    y = torch.arange(12).float()
+    indices = dict(train=list(range(6)), validation=[6, 7, 8], test=[9, 10, 11], maintenance=[])
+    data = T1Data("tiny", "regression", x[:6], y[:6], x[6:9], y[6:9], x[9:], y[9:], meta=dict(split_indices=indices))
+    params = dict(n_neighbors=2, weights="uniform", p=2)
+    row = search.run_trial(tmp_path, "knn", "c", params, "screen", lambda seed: data, 20, 1, 1, "src")
+    stored = json.loads((tmp_path / "screen/c/s20/receipt.json").read_text())
+    assert row == stored and "deterministic_algorithms" not in stored
+    assert "split_indices" not in stored["dataset"]
+    assert stored["dataset"]["split_indices_sha256"] == search.split_digest(indices)
+    assert search.split_digest(dict(reversed(indices.items()))) == search.split_digest(indices)
+    assert search.split_digest({k: [np.int64(i) for i in v] for k, v in indices.items()}) == search.split_digest(indices)
+    assert search.split_digest({**indices, "test": [9, 11, 10]}) != search.split_digest(indices)
+    # A receipt written before hashing is reused unchanged on disk and compacted in memory.
+    old = dict(stored, dataset={k: v for k, v in stored["dataset"].items() if k != "split_indices_sha256"} | dict(split_indices=indices))
+    old_path = tmp_path / "screen/d/s20/receipt.json"
+    old_path.parent.mkdir(parents=True)
+    old_path.write_text(json.dumps(old))
+    def no_data(seed):
+        raise AssertionError("a reused receipt must not reload data")
+    reused = search.run_trial(tmp_path, "knn", "d", params, "screen", no_data, 20, 1, 1, "src")
+    assert reused["dataset"] == stored["dataset"] and json.loads(old_path.read_text()) == old
+    monkeypatch.setattr(search.torch, "are_deterministic_algorithms_enabled", lambda: True)
+    flagged = search.run_trial(tmp_path, "knn", "e", params, "screen", lambda seed: data, 20, 1, 1, "src")
+    assert flagged["deterministic_algorithms"] is True
+
+
+def test_deterministic_environment_flag(monkeypatch):
+    import tools.t1_grid_search as search
+    calls = []
+    monkeypatch.setattr(search.torch, "use_deterministic_algorithms", calls.append)
+    monkeypatch.delenv("NNKNN_DETERMINISTIC", raising=False)
+    search.apply_determinism()
+    assert calls == []
+    monkeypatch.setenv("NNKNN_DETERMINISTIC", "1")
+    search.apply_determinism()
+    assert calls == [True]
+
+
+def test_evaluate_refits_the_frozen_winner_without_reselection(tmp_path, monkeypatch, request):
+    import concurrent.futures
+    import pytest
+    import yaml
+    import tools.t1_grid_search as search
+    threads = torch.get_num_threads()
+    request.addfinalizer(lambda: torch.set_num_threads(threads))  # workers run in this process here
+    monkeypatch.delenv("NNKNN_DETERMINISTIC", raising=False)
+    study = dict(development_seeds=[20], evaluation_seeds=[30], screen_epochs=2, screen_patience=1, refit_epochs=3,
+        refit_patience=1, finalists=1, torch_threads=1, splits=dict(test_frac=.2, val_frac=.2),
+        families=["knn", "mlp", "catboost"], datasets=[dict(name="iris", task_type="classification", max_train=60)],
+        grids=dict(knn=dict(n_neighbors=[3, 5], weights=["distance"], p=[2]),
+                   mlp=dict(width=[8], layers=[1], lr=[0.003], weight_decay=[0.0], dropout=[0.0]),
+                   catboost=dict(depth=[2], iterations=[5])))
+    config, grid, out = tmp_path / "grid.yaml", tmp_path / "grid", tmp_path / "evaluate"
+    config.write_text(yaml.safe_dump(study))
+    # Worker threads keep the test in one process; one worker keeps redirect_stdout unshared.
+    monkeypatch.setattr(search, "ProcessPoolExecutor", concurrent.futures.ThreadPoolExecutor)
+    search.main([str(config), "--out", str(grid), "--workers", "1", "--only-family", "knn"])
+    search.main([str(config), "--out", str(grid), "--workers", "1", "--only-family", "mlp"])
+    fits = []
+    original_fit = search.fit_candidate
+    def fit(family, params, allowed, seed, epochs, patience):
+        fits.append((family, params, seed, epochs, patience))
+        return original_fit(family, params, allowed, seed, epochs, patience)
+    monkeypatch.setattr(search, "fit_candidate", fit)
+    monkeypatch.setattr(search, "rank_candidates", lambda *args: pytest.fail("evaluate must not rank"))
+    evaluate = ["evaluate", "--grid", str(grid), "--out", str(out), "--workers", "1"]
+    search.main(evaluate + ["--families", "knn", "mlp", "catboost", "--seeds", "30", "31"])
+    key = "classification__iris"
+    statuses = {r["family"]: r["status"] for r in json.loads((out / "results.json").read_text())}
+    assert statuses == dict(knn="completed", mlp="completed", catboost="no_selection")
+    for family in ("knn", "mlp"):
+        completed = json.loads((grid / key / family / "completed.json").read_text())
+        evaluated = json.loads((out / key / family / "evaluation.json").read_text())
+        assert evaluated["winner"] == completed["winner"] and evaluated["status"] == "completed"
+        assert [r["seed"] for r in evaluated["evaluation"]] == [30, 31]
+        before, after = completed["evaluation"][0], evaluated["evaluation"][0]
+        assert set(before) == set(after) and before["dataset"] == after["dataset"]
+        assert before["test_metrics"] == after["test_metrics"]
+        assert before["validation_metrics"] == after["validation_metrics"]
+        assert after["dataset"]["n_train"] == 60 and "split_indices_sha256" in after["dataset"]
+        assert sorted(p.name for p in (out / key / family).iterdir()) == ["evaluation", "evaluation.json", "training.log"]
+        assert [p.name for p in (out / key / family / "evaluation").iterdir()] == [completed["winner"]]
+        grid_params = completed["parameters"]
+        assert [f[1:] for f in fits if f[0] == family] == [(grid_params, s, 3, 1) for s in (30, 31)]
+    # Resuming adds seeds, reuses receipts and keeps earlier seeds in evaluation.json.
+    fits.clear()
+    search.main(evaluate + ["--families", "knn", "--seeds", "32", "--datasets", key])
+    assert [f[2] for f in fits] == [32]
+    assert [r["seed"] for r in json.loads((out / key / "knn/evaluation.json").read_text())["evaluation"]] == [30, 31, 32]
+    assert len(json.loads((out / "evaluate.json").read_text())["invocations"]) == 2
+    with pytest.raises(ValueError, match="Not in the grid"):
+        search.main(evaluate + ["--families", "tabm", "--seeds", "30"])
+    with pytest.raises(ValueError, match="outside the grid"):
+        search.main(["evaluate", "--grid", str(grid), "--out", str(grid / "x"), "--families", "knn", "--seeds", "30"])
+    monkeypatch.setattr(search, "source_fingerprint", lambda repo: "changed")
+    with pytest.raises(ValueError, match="fresh output"):
+        search.main(evaluate + ["--families", "knn", "--seeds", "30"])
