@@ -26,7 +26,11 @@ Every term is logged separately each epoch. Training queries are training cases
 with leave-one-out retrieval. Early stopping uses the validation stream only:
 ``val_L_post`` (default) or ``val_error`` (post-adaptation error, then L_post).
 ``retrieval_guard`` g makes a checkpoint eligible only while validation L_pre
-stays within (1 + g) of its value before any synchronized update.
+stays within (1 + g) of its value before any synchronized update. If the guard
+leaves no eligible checkpoint, the state before any synchronized update (epoch
+0: the starting retrieval, the untrained adapter and both optimizers' starting
+states) is returned with ``best_epoch = 0`` and ``no_eligible_checkpoint``; after
+a maintenance edit that state no longer exists and training raises instead.
 """
 
 from __future__ import annotations
@@ -259,6 +263,12 @@ def train_synchronized(
     # mode without gradients changes no parameter, RNG stream or optimizer state.
     V0 = validation_terms()
     v_pre0, v_err_pre0 = float(V0["L_pre"]), float(V0["err_pre"])
+    # The guard's fallback when no epoch is eligible: this epoch-0 state, whose
+    # L_pre is the reference itself. Copies only; unguarded runs take none.
+    guarded = cfg.retrieval_guard is not None
+    epoch0 = (copy.deepcopy(model.state_dict()), copy.deepcopy(adapter.state_dict()), copy.deepcopy(ropt.state_dict()),
+              copy.deepcopy(aopt.state_dict()), copy.deepcopy(fr)) if guarded else None
+    maintenance_edited = False
 
     def improves(v_err, v_post):
         if cfg.early_stopping == "val_L_post":
@@ -366,6 +376,7 @@ def train_synchronized(
             # an audit or no-op selection does not invalidate a better state.
             if changed:
                 best, bad = empty, 0
+                maintenance_edited = True
             rec["train_after_maintenance"] = diagnostic_terms()
         # validation: post-adaptation task loss on the untouched validation stream
         V = validation_terms()
@@ -389,6 +400,14 @@ def train_synchronized(
                                    any(ep < e <= cfg.epochs for e in maintenance_epochs))
             if bad > cfg.patience and not pending_maintenance:
                 break
+    no_eligible = best[1] is None
+    if no_eligible and guarded:
+        # Never return a guard-violating state: fall back to epoch 0 (eligible by
+        # definition), unless a maintenance edit has since replaced it.
+        if maintenance_edited:
+            raise RuntimeError("retrieval_guard rejected every checkpoint after a maintenance edit; the epoch-0 "
+                               "state cannot be restored without undoing that edit")
+        best = (float(V0["L_post"]), *epoch0[:2], 0, *epoch0[2:], float(V0["err_post"]))
     if best[1] is not None:
         model.load_state_dict(best[1])
         model._invalidate_case_cache()
@@ -397,8 +416,11 @@ def train_synchronized(
         aopt.load_state_dict(best[5])
         fr = best[6]
     adapter.eval()
+    # Without the guard, no selected epoch is possible only with nonfinite
+    # validation losses; that case keeps the last state, as before.
     return adapter, {"history": hist, "best_epoch": best[3], "best_val_L_post": best[0],
                      "best_val_err": best[7], "v_pre0": v_pre0, "v_err_pre0": v_err_pre0,
+                     "no_eligible_checkpoint": no_eligible,
                      "guard_rejected_epochs": sum(h["guard_rejected"] for h in hist),
                      "adapter_optimizer": type(aopt).__name__,
                      "elapsed_seconds": time.perf_counter() - started,

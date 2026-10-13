@@ -112,16 +112,32 @@ def calibration_logits(s: torch.Tensor, cfg: ReuseConfig) -> torch.Tensor:
     return cfg.score_scale * s
 
 
-def fit_temperature(logits: torch.Tensor, y: torch.Tensor, *, bounds: tuple[float, float] = (1e-2, 1e2),
-                    max_iter: int = 100) -> float:
-    """One temperature T > 0 minimizing the NLL of softmax(logits / T) on the given stream.
+def separated(logits: torch.Tensor, y: torch.Tensor) -> bool:
+    """True when no row's true-class logit is exceeded by another class's logit.
 
-    LBFGS on log T in float64, started at T = 1. T is kept within ``bounds`` (a
-    separable stream would drive it to 0) and falls back to 1 unless it lowers
-    the NLL. Dividing by T > 0 never changes an argmax.
+    Then every row's NLL term log(1 + sum_j exp(-(z_y - z_j) / T)) is nonincreasing
+    as T falls, so the NLL of softmax(logits / T) has no minimizer at a positive T.
     """
-    z = logits.detach().to("cpu", torch.float64)
-    t = y.detach().to("cpu").long().view(-1)
+    z = logits.detach().cpu()
+    t = y.detach().cpu().long().view(-1, 1)
+    return bool((z <= z.gather(1, t)).all())
+
+
+def calibrate_temperature(logits: torch.Tensor, y: torch.Tensor, *, bounds: tuple[float, float] = (1e-2, 1e2),
+                          max_iter: int = 100) -> tuple[float, bool]:
+    """``(T, degenerate)``: one temperature T > 0 minimizing the NLL of softmax(logits / T) on the given stream.
+
+    LBFGS on log T in float64 on the CPU, started at T = 1 and kept within
+    ``bounds``. The fit is degenerate, and T = 1 (no rescaling), when the NLL has
+    no minimizer inside the bounds: the stream is ``separated`` (it would drive T
+    toward 0, so any fitted value is wherever the optimizer stops), the fit ends
+    on a bound, or it is not finite. A fit that does not lower the NLL also gives
+    T = 1. Dividing by T > 0 never changes an argmax.
+    """
+    z = logits.detach().cpu().double()
+    t = y.detach().cpu().long().view(-1)
+    if separated(z, t):
+        return 1.0, True
     lo, hi = math.log(bounds[0]), math.log(bounds[1])
 
     def nll(log_t):
@@ -140,9 +156,16 @@ def fit_temperature(logits: torch.Tensor, y: torch.Tensor, *, bounds: tuple[floa
         opt.step(closure)
     with torch.no_grad():
         fitted = log_t.detach().clamp(lo, hi)
-        if not torch.isfinite(fitted) or not float(nll(fitted)) < float(nll(torch.zeros((), dtype=torch.float64))):
-            return 1.0
-    return math.exp(float(fitted))
+        if not torch.isfinite(fitted) or not lo < float(fitted) < hi:
+            return 1.0, True
+        if not float(nll(fitted)) < float(nll(torch.zeros((), dtype=torch.float64))):
+            return 1.0, False
+    return math.exp(float(fitted)), False
+
+
+def fit_temperature(logits: torch.Tensor, y: torch.Tensor, **kwargs: Any) -> float:
+    """The temperature of :func:`calibrate_temperature` (1 when the fit is degenerate)."""
+    return calibrate_temperature(logits, y, **kwargs)[0]
 
 
 def _adapter_losses(adapter, out_r, out_s, p0, y, cfg: ReuseConfig) -> dict[str, torch.Tensor]:
@@ -347,9 +370,11 @@ def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseC
     if temperature is not None:
         if not (math.isfinite(temperature) and temperature > 0):
             raise ValueError("temperature must be finite and positive")
-        z = calibration_logits(s, cfg).double() / temperature  # float64, as in fit_temperature
-        metrics["ece_post_T"] = expected_calibration_error(F.softmax(z, dim=1).cpu(), y.cpu())
-        metrics["nll_post_T"] = float(F.cross_entropy(z, y))
+        # float64 on the CPU, as in calibrate_temperature: some accelerators (Arc A770) lack fp64
+        z = calibration_logits(s, cfg).detach().cpu().double() / temperature
+        y_cpu = y.cpu()
+        metrics["ece_post_T"] = expected_calibration_error(F.softmax(z, dim=1), y_cpu)
+        metrics["nll_post_T"] = float(F.cross_entropy(z, y_cpu))
     for group, mask in (test_groups or {}).items():
         mask = torch.as_tensor(mask, dtype=torch.bool, device=y.device)
         if mask.shape != y.shape:
