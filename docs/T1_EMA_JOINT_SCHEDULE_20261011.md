@@ -29,8 +29,9 @@ training-schedule search.
 |---|---|---|---|---|
 | Joint schedules | Neural CBR / `neural-cbr-ema-joint-20261010` (from `neural-cbr-reorg-20261010`) / `neural-cbr-ema/` | `model/t1/sync.py` | Gradient-isolation, phase, maintenance and validation tests | `6a6398e`, done |
 | Encoder (EMA) ablation runner | same | `tools/t1_run.py`, `configs/t1/ema_ablation_20261010.yaml`, `tools/t1_encoder_report.py` | Runner tests; observer leaves training bit-identical; 20/20 identical metrics against the pre-change runner | `6a6398e`, `6333d42`, done |
-| EMA ablation runs | same | `results/t1/p5_mcb_interaction/` | 65 jobs, 13 tasks × 5 seeds | see Results |
-| Schedule search | same | `tools/t1_schedule_search.py`, `tools/t1_parallel.py`, `configs/t1/schedule_search_*.yaml` | Selection and grid tests | stage A running |
+| EMA ablation runs | same | `results/t1/p5_mcb_interaction/` | 65/65 and 30/30 jobs, no failures | done |
+| Tuned-core batch size | same | `tools/t1_grid_search.py`, `tools/t1_execute_study.py`, `tools/t1_schedule_search.py` | Settings test; digits seed 30 reproduces the grid's 0.956 | `7b978a4`, done; not applied to the running study |
+| Schedule search | same | `tools/t1_schedule_search.py`, `tools/t1_parallel.py`, `configs/t1/schedule_search_*.yaml` | Selection, grid and determinism checks | batch-64 selection done; confirmation running |
 | Shared core | none | no core file changed | `tools/check_nnknn_core.py` | unchanged |
 
 No core file (`docs/NNKNN_CORE.md` list) was modified, so nothing needs to be
