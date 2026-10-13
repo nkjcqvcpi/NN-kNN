@@ -29,7 +29,8 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from tools.t1_schedule_search import (  # noqa: E402
-    condition_id, guard_fallbacks, held_out_errors, load_rows, log_ratio, rank_conditions, selection_rows,
+    condition_id, guard_fallbacks, held_out_errors, load_rows, log_ratio, pre_feasibility, rank_conditions,
+    selection_rows,
 )
 
 RULE_SCOPES = [("err", "global"), ("err", "pertask"), ("loss", "global"), ("loss", "pertask"),
@@ -44,14 +45,33 @@ def pool_rows(pool_dirs, conditions_from=None, seeds=None, prereg=None, exclude=
     return [r for r in rows if seeds is None or r["seed"] in seeds]
 
 
-def loso_cells(rows: list[dict], seeds: list[int], rule: str, scope: str, reference: str) -> dict:
+def infeasible(rows: list[dict], seeds: list[int], bound: float | None, scope: str):
+    """Pre-adaptation feasibility from the selection seeds' validation rows only (prereg H1):
+    on a task, mean validation pre-adaptation error <= bound x retrieval-only + 1/n_val.
+    Returns (conditions excluded everywhere, task -> conditions excluded on that task)."""
+    if bound is None:
+        return set(), {}
+    fails = pre_feasibility([r for r in rows if r["seed"] in seeds], bound)
+    if scope == "global":  # the prereg's "on every task" form
+        return set(fails), {}
+    per_task: dict[str, set] = {}
+    for c, ws in fails.items():
+        for w in ws:
+            per_task.setdefault(w["task"], set()).add(c)
+    return set(), per_task
+
+
+def loso_cells(rows: list[dict], seeds: list[int], rule: str, scope: str, reference: str,
+               feasibility: float | None = None) -> dict:
     """(seed, task) -> held-out cell of the condition the rule selects without that seed."""
     test = held_out_errors(rows)
-    ineligible = set(guard_fallbacks(rows))
+    fallback = set(guard_fallbacks(rows))
     cells = {}
     for held in seeds:
-        _, winners, glob, _ = rank_conditions(rows, seeds=[s for s in seeds if s != held], criterion=rule,
-                                              ineligible=ineligible)
+        selection_seeds = [s for s in seeds if s != held]
+        everywhere, per_task = infeasible(rows, selection_seeds, feasibility, scope)
+        _, winners, glob, _ = rank_conditions(rows, seeds=selection_seeds, criterion=rule,
+                                              ineligible=fallback | everywhere, task_ineligible=per_task)
         for t, w in sorted(winners.items()):
             sel = glob[0]["condition"] if scope == "global" else w
             cells[held, t] = {**log_ratio(test, t, sel, reference, held), "selected": sel}
@@ -82,7 +102,7 @@ def rules_main(args) -> dict:
     seeds = sorted(args.seeds)
     rows = pool_rows(args.pool, args.conditions_from, seeds, args.prereg, args.exclude_condition)
     base = tuple(args.current)
-    evals = {f"{r}/{s}": loso_cells(rows, seeds, r, s, args.reference) for r, s in RULE_SCOPES}
+    evals = {f"{r}/{s}": loso_cells(rows, seeds, r, s, args.reference, args.feasibility_pre) for r, s in RULE_SCOPES}
     cur = evals["/".join(base)]
     out = {"mode": "rules", "current": "/".join(base), "reference": args.reference, "seeds": seeds,
            "conditions": sorted({condition_id(r) for r in rows if not condition_id(r).endswith("retrieval_only")}),
@@ -104,10 +124,11 @@ def block_main(args) -> dict:
     have = {(r["dataset"], condition_id(r), r["seed"]) for r in base_rows}
     new = [r for r in block_rows if (r["dataset"], condition_id(r), r["seed"]) not in have]
     rule, scope = args.rule
-    before = loso_cells(base_rows, seeds, rule, scope, args.reference)
-    after = loso_cells(base_rows + new, seeds, rule, scope, args.reference)
+    before = loso_cells(base_rows, seeds, rule, scope, args.reference, args.feasibility_pre)
+    after = loso_cells(base_rows + new, seeds, rule, scope, args.reference, args.feasibility_pre)
     picked = sorted({c["selected"] for c in after.values()} - {c["selected"] for c in before.values()})
     return {"mode": "block", "rule": f"{rule}/{scope}", "reference": args.reference, "seeds": seeds,
+            "feasibility_pre": args.feasibility_pre,
             "pool_conditions": len({condition_id(r) for r in base_rows}) - 1,
             "block_conditions": sorted({condition_id(r) for r in new}),
             "before": summary(before), "after": summary(after), "after_vs_before": paired(after, before),
@@ -129,6 +150,7 @@ def main() -> None:
         p.add_argument("--prereg")
         p.add_argument("--exclude-condition", action="append")
         p.add_argument("--out", required=True)
+        p.add_argument("--feasibility-pre", type=float, help="prereg H1 bound B (pre-adaptation feasibility)")
         if name == "rules":
             p.add_argument("--current", nargs=2, default=["err", "global"], metavar=("RULE", "SCOPE"))
         else:

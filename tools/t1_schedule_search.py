@@ -153,12 +153,14 @@ RULES = {
 
 
 def rank_conditions(rows: list[dict], seeds: list[int] | None = None, criterion: str = "err",
-                    ineligible=frozenset()):
+                    ineligible=frozenset(), task_ineligible: dict | None = None):
     """Per-task means over seeds, per-task ranks and the global mean rank (validation only).
 
     ``criterion`` orders a task's conditions (``RULES``). ``ineligible`` conditions must still
-    be complete; they are listed in the table without a rank and never win.
+    be complete; they are listed in the table without a rank and never win. ``task_ineligible``
+    maps a task to conditions excluded on that task only (no rank there, never its winner).
     """
+    task_ineligible = task_ineligible or {}
     pool = [r for r in rows if not condition_id(r).endswith("retrieval_only")]
     if seeds is not None:
         pool = [r for r in pool if r["seed"] in seeds]
@@ -194,14 +196,16 @@ def rank_conditions(rows: list[dict], seeds: list[int] | None = None, criterion:
     table, ranks = [], {c: [] for c in conds}
     winners = {}
     for t in tasks:
-        order = sorted(conds, key=lambda c: key(t, c))
+        order = sorted((c for c in conds if c not in task_ineligible.get(t, ())), key=lambda c: key(t, c))
+        if not order:
+            raise SystemExit(f"no eligible condition on {t}")
         winners[t] = order[0]
         for i, c in enumerate(order, 1):
             ranks[c].append(i)
             table.append(entry(t, c, i))
-        table += [entry(t, c, None) for c in every if c in ineligible]
+        table += [entry(t, c, None) for c in every if c in ineligible or c in task_ineligible.get(t, ())]
     glob = sorted(({"condition": c, "mean_rank": float(np.mean(ranks[c])),
-                    "tasks_won": sum(w == c for w in winners.values())} for c in conds),
+                    "tasks_won": sum(w == c for w in winners.values())} for c in conds if ranks[c]),
                   key=lambda g: (g["mean_rank"], -g["tasks_won"], g["condition"]))
     return table, winners, glob, expected
 
