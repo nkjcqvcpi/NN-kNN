@@ -43,7 +43,7 @@ from model.t1.maintenance import CaseArchive, run_maintenance  # noqa: E402
 from model.t1.mcb import StabilityTracker  # noqa: E402
 from model.t1.provenance import CaseStatisticsStore, ScoreConfig, active_cohorts, audit_provenance, score_cases  # noqa: E402
 from model.t1.retention import RetentionConfig  # noqa: E402
-from model.t1.reuse import ReuseConfig, evaluate_reuse, evaluate_regression_reuse, fit_temperature, reuse_logits, train_classification_adapter, train_regression_adapter  # noqa: E402
+from model.t1.reuse import ReuseConfig, calibrate_temperature, evaluate_reuse, evaluate_regression_reuse, reuse_logits, train_classification_adapter, train_regression_adapter  # noqa: E402
 from model.t1.revise import flagging_ablation  # noqa: E402
 from model.t1.sync import SyncConfig, train_synchronized  # noqa: E402
 from model.common.nominal import encoded_queries  # noqa: E402
@@ -200,16 +200,19 @@ def adapted_metrics(model, adapter, data, stream, cfg, rc=None):
 
     Classification also reports ``ece_post_T``/``nll_post_T`` under one temperature
     fitted on the validation stream's adapted outputs (``temperature``, reported
-    with the validation stream); predictions are unchanged.
+    with the validation stream); predictions are unchanged. When the validation
+    NLL has no minimizer inside the temperature bounds (for example, no validation
+    row is misranked), T = 1 and ``temperature_degenerate`` is true.
     """
     X, y = getattr(data, f"X_{stream}"), getattr(data, f"y_{stream}")
     if data.task_type == "classification":
-        temperature = fit_temperature(reuse_logits(model, adapter, data.X_val, rc,
-                                                   query_nominal=encoded_queries(adapter, data, "val")), data.y_val)
+        temperature, degenerate = calibrate_temperature(
+            reuse_logits(model, adapter, data.X_val, rc, query_nominal=encoded_queries(adapter, data, "val")), data.y_val)
         out = evaluate_reuse(model, adapter, X, y, rc, query_nominal=encoded_queries(adapter, data, stream),
                              test_groups=data.test_groups if stream == "test" else None, temperature=temperature)
         if stream == "val":
             out["temperature"] = temperature
+            out["temperature_degenerate"] = degenerate
     else:
         out = evaluate_regression_reuse(model, adapter, X, y,
                                         success_tolerance=cfg["statistics"]["regression_success_tolerance"])
@@ -244,7 +247,8 @@ def input_locality(model, X, batch_size=256):
             r = model.retrieve(xb, exclude_identical=False)
             d = torch.cdist(xb.flatten(1), model.cases[r["case_indices"]].flatten(1),
                             compute_mode="donot_use_mm_for_euclid_dist")
-            total += float((r["weights"].double() * d.double()).sum())
+            # accumulate in float64 on the CPU: some accelerators (Arc A770) lack fp64
+            total += float((r["weights"].detach().cpu().double() * d.cpu().double()).sum())
     return total / len(X)
 
 
@@ -906,6 +910,7 @@ class Runner:
              **online_ema_gap(model),
              "best_val_err": info["best_val_err"], "sync_val_L_pre_epoch0": info["v_pre0"],
              "sync_val_err_pre_epoch0": info["v_err_pre0"], "sync_guard_rejected_epochs": info["guard_rejected_epochs"],
+             "sync_no_eligible_checkpoint": info["no_eligible_checkpoint"],
              "test_locality_input": input_locality(model, data.X_test)}
         for key in ("representation_drift", "neighborhood_churn", "selection_churn"):
             values = [r[key] for r in tracker.records if key in r]

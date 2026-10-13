@@ -25,8 +25,9 @@ from model.nn_cdh import ClassificationNNCDHAdapter
 from model.t1.adapted_retraining import continued_adapted_trial
 from model.t1.calibration import calibrate_free_radius
 from model.t1.data import T1Data
-from model.t1.reuse import (ReuseConfig, _adapter_losses, adapter_optimizer, calibration_logits, evaluate_regression_reuse,
-                            evaluate_reuse, fit_temperature, train_classification_adapter, train_regression_adapter)
+from model.t1.reuse import (ReuseConfig, _adapter_losses, adapter_optimizer, calibrate_temperature, calibration_logits,
+                            evaluate_regression_reuse, evaluate_reuse, fit_temperature, separated,
+                            train_classification_adapter, train_regression_adapter)
 from model.t1.sync import SyncConfig, _forward_terms, train_synchronized
 from tools.t1_run import Runner, input_locality, load_config, to_cpu
 
@@ -108,6 +109,10 @@ def regression_reuse_scenario():
     return {"val_loss": [r["val_loss"] for r in info["history"]], "best_epoch": info["best_epoch"],
             "rmse_post": ev["rmse_post"], "adapter": checksum(adapter),
             "continuation_loss": [r["loss"] for r in cont[4]["history"]]}
+
+
+def accelerator():
+    return "xpu" if torch.xpu.is_available() else "cuda" if torch.cuda.is_available() else None
 
 
 @pytest.fixture
@@ -197,6 +202,71 @@ def test_retrieval_guard_rejects_checkpoints_whose_pre_adaptation_loss_worsens(m
     # rejected epochs 5 and 6 still count toward patience 1
     assert [h["guard_rejected"] for h in hist] == [False] * 4 + [True] * 2
     assert guarded["guard_rejected_epochs"] == 2
+    assert not plain["no_eligible_checkpoint"] and not guarded["no_eligible_checkpoint"]
+
+
+def every_epoch_worsens_retrieval(ep):
+    """Scripted validation: L_pre doubles after epoch 0, so a guard rejects every epoch."""
+    return {"L_post": 10 - ep, "L_pre": 1. if ep == 0 else 2., "err_post": 3. if ep == 0 else 1.}
+
+
+def test_guard_without_an_eligible_checkpoint_returns_the_epoch0_state(monkeypatch):
+    model, data, cc, fr = regression_setup()
+    initial_adapter, observed = [], []
+    real_optimizer = sync.adapter_optimizer
+
+    def recording_optimizer(params, *args):  # called once, right after the adapter is built
+        params = list(params)
+        initial_adapter.extend(p.detach().clone() for p in params)
+        return real_optimizer(params, *args)
+
+    monkeypatch.setattr(sync, "adapter_optimizer", recording_optimizer)
+    calls = scripted_validation(monkeypatch, every_epoch_worsens_retrieval)
+    cfg = lambda **kw: SyncConfig("joint_rr", 1., .5, .1, 1., 1., .1, output_mode="aggregate_regression",  # noqa: E731
+                                  epochs=6, patience=1, hidden_dims=(8, 4), **kw)
+    _, plain = train_synchronized(copy.deepcopy(model), data, cc, cfg(), fr, near_scale=1.)
+    assert plain["best_epoch"] == 6 and not plain["no_eligible_checkpoint"]
+    calls[0], initial_adapter[:] = 0, []
+    m = copy.deepcopy(model)
+    start = copy.deepcopy(m.state_dict())
+    adapter, info = train_synchronized(m, data, cc, cfg(retrieval_guard=.1), fr, near_scale=1.,
+                                       epoch_observer=lambda ep, mdl, ad: observed.append(copy.deepcopy(mdl.state_dict())) or {})
+    hist = info["history"]
+    # epochs 1 and 2 are rejected and exhaust patience 1; none is eligible
+    assert [h["guard_rejected"] for h in hist] == [True, True] and all(h["optimizer_updates"] > 0 for h in hist)
+    assert info["no_eligible_checkpoint"] and info["best_epoch"] == 0 and info["optimizer_checkpoint_epoch"] == 0
+    assert (info["best_val_L_post"], info["best_val_err"]) == (10., 3.)  # epoch-0 validation terms: finite
+    assert any(not torch.equal(v, observed[-1][k]) for k, v in start.items())  # training did move retrieval
+    assert all(torch.equal(v, m.state_dict()[k]) for k, v in start.items())  # ... and the epoch-0 state is back
+    assert all(torch.equal(a, b) for a, b in zip([p for p in adapter.parameters() if p.requires_grad], initial_adapter))
+    assert info["adapter_optimizer_state"]["state"] == {} and info["retrieval_optimizer_state"]["state"] == {}
+    assert not adapter.training
+
+
+def test_guard_without_an_eligible_checkpoint_after_a_maintenance_edit_raises(monkeypatch):
+    model, data, cc, fr = regression_setup()
+    calls = scripted_validation(monkeypatch, every_epoch_worsens_retrieval)
+
+    def hook(edit):
+        def run(ep, mdl, opt, adapter):
+            if edit:
+                with torch.no_grad():
+                    mdl.biases.add_(.01)
+            return {}
+        return run
+
+    cfg = lambda **kw: SyncConfig("alternating_rrr", 1., .5, .1, 1., 1., .1, output_mode="aggregate_regression",  # noqa: E731
+                                  epochs=6, patience=1, block_epochs=2, hidden_dims=(8, 4), **kw)
+    kw = dict(near_scale=1., maintenance_epochs={3})
+    with pytest.raises(RuntimeError, match="maintenance edit"):
+        train_synchronized(copy.deepcopy(model), data, cc, cfg(retrieval_guard=.1), fr, maintenance_hook=hook(True), **kw)
+    calls[0] = 0
+    _, info = train_synchronized(copy.deepcopy(model), data, cc, cfg(retrieval_guard=.1), fr, maintenance_hook=hook(False), **kw)
+    assert info["no_eligible_checkpoint"] and info["best_epoch"] == 0  # an audit-only maintenance keeps epoch 0
+    assert info["history"][2]["maintenance_state_changed"] is False
+    calls[0] = 0
+    _, info = train_synchronized(copy.deepcopy(model), data, cc, cfg(), fr, maintenance_hook=hook(True), **kw)
+    assert info["best_epoch"] > 0 and info["history"][2]["maintenance_state_changed"] is True
 
 
 def test_val_error_selection_is_lexicographic(monkeypatch):
@@ -333,15 +403,35 @@ def test_temperature_lowers_validation_nll_and_never_changes_argmax():
     y = torch.randint(0, 4, (200,), generator=g)
     clean = F.one_hot(y, 4).float() + .8 * torch.randn(200, 4, generator=g)
     for logits, direction in ((6. * clean, 1.), (.2 * clean, -1.)):  # overconfident, underconfident
-        T = fit_temperature(logits, y)
+        T, degenerate = calibrate_temperature(logits, y)
+        assert T == fit_temperature(logits, y) and not degenerate and not separated(logits, y)
         nll = lambda t: float(F.cross_entropy(logits.double() / t, y))  # noqa: E731
         assert nll(T) < nll(1.) and math.copysign(1., T - 1.) == direction
         assert nll(T) <= min(nll(T * .9), nll(T * 1.1)) + 1e-9  # a minimum along T
         assert torch.equal((logits / T).softmax(1).argmax(1), logits.argmax(1))
-    separable = 3. * F.one_hot(y, 4).float()  # NLL falls toward 0 as T -> 0; T stays finite and bounded
-    T = fit_temperature(separable, y)
-    assert 1e-2 <= T < 1 and F.cross_entropy(separable / T, y) < F.cross_entropy(separable, y)
-    assert fit_temperature(torch.zeros(10, 3), torch.zeros(10, dtype=torch.long)) == 1.  # no gain: T = 1
+
+
+def test_degenerate_temperature_fits_fall_back_to_one_and_are_flagged():
+    g = torch.Generator().manual_seed(4)
+    y = torch.randint(0, 4, (200,), generator=g)
+    # Separated: no row is misranked, so the NLL keeps falling as T -> 0 and has no minimizer.
+    separable = 3. * F.one_hot(y, 4).float() + .5 * torch.rand(200, 4, generator=g).clamp_max(.9)
+    assert separated(separable, y) and calibrate_temperature(separable, y) == (1., True)
+    assert fit_temperature(separable, y) == 1.
+    nll = lambda z, yy, t: float(F.cross_entropy(z.double() / t, yy))  # noqa: E731
+    assert nll(separable, y, .01) < nll(separable, y, .1) < nll(separable, y, 1.)  # what an unflagged fit would chase
+    ties = torch.zeros(10, 3)  # constant NLL: no unique minimizer
+    assert calibrate_temperature(ties, torch.zeros(10, dtype=torch.long)) == (1., True)
+    # Not separated, but the minimizer (T ~ 0.004) lies below the lower bound 0.01.
+    z = torch.tensor([[.05, 0.]] * 199 + [[1e-4, 0.]])
+    t = torch.tensor([0] * 199 + [1])
+    assert not separated(z, t) and nll(z, t, .004) < nll(z, t, .01)
+    assert calibrate_temperature(z, t) == (1., True)
+    # One clearly misranked row gives an interior minimizer: fitted, not flagged.
+    z = torch.tensor([[2., 0.]] * 19 + [[1., 0.]])
+    t = torch.tensor([0] * 19 + [1])
+    T, degenerate = calibrate_temperature(z, t)
+    assert not degenerate and .01 < T < 1 and nll(z, t, T) < nll(z, t, 1.)
 
 
 def test_evaluate_reuse_temperature_metrics_leave_predictions_unchanged():
@@ -417,7 +507,7 @@ def test_to_cpu_is_identity_on_cpu_and_keeps_state_dict_metadata():
                         CoreConfig(task_type="classification", top_k=3), 2).state_dict()
     nested = {"model_state": state, "list": [torch.ones(2), (torch.zeros(1), 3)], "x": None}
     assert to_cpu(nested) is nested and to_cpu(state) is state
-    device = "xpu" if torch.xpu.is_available() else "cuda" if torch.cuda.is_available() else None
+    device = accelerator()
     if device is None:
         pytest.skip("no accelerator for the device-to-CPU half")
     moved = to_cpu({"model_state": OrderedDict((k, v.to(device)) for k, v in state.items()),
@@ -429,7 +519,8 @@ def test_to_cpu_is_identity_on_cpu_and_keeps_state_dict_metadata():
     assert to_cpu(on_device)._metadata == state._metadata
 
 
-def test_runner_records_new_metrics_flows_yaml_options_and_saves_cpu_checkpoints(tmp_path):
+def run_tiny_runner(tmp_path):
+    """retrieval_only, two reuse and two sync conditions; returns (rows, manifests)."""
     cfg = load_config(Path("configs/t1/ema_ablation_20261010.yaml"))
     cfg["arms"] = [{"name": "raw", "representation": "raw", "mcb_enabled": False}]
     cfg["core"].update(epochs=3, patience=3, batch_size=4, top_k=3, bias_init_k=3)
@@ -447,14 +538,45 @@ def test_runner_records_new_metrics_flows_yaml_options_and_saves_cpu_checkpoints
     runner.run_encoder_ablation({"name": "toy", "task_type": "classification"}, 20)
     rows = {r["condition"]: r for r in map(json.loads, next(tmp_path.rglob("runs__toy.jsonl")).read_text().splitlines())}
     assert set(rows) == {"raw__retrieval_only", "raw__nominal_residual_scores_combined", "raw__scaled", "raw__joint_rr", "raw__guarded"}
+    manifests = {p.parent.parent.name: json.loads(p.read_text()) for p in tmp_path.rglob("run_manifest.json")}
+    assert set(manifests) == set(rows)
+    return rows, manifests
+
+
+def test_runner_records_new_metrics_flows_yaml_options_and_saves_cpu_checkpoints(tmp_path, monkeypatch):
+    # Every torch.save must receive an object returned by to_cpu (a no-op on CPU,
+    # so the CPU-tensor check below cannot see the wiring by itself).
+    converted, saved = [], []
+    real_to_cpu, real_save = t1_run.to_cpu, torch.save
+
+    def spy_to_cpu(obj):
+        converted.append(real_to_cpu(obj))
+        return converted[-1]
+
+    def spy_save(obj, f, *args, **kwargs):
+        saved.append((obj, Path(f).name))
+        return real_save(obj, f, *args, **kwargs)
+
+    monkeypatch.setattr(t1_run, "to_cpu", spy_to_cpu)
+    monkeypatch.setattr(torch, "save", spy_save)
+    rows, manifests = run_tiny_runner(tmp_path)
+    monkeypatch.undo()
+    assert {name for _, name in saved} >= {"checkpoint.pt", "calibration_snapshots.pt", "data_snapshot_s20.pt"}
+    assert all(any(obj is c for c in converted) for obj, _ in saved), [name for obj, name in saved
+                                                                      if not any(obj is c for c in converted)]
     base = rows["raw__retrieval_only"]["test_locality_input"]
     assert base > 0 and rows["raw__nominal_residual_scores_combined"]["test_locality_input"] == base
     for label, row in rows.items():
         if label != "raw__retrieval_only":
-            assert {"test_locality_input", "val_temperature", "test_ece_post_T", "test_nll_post_T"} <= row.keys()
+            assert {"test_locality_input", "val_temperature", "val_temperature_degenerate", "test_ece_post_T",
+                    "test_nll_post_T"} <= row.keys()
             assert row["val_temperature"] > 0 and "test_temperature" not in row
+            assert isinstance(row["val_temperature_degenerate"], bool)
+            assert row["val_temperature_degenerate"] is False or row["val_temperature"] == 1.
     assert {"best_val_err", "sync_val_L_pre_epoch0", "sync_guard_rejected_epochs"} <= rows["raw__guarded"].keys()
-    manifests = {p.parent.parent.name: json.loads(p.read_text()) for p in tmp_path.rglob("run_manifest.json")}
+    for label in ("raw__joint_rr", "raw__guarded"):
+        assert isinstance(rows[label]["sync_no_eligible_checkpoint"], bool)
+        assert math.isfinite(rows[label]["best_val_L_post"]) and math.isfinite(rows[label]["best_val_err"])
     sync_desc, reuse_desc = manifests["raw__guarded"]["model"]["sync"], manifests["raw__scaled"]["model"]["adapter"]
     assert {k: sync_desc[k] for k in ("retrieval_guard", "early_stopping", "score_scale", "adapter_weight_decay",
                                       "adapter_dropout", "hidden_dims")} == dict(
@@ -463,9 +585,54 @@ def test_runner_records_new_metrics_flows_yaml_options_and_saves_cpu_checkpoints
     assert {k: reuse_desc[k] for k in ("score_scale", "weight_decay", "dropout")} == dict(score_scale=3., weight_decay=.01, dropout=.1)
     assert manifests["raw__joint_rr"]["model"]["sync"]["retrieval_guard"] is None
     assert all(m["run"]["deterministic"] is False for m in manifests.values())
-    saved = list(tmp_path.rglob("*.pt"))
-    assert any(p.name == "checkpoint.pt" for p in saved) and any(p.name == "calibration_snapshots.pt" for p in saved)
-    for path in saved:
+    files = list(tmp_path.rglob("*.pt"))
+    assert any(p.name == "checkpoint.pt" for p in files) and any(p.name == "calibration_snapshots.pt" for p in files)
+    for path in files:
+        assert all(t.device.type == "cpu" for t in tensors(torch.load(path, weights_only=False)))
+
+
+@pytest.fixture
+def on_accelerator(monkeypatch):
+    """Build NN-kNN models on the accelerator, as NNKNN_DEVICE=<device> does (skips without one)."""
+    import model.nnknn_model as nnknn_model
+    device = accelerator()
+    if device is None:
+        pytest.skip("no XPU or CUDA device")
+    monkeypatch.setattr(nnknn_model, "device", torch.device(device))
+    return device
+
+
+def test_locality_and_temperature_metrics_run_on_an_accelerator(on_accelerator):
+    # Arc GPUs lack float64: these metrics must not do float64 arithmetic on the device.
+    data, cc, model, _ = trained_core("classification")
+    assert model.cases.device.type == on_accelerator
+    value = input_locality(model, data.X_test, batch_size=5)
+    with torch.no_grad():
+        model.eval()
+        r = model.retrieve(data.X_test.to(model.cases.device), exclude_identical=False)
+        d = torch.cdist(data.X_test.to(model.cases.device), model.cases[r["case_indices"]],
+                        compute_mode="donot_use_mm_for_euclid_dist")
+        manual = float((r["weights"] * d).sum(1).mean().cpu())
+    assert math.isfinite(value) and value == pytest.approx(manual, rel=1e-5)
+    for mode in ("nominal_residual_scores", "logit_residual"):
+        rc = reuse_cfg(mode, epochs=2)
+        adapter, _ = train_classification_adapter(model, data, rc)
+        z_val = reuse.reuse_logits(model, adapter, data.X_val, rc)
+        T, degenerate = calibrate_temperature(z_val, data.y_val)
+        scaled = evaluate_reuse(model, adapter, data.X_test, data.y_test, rc, temperature=.5)
+        z = reuse.reuse_logits(model, adapter, data.X_test, rc).cpu().double()
+        assert scaled["nll_post_T"] == pytest.approx(float(F.cross_entropy(z / .5, data.y_test)))
+        assert T > 0 and isinstance(degenerate, bool) and math.isfinite(scaled["ece_post_T"])
+
+
+def test_runner_on_an_accelerator_saves_checkpoints_that_load_on_the_cpu(tmp_path, on_accelerator):
+    rows, manifests = run_tiny_runner(tmp_path)
+    assert all(m["run"]["device"].startswith(on_accelerator) for m in manifests.values())
+    assert all(math.isfinite(row["test_locality_input"]) for row in rows.values())
+    assert all(math.isfinite(row["test_nll_post_T"]) for label, row in rows.items() if label != "raw__retrieval_only")
+    files = list(tmp_path.rglob("*.pt"))
+    assert {"checkpoint.pt", "calibration_snapshots.pt", "data_snapshot_s20.pt"} <= {p.name for p in files}
+    for path in files:  # no map_location: tensors come back on the device they were saved from
         assert all(t.device.type == "cpu" for t in tensors(torch.load(path, weights_only=False)))
 
 
