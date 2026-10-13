@@ -236,13 +236,15 @@
       "vs": "catboost",
       "test": "noninferiority",
       "delta": 0.1,
-      "delta_status": "PI-pending"
+      "delta_status": "PI-pending",
+      "decision": "holm_adjusted_noninferiority_p (H0: GMR >= 1 + delta); unadjusted one-sided 95% bound reported"
     },
     "E3b": {
       "vs": "tabm",
       "test": "noninferiority",
       "delta": 0.1,
-      "delta_status": "PI-pending"
+      "delta_status": "PI-pending",
+      "decision": "holm_adjusted_noninferiority_p (H0: GMR >= 1 + delta); unadjusted one-sided 95% bound reported"
     }
   },
   "analysis": {
@@ -271,5 +273,16 @@
     "primary_policy": "provenance_only",
     "status": "PI-pending",
     "K": 0.5
-  }
+  },
+  "addenda": [
+    {
+      "id": 1,
+      "date": "2026-10-13",
+      "before_any_evaluation_seed_result": true,
+      "changes": [
+        "E3a/E3b decided by the Holm-adjusted one-sided non-inferiority p over {E1,E2,E3a,E3b}",
+        "a guarded run with no eligible checkpoint makes its condition ineligible for selection"
+      ]
+    }
+  ]
 }

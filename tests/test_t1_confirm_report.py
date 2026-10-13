@@ -291,17 +291,21 @@ def write_manifests(directory, dataset, condition, device, seeds=SEEDS):
         path.write_text(json.dumps({"run": run}))
 
 
-def test_e3_is_decided_by_its_upper_bound_alone(tmp_path):
-    # The prereg's "Supported if" for E3 is the bound alone; here it is below 1 + delta while
-    # the Holm-adjusted p (reported) exceeds 0.05, which must not overturn the decision.
-    rep = main(synth(tmp_path, f_ratio=1.0, catboost=1.04, tabm=1.06, noise=0.15)())
+def test_e3_is_decided_by_its_holm_adjusted_noninferiority_p(tmp_path):
+    # Prereg addendum 1: E3 belongs to the Holm family. Here the unadjusted bound is below
+    # 1 + delta but the Holm-adjusted p exceeds 0.05, so non-inferiority is not shown.
+    rep = main(synth(tmp_path / "weak", f_ratio=1.0, catboost=1.04, tabm=1.06, noise=0.15)())
     e3a = rep["primary"]["endpoints"]["E3a"]
-    assert e3a["gmr_upper95_one_sided"] < 1.1 and e3a["p_holm"] > 0.05 and not e3a["holm_significant"]
-    assert e3a["criteria"] == {"upper_bound_below_margin": True} and e3a["supported"]
+    assert e3a["gmr_upper95_one_sided"] < 1.1 and e3a["upper_bound_below_margin"] and e3a["p_holm"] > 0.05
+    assert e3a["criteria"] == {"holm_significant": False} and not e3a["supported"]
+    assert "not shown" in e3a["wording"] or e3a["wording"].startswith("trails")
+    assert e3a["decision_rule"] == rep["decision_rules"]["noninferiority"] and "addendum 1" in e3a["decision_rule"]
+    md = (tmp_path / "weak" / "out" / "report.md").read_text(encoding="utf-8")
+    assert "| E3a | CatBoost |" in md and "addendum 1" in md
+    strong = main(synth(tmp_path / "strong", f_ratio=1.0, catboost=1.0, tabm=1.0, noise=0.02)())
+    e3a = strong["primary"]["endpoints"]["E3a"]
+    assert e3a["criteria"] == {"holm_significant": True} and e3a["supported"]
     assert e3a["wording"].startswith("non-inferior to tuned CatBoost at delta = 0.1")
-    assert e3a["decision_rule"] == rep["decision_rules"]["noninferiority"] and "not a criterion" in e3a["decision_rule"]
-    md = (tmp_path / "out" / "report.md").read_text(encoding="utf-8")
-    assert "| E3a | CatBoost |" in md and "not a criterion" in md
 
 
 def test_a_failed_e3_with_a_lower_f_error_does_not_say_trails():
@@ -391,3 +395,11 @@ def test_the_frozen_prereg_plans_thirty_tasks():
     assert {"classification__wine", "regression__wine"} <= {t.key for t in tasks}
     iris = next(t for t in tasks if t.name == "iris")
     assert iris.seeds == tuple(range(40, 70)) and all(t.seeds == tuple(range(40, 50)) for t in tasks if t is not iris)
+
+
+def test_guard_fallback_rows_are_reported(tmp_path):
+    argv = synth(tmp_path)
+    rewrite_rows(argv.runs, lambda r: {**r, "sync_no_eligible_checkpoint": True} if r.get("schedule") and r["seed"] == SEEDS[0] else r)
+    rep = main(argv())
+    flagged = [w for w in rep["warnings"] if "no eligible checkpoint" in w]
+    assert flagged and all(f"seed {SEEDS[0]}" in w for w in flagged)
