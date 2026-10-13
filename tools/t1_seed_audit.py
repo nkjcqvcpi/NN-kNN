@@ -8,11 +8,11 @@ OpenML tasks (``tabarena_<task id>``): seed s selects the outer split
 retired or reserved seed uses, and to no split twice. Other tasks draw a fresh random
 holdout per seed; their test sizes are reported and tasks under 100 test rows listed
 (they get the pre-registration's extra small-task seeds). A pre-registered training cap
-(``max_train``) must reach both code paths: the runner reads only the dataset entry's
-``max_train``, the HPO grid only ``splits.max_train``. ``--check-splits`` builds every split
-through the runner (``Runner.data_for``) and the grid's own call
-(``make_splits(name, task_type, seed, **splits)``, ``tools/t1_grid_search.py``, which ignores
-the dataset entry) and requires identical index hashes. Exits 1 on any violation.
+(``max_train``) must be the effective cap: the dataset entry's ``max_train``, else
+``splits.max_train`` (both the runner and the HPO grid resolve it this way).
+``--check-splits`` builds every split through the runner (``Runner.data_for``) and the grid's
+own call (``tools/t1_grid_search.dataset_splits``) and requires identical index hashes.
+Exits 1 on any violation.
 """
 from __future__ import annotations
 
@@ -108,11 +108,10 @@ def quiet(fn, *args, **kwargs):
         return fn(*args, **kwargs)
 
 
-def grid_splits(cfg: dict) -> dict:
-    """Keyword arguments of the HPO grid's ``make_splits`` call: ``splits`` verbatim, as
-    ``tools/t1_grid_search.py`` passes ``**study["splits"]``. A dataset entry's ``max_train``
-    does not reach the grid."""
-    return dict(cfg["splits"])
+def grid_splits(cfg: dict, ds: dict) -> dict:
+    """Keyword arguments of the HPO grid's own ``make_splits`` call for one dataset entry."""
+    from tools.t1_grid_search import dataset_splits
+    return dataset_splits(cfg, ds)
 
 
 def split_hashes(data) -> dict[str, str]:
@@ -151,13 +150,10 @@ def audit(config_paths, prereg_path, check_splits=False, split_seeds=None) -> di
         key = f"{ds['task_type']}__{ds['name']}"
         cap = caps.get((ds["name"], ds["task_type"]))
         if cap is not None:
-            if ds.get("max_train") != cap:
-                violations.append(f"{path} {key}: dataset-entry max_train {ds.get('max_train')} != pre-registered {cap} "
-                                  "(Runner.data_for reads only the entry, not splits.max_train)")
-            grid_cap = cfg.get("splits", {}).get("max_train")
-            if grid_cap != cap:
-                violations.append(f"{path} {key}: splits.max_train {grid_cap} != pre-registered {cap} "
-                                  "(the HPO grid reads only splits.max_train, not the dataset entry)")
+            effective = ds["max_train"] if "max_train" in ds else cfg.get("splits", {}).get("max_train")
+            if effective != cap:
+                violations.append(f"{path} {key}: effective max_train {effective} != pre-registered {cap} "
+                                  "(dataset entry, else splits.max_train)")
         tid = openml_task_id(ds["name"])
         if tid is not None:
             if key in report["openml_tasks"]:
@@ -197,7 +193,7 @@ def audit(config_paths, prereg_path, check_splits=False, split_seeds=None) -> di
                 continue
             seeds = split_seeds or sorted(set(base_seeds) | set(config_seeds(cfg))
                                           | (set(by_role.get("evaluation_small_tasks", [])) if key in report["small_tasks"] else set()))
-            runner, kwargs, tid = runner_for(cfg), grid_splits(cfg), openml_task_id(ds["name"])
+            runner, kwargs, tid = runner_for(cfg), grid_splits(cfg, ds), openml_task_id(ds["name"])
             for s in seeds:
                 a, b = quiet(runner.data_for, ds, s), quiet(make_splits, ds["name"], ds["task_type"], s, **kwargs)
                 ha, hb = split_hashes(a), split_hashes(b)
