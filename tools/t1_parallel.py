@@ -24,8 +24,9 @@ sys.path.insert(0, str(REPO))
 from tools.t1_run import load_config  # noqa: E402
 
 
-def run_job(config: Path, name: str, seed: int, out: Path, logs: Path, device: str | None = None) -> dict:
-    log = logs / f"{name}__s{seed}.log"
+def run_job(config: Path, name: str, seed: int, out: Path, logs: Path, device: str | None = None,
+            key: str | None = None) -> dict:
+    log = logs / f"{key or name}__s{seed}.log"
     receipt = log.with_suffix(".json")
     if receipt.exists():
         previous = json.loads(receipt.read_text())
@@ -47,7 +48,7 @@ def run_job(config: Path, name: str, seed: int, out: Path, logs: Path, device: s
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("config")
+    ap.add_argument("config", nargs="+", help="one or more configs; each job uses its config's seeds")
     ap.add_argument("--out", required=True)
     ap.add_argument("--logs", required=True)
     ap.add_argument("--workers", type=int, default=4)
@@ -55,24 +56,31 @@ def main() -> None:
     ap.add_argument("--datasets", nargs="*", help="subset of dataset names, in launch order")
     ap.add_argument("--device", help="NNKNN_DEVICE for every job, e.g. cpu or xpu (one device per batch)")
     args = ap.parse_args()
-    config = Path(args.config).resolve()
-    cfg = load_config(config)
-    names = [d["name"] for d in cfg["datasets"]]
-    if len(set(names)) != len(names):
-        raise SystemExit("dataset names repeat across task types; split the config")
+    multi = len(args.config) > 1
+    jobs = []  # (config, dataset name, seed, log key)
+    for path in args.config:
+        config = Path(path).resolve()
+        cfg = load_config(config)
+        names = [d["name"] for d in cfg["datasets"]]
+        if len(set(names)) != len(names):
+            raise SystemExit("dataset names repeat across task types; split the config")
+        keys = {d["name"]: f"{d['task_type']}__{d['name']}" if multi else d["name"] for d in cfg["datasets"]}
+        jobs += [(config, n, int(s), keys[n]) for n in names for s in (args.seeds or cfg["seeds"])]
+    if multi and len({(k, s) for _, _, s, k in jobs}) != len(jobs):
+        raise SystemExit("two configs schedule the same task and seed")
     if args.datasets:  # also sets the launch order (start expensive tasks first)
-        unknown = set(args.datasets) - set(names)
+        unknown = set(args.datasets) - {n for _, n, _, _ in jobs}
         if unknown:
             raise SystemExit(f"datasets not in config: {sorted(unknown)}")
-        names = list(args.datasets)
-    seeds = args.seeds or cfg["seeds"]
+        order = {n: i for i, n in enumerate(args.datasets)}
+        jobs = sorted((j for j in jobs if j[1] in order), key=lambda j: order[j[1]])
     out, logs = Path(args.out).resolve(), Path(args.logs).resolve()
     out.mkdir(parents=True, exist_ok=True)
     logs.mkdir(parents=True, exist_ok=True)
-    jobs = [(n, int(s)) for n in names for s in seeds]
+    config = args.config[0] if not multi else f"{len(args.config)} configs"
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futures = {pool.submit(run_job, config, n, s, out, logs, args.device): (n, s) for n, s in jobs}
+        futures = {pool.submit(run_job, c, n, s, out, logs, args.device, k): (n, s) for c, n, s, k in jobs}
         for future in concurrent.futures.as_completed(futures):
             r = future.result()
             results.append(r)
