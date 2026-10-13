@@ -16,6 +16,7 @@ from typing import Any
 import torch
 
 from .geometry import active_case_features
+from .chunked import retrieve_chunked
 
 
 class StabilityTracker:
@@ -33,7 +34,7 @@ class StabilityTracker:
         ids = model.active_case_ids().cpu().tolist()
         emb = active_case_features(model).cpu()
         cur = {cid: emb[i] for i, cid in enumerate(ids)}
-        r = model.retrieve(self.probes.to(model.cases.device), exclude_identical=False)
+        r = retrieve_chunked(model, self.probes.to(model.cases.device), exclude_identical=False)
         k = min(self.k, r["weights"].shape[1])
         top = torch.topk(r["weights"], k, dim=1).indices.cpu()
         id_t = torch.tensor(ids)
