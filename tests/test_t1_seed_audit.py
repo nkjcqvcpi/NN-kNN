@@ -42,11 +42,11 @@ def test_small_holdout_tasks_and_runner_grid_split_agreement(tmp_path):
     assert report["violations"] == [] and report["small_tasks"] == ["classification__iris", "classification__synthetic_nominal"]
     assert [set(h["n_test"].values()) for h in report["holdout_tasks"]] == [{30}, {90}]
     assert [c["identical"] for c in report["split_checks"]] == [True] * 4
-    # The grid caps the training stream from splits.max_train; the runner reads only the dataset entry.
+    # A cap in splits.max_train reaches both paths (the runner falls back to it).
     capped = write_config(tmp_path / "capped.yaml", iris, max_train=50)
     report = audit([capped], PREREG, check_splits=True, split_seeds=[20])
-    assert report["violations"] == [f"{capped} classification__iris seed 20: runner and grid splits differ in ['train']"]
-    assert main([capped, "--prereg", PREREG, "--check-splits", "--seeds", "20"]) == 1
+    assert report["violations"] == [] and report["split_checks"][0]["n"]["train"] == 50
+    assert main([capped, "--prereg", PREREG, "--check-splits", "--seeds", "20"]) == 0
     entry = write_config(tmp_path / "entry.yaml", [{**iris[0], "max_train": 50}], max_train=50)
     assert main([entry, "--prereg", PREREG, "--check-splits", "--seeds", "20", "--out", str(tmp_path / "a.json")]) == 0
     assert json.loads((tmp_path / "a.json").read_text())["split_checks"][0]["n"]["train"] == 50
@@ -59,19 +59,16 @@ def test_preregistered_training_cap_must_reach_the_dataset_entry_and_the_grid(tm
     path = tmp_path / "prereg.json"
     path.write_text(json.dumps(prereg))
     iris = {"name": "iris", "task_type": "classification"}
-    report = audit([write_config(tmp_path / "c.yaml", [iris], max_train=50)], path)
-    assert len(report["violations"]) == 1 and "dataset-entry max_train None != pre-registered 50" in report["violations"][0]
-    # Cap only in the dataset entry: the runner trains on 50 rows, the grid's real call
-    # (tools/t1_grid_search.py: make_splits(..., **study["splits"])) ignores the entry and trains on 90.
+    # The cap may sit in splits.max_train or in the dataset entry; both paths resolve it alike.
+    assert audit([write_config(tmp_path / "c.yaml", [iris], max_train=50)], path)["violations"] == []
     entry_only = write_config(tmp_path / "e.yaml", [{**iris, "max_train": 50}])
     report = audit([entry_only], path, check_splits=True, split_seeds=[20])
-    assert len(report["violations"]) == 2 and "splits.max_train None != pre-registered 50" in report["violations"][0]
-    assert report["violations"][1].endswith("seed 20: runner and grid splits differ in ['train']")
-    check = report["split_checks"][0]
-    real = make_splits("iris", "classification", 20, **yaml.safe_load(Path(entry_only).read_text())["splits"])
-    assert (check["n"]["train"], check["grid_n"]["train"]) == (50, len(real.meta["split_indices"]["train"])) == (50, 90)
-    both = write_config(tmp_path / "b.yaml", [{**iris, "max_train": 50}], max_train=50)
-    assert audit([both], path, check_splits=True, split_seeds=[20])["violations"] == []
+    assert report["violations"] == [] and report["split_checks"][0]["n"]["train"] == 50
+    uncapped = write_config(tmp_path / "u.yaml", [iris])
+    report = audit([uncapped], path, check_splits=True, split_seeds=[20])
+    assert len(report["violations"]) == 1 and "effective max_train None != pre-registered 50" in report["violations"][0]
+    real = make_splits("iris", "classification", 20, **yaml.safe_load(Path(uncapped).read_text())["splits"])
+    assert report["split_checks"][0]["n"]["train"] == len(real.meta["split_indices"]["train"]) == 90
 
 
 def test_cached_tabarena_task_uses_the_audited_outer_split(tmp_path):
