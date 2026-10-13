@@ -77,6 +77,7 @@ class Conditions:
     final: str
     retrieval_only: str
     default: str
+    final_map: dict = field(default_factory=dict)  # task key -> condition id of that task's F (stored as ``final``)
 
 
 @dataclass
@@ -200,7 +201,7 @@ def device_type(value) -> str:
 def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Conditions, allow_mixed_code: bool,
               allow_mixed_device: bool = False) -> None:
     by_key = {t.key: t for t in tasks}
-    wanted = {cond.final, cond.retrieval_only, cond.default}
+    wanted = {cond.final, cond.retrieval_only, cond.default, *cond.final_map.values()}
     counts = {"rows_analysed": 0, "rows_ignored": 0, "duplicate_rows": 0, "run_manifests_found": 0,
               "run_manifests_absent": 0}
     fingerprints: dict[str, dict[str, int]] = {}
@@ -215,6 +216,13 @@ def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Condition
                     continue
                 row = json.loads(line)
                 t, c, s = by_key.get(row_task(row)), condition_id(row), int(row["seed"])
+                mapped = None if t is None else cond.final_map.get(t.key)
+                if mapped is not None and c == mapped:
+                    c = cond.final  # this task's frozen F (per-task selection)
+                elif (mapped is not None and c == cond.final) or (
+                        t is not None and c in cond.final_map.values() and c not in (cond.final, cond.retrieval_only, cond.default)):
+                    counts["rows_ignored"] += 1  # not this task's F
+                    continue
                 if t is None or c not in wanted:
                     counts["rows_ignored"] += 1
                     continue
@@ -848,6 +856,7 @@ def main(argv: list[str] | None = None) -> dict:
     ap.add_argument("--runs", nargs="+", required=True, help="neural-CBR experiment dirs (runs__*.jsonl)")
     ap.add_argument("--baselines", nargs="*", default=[], help="grid or evaluate output dirs")
     ap.add_argument("--final", required=True, help="condition id of F, e.g. tuned::joint_summed_w5__...")
+    ap.add_argument("--final-map", help="JSON {task key: condition id} for tasks whose F has another id")
     ap.add_argument("--retrieval-only", help="default: <F's arm>::retrieval_only")
     ap.add_argument("--default", help="alternating default at F's budget; default: <F's arm>::alternating_default")
     ap.add_argument("--out", required=True)
@@ -865,7 +874,9 @@ def main(argv: list[str] | None = None) -> dict:
     prereg, digest = load_prereg(Path(args.prereg), args.prereg_sha256)
     tasks, unknown_small = plan_tasks(prereg, args.groups, small_task_names(args.small_tasks, prereg))
     arm = args.final.split("::", 1)[0] + "::" if "::" in args.final else ""
-    cond = Conditions(args.final, args.retrieval_only or f"{arm}retrieval_only", args.default or f"{arm}alternating_default")
+    final_map = json.loads(Path(args.final_map).read_text(encoding="utf-8")) if getattr(args, "final_map", None) else {}
+    cond = Conditions(args.final, args.retrieval_only or f"{arm}retrieval_only", args.default or f"{arm}alternating_default",
+                      final_map)
     if len({cond.final, cond.retrieval_only, cond.default}) != 3:
         raise SystemExit(f"F, retrieval-only and default must be distinct conditions: {cond}")
     ev = Evidence()

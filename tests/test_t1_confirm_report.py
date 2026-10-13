@@ -403,3 +403,18 @@ def test_guard_fallback_rows_are_reported(tmp_path):
     rep = main(argv())
     flagged = [w for w in rep["warnings"] if "no eligible checkpoint" in w]
     assert flagged and all(f"seed {SEEDS[0]}" in w for w in flagged)
+
+
+def test_final_map_uses_another_condition_as_f_on_one_task(tmp_path):
+    argv = synth(tmp_path)
+    base = main(argv())
+    shard = next(Path(argv.runs).glob("runs__iris.jsonl"))
+    rows = [json.loads(l) for l in shard.read_text().splitlines() if l.strip()]
+    extra = [{**r, "condition": "tuned__iris_only", "test_accuracy_post": 1 - 2 * (1 - r["test_accuracy_post"])}
+             for r in rows if r["condition"] == "tuned__joint_summed_w5"]
+    shard.write_text("".join(json.dumps(r) + "\n" for r in rows + extra))
+    fm = tmp_path / "final_map.json"
+    fm.write_text(json.dumps({"classification__iris": "tuned::iris_only"}))
+    rep = main(argv("--final-map", str(fm)))
+    # F's iris errors now come from the mapped condition (twice F's error), raising E1's pooled ratio.
+    assert rep["primary"]["endpoints"]["E1"]["gmr"] > base["primary"]["endpoints"]["E1"]["gmr"]
