@@ -38,7 +38,7 @@ Documented in `../docs/T1_EMA_JOINT_SCHEDULE_20261011.md`. Per-run directories a
 | --- | --- | --- |
 | P5 | `p5_mcb_interaction/ema_ablation_20261010/` | EMA vs shared encoder vs raw NN-kNN, retrieval only and retrieval + reuse, 13 tasks × 5 seeds |
 | P5 | `p5_mcb_interaction/ema_tuned_mlp_bs64_20261012/` | EMA vs shared encoder on the six tasks whose tuned core uses the MLP (batch-64 cores; `ema_tuned_mlp_20261012/` is the superseded batch-32 run) |
-| P4 | `p4_component_sync/schedule_search_20261011/` | training-schedule search: stage A and B validation selections, confirmation on seeds 30–34 |
+| P4 | `p4_component_sync/schedule_search_bs64_20261012/` | training-schedule search on batch-64 tuned cores: stage A and B validation selections, confirmation on seeds 30–34 (`schedule_search_20261011/` is the superseded batch-32 run) |
 
 Cross-phase records: `T1_EXPERIMENT_PLAN.md`, `T1_ALIGNMENT_STATUS.md`, `T1_EXECUTION_LEDGER.md`, `T1_PLAN_IMPLEMENTATION.md`, and `../handoff/NEURAL_CBR_PROGRESS_10-06.md`.
 

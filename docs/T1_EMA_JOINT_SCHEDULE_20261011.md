@@ -240,3 +240,78 @@ not the grid's tuned ones (see above).
 The batch-64 rerun (`schedule_search_bs64_20261012`, `schedule_search_b_bs64_20261012`,
 then confirmation) replaces these as the recommendation. Its stage B keeps the
 neighborhood chosen from the batch-32 stage A; both stages are ranked together.
+
+### Schedule search on batch-64 tuned cores (current result)
+
+Files: `results/t1/p4_component_sync/schedule_search_bs64_20261012/`. Same design as
+the batch-32 run, with every task's core trained exactly as the HPO grid trained it
+(all 32 development cores healthy; digits validation accuracy 0.997 and 0.989).
+
+Selection (validation only, stages A and B pooled, 73 candidates): joint training
+with the summed objective, adapter warm-up 5, retrieval scale 1.0, `w_post` 0.25,
+`w_near` 0.1, `v_small` 0, adapter learning rate 0.003 (mean rank 19.0). The top ten
+were all joint warm-up schedules with `v_small` = 0 and adapter rate 0.003. Repeated
+stage-A/B runs matched except abalone seed 21, whose core diverged at epoch 40 by a
+floating-point difference under identical source and data (CPU math libraries are
+not bit-reproducible run to run); this adds noise to that one cross-stage pair.
+
+Confirmation on seeds 30–34 (20 conditions, 80/80 jobs, 1,600 unique rows):
+
+| Contender vs current default (alternating, block 2, scale 0.1) | Better / worse tasks | Median relative error | Wilcoxon p |
+|---|---|---|---|
+| Validation-selected joint schedule | 11 / 5 | −1.8% | 0.32 |
+| Per-task validation selection | 10 / 6 | −0.9% | 0.40 |
+| Best joint variants (summed, warm-up 5, `w_post` 1.0, `v_small` 0, rate 0.001; separated, `w_post` 0.5, `v_small` 0, rate 0.003) | 13 / 3 | −2.1%, −1.3% | 0.012, 0.021 |
+| Joint, summed, warm-up 5, `w_post` 0.5, `w_near` 0, `v_small` 0.1, rate 0.003 | 11 / 5 | −2.1% | 0.051 |
+| Frozen-core reuse | 6 / 9 | 0.0% | 1.00 |
+| Sequential | 9 / 6 | −0.7% | 0.36 |
+| Retrieval only | 5 / 9 | +0.7% | 0.16 |
+
+The p-values are uncorrected; with 19 comparisons against the default none survives
+a Bonferroni correction. By mean test rank the top 14 of 20 conditions are joint
+schedules and the current default ranks 19th, above only retrieval only. Gains are
+task-dependent: wine 0.061 → 0.017, zebra 0.073 → 0.018, yacht 0.120 → 0.080,
+balance 0.066 → 0.042 with the selected schedule, but iris 0.047 → 0.080 and
+zebra special 0.277 → 0.309.
+
+Pre-adaptation (retrieval-only) error of the joint schedules stays level with the
+default's (selected schedule: median −0.3%), so retrieval is not degraded. Their
+corrections are larger: median correction magnitude relative to the default is
+×1.57 for the selected schedule and ×1.71–1.81 for the summed `w_post` 1.0,
+`v_small` 0 variants, against ×1.27 for the `v_small` 0.1 joint variant and ×1.1–1.3
+for separated-objective variants. Dropping the minimal-correction penalty therefore
+buys accuracy partly through larger adapter corrections, the trade-off the plan
+warns about.
+
+### Recommendation for the T1 training schedule
+
+1. Use joint end-to-end training as the T1 retrieval + reuse schedule: adapter-only
+   warm-up for 5 epochs, then simultaneous updates with the full retrieval learning
+   rate (scale 1.0) and adapter learning rate 0.003. Joint schedules rank above
+   alternating, sequential and frozen-core reuse on fresh seeds, are never worse in
+   aggregate, and are much more robust when the retrieval core is poorly trained
+   (on the batch-32 cores the selected joint schedule was −11.6% vs the default,
+   p = 0.008, largely by repairing collapsed or undertrained cores).
+2. On well-tuned cores the gain over the current default is small (about −2%
+   median) and not significant after correction. Do not claim a schedule-driven
+   accuracy improvement on these tasks; report robustness and the consistent rank.
+3. Keep the minimal-correction penalty (`v_small` 0.1) unless accuracy alone is the
+   goal. The validation search preferred `v_small` 0, but on the confirmation a
+   `v_small` 0.1 joint variant matched its median gain with smaller corrections.
+   This choice weighs bounded, explainable corrections against accuracy using
+   confirmation results; a future search should select with a validation criterion
+   that includes correction size rather than by test outcome.
+4. Use one global schedule; per-task selection from two development seeds was
+   noisier than the global choice.
+
+## Open items
+
+- The full study's plan stage (`neural-cbr/`, queued after its grid, which is at
+  108/110) still rebuilds tuned cores at batch 32; rerun it with `7b978a4` or label
+  its tuned-core results accordingly.
+- Merge this branch into `neural-cbr` after the full study and the reorganization
+  apply step.
+- Next T1 step per the collaborator's order: compare case-base maintenance policies
+  without EMA, on batch-64 tuned cores with the joint schedule.
+- Optional: EMA on a task that needs an encoder (images or text), the setting of the
+  MCB manuscript, which these tabular tests do not cover.
