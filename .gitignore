@@ -62,3 +62,5 @@ datasets/t1_cache/
 
 # Raw HPO-grid outputs of this phase (models, predictions, receipts); summaries are versioned separately.
 /results/t1/p6_confirmation_revision/grid_transfer_20261013/
+/results/t1/p6_confirmation_revision/baselines_eval40_20261013/
+/results/t1/p6_confirmation_revision/baselines_eval50_20261013/
