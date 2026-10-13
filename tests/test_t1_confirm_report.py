@@ -8,8 +8,8 @@ import numpy as np
 import pytest
 from scipy import stats
 
-from tools.t1_confirm_report import (Evidence, Task, bh, compare, condition_id, holm, main, plan_tasks, pool,
-                                     reml_tau2)
+from tools.t1_confirm_report import (Evidence, Task, bh, compare, condition_id, device_type, holm, main, plan_tasks,
+                                     pool, reml_tau2, small_task_names, wording)
 
 PREREG = Path("configs/t1/prereg_20261013.json")
 SEEDS = list(range(40, 50))
@@ -42,19 +42,22 @@ def run_row(name, tt, cond, seed, post, pre, **extra):
     return r
 
 
-def synth(tmp_path, *, f_ratio=0.9, f_pre=1.0, catboost=1.3, tabm=1.0, noise=0.02, seeds=SEEDS):
-    """Shards and baselines with known effects on every task (catboost/tabm: F / baseline error); returns an argv builder."""
+def synth(tmp_path, *, f_ratio=0.9, f_pre=1.0, catboost=1.3, tabm=1.0, noise=0.02, seeds=SEEDS, n_test=None):
+    """Shards and baselines with known effects on every task (catboost/tabm: F / baseline error); returns an argv builder.
+
+    ``n_test`` maps a task name to its test-set size (default N_TEST)."""
     rng = np.random.default_rng(0)
     runs, alt, grid = tmp_path / "runs", tmp_path / "runs_default", tmp_path / "grid"
     shards = {}
     for i, (name, tt) in enumerate(LEGACY + TRANSFER):
         ref = 0.15 + 0.03 * i
         cls = tt == "classification"
+        n = (n_test or {}).get(name, N_TEST)
         jobs = {fam: [] for fam in ("catboost", "tabm", "mlp", "knn")}
         for s in seeds:
             err = lambda m: ref * m * math.exp(rng.normal(0, noise))
             e_ro, e_def, e_f, e_fpre = err(1.0), err(1.0), err(f_ratio), err(f_pre)
-            common = {"test_n": N_TEST, "test_correction_l1_mean": 0.1, "test_locality_input": 1.0, "n_cases": 100}
+            common = {"test_n": n, "test_correction_l1_mean": 0.1, "test_locality_input": 1.0, "n_cases": 100}
             flips = {"test_flip_wrong_to_correct": 8, "test_flip_correct_to_wrong": 2, "test_ece_pre": 0.05,
                      "test_ece_post": 0.08, "test_ece_post_T": 0.06} if cls else {}
             shards.setdefault((runs, name, tt), []).append(
@@ -68,7 +71,7 @@ def synth(tmp_path, *, f_ratio=0.9, f_pre=1.0, catboost=1.3, tabm=1.0, noise=0.0
                 e = ref * mult * math.exp(rng.normal(0, noise))
                 jobs[fam].append({"status": "completed", "seed": s, "source_sha256": "grid",
                                   "test_metrics": {"accuracy": 1 - e} if cls else {"rmse_standardized": e},
-                                  "dataset": {"n_test": N_TEST}})
+                                  "dataset": {"n_test": n}})
         for fam, entries in jobs.items():
             job = grid / f"{tt}__{name}" / fam
             job.mkdir(parents=True)
@@ -198,7 +201,7 @@ def test_baseline_seeds_outside_the_evaluation_seeds_are_refused(tmp_path):
 
 
 def test_small_task_seeds_need_a_small_task_listing(tmp_path):
-    argv = synth(tmp_path)
+    argv = synth(tmp_path, n_test={"iris": 30})
     shard = argv.runs / "runs__iris.jsonl"
     rows = [json.loads(l) for l in shard.read_text().splitlines()]
     with shard.open("a") as fh:
@@ -272,6 +275,113 @@ def test_condition_ids_match_the_schedule_search():
             {"condition": "alternating_default", "schedule": "alternating_rr"}]
     assert [condition_id(r) for r in rows] == [search_id(r) for r in rows]
     assert condition_id(rows[1]) == "tuned::frozen_reuse__combined"
+
+
+def rewrite_rows(directory, fn):
+    for shard in Path(directory).glob("runs__*.jsonl"):
+        rows = [fn(json.loads(l)) for l in shard.read_text().splitlines() if l.strip()]
+        shard.write_text("".join(json.dumps(r) + "\n" for r in rows))
+
+
+def write_manifests(directory, dataset, condition, device, seeds=SEEDS):
+    for s in seeds:
+        path = directory / dataset / condition / f"s{s}" / "run_manifest.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        run = {"source_fingerprint_sha256": "a" * 64, **({"device": device} if device is not None else {})}
+        path.write_text(json.dumps({"run": run}))
+
+
+def test_e3_is_decided_by_its_upper_bound_alone(tmp_path):
+    # The prereg's "Supported if" for E3 is the bound alone; here it is below 1 + delta while
+    # the Holm-adjusted p (reported) exceeds 0.05, which must not overturn the decision.
+    rep = main(synth(tmp_path, f_ratio=1.0, catboost=1.04, tabm=1.06, noise=0.15)())
+    e3a = rep["primary"]["endpoints"]["E3a"]
+    assert e3a["gmr_upper95_one_sided"] < 1.1 and e3a["p_holm"] > 0.05 and not e3a["holm_significant"]
+    assert e3a["criteria"] == {"upper_bound_below_margin": True} and e3a["supported"]
+    assert e3a["wording"].startswith("non-inferior to tuned CatBoost at delta = 0.1")
+    assert e3a["decision_rule"] == rep["decision_rules"]["noninferiority"] and "not a criterion" in e3a["decision_rule"]
+    md = (tmp_path / "out" / "report.md").read_text(encoding="utf-8")
+    assert "| E3a | CatBoost |" in md and "not a criterion" in md
+
+
+def test_a_failed_e3_with_a_lower_f_error_does_not_say_trails():
+    spec = {"vs": "tabm", "test": "noninferiority", "delta": 0.1}
+    r = {"k": 5, "gmr": 0.871, "gmr_ci95": [0.6, 1.26], "gmr_upper95_one_sided": 1.2, "supported": False}
+    text = wording("E3b", r, spec, {"hold": True})
+    assert text.startswith("non-inferiority to tuned TabM not shown at delta = 0.1: GMR 0.871") and "trails" not in text
+    assert wording("E3b", {**r, "gmr": 1.05}, spec, {"hold": True}).startswith("trails tuned TabM by +5.0% [95% CI -40.0%")
+    assert wording("E3b", {**r, "k": 1}, spec, {"hold": True}).startswith("not evaluable")
+
+
+def test_zero_flips_and_infinite_ratios_still_render(tmp_path):
+    argv = synth(tmp_path)
+    out = tmp_path / "out"
+
+    def flips(w, c):
+        return lambda r: {**r, "test_flip_wrong_to_correct": w, "test_flip_correct_to_wrong": c} \
+            if "test_flip_correct_to_wrong" in r else r
+    rewrite_rows(argv.runs, flips(8, 0))  # F never turns a correct answer wrong
+    fl = main(argv())["secondary"]["pooled"]["flips"]
+    assert fl["wrong_to_correct"] == 4 * 10 * 8 and fl["correct_to_wrong"] == 0 and fl["ratio"] == "inf" and fl["holds"]
+    assert "| pooled | flips | 320 / 0 = inf | yes |" in (out / "report.md").read_text(encoding="utf-8")
+    rewrite_rows(argv.runs, flips(0, 0))  # no flips at all: undefined ratio, criterion not evaluable
+    fl = main(argv())["secondary"]["pooled"]["flips"]
+    assert fl["ratio"] is None and fl["holds"] is None
+    assert json.loads((out / "report.json").read_text())["secondary"]["pooled"]["flips"]["holds"] is None
+    assert "| pooled | flips | 0 / 0 = n/a | n/a (no flips) |" in (out / "report.md").read_text(encoding="utf-8")
+    # A default with zero correction makes the correction-size ratio infinite: the guard fails.
+    rewrite_rows(argv.alt, lambda r: {**r, "test_correction_l1_mean": 0.0})
+    rep = main(argv())
+    cor = rep["primary"]["guards"]["correction"]
+    assert cor["value"] == "inf" and cor["holds"] is False and rep["primary"]["endpoints"]["E2"]["wording"] == "gate 5 fails"
+    assert "| correction | inf | 1.25 | no |" in (out / "report.md").read_text(encoding="utf-8")
+
+
+def test_a_bare_small_task_name_shared_by_two_tasks_is_refused(tmp_path):
+    prereg = json.loads(PREREG.read_text(encoding="utf-8"))
+    for items in (["wine"], [str(tmp_path / "audit.json")]):
+        (tmp_path / "audit.json").write_text(json.dumps({"small_tasks": ["wine", "classification__iris"]}))
+        with pytest.raises(SystemExit, match="several analysed tasks"):
+            plan_tasks(prereg, ["legacy", "transfer"], small_task_names(items, prereg))
+    tasks, _ = plan_tasks(prereg, ["legacy", "transfer"], small_task_names(["classification__wine"], prereg))
+    assert [(t.key, t.small, len(t.seeds)) for t in tasks if t.name == "wine"] == [
+        ("classification__wine", True, 30), ("regression__wine", False, 10)]
+
+
+def test_small_task_declarations_are_checked_against_test_sizes(tmp_path):
+    argv = synth(tmp_path, n_test={"iris": 30})
+    with pytest.raises(SystemExit, match="not declared small"):  # its seeds 50-69 would be silently missing
+        main(argv())
+    rep = main(argv("--allow-incomplete"))
+    assert rep["provenance"]["small_task_check"]["small_but_undeclared"] == ["classification__iris (30 test rows)"]
+    assert any("not declared small" in w for w in rep["warnings"])
+    with pytest.raises(SystemExit, match="100 or more test rows"):
+        main(argv("--small-tasks", "classification__iris", "digits", "--allow-incomplete"))
+    rep = main(argv("--small-tasks", "classification__iris", "--allow-incomplete"))
+    assert rep["inputs"]["small_tasks"] == ["classification__iris"] and not rep["provenance"]["small_task_check"]["small_but_undeclared"]
+
+
+def test_mixed_devices_within_a_comparison_are_refused(tmp_path):
+    argv = synth(tmp_path)
+    write_manifests(argv.runs, "iris", "tuned__joint_summed_w5", "cpu")
+    write_manifests(argv.alt, "iris", "tuned__alternating_default", "xpu:0")
+    with pytest.raises(SystemExit, match="different device types"):
+        main(argv())
+    rep = main(argv("--allow-mixed-device"))
+    assert rep["provenance"]["device_check"]["mixed_comparisons"] == ["classification__iris E2: ['cpu', 'xpu']"]
+    assert rep["inputs"]["allow_mixed_device"] and any("--allow-mixed-device" in w for w in rep["warnings"])
+    # One retrieval-only seed on the XPU mixes E1 too.
+    write_manifests(argv.runs, "iris", "tuned__retrieval_only", "xpu:0", seeds=SEEDS[:1])
+    with pytest.raises(SystemExit, match="E1"):
+        main(argv())
+    # Device indices do not matter; manifests without a device (older runs) count as unknown, not 'None'.
+    write_manifests(argv.runs, "iris", "tuned__joint_summed_w5", "XPU:1")
+    write_manifests(argv.runs, "iris", "tuned__retrieval_only", None, seeds=SEEDS[:1])
+    pv = main(argv())["provenance"]
+    assert pv["devices"]["xpu"] == 20 and pv["devices"]["unknown"] == pv["rows_analysed"] - 20 and "None" not in pv["devices"]
+    assert pv["devices_by_task"]["classification__iris"][F] == ["xpu"] and not pv["device_check"]["mixed_comparisons"]
+    assert [device_type(x) for x in (None, "None", "", "cpu", "xpu:0", "cuda:1")] == [
+        "unknown", "unknown", "unknown", "cpu", "xpu", "cuda"]
 
 
 def test_the_frozen_prereg_plans_thirty_tasks():
