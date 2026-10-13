@@ -278,7 +278,7 @@ Pre-adaptation (retrieval-only) error of the joint schedules stays level with th
 default's (selected schedule: median −0.3%), so retrieval is not degraded. Their
 corrections are larger: median correction magnitude relative to the default is
 ×1.57 for the selected schedule and ×1.71–1.81 for the summed `w_post` 1.0,
-`v_small` 0 variants, against ×1.27 for the `v_small` 0.1 joint variant and ×1.1–1.3
+`v_small` 0 variants, against ×1.27 for the `v_small` 0.1 joint variant and ×1.05–1.33
 for separated-objective variants. Dropping the minimal-correction penalty therefore
 buys accuracy partly through larger adapter corrections, the trade-off the plan
 warns about.
