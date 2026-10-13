@@ -659,3 +659,13 @@ def test_deterministic_environment_switch(monkeypatch, tmp_path):
     finally:
         torch.use_deterministic_algorithms(False)
     assert seen == [True, False]
+
+
+def test_qualified_dataset_entry_gets_a_role_qualified_key(tmp_path):
+    from tools.t1_run import Runner, load_config
+    cfg = load_config(Path("configs/t1/ema_ablation_20261010.yaml"))
+    cfg["datasets"] = [{"name": "wine", "task_type": "regression", "qualified": True}]
+    runner = Runner(cfg, tmp_path)
+    assert runner.dataset_key(cfg["datasets"][0]) == "regression__wine"
+    cfg["datasets"] = [{"name": "wine", "task_type": "classification"}]
+    assert Runner(cfg, tmp_path).dataset_key(cfg["datasets"][0]) == "wine"

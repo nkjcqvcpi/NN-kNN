@@ -283,6 +283,18 @@
         "E3a/E3b decided by the Holm-adjusted one-sided non-inferiority p over {E1,E2,E3a,E3b}",
         "a guarded run with no eligible checkpoint makes its condition ineligible for selection"
       ]
+    },
+    {
+      "id": 2,
+      "date": "2026-10-13",
+      "before_any_step_d_run": true,
+      "changes": [
+        "step-D tuning uses 18 legacy tasks; car and regression wine are evaluated in confirmation only"
+      ]
     }
+  ],
+  "tuning_tasks_excluded": [
+    "regression__car",
+    "regression__wine"
   ]
 }
