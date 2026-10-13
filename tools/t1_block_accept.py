@@ -37,8 +37,10 @@ RULE_SCOPES = [("err", "global"), ("err", "pertask"), ("loss", "global"), ("loss
                ("rank", "global"), ("rank", "pertask")]
 
 
-def pool_rows(pool_dirs, conditions_from=None, seeds=None, prereg=None, exclude=None) -> list[dict]:
+def pool_rows(pool_dirs, conditions_from=None, seeds=None, prereg=None, exclude=None, tasks=None) -> list[dict]:
     rows = selection_rows(pool_dirs, exclude, seeds, prereg)
+    if tasks:  # a block evaluated on the tasks it covers (e.g. classification-only candidates)
+        rows = [r for r in rows if r["dataset"] in tasks]
     if conditions_from:
         keep = {condition_id(r) for d in conditions_from for r in load_rows(Path(d))}
         rows = [r for r in rows if condition_id(r) in keep or condition_id(r).endswith("retrieval_only")]
@@ -100,7 +102,7 @@ def summary(cells: dict) -> dict:
 
 def rules_main(args) -> dict:
     seeds = sorted(args.seeds)
-    rows = pool_rows(args.pool, args.conditions_from, seeds, args.prereg, args.exclude_condition)
+    rows = pool_rows(args.pool, args.conditions_from, seeds, args.prereg, args.exclude_condition, args.tasks)
     base = tuple(args.current)
     evals = {f"{r}/{s}": loso_cells(rows, seeds, r, s, args.reference, args.feasibility_pre) for r, s in RULE_SCOPES}
     cur = evals["/".join(base)]
@@ -118,9 +120,9 @@ def rules_main(args) -> dict:
 
 def block_main(args) -> dict:
     seeds = sorted(args.seeds)
-    base_rows = pool_rows(args.pool, args.conditions_from, seeds, args.prereg, args.exclude_condition)
+    base_rows = pool_rows(args.pool, args.conditions_from, seeds, args.prereg, args.exclude_condition, args.tasks)
     block_rows = [r for r in selection_rows(args.block, args.exclude_condition, seeds, args.prereg)
-                  if not condition_id(r).endswith("retrieval_only")]
+                  if not condition_id(r).endswith("retrieval_only") and (not args.tasks or r["dataset"] in args.tasks)]
     have = {(r["dataset"], condition_id(r), r["seed"]) for r in base_rows}
     new = [r for r in block_rows if (r["dataset"], condition_id(r), r["seed"]) not in have]
     rule, scope = args.rule
@@ -128,7 +130,7 @@ def block_main(args) -> dict:
     after = loso_cells(base_rows + new, seeds, rule, scope, args.reference, args.feasibility_pre)
     picked = sorted({c["selected"] for c in after.values()} - {c["selected"] for c in before.values()})
     return {"mode": "block", "rule": f"{rule}/{scope}", "reference": args.reference, "seeds": seeds,
-            "feasibility_pre": args.feasibility_pre,
+            "feasibility_pre": args.feasibility_pre, "tasks": sorted({r["dataset"] for r in base_rows}),
             "pool_conditions": len({condition_id(r) for r in base_rows}) - 1,
             "block_conditions": sorted({condition_id(r) for r in new}),
             "before": summary(before), "after": summary(after), "after_vs_before": paired(after, before),
@@ -151,6 +153,7 @@ def main() -> None:
         p.add_argument("--exclude-condition", action="append")
         p.add_argument("--out", required=True)
         p.add_argument("--feasibility-pre", type=float, help="prereg H1 bound B (pre-adaptation feasibility)")
+        p.add_argument("--tasks", nargs="*", help="restrict to these task (dataset) names")
         if name == "rules":
             p.add_argument("--current", nargs=2, default=["err", "global"], metavar=("RULE", "SCOPE"))
         else:

@@ -25,7 +25,7 @@ def stage(tmp_path, name, conds, rng, gain=None):
 
 def args(**kw):
     return SimpleNamespace(seeds=SEEDS, reference="tuned::ref", prereg=None, exclude_condition=None,
-                           conditions_from=None, **{"feasibility_pre": None, **kw})
+                           conditions_from=None, **{"feasibility_pre": None, "tasks": None, **kw})
 
 
 def test_paired_uses_task_clustered_se_and_requires_equal_cells():
@@ -79,3 +79,11 @@ def test_pertask_feasibility_excludes_a_candidate_only_where_it_degrades_retriev
     assert all(c["selected"] == ("tuned::ref" if t == "t0" else "tuned::hide") for (s, t), c in guarded.items())
     every = loso_cells(rows, SEEDS, "err", "global", "tuned::ref", feasibility=1.02)
     assert {c["selected"] for c in every.values()} == {"tuned::ref"}  # the prereg's "on every task" form
+
+
+def test_tasks_filter_limits_the_evaluation(tmp_path):
+    rng = np.random.default_rng(3)
+    pool = stage(tmp_path, "pool", {"ref": .30, "inc": .25}, rng)
+    better = stage(tmp_path, "better", {"new": .18}, rng)
+    out = block_main(args(pool=[str(pool)], block=[str(better)], rule=["err", "pertask"], tasks=["t0", "t1"]))
+    assert out["tasks"] == ["t0", "t1"] and out["after_vs_before"]["n_tasks"] == 2
