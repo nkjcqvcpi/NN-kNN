@@ -3,11 +3,16 @@
     prepare  embed each task's validation-selected NN-kNN core (HPO grid) into a search config
     select   rank conditions on development seeds by validation error, then validation
              post-adaptation loss; write the selection and a confirmation config
+    loso     leave-one-development-seed-out check of selection rules, or of challengers
+             against an incumbent, on the held-out seed's test stream
     report   summarize the confirmation on fresh evaluation seeds (test stream)
 
 A condition is (arm, schedule-or-reuse). Frozen-core reuse rows are a schedule
 ("retrain nothing after the core"); retrieval-only rows are reported, not ranked.
-Selection reads only ``val_*`` metrics; test metrics of development seeds are ignored.
+Selection reads only ``val_*`` metrics; test metrics of development seeds are ignored,
+except by ``loso``, the pre-registration's declared inner held-out use of them
+(docs/T1_PREREG_20261013.md, H6). With ``--prereg``, rows of evaluation, retired or
+reserved seeds are refused.
 """
 from __future__ import annotations
 
@@ -25,6 +30,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from tools.t1_grid_search import nnknn_core_settings  # noqa: E402
 from tools.t1_run import load_config  # noqa: E402
+from tools.t1_seed_audit import FORBIDDEN_ROLES, load_prereg, seed_roles  # noqa: E402
 
 
 # ----------------------------------------------------------------------------- rows
@@ -63,6 +69,51 @@ def mean_by(rows, keyfn, valfn):
     return out
 
 
+def refuse_prereg_seeds(rows: list[dict], prereg: str, seeds=None) -> dict:
+    """Stop on any row (or requested seed) of a seed the pre-registration keeps out of tuning."""
+    roles = seed_roles(load_prereg(prereg))
+    used = sorted({int(r["seed"]) for r in rows} | {int(s) for s in seeds or []})
+    hit = {s: [x for x in roles.get(s, []) if x in FORBIDDEN_ROLES] for s in used}
+    hit = {s: x for s, x in hit.items() if x}
+    if hit:
+        raise SystemExit(f"refusing pre-registered {' / '.join(FORBIDDEN_ROLES)} seeds: "
+                         + ", ".join(f"{s} ({'+'.join(x)})" for s, x in hit.items()))
+    return {"path": str(prereg), "sha256": hashlib.sha256(Path(prereg).read_bytes()).hexdigest(),
+            "refused_roles": list(FORBIDDEN_ROLES)}
+
+
+def selection_rows(exp_dirs, exclude=None, seeds=None, prereg=None) -> list[dict]:
+    """Rows of the given stages, first occurrence per (task, condition, seed), minus excluded conditions."""
+    rows = [r for d in exp_dirs for r in load_rows(Path(d))]
+    if prereg:
+        refuse_prereg_seeds(rows, prereg, seeds)
+    # Retrieval-only rows repeat in every stage; other repeats are dropped by name.
+    drop = set(exclude or [])
+    seen, kept = set(), []
+    for r in rows:
+        key = (r["dataset"], condition_id(r), r["seed"])
+        if condition_id(r) not in drop and key not in seen:
+            seen.add(key)
+            kept.append(r)
+    if seeds is not None:
+        absent = sorted(set(seeds) - {r["seed"] for r in kept})
+        if absent:
+            raise SystemExit(f"no rows for requested seeds {absent}")
+        kept = [r for r in kept if r["seed"] in set(seeds)]
+    return kept
+
+
+def stream_sizes(rows: list[dict], stream: str) -> dict:
+    """(dataset, seed) -> stream size from ``<stream>_n``; retrieval-only rows borrow it from their seed's other rows."""
+    out: dict = {}
+    for r in rows:
+        if f"{stream}_n" in r:
+            key, n = (r["dataset"], r["seed"]), int(r[f"{stream}_n"])
+            if out.setdefault(key, n) != n:
+                raise SystemExit(f"inconsistent {stream}_n for {key}: {out[key]} vs {n}")
+    return out
+
+
 # ----------------------------------------------------------------------------- prepare
 
 def prepare(args) -> None:
@@ -91,8 +142,23 @@ def prepare(args) -> None:
 
 # ----------------------------------------------------------------------------- select
 
-def rank_conditions(rows: list[dict], seeds: list[int] | None = None):
-    """Per-task means over seeds, per-task ranks and the global mean rank (validation only)."""
+GLOBAL_RULE = "global: mean per-task rank, then tasks won, then name"
+RULES = {
+    "err": "per task: mean validation error (1-accuracy_post or rmse_post), then mean validation "
+           "post-adaptation loss, then name; " + GLOBAL_RULE,
+    "loss": "per task: mean validation post-adaptation loss, then mean validation error, then name; " + GLOBAL_RULE,
+    "rank": "per task: mean over seeds of the per-seed rank by (validation error, validation post-adaptation "
+            "loss, name), then mean validation error, then mean loss, then name; " + GLOBAL_RULE,
+}
+
+
+def rank_conditions(rows: list[dict], seeds: list[int] | None = None, criterion: str = "err",
+                    ineligible=frozenset()):
+    """Per-task means over seeds, per-task ranks and the global mean rank (validation only).
+
+    ``criterion`` orders a task's conditions (``RULES``). ``ineligible`` conditions must still
+    be complete; they are listed in the table without a rank and never win.
+    """
     pool = [r for r in rows if not condition_id(r).endswith("retrieval_only")]
     if seeds is not None:
         pool = [r for r in pool if r["seed"] in seeds]
@@ -102,37 +168,95 @@ def rank_conditions(rows: list[dict], seeds: list[int] | None = None):
     expected = max(counts.values())
     incomplete = sorted(k for k, n in counts.items() if n != expected)
     tasks = sorted({t for t, _ in err})
-    conds = sorted({c for _, c in err})
-    missing = sorted((t, c) for t in tasks for c in conds if (t, c) not in err)
+    every = sorted({c for _, c in err})
+    missing = sorted((t, c) for t in tasks for c in every if (t, c) not in err)
     if incomplete or missing:
         raise SystemExit(f"incomplete validation evidence: unequal seeds {incomplete[:5]}, missing {missing[:5]}")
+    conds = [c for c in every if c not in ineligible]
+    if not conds:
+        raise SystemExit("no eligible condition to rank")
+    if criterion == "err":
+        key = lambda t, c: (np.mean(err[t, c]), np.mean(loss[t, c]), c)  # noqa: E731
+    elif criterion == "loss":
+        key = lambda t, c: (np.mean(loss[t, c]), np.mean(err[t, c]), c)  # noqa: E731
+    elif criterion == "rank":
+        seed_rank = per_seed_ranks(pool, tasks, conds)
+        key = lambda t, c: (seed_rank[t, c], np.mean(err[t, c]), np.mean(loss[t, c]), c)  # noqa: E731
+    else:
+        raise ValueError(f"unknown selection criterion {criterion!r}")
+    def entry(t, c, i):
+        e = {"task": t, "condition": c, "rank": i, "val_error": float(np.mean(err[t, c])),
+             "val_L_post": float(np.mean(loss[t, c])), "seeds": counts[t, c]}
+        if criterion == "rank":
+            e["mean_seed_rank"] = seed_rank.get((t, c))
+        return e
+
     table, ranks = [], {c: [] for c in conds}
     winners = {}
     for t in tasks:
-        order = sorted(conds, key=lambda c: (np.mean(err[t, c]), np.mean(loss[t, c]), c))
+        order = sorted(conds, key=lambda c: key(t, c))
         winners[t] = order[0]
         for i, c in enumerate(order, 1):
             ranks[c].append(i)
-            table.append({"task": t, "condition": c, "rank": i, "val_error": float(np.mean(err[t, c])),
-                          "val_L_post": float(np.mean(loss[t, c])), "seeds": counts[t, c]})
+            table.append(entry(t, c, i))
+        table += [entry(t, c, None) for c in every if c in ineligible]
     glob = sorted(({"condition": c, "mean_rank": float(np.mean(ranks[c])),
                     "tasks_won": sum(w == c for w in winners.values())} for c in conds),
                   key=lambda g: (g["mean_rank"], -g["tasks_won"], g["condition"]))
     return table, winners, glob, expected
 
 
+def per_seed_ranks(pool: list[dict], tasks: list[str], conds: list[str]) -> dict:
+    """(task, condition) -> mean over seeds of its rank among ``conds`` by (validation error, L_post, name)."""
+    err = mean_by(pool, lambda r: (r["dataset"], condition_id(r), r["seed"]), lambda r: error_of(r, "val"))
+    loss = mean_by(pool, lambda r: (r["dataset"], condition_id(r), r["seed"]), lambda r: float(r["val_L_post"]))
+    out = {}
+    for t in tasks:
+        seeds = sorted({s for (tt, _, s) in err if tt == t})
+        gaps = [(c, s) for c in conds for s in seeds if (t, c, s) not in err]
+        if gaps:
+            raise SystemExit(f"rank criterion needs every seed of {t} for every condition; missing {gaps[:5]}")
+        ranks = {c: [] for c in conds}
+        for s in seeds:
+            order = sorted(conds, key=lambda c: (np.mean(err[t, c, s]), np.mean(loss[t, c, s]), c))
+            for i, c in enumerate(order, 1):
+                ranks[c].append(i)
+        out.update({(t, c): float(np.mean(v)) for c, v in ranks.items()})
+    return out
+
+
+def pre_feasibility(rows: list[dict], bound: float) -> dict[str, list[dict]]:
+    """Conditions whose mean validation pre-adaptation error exceeds ``bound`` x retrieval-only + 1/n_val on a task.
+
+    Means are over the condition's seeds, paired with the same arm's retrieval-only rows;
+    n_val is the validation size of those seeds (mean, if folds differ).
+    """
+    n_val = stream_sizes(rows, "val")
+    ref = {(r["dataset"], r.get("arm", ""), r["seed"]): pre_error(r, "val")
+           for r in rows if condition_id(r).endswith("retrieval_only")}
+    pre = mean_by([r for r in rows if not condition_id(r).endswith("retrieval_only")],
+                  lambda r: (r["dataset"], condition_id(r)), lambda r: (r.get("arm", ""), r["seed"], pre_error(r, "val")))
+    out: dict[str, list[dict]] = {}
+    for (t, c), values in sorted(pre.items()):
+        gaps = [s for arm, s, _ in values if (t, arm, s) not in ref or (t, s) not in n_val]
+        if gaps:
+            raise SystemExit(f"--feasibility-pre needs retrieval-only rows and val_n for {t}, seeds {sorted(set(gaps))} ({c})")
+        cand = float(np.mean([v for _, _, v in values]))
+        base = float(np.mean([ref[t, arm, s] for arm, s, _ in values]))
+        nv = float(np.mean([n_val[t, s] for _, s, _ in values]))
+        limit = bound * base + 1.0 / nv
+        if cand > limit:
+            out.setdefault(c, []).append({"task": t, "val_pre_error": cand, "retrieval_only_val_error": base,
+                                          "n_val": nv, "limit": limit, "seeds": sorted(s for _, s, _ in values)})
+    return out
+
+
 def select(args) -> None:
-    rows = [r for d in args.exp_dir for r in load_rows(Path(d))]
-    # Retrieval-only rows repeat in every stage; other repeats are dropped by name.
-    drop = set(args.exclude_condition or [])
-    seen, kept = set(), []
-    for r in rows:
-        key = (r["dataset"], condition_id(r), r["seed"])
-        if condition_id(r) not in drop and key not in seen:
-            seen.add(key)
-            kept.append(r)
-    rows = kept
-    table, winners, glob, n_seeds = rank_conditions(rows)
+    seeds, prereg = getattr(args, "seeds", None), getattr(args, "prereg", None)
+    criterion, bound = getattr(args, "criterion", None), getattr(args, "feasibility_pre", None)
+    rows = selection_rows(args.exp_dir, args.exclude_condition, seeds, prereg)
+    ineligible = pre_feasibility(rows, bound) if bound is not None else {}
+    table, winners, glob, n_seeds = rank_conditions(rows, criterion=criterion or "err", ineligible=set(ineligible))
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     finalists = [g["condition"] for g in glob[: args.finalists]]
@@ -140,12 +264,23 @@ def select(args) -> None:
         if c not in finalists:
             finalists.append(c)
     selection = {
-        "rule": "per task: mean validation error (1-accuracy_post or rmse_post), then mean validation "
-                "post-adaptation loss, then name; global: mean per-task rank, then tasks won, then name",
+        "rule": RULES[criterion or "err"],
         "test_stream_used": False, "development_seeds": sorted({r["seed"] for r in rows}),
         "seeds_per_condition": n_seeds, "global_winner": glob[0]["condition"], "global_ranking": glob,
         "per_task_winner": winners, "finalists": finalists, "references": list(args.reference or []),
     }
+    # Optional records appear only when their option is given, so default output is unchanged.
+    if criterion:
+        selection["criterion"] = criterion
+    if seeds is not None:
+        selection["seeds_requested"] = sorted(seeds)
+    if prereg:
+        selection["prereg"] = refuse_prereg_seeds(rows, prereg, seeds)
+    if bound is not None:
+        selection["feasibility_pre"] = {
+            "bound": bound, "rule": "ineligible if on any task mean validation pre-adaptation error > "
+                                    "bound * same-arm retrieval-only mean validation error + 1/n_val",
+            "ineligible": ineligible}
     (out / "selection.json").write_text(json.dumps(selection, indent=2))
     import csv
     with (out / "validation_table.csv").open("w", newline="", encoding="utf-8") as fh:
@@ -155,6 +290,10 @@ def select(args) -> None:
     print(f"global winner: {glob[0]['condition']} (mean rank {glob[0]['mean_rank']:.2f} of {len(glob)})")
     for g in glob[:10]:
         print(f"  {g['mean_rank']:6.2f}  won {g['tasks_won']:2d}  {g['condition']}")
+    if ineligible:
+        print(f"{len(ineligible)} ineligible by --feasibility-pre {bound}:")
+        for c, why in ineligible.items():
+            print(f"  {c}: " + ", ".join(f"{w['task']} {w['val_pre_error']:.4f} > {w['limit']:.4f}" for w in why))
     if args.confirm_template:
         write_confirmation(args, finalists)
 
@@ -199,6 +338,96 @@ def write_confirmation(args, finalists: list[str]) -> None:
                                          + yaml.safe_dump(conf, sort_keys=False), encoding="utf-8")
     print(f"wrote {args.confirm_config}: {len(conf['arms'])} arm(s), {len(conf['conditions'])} schedules"
           f"{' + frozen reuse' if conf.get('reuse_conditions') else ''}")
+
+
+# ----------------------------------------------------------------------------- loso
+
+def held_out_errors(rows: list[dict]) -> dict:
+    """(task, condition, seed) -> (test error, task type, n_test) of every row (retrieval-only included)."""
+    n_test = stream_sizes(rows, "test")
+    return {(r["dataset"], condition_id(r), r["seed"]):
+            (error_of(r, "test"), r["task_type"], n_test.get((r["dataset"], r["seed"]))) for r in rows}
+
+
+def log_ratio(test: dict, task: str, cond: str, ref: str, seed: int) -> dict:
+    """Held-out log((e + eps) / (e_ref + eps)); eps = 0.5/n_test (classification) or 0 (regression)."""
+    for c in (cond, ref):
+        if (task, c, seed) not in test:
+            raise SystemExit(f"no test row for {task} {c} seed {seed}")
+    (e, kind, n), (e_ref, _, _) = test[task, cond, seed], test[task, ref, seed]
+    if kind == "classification" and not n:
+        raise SystemExit(f"no test_n for {task} seed {seed}")
+    eps = 0.5 / n if kind == "classification" else 0.0
+    if e + eps <= 0 or e_ref + eps <= 0:
+        raise SystemExit(f"zero regression error for {task} seed {seed}; the log ratio is undefined")
+    return {"seed": seed, "task": task, "error": e, "reference_error": e_ref, "log_ratio": float(np.log((e + eps) / (e_ref + eps)))}
+
+
+def summarize_ratios(cells: list[dict], level: float = 0.8) -> dict:
+    """Mean, standard error and two-sided ``level`` t interval over (seed, task) cells, plus per-task means."""
+    v = np.array([c["log_ratio"] for c in cells], dtype=float)
+    n, mean = len(v), float(v.mean())
+    se = float(v.std(ddof=1) / np.sqrt(n)) if n > 1 else None
+    half = float(stats.t.ppf(0.5 + level / 2, n - 1)) * se if se is not None else None
+    per_task = {}
+    for c in cells:
+        per_task.setdefault(c["task"], []).append(c)
+    return {"n": n, "mean_log_ratio": mean, "se": se, "gmr": float(np.exp(mean)),
+            f"interval_{round(level * 100)}": None if half is None else [mean - half, mean + half],
+            "per_task": {t: {"mean_log_ratio": float(np.mean([c["log_ratio"] for c in cs])), "cells": cs}
+                         for t, cs in sorted(per_task.items())}}
+
+
+def loso(args) -> None:
+    seeds = sorted(set(args.seeds))
+    if len(seeds) < 2:
+        raise SystemExit("loso needs at least two development seeds")
+    rows = selection_rows(args.exp_dir, args.exclude_condition, seeds, args.prereg)
+    test = held_out_errors(rows)
+    report = {"seeds": seeds, "selection_stream": "validation of the other development seeds",
+              "held_out_stream": "test stream of the held-out development seed (declared inner held-out use)",
+              "effect": "log((e + eps) / (e_ref + eps)), eps = 0.5/n_test (classification), 0 (regression); "
+                        "summaries over (seed, task) cells", "results": []}
+    if args.prereg:
+        report["prereg"] = refuse_prereg_seeds(rows, args.prereg, seeds)
+    if args.incumbent:
+        if not args.challengers:
+            raise SystemExit("--incumbent needs --challengers")
+        tasks = sorted({t for t, c, s in test if c == args.incumbent and s in seeds})
+        report.update(mode="compare", incumbent=args.incumbent, challengers=args.challengers)
+        for ch in args.challengers:
+            cells = [log_ratio(test, t, ch, args.incumbent, s) for s in seeds for t in tasks]
+            report["results"].append({"challenger": ch, **summarize_ratios(cells)})
+    else:
+        if not args.reference:
+            raise SystemExit("loso needs --reference (rule comparison) or --incumbent with --challengers")
+        report.update(mode="rules", reference=args.reference)
+        cells = {}
+        for rule in args.rules:
+            for held in seeds:
+                _, winners, glob, _ = rank_conditions(rows, seeds=[s for s in seeds if s != held], criterion=rule)
+                for scope in args.scope:
+                    for t, w in sorted(winners.items()):
+                        sel = glob[0]["condition"] if scope == "global" else w
+                        cells.setdefault((rule, scope), []).append({**log_ratio(test, t, sel, args.reference, held), "selected": sel})
+        first = next(iter(cells))
+        for (rule, scope), cs in cells.items():
+            res = {"rule": rule, "scope": scope, **summarize_ratios(cs)}
+            if (rule, scope) != first:  # paired by (seed, task) against the first rule/scope given
+                base = {(b["seed"], b["task"]): b["log_ratio"] for b in cells[first]}
+                diff = [{"seed": a["seed"], "task": a["task"], "log_ratio": a["log_ratio"] - base[a["seed"], a["task"]]}
+                        for a in cs]
+                res["difference_vs_first"] = {k: v for k, v in summarize_ratios(diff).items() if k != "per_task"}
+            report["results"].append(res)
+        report["first"] = {"rule": first[0], "scope": first[1]}
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(report, indent=2))
+    for r in report["results"]:
+        name = r.get("challenger") or f"{r['rule']}/{r['scope']}"
+        se = "n/a" if r["se"] is None else f"{r['se']:.4f}"
+        print(f"{name}: mean log ratio {r['mean_log_ratio']:+.4f} (SE {se}, GMR {r['gmr']:.3f}, n={r['n']})")
+    print(f"wrote {out}")
 
 
 # ----------------------------------------------------------------------------- report
@@ -323,13 +552,29 @@ def main() -> None:
     s.add_argument("--skip-condition", action="append", help="schedule name confirmed in an earlier batch")
     s.add_argument("--skip-reuse", action="store_true", help="frozen reuse confirmed in an earlier batch")
     s.add_argument("--exclude-condition", action="append", help="condition id left out of ranking (e.g. an exact repeat)")
+    s.add_argument("--seeds", type=int, nargs="+", help="use only rows of these development seeds")
+    s.add_argument("--prereg", help="pre-registration JSON; refuse rows of its evaluation/retired/reserved seeds")
+    s.add_argument("--criterion", choices=sorted(RULES), help="per-task ordering (default err: error, then L_post)")
+    s.add_argument("--feasibility-pre", type=float, metavar="B",
+                   help="ineligible if on any task mean val pre-adaptation error > B * retrieval-only + 1/n_val")
+    o = sub.add_parser("loso", help="leave-one-development-seed-out evaluation of selection rules")
+    o.add_argument("exp_dir", nargs="+")
+    o.add_argument("--seeds", type=int, nargs="+", required=True, help="development seeds")
+    o.add_argument("--rules", nargs="+", choices=sorted(RULES), default=["err"])
+    o.add_argument("--scope", nargs="+", choices=("global", "pertask"), default=["global"])
+    o.add_argument("--reference", help="condition id each selection is scored against")
+    o.add_argument("--incumbent", help="compare mode: condition id the challengers are scored against")
+    o.add_argument("--challengers", nargs="+", help="compare mode: condition ids; nothing is selected")
+    o.add_argument("--prereg")
+    o.add_argument("--exclude-condition", action="append")
+    o.add_argument("--out", required=True, help="output JSON")
     r = sub.add_parser("report")
     r.add_argument("exp_dir", nargs="+")
     r.add_argument("--selection", required=True)
     r.add_argument("--out", required=True)
     r.add_argument("--baseline", default="tuned::alternating_default", help="condition for relative columns")
     args = ap.parse_args()
-    {"prepare": prepare, "select": select, "report": report}[args.cmd](args)
+    {"prepare": prepare, "select": select, "loso": loso, "report": report}[args.cmd](args)
 
 
 if __name__ == "__main__":

@@ -1,14 +1,18 @@
 """Condition grids and validation-only schedule selection."""
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 import yaml
+from scipy import stats
 
 from tools.t1_run import expand_condition_grid, load_config
-from tools.t1_schedule_search import condition_id, rank_conditions, write_confirmation
+from tools.t1_schedule_search import condition_id, loso, pre_feasibility, rank_conditions, select, write_confirmation
 
 STAGE = Path("configs/t1/schedule_search_20261011.yaml")
+PREREG = "configs/t1/prereg_20261013.json"
 
 
 def test_stage_grid_expands_to_unique_named_conditions():
@@ -88,3 +92,147 @@ def test_tuned_cores_reuse_the_grid_training_settings(tmp_path):
     prepare(SimpleNamespace(template=str(template), grid=str(tmp_path / "grid"), out=str(out), experiment="y"))
     tuned = yaml.safe_load(out.read_text())
     assert tuned["core_by_dataset"]["classification__iris"] == settings and tuned["experiment"] == "y"
+
+
+# ----------------------------------------------------------------------------- selection options and LOSO
+
+def full_row(task, cond, seed, val_err, val_loss=.5, test_err=.5, pre_err=None, task_type="classification",
+             n_val=50, n_test=40):
+    """Validation and test metrics as the runner writes them; retrieval-only rows carry no stream sizes."""
+    r = row(task, cond, seed, val_err, val_loss, task_type)
+    m = (lambda e: 1 - e) if task_type == "classification" else (lambda e: e)
+    kind = "accuracy" if task_type == "classification" else "rmse"
+    if cond == "retrieval_only":
+        r.update({f"val_{kind}_pre": m(val_err), f"test_{kind}_pre": m(test_err)})
+    else:
+        r.update({f"val_{kind}_pre": m(val_err if pre_err is None else pre_err), f"test_{kind}_post": m(test_err),
+                  "val_n": n_val, "test_n": n_test})
+    return r
+
+
+def write_stage(path, rows):
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "runs__x.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    return path
+
+
+def sel_args(out, dirs, **kw):
+    return SimpleNamespace(exp_dir=[str(d) for d in dirs], out=str(out), finalists=1, reference=None,
+                           confirm_template=None, exclude_condition=None, **kw)
+
+
+def test_select_restricts_seeds_and_refuses_prereg_seeds(tmp_path):
+    rows = [full_row("a", c, s, e) for c, e in (("p", .1), ("q", .2)) for s in (20, 21)]
+    stage = write_stage(tmp_path / "stage", rows + [full_row("a", "p", 22, .9), full_row("a", "q", 22, .0)])
+
+    def run(name, dirs=(stage,), **kw):
+        select(sel_args(tmp_path / name, dirs, **kw))
+        return json.loads((tmp_path / name / "selection.json").read_text())
+
+    plain = run("plain")
+    assert plain["global_winner"] == "tuned::q" and not {"seeds_requested", "criterion", "prereg"} & set(plain)
+    dev = run("dev", seeds=[20, 21], prereg=PREREG)
+    assert dev["global_winner"] == "tuned::p" and dev["development_seeds"] == [20, 21]
+    assert dev["prereg"]["refused_roles"] == ["evaluation", "evaluation_small_tasks", "retired", "reserved"]
+    with pytest.raises(SystemExit, match="no rows for requested seeds"):
+        run("absent", seeds=[20, 26])
+    with pytest.raises(SystemExit, match=r"40 \(evaluation\)"):
+        run("asked", seeds=[20, 40], prereg=PREREG)
+    late = write_stage(tmp_path / "late", [full_row("a", "p", 30, .1)])
+    with pytest.raises(SystemExit, match=r"30 \(retired\)"):
+        run("loaded", dirs=(stage, late), seeds=[20, 21], prereg=PREREG)
+
+
+def test_criteria_order_by_error_loss_or_mean_seed_rank():
+    errs = {"p": (0., .25, .25), "q": (.3, .2, .2), "r": (.5, .5, .5)}
+    loss = {"p": .9, "q": .5, "r": .05}
+    rows = [full_row("a", c, s, e, loss[c]) for c, es in errs.items() for s, e in zip((20, 21, 22), es)]
+    assert [rank_conditions(rows, criterion=k)[1]["a"] for k in ("err", "loss", "rank")] == ["tuned::p", "tuned::r", "tuned::q"]
+    table = rank_conditions(rows, criterion="rank")[0]
+    assert {t["condition"]: t["mean_seed_rank"] for t in table} == pytest.approx(
+        {"tuned::p": 5 / 3, "tuned::q": 4 / 3, "tuned::r": 3.0})
+    assert "mean_seed_rank" not in rank_conditions(rows)[0][0]
+    unpaired = rows[:-1] + [full_row("a", "r", 21, .5, .05)]  # equal counts, but r lacks seed 22
+    rank_conditions(unpaired)
+    with pytest.raises(SystemExit, match="every seed"):
+        rank_conditions(unpaired, criterion="rank")
+
+
+def test_feasibility_excludes_candidates_whose_pre_adaptation_error_drifts(tmp_path):
+    rows = []
+    for s in (20, 21):
+        rows += [full_row("a", "retrieval_only", s, .10), full_row("a", "p", s, .01, pre_err=.13),
+                 full_row("a", "q", s, .05, pre_err=.12), full_row("a", "z", s, .08, pre_err=.10),
+                 full_row("b", "retrieval_only", s, .5, task_type="regression")]
+        rows += [full_row("b", c, s, .4, pre_err=.5, task_type="regression", n_val=100) for c in ("p", "q", "z")]
+    bad = pre_feasibility(rows, 1.02)  # task a: limit 1.02 * 0.10 + 1/50
+    assert list(bad) == ["tuned::p"] and [w["task"] for w in bad["tuned::p"]] == ["a"]
+    assert bad["tuned::p"][0]["limit"] == pytest.approx(.122) and bad["tuned::p"][0]["n_val"] == 50
+    select(sel_args(tmp_path / "sel", [write_stage(tmp_path / "stage", rows)], feasibility_pre=1.02))
+    sel = json.loads((tmp_path / "sel" / "selection.json").read_text())
+    assert sel["global_winner"] == "tuned::q" and "tuned::p" not in [g["condition"] for g in sel["global_ranking"]]
+    assert sel["feasibility_pre"]["ineligible"]["tuned::p"][0]["val_pre_error"] == pytest.approx(.13)
+    import csv
+    with (tmp_path / "sel" / "validation_table.csv").open() as fh:
+        table = list(csv.DictReader(fh))
+    assert [t["rank"] for t in table if t["condition"] == "tuned::p"] == ["", ""]
+    with pytest.raises(SystemExit, match="retrieval-only"):
+        pre_feasibility([r for r in rows if not (r["condition"].endswith("retrieval_only") and r["seed"] == 21)], 1.02)
+
+
+def loso_rows():
+    """Validation always prefers p on task a and q on task b; on task a's test stream q is better than p."""
+    test = {("a", "p"): (.10, .20, .30), ("a", "q"): (.05, .05, .05), ("a", "ref"): (.20, .20, .20),
+            ("b", "p"): (.6, .6, .6), ("b", "q"): (.4, .5, .6), ("b", "ref"): (.5, .5, .5)}
+    val = {("a", "p"): .1, ("a", "q"): .2, ("a", "ref"): .3, ("b", "p"): .5, ("b", "q"): .3, ("b", "ref"): .4}
+    return [full_row(t, c, s, val[t, c], test_err=e, task_type="classification" if t == "a" else "regression")
+            for (t, c), es in test.items() for s, e in zip((20, 21, 22), es)]
+
+
+def loso_args(dirs, out, **kw):
+    base = dict(exp_dir=[str(d) for d in dirs], seeds=[20, 21, 22], rules=["err"], scope=["global"], reference=None,
+                incumbent=None, challengers=None, prereg=None, exclude_condition=None, out=str(out))
+    return SimpleNamespace(**{**base, **kw})
+
+
+def test_loso_selects_on_other_seeds_validation_and_scores_held_out_test(tmp_path):
+    stage, out = write_stage(tmp_path / "stage", loso_rows()), tmp_path / "loso.json"
+    loso(loso_args([stage], out, rules=["err", "rank"], scope=["global", "pertask"], reference="tuned::ref"))
+    rep = json.loads(out.read_text())
+    res = {(r["rule"], r["scope"]): r for r in rep["results"]}
+    eps = .5 / 40  # classification task a; regression task b has eps 0
+    a = lambda e: np.log((e + eps) / (.2 + eps))  # noqa: E731
+    b = [np.log(x / .5) for x in (.4, .5, .6)]
+    glob, per = [a(.05)] * 3 + b, [a(e) for e in (.1, .2, .3)] + b  # global picks q (mean rank 1.5); per task p on a
+
+    def check(r, cells):
+        v = np.array(cells)
+        assert r["n"] == 6 and r["mean_log_ratio"] == pytest.approx(v.mean())
+        assert r["se"] == pytest.approx(v.std(ddof=1) / np.sqrt(6)) and r["gmr"] == pytest.approx(np.exp(v.mean()))
+
+    check(res["err", "global"], glob)
+    check(res["err", "pertask"], per)
+    check(res["rank", "global"], glob)
+    assert {c["selected"] for c in res["err", "global"]["per_task"]["a"]["cells"]} == {"tuned::q"}
+    assert {c["selected"] for c in res["err", "pertask"]["per_task"]["a"]["cells"]} == {"tuned::p"}
+    assert [c["seed"] for c in res["err", "pertask"]["per_task"]["a"]["cells"]] == [20, 21, 22]
+    assert res["err", "pertask"]["difference_vs_first"]["mean_log_ratio"] == pytest.approx(np.mean(per) - np.mean(glob))
+    assert rep["first"] == {"rule": "err", "scope": "global"} and "difference_vs_first" not in res["err", "global"]
+
+
+def test_loso_compare_mode_and_prereg_refusal(tmp_path):
+    stage, out = write_stage(tmp_path / "stage", loso_rows()), tmp_path / "cmp.json"
+    loso(loso_args([stage], out, incumbent="tuned::ref", challengers=["tuned::q", "tuned::p"]))
+    rep = json.loads(out.read_text())
+    eps = .5 / 40
+    v = np.array([np.log((.05 + eps) / (.2 + eps))] * 3 + [np.log(x / .5) for x in (.4, .5, .6)])
+    q = rep["results"][0]
+    m, se = v.mean(), v.std(ddof=1) / np.sqrt(6)
+    half = stats.t.ppf(.9, 5) * se
+    assert rep["mode"] == "compare" and q["challenger"] == "tuned::q" and q["mean_log_ratio"] == pytest.approx(m)
+    assert q["interval_80"] == pytest.approx([m - half, m + half]) and len(rep["results"]) == 2
+    with pytest.raises(SystemExit, match=r"40 \(evaluation\)"):
+        loso(loso_args([stage], out, seeds=[20, 21, 40], prereg=PREREG, reference="tuned::ref"))
+    late = write_stage(tmp_path / "late", [full_row("a", "p", 35, .1)])
+    with pytest.raises(SystemExit, match=r"35 \(reserved\)"):
+        loso(loso_args([stage, late], out, prereg=PREREG, reference="tuned::ref"))
