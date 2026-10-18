@@ -2,7 +2,8 @@
 
     python tools/t1_confirm_report.py --prereg configs/t1/prereg_20261013.json --prereg-sha256 <hex>
         --runs <neural-cbr experiment dirs...> --baselines <grid or evaluate output dirs...>
-        --final <arm::name of F> --out <dir> [--groups legacy transfer]
+        --final <arm::name of F> --out <dir> [--groups legacy transfer] [--final-map <json>]
+        [--expect-fingerprints <json | pattern=prefix[,prefix...]>...]
 
 Error is 1 - accuracy (adapted output; pre-adaptation for retrieval-only rows) or
 train-standardized RMSE on the test stream. Per task the effect is the mean over
@@ -14,14 +15,19 @@ tests (Holm-significant over {E1, E2, E3a, E3b}, GMR <= 0.97, E2's guards); E3a/
 are non-inferiority at the pre-registered margin (H0: GMR >= 1 + delta), decided by
 their Holm-adjusted one-sided p (prereg addendum 1); the unadjusted one-sided 95%
 upper bound is reported alongside. Secondary analyses
-(ECE_T, flips, six-method ranks) use Benjamini-Hochberg. Writes ``report.json``
-(every number) and ``report.md``.
+(ECE_T, flips, six-method ranks) use Benjamini-Hochberg; log loss and macro-F1 on churn
+and MIC are descriptive (recorded log losses; macro-F1 from the saved per-example test
+predictions). Writes ``report.json`` (every number, the final map and the run source
+fingerprints per task) and ``report.md``.
 
 Refused: a prereg file whose sha256 differs from --prereg-sha256; an analysed row or
 baseline entry on a seed outside the evaluation seeds (plus the small-task seeds for
 small tasks); a bare small-task name shared by several analysed tasks; a declared
 small task whose test set has 100 or more rows; duplicate rows that differ; rows from
-different run source fingerprints (unless --allow-mixed-code); a neural-CBR
+different run source fingerprints (unless --allow-mixed-code); with
+--expect-fingerprints, a row without a run manifest or whose source fingerprint starts
+with no prefix allowed for its task (an exact key entry, else an exact name entry, else
+the first matching glob; a pattern matching no task is a warning); a neural-CBR
 comparison (E1 or E2 on one task) whose arms ran on different device types (unless
 --allow-mixed-device); missing primary evidence, including an undeclared non-OpenML
 task with fewer than 100 test rows (unless --allow-incomplete).
@@ -29,6 +35,7 @@ task with fewer than 100 test rows (unless --allow-incomplete).
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import hashlib
 import json
 import math
@@ -46,8 +53,21 @@ FLIP_FACTOR = 2.0  # secondary: wrong-to-correct >= 2 x correct-to-wrong
 GROUP_KEYS = {"legacy": "primary_legacy", "transfer": "primary_transfer"}
 RANK_FAMILIES = ("catboost", "tabm", "mlp", "knn")
 LABELS = {"catboost": "CatBoost", "tabm": "TabM", "mlp": "MLP", "knn": "kNN"}
-EXTRA_METRIC_TASKS = ("classification__tabarena_363623", "classification__tabarena_363711")  # churn, MIC
-EXTRA_METRIC_PREFIXES = ("test_log_loss", "test_logloss", "test_macro_f1")
+EXTRA_METRIC_TASKS = {"classification__tabarena_363623": "churn", "classification__tabarena_363711": "MIC"}
+EXTRA_METRIC_DEFINITIONS = {
+    "log_loss": "test log loss of the arm's own predicted distribution: adapted neural-CBR arms' test_L_post "
+                "(cross-entropy of softmax(kappa * s), the distribution test_ece_post measures, argmax = accuracy_post); "
+                "retrieval-only's test_loss_pre (NLL of the retrieved class mass p0 smoothed by 1e-8, so a zero mass on "
+                "the true class costs about 18.4); baselines' receipt test_metrics.loss (sklearn log_loss, "
+                "probabilities clipped at 1e-12)",
+    "log_loss_T": "adapted neural-CBR arms' test_nll_post_T: the same logits divided by one temperature fitted on the "
+                  "validation stream (the distribution behind ECE_T; argmax unchanged); retrieval-only and the "
+                  "baselines record no temperature-scaled output",
+    "macro_f1": "unweighted mean of per-class F1 over the classes in the targets or predictions (sklearn's macro "
+                "average), from per-example test predictions: neural-CBR runs' retrieval_events.jsonl "
+                "(final_prediction; pre_adaptation_prediction for retrieval-only), baselines' test_predictions.pt "
+                "(argmax); a seed is used only if its predictions reproduce the recorded accuracy",
+}
 PRE = "@pre"  # suffix of a condition's pre-adaptation error series
 NAN = float("nan")
 SMALL_TEST_ROWS = 100  # prereg: small tasks are non-OpenML tasks with fewer test rows than this
@@ -87,6 +107,10 @@ class Evidence:
     n_test: dict[tuple[str, int], int] = field(default_factory=dict)
     n_test_baseline: dict[tuple[str, int], int] = field(default_factory=dict)
     devices: dict[tuple[str, str], dict[int, str]] = field(default_factory=dict)  # (task, condition) -> seed -> device type
+    run_dirs: dict[tuple[str, str], dict[int, Path]] = field(default_factory=dict)  # (task, condition) -> seed -> run dir
+    # extra-metric tasks only: (task, baseline:<family>) -> seed -> [(entry, job dir)], one per baseline dir listing it
+    baseline_entries: dict[tuple[str, str], dict[int, list]] = field(default_factory=dict)
+    extra: dict[tuple[str, str], dict[int, dict]] = field(default_factory=dict)  # (task, method) -> seed -> log loss, macro-F1
     provenance: dict = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
@@ -198,14 +222,61 @@ def device_type(value) -> str:
     return text.split(":", 1)[0] if text and text != "none" else UNKNOWN_DEVICE
 
 
+def fingerprint_expectations(items: list[str] | None) -> dict[str, list[str]] | None:
+    """--expect-fingerprints items: a .json file or inline JSON {pattern: prefix or [prefixes]}, or
+    'pattern=prefix[,prefix...]'. A pattern is a task key, a bare name or an fnmatch glob over either;
+    a pattern given twice allows the union of its prefixes."""
+    if not items:
+        return None
+    spec: dict[str, list[str]] = {}
+    for item in items:
+        if item.lstrip().startswith("{"):
+            data = json.loads(item)
+        elif item.endswith(".json"):
+            data = json.loads(Path(item).read_text(encoding="utf-8"))
+        else:
+            pattern, sep, prefixes = item.partition("=")
+            data = {pattern.strip(): prefixes.split(",")} if sep else None
+        if not isinstance(data, dict) or not data:
+            raise SystemExit(f"--expect-fingerprints {item!r}: expected a JSON object or pattern=prefix[,prefix...]")
+        for pattern, prefixes in data.items():
+            prefixes = [prefixes] if isinstance(prefixes, str) else prefixes
+            if not pattern or not isinstance(prefixes, list) or not prefixes or not all(
+                    isinstance(p, str) and p.strip() for p in prefixes):
+                raise SystemExit(f"--expect-fingerprints {item!r}: pattern {pattern!r} needs non-empty fingerprint prefixes")
+            spec.setdefault(pattern, []).extend(p.strip().lower() for p in prefixes)
+    return spec
+
+
+def _pattern_matches(pattern: str, task: Task) -> bool:
+    return any(pattern == x or fnmatch.fnmatchcase(x, pattern) for x in (task.key, task.name))
+
+
+def expected_fingerprints(spec: dict[str, list[str]], task: Task) -> tuple[str | None, tuple[str, ...]]:
+    """The pattern that decides ``task`` and its allowed prefixes: an exact key entry, else an exact
+    name entry (so 'regression__wine' beats 'wine' in any order), else the first glob (in the order
+    given) matching the key or name; (None, ()) allows nothing."""
+    for exact in (task.key, task.name):
+        if exact in spec:
+            return exact, tuple(spec[exact])
+    for pattern in spec:
+        if _pattern_matches(pattern, task):
+            return pattern, tuple(spec[pattern])
+    return None, ()
+
+
 def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Conditions, allow_mixed_code: bool,
-              allow_mixed_device: bool = False) -> None:
+              allow_mixed_device: bool = False, expect_fingerprints: dict[str, list[str]] | None = None) -> None:
     by_key = {t.key: t for t in tasks}
     wanted = {cond.final, cond.retrieval_only, cond.default, *cond.final_map.values()}
     counts = {"rows_analysed": 0, "rows_ignored": 0, "duplicate_rows": 0, "run_manifests_found": 0,
               "run_manifests_absent": 0}
     fingerprints: dict[str, dict[str, int]] = {}
-    bad_seed, conflicts = [], []
+    by_task: dict[str, dict[str, int]] = {}  # task -> fingerprint -> analysed rows
+    absent: dict[str, int] = {}  # task -> analysed rows without a run manifest
+    mapped_rows: dict[str, int] = {}  # task -> rows analysed as F through --final-map
+    expect = None if expect_fingerprints is None else {t.key: expected_fingerprints(expect_fingerprints, t) for t in tasks}
+    bad_seed, conflicts, unexpected = [], [], []
     for d in dirs:
         shards = sorted(d.glob("runs__*.jsonl"))
         if not shards:
@@ -238,6 +309,10 @@ def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Condition
                     continue
                 seen[s] = row
                 counts["rows_analysed"] += 1
+                if mapped is not None and c == cond.final:
+                    mapped_rows[t.key] = mapped_rows.get(t.key, 0) + 1
+                run_dir = d / row["dataset"] / row["condition"] / f"s{s}"
+                ev.run_dirs.setdefault((t.key, c), {})[s] = run_dir
                 if row.get("sync_no_eligible_checkpoint"):  # untrained adapter: the guard rejected every epoch
                     ev.warnings.append(f"{t.key} {c} seed {s}: retrieval guard left no eligible checkpoint; "
                                        "post-adaptation metrics come from the epoch-0 state")
@@ -247,27 +322,51 @@ def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Condition
                 if row.get("test_n") is not None:
                     if ev.n_test.setdefault((t.key, s), int(row["test_n"])) != int(row["test_n"]):
                         raise SystemExit(f"{t.key} seed {s}: rows disagree on test_n; the splits differ")
-                manifest = d / row["dataset"] / row["condition"] / f"s{s}" / "run_manifest.json"
-                device = UNKNOWN_DEVICE
+                manifest = run_dir / "run_manifest.json"
+                device, fp = UNKNOWN_DEVICE, None
                 if manifest.exists():
                     run = json.loads(manifest.read_text(encoding="utf-8"))["run"]
-                    fp = fingerprints.setdefault(str(run.get("source_fingerprint_sha256")), {})
-                    fp[c] = fp.get(c, 0) + 1
+                    fp = str(run.get("source_fingerprint_sha256"))
+                    per_cond, per_task = fingerprints.setdefault(fp, {}), by_task.setdefault(t.key, {})
+                    per_cond[c] = per_cond.get(c, 0) + 1
+                    per_task[fp] = per_task.get(fp, 0) + 1
                     device = device_type(run.get("device"))
                     counts["run_manifests_found"] += 1
                 else:
                     counts["run_manifests_absent"] += 1
+                    absent[t.key] = absent.get(t.key, 0) + 1
                 ev.devices.setdefault((t.key, c), {})[s] = device
+                if expect is not None:
+                    pattern, allowed = expect[t.key]
+                    if fp is None or not fp.lower().startswith(allowed):
+                        unexpected.append(f"{t.key} {c} seed {s}: " + ("no run manifest" if fp is None else f"fingerprint {fp[:12]}")
+                                          + (f", allowed {list(allowed)} by {pattern!r}" if pattern is not None
+                                             else ", no --expect-fingerprints pattern matches the task"))
     if bad_seed:
         raise SystemExit(f"{len(bad_seed)} row(s) on seeds outside the pre-registered evaluation seeds, e.g. {bad_seed[:5]}")
     if conflicts:
         raise SystemExit(f"{len(conflicts)} duplicate row(s) differ from an earlier run, e.g. {conflicts[:5]}")
+    if unexpected:
+        raise SystemExit(f"{len(unexpected)} row(s) whose run source fingerprint --expect-fingerprints does not allow "
+                         f"for their task, e.g. {unexpected[:5]}")
     if len(fingerprints) > 1 and not allow_mixed_code:
         raise SystemExit(f"rows come from {len(fingerprints)} run source fingerprints {sorted(fingerprints)}; "
                          "pass --allow-mixed-code to analyse them together")
     if not any(c == cond.final for _, c in ev.rows):
         raise SystemExit(f"no rows for the final condition {cond.final}")
-    ev.provenance.update(counts, source_fingerprints=fingerprints)
+    for key, c in cond.final_map.items():  # a map entry that selects nothing leaves that task's F without evidence
+        if key not in by_key:
+            ev.warnings.append(f"--final-map entry {key} -> {c} is not an analysed task")
+        elif not mapped_rows.get(key):
+            ev.warnings.append(f"--final-map entry {key} -> {c} matched no analysed rows")
+    ev.provenance.update(counts, source_fingerprints=fingerprints, source_fingerprints_by_task=by_task,
+                         rows_without_manifest_by_task=absent, final_map_rows=mapped_rows)
+    if expect is not None:  # a pattern matching no task (e.g. a mistyped key) leaves its task to a broader glob
+        unmatched = [p for p in expect_fingerprints if not any(_pattern_matches(p, t) for t in tasks)]
+        ev.warnings += [f"--expect-fingerprints pattern {p!r} matches no analysed task" for p in unmatched]
+        ev.provenance["fingerprint_expectations"] = {
+            "patterns": expect_fingerprints, "rows_checked": counts["rows_analysed"],
+            "pattern_by_task": {k: p for k, (p, _) in expect.items()}, "unmatched_patterns": unmatched}
     check_devices(ev, tasks, cond, allow_mixed_device)
 
 
@@ -329,6 +428,9 @@ def load_baselines(ev: Evidence, dirs: list[Path], tasks: list[Task], families: 
                         if old is not None and old != value:
                             raise SystemExit(f"{t.key} {fam} seed {s}: baseline outputs disagree ({path})")
                         ev.put(t.key, f"baseline:{fam}", s, value)
+                        if t.key in EXTRA_METRIC_TASKS:  # where its test predictions are saved, for macro-F1
+                            ev.baseline_entries.setdefault((t.key, f"baseline:{fam}"), {}).setdefault(s, []).append(
+                                (e, d / t.key / fam))
                         n = (e.get("dataset") or {}).get("n_test")
                         if n is not None:
                             ev.n_test_baseline[t.key, s] = int(n)
@@ -408,6 +510,93 @@ def missing_evidence(ev: Evidence, tasks: list[Task], methods: list[str]) -> lis
             if gap := [s for s in t.seeds if s not in have]:
                 out.append({"task": t.key, "method": m, "missing_seeds": gap})
     return out
+
+
+def macro_f1(y, pred) -> float:
+    """sklearn's f1_score(average="macro"): mean per-class 2TP / (2TP + FP + FN) over classes in y or pred."""
+    y, pred = np.asarray(y), np.asarray(pred)
+    return float(np.mean([2 * np.sum((y == k) & (pred == k)) / (np.sum(y == k) + np.sum(pred == k))
+                          for k in np.union1d(y, pred)]))
+
+
+def f1_record(y, pred, accuracy: float, n_test: int | None) -> dict:
+    """Macro-F1 of saved test predictions, or why it is not recorded: they must cover the test
+    stream and reproduce the analysed accuracy (to half a test row), else they are another run's."""
+    y, pred = np.asarray(y).reshape(-1), np.asarray(pred).reshape(-1)
+    if not len(y) or len(y) != len(pred) or (n_test is not None and len(y) != n_test):
+        return {"macro_f1": None, "macro_f1_note": f"not recorded: {len(y)} saved predictions for {n_test} test rows"}
+    if abs(float(np.mean(y == pred)) - accuracy) > 0.5 / len(y):
+        return {"macro_f1": None, "macro_f1_note": "not used: saved predictions do not reproduce the recorded accuracy"}
+    return {"macro_f1": macro_f1(y, pred), "macro_f1_note": None}
+
+
+def events_predictions(path: Path, key: str) -> tuple[list[int], list[int]]:
+    """(targets, ``key`` predictions) of the test stream, in query order, from a run's retrieval_events.jsonl."""
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip() and (e := json.loads(line)).get("stream") == "test":
+            rows.append((int(e["query_index"]), int(e["target"]), int(e[key])))
+    rows.sort()
+    if [i for i, _, _ in rows] != list(range(len(rows))):
+        raise ValueError("test query indices are not 0..n-1 once each")
+    return [y for _, y, _ in rows], [p for _, _, p in rows]
+
+
+def saved_predictions(path: Path) -> tuple[np.ndarray, np.ndarray]:
+    """(targets, argmax predictions) from a baseline's test_predictions.pt (class probabilities)."""
+    import torch  # only to read the saved baseline predictions; the analysis itself stays torch-free
+    data = torch.load(path, map_location="cpu", weights_only=True)
+    prob = np.asarray(data["prediction"].double().numpy())
+    if prob.ndim != 2:
+        raise ValueError(f"predictions of shape {prob.shape} are not class probabilities")
+    return np.asarray(data["target"].numpy()).astype(int), prob.argmax(1)
+
+
+def _finite(x) -> float | None:
+    return float(x) if isinstance(x, (int, float)) and math.isfinite(x) else None
+
+
+def load_extra_metrics(ev: Evidence, tasks: list[Task], cond: Conditions, families: list[str]) -> None:
+    """Per-seed log loss and macro-F1 of each arm on the prereg's churn and MIC tasks (secondary, descriptive).
+
+    Log losses are the recorded ones (EXTRA_METRIC_DEFINITIONS); macro-F1 is recomputed from the
+    saved per-example test predictions. Anything absent or unreadable is kept with its reason."""
+    for t in tasks:
+        if t.key not in EXTRA_METRIC_TASKS or t.task_type != "classification":
+            continue
+        for c in dict.fromkeys((cond.final, cond.retrieval_only, cond.default)):
+            for s, row in sorted(ev.rows.get((t.key, c), {}).items()):
+                pre = condition_id(row).endswith("retrieval_only")  # as row_error: its output is pre-adaptation
+                path = ev.run_dirs[t.key, c][s] / "retrieval_events.jsonl"
+                rec = {"log_loss": _finite(row.get("test_loss_pre" if pre else "test_L_post")),
+                       "log_loss_T": None if pre else _finite(row.get("test_nll_post_T")), "macro_f1_source": str(path)}
+                if not path.exists():
+                    rec.update(macro_f1=None, macro_f1_note="not recorded: no retrieval_events.jsonl")
+                else:
+                    try:
+                        y, p = events_predictions(path, "pre_adaptation_prediction" if pre else "final_prediction")
+                        rec.update(f1_record(y, p, 1.0 - row_error(row), ev.n_test.get((t.key, s))))
+                    except (OSError, ValueError, KeyError, TypeError) as exc:
+                        rec.update(macro_f1=None, macro_f1_note=f"not recorded: unreadable retrieval_events.jsonl ({exc})")
+                ev.extra.setdefault((t.key, c), {})[s] = rec
+        for fam in families:
+            for s, found in sorted(ev.baseline_entries.get((t.key, f"baseline:{fam}"), {}).items()):
+                paths = [job / str(e.get("stage", "evaluation")) / str(e["candidate_id"]) / f"s{s}" / "test_predictions.pt"
+                         for e, job in found if e.get("candidate_id") is not None]
+                path = next((p for p in paths if p.exists()), None)
+                metrics = found[0][0]["test_metrics"]
+                rec = {"log_loss": _finite(metrics.get("loss")), "log_loss_T": None,
+                       "macro_f1_source": None if path is None else str(path)}
+                if path is None:
+                    rec.update(macro_f1=None, macro_f1_note="not recorded: no test_predictions.pt")
+                else:
+                    try:
+                        y, p = saved_predictions(path)
+                        rec.update(f1_record(y, p, 1.0 - baseline_error(found[0][0], t.task_type), ev.n_test.get((t.key, s))))
+                    except Exception as exc:  # torch missing or an unreadable file: descriptive output, keep the reason
+                        rec.update(macro_f1=None, macro_f1_note=f"not recorded: unreadable test_predictions.pt "
+                                                                 f"({type(exc).__name__}: {exc})")
+                ev.extra.setdefault((t.key, f"baseline:{fam}"), {})[s] = rec
 
 
 # ----------------------------------------------------------------------------- statistics
@@ -694,13 +883,26 @@ def secondary(ev: Evidence, tasks: list[Task], cond: Conditions) -> dict:
     if len(table) >= 2:
         with np.errstate(all="ignore"):
             out["ranks"]["p"] = float(stats.friedmanchisquare(*[[r["errors"][m] for r in table] for m, _ in methods]).pvalue)
-    extra = []
+    extra = []  # per task and arm: seed means of the recorded values; a seed without one is listed with its reason
+    arms = [("F", cond.final), ("NN-kNN retrieval-only", cond.retrieval_only), ("alternating default", cond.default)]
     for t in tasks:
-        if t.key in EXTRA_METRIC_TASKS:
-            rs = list(ev.rows.get((t.key, cond.final), {}).values())
-            keys = sorted({k for r in rs for k in r if k.startswith(EXTRA_METRIC_PREFIXES)})
-            extra.append({"task": t.key, **{k: float(np.mean([r[k] for r in rs if r.get(k) is not None])) for k in keys}})
-    out["log_loss_macro_f1"] = extra
+        if t.key not in EXTRA_METRIC_TASKS:
+            continue
+        for label, m in arms + [(LABELS.get(f, f), f"baseline:{f}") for f in RANK_FAMILIES]:
+            per = ev.extra.get((t.key, m), {})
+            item = {"task": t.key, "task_label": EXTRA_METRIC_TASKS[t.key], "method": label, "condition": m,
+                    "n_seeds": len(per)}
+            for k in ("log_loss", "log_loss_T", "macro_f1"):
+                vals = [r[k] for r in per.values() if r.get(k) is not None]
+                item[k], item[f"{k}_seeds"] = (float(np.mean(vals)) if vals else None), len(vals)
+            missing: dict[str, list[int]] = {}
+            for s, r in sorted(per.items()):
+                if r.get("macro_f1_note"):
+                    missing.setdefault(r["macro_f1_note"], []).append(s)
+            item["macro_f1_missing"], item["per_seed"] = missing, per
+            extra.append(item)
+    out["log_loss_macro_f1"] = {"tasks": [t.key for t in tasks if t.key in EXTRA_METRIC_TASKS],
+                                "definitions": EXTRA_METRIC_DEFINITIONS, "per_method": extra}
     cost = []  # active cases (seed mean); timing lives in the run manifests' budgets
     for t in tasks:
         item = {"task": t.key}
@@ -770,12 +972,40 @@ def _yes(x) -> str:
     return "n/a" if x is None else "yes" if x else "no"
 
 
+def _final_map_note(inp: dict, pv: dict) -> str:
+    """' (per-task F from --final-map ...: task `id`, n rows; ...)' or '' without a final map."""
+    fm = inp.get("final_map")
+    if not fm:
+        return ""
+    used = pv.get("final_map_rows", {})
+    subs = "; ".join(f"{k}: `{v}` ({used.get(k, 0)} rows)" for k, v in fm["contents"].items()) or "no entries"
+    return f" (per-task F from --final-map `{fm['path']}`, sha256 `{fm['sha256'][:16]}...`: {subs})"
+
+
+def _fingerprint_lines(pv: dict) -> list[str]:
+    """Analysed tasks grouped by the run source fingerprint of their rows, one sub-item per fingerprint."""
+    tasks_by_fp: dict[str, list[str]] = {}
+    for task, fps in pv.get("source_fingerprints_by_task", {}).items():
+        for fp in fps:
+            tasks_by_fp.setdefault(fp, []).append(task)
+    lines = [f"  - `{fp[:12]}`: {len(ts)} task(s), {sum(pv['source_fingerprints_by_task'][t][fp] for t in ts)} rows: "
+             + ", ".join(ts) for fp, ts in sorted(tasks_by_fp.items(), key=lambda x: (-len(x[1]), x[0]))]
+    if absent := pv.get("rows_without_manifest_by_task"):
+        lines.append(f"  - no run manifest: {len(absent)} task(s), {sum(absent.values())} rows: " + ", ".join(absent))
+    mixed = {t: fps for t, fps in pv.get("source_fingerprints_by_task", {}).items() if len(fps) > 1}
+    if mixed:
+        lines.append("  - tasks mixing fingerprints: " + "; ".join(
+            f"{t} (" + ", ".join(f"`{fp[:12]}` {n}" for fp, n in fps.items()) + ")" for t, fps in mixed.items()))
+    return lines
+
+
 def render_md(rep: dict) -> str:
     inp, prim = rep["inputs"], rep["primary"]
     short = lambda c: LABELS.get(c[9:], c[9:]) if c.startswith("baseline:") else c.split("::", 1)[-1]
     md = ["# T1 confirmation report (pre-registered)", "",
           f"Pre-registration `{inp['prereg']}` (sha256 `{rep['prereg_sha256'][:16]}...`, verified). "
-          f"F = `{inp['final']}`; references: retrieval-only `{short(inp['retrieval_only'])}`, alternating default "
+          f"F = `{inp['final']}`{_final_map_note(inp, rep['provenance'])}; "
+          f"references: retrieval-only `{short(inp['retrieval_only'])}`, alternating default "
           f"`{short(inp['default'])}`, CatBoost and TabM HPO winners. Groups {' + '.join(prim['groups'])}, "
           f"{len(prim['tasks'])} tasks.", "",
           "Error: 1 - accuracy or train-standardized RMSE (test stream). GMR = exp(pooled mean log error ratio, "
@@ -828,6 +1058,18 @@ def render_md(rep: dict) -> str:
            "|---" * (len(names) + 1) + "|"]
     for scope, res in rep["secondary"].items():
         md.append(f"| {scope} | " + " | ".join(_f(res["ranks"]["mean_rank"][n], ".2f") for n in names) + " |")
+    x = rep["secondary"]["pooled"]["log_loss_macro_f1"]
+    md += ["", "Log loss and macro-F1 on churn and MIC (descriptive; mean over seeds, seeds with a value in parentheses)", ""]
+    if not x["per_method"]:
+        md.append("Not evaluable: neither task is among the analysed tasks.")
+    else:
+        cell = lambda r, k: "not recorded" if r[k] is None else f"{_f(r[k], '.4f')} ({r[k + '_seeds']})"
+        md += ["| task | method | log loss | log loss, validation temperature | macro-F1 |", "|---|---|---|---|---|"]
+        md += [f"| {r['task_label']} | {r['method']} | {cell(r, 'log_loss')} | {cell(r, 'log_loss_T')} | "
+               f"{cell(r, 'macro_f1')} |" for r in x["per_method"]]
+        md += [""] + [f"- {k}: {v}" for k, v in x["definitions"].items()]
+        md += [f"- {r['task_label']} {r['method']} macro-F1 {note} (seeds {', '.join(map(str, seeds))})"
+               for r in x["per_method"] for note, seeds in r["macro_f1_missing"].items()]
     md += ["", "## Per task (F / reference error ratio, geometric mean over paired seeds)", "",
            "| task | group | seeds | F error | E1 | E2 | E3a | E3b | F pre / retrieval-only |", "|---|---|---|---|---|---|---|---|---|"]
     pt = {k: {p["task"]: p for p in r["per_task"]} for k, r in prim["endpoints"].items()}
@@ -842,7 +1084,11 @@ def render_md(rep: dict) -> str:
            f"- neural-CBR rows analysed {pv['rows_analysed']}, ignored {pv['rows_ignored']}, identical duplicates "
            f"{pv['duplicate_rows']}; run manifests found {pv['run_manifests_found']}, absent {pv['run_manifests_absent']}",
            f"- run source fingerprints: {', '.join(f'{k[:12]} ({sum(v.values())} rows)' for k, v in pv['source_fingerprints'].items()) or 'none recorded'}",
-           f"- devices (rows): {pv.get('devices', {})}; comparisons pooling device types: "
+           "- run source fingerprints by task:", *_fingerprint_lines(pv)]
+    if fx := pv.get("fingerprint_expectations"):
+        md.append(f"- --expect-fingerprints held for all {fx['rows_checked']} analysed rows: " + "; ".join(
+            f"`{p}` -> {', '.join(f'`{x}`' for x in prefixes)}" for p, prefixes in fx["patterns"].items()))
+    md += [f"- devices (rows): {pv.get('devices', {})}; comparisons pooling device types: "
            f"{len(pv.get('device_check', {}).get('mixed_comparisons', []))}",
            f"- n_test sources: {pv.get('n_test_sources', {})}"]
     md += [f"- warning: {w}" for w in rep["warnings"]]
@@ -865,6 +1111,10 @@ def main(argv: list[str] | None = None) -> dict:
     ap.add_argument("--n-test", help="fallback JSON {task key or name: n_test or {seed: n_test}}")
     ap.add_argument("--min-within-var", type=float, help="within-task variance floor (default: smallest positive)")
     ap.add_argument("--allow-mixed-code", action="store_true")
+    ap.add_argument("--expect-fingerprints", nargs="+",
+                    help="allowed run source fingerprint prefixes per task: .json or inline JSON {task, name or glob: "
+                         "prefix or [prefixes]}, or pattern=prefix[,prefix...]; an exact key beats an exact name, "
+                         "which beats the first matching glob; refuses any other analysed row")
     ap.add_argument("--allow-mixed-device", action="store_true",
                     help="analyse E1/E2 comparisons whose neural-CBR arms ran on different device types")
     ap.add_argument("--allow-incomplete", action="store_true")
@@ -874,7 +1124,12 @@ def main(argv: list[str] | None = None) -> dict:
     prereg, digest = load_prereg(Path(args.prereg), args.prereg_sha256)
     tasks, unknown_small = plan_tasks(prereg, args.groups, small_task_names(args.small_tasks, prereg))
     arm = args.final.split("::", 1)[0] + "::" if "::" in args.final else ""
-    final_map = json.loads(Path(args.final_map).read_text(encoding="utf-8")) if getattr(args, "final_map", None) else {}
+    final_map, final_map_input = {}, None
+    if getattr(args, "final_map", None):
+        raw = Path(args.final_map).read_bytes()
+        final_map = json.loads(raw.decode("utf-8"))
+        final_map_input = {"path": args.final_map, "sha256": hashlib.sha256(raw).hexdigest(), "contents": final_map}
+    expect = fingerprint_expectations(args.expect_fingerprints)
     cond = Conditions(args.final, args.retrieval_only or f"{arm}retrieval_only", args.default or f"{arm}alternating_default",
                       final_map)
     if len({cond.final, cond.retrieval_only, cond.default}) != 3:
@@ -882,7 +1137,7 @@ def main(argv: list[str] | None = None) -> dict:
     ev = Evidence()
     if unknown_small:
         ev.warnings.append(f"small tasks not among the analysed tasks: {unknown_small}")
-    load_runs(ev, [Path(d) for d in args.runs], tasks, cond, args.allow_mixed_code, args.allow_mixed_device)
+    load_runs(ev, [Path(d) for d in args.runs], tasks, cond, args.allow_mixed_code, args.allow_mixed_device, expect)
     families = list(dict.fromkeys([prereg["endpoints"][e]["vs"] for e in ("E3a", "E3b")] + list(RANK_FAMILIES)))
     load_baselines(ev, [Path(d) for d in args.baselines], tasks, families)
     resolve_n_test(ev, tasks, json.loads(Path(args.n_test).read_text(encoding="utf-8")) if args.n_test else {})
@@ -892,13 +1147,14 @@ def main(argv: list[str] | None = None) -> dict:
     if missing and not args.allow_incomplete:
         raise SystemExit(f"incomplete primary evidence for {len(missing)} task/method pair(s), e.g. {missing[:3]}; "
                          "pass --allow-incomplete to analyse what exists")
+    load_extra_metrics(ev, tasks, cond, families)
     report = {
         "prereg_sha256": digest, "document": prereg.get("document"),
         "inputs": {"prereg": args.prereg, "runs": args.runs, "baselines": args.baselines, "final": cond.final,
-                   "retrieval_only": cond.retrieval_only, "default": cond.default, "groups": args.groups,
+                   "final_map": final_map_input, "retrieval_only": cond.retrieval_only, "default": cond.default, "groups": args.groups,
                    "small_tasks": sorted(t.key for t in tasks if t.small), "allow_mixed_code": args.allow_mixed_code,
                    "allow_mixed_device": args.allow_mixed_device, "allow_incomplete": args.allow_incomplete,
-                   "min_within_var": args.min_within_var},
+                   "min_within_var": args.min_within_var, "expect_fingerprints": expect},
         "constants": {"alpha": ALPHA, "bh_q": BH_Q, "sensitivity_deltas": SENSITIVITY_DELTAS, "ece_margin": ECE_MARGIN,
                       "flip_factor": FLIP_FACTOR, "small_test_rows": SMALL_TEST_ROWS},
         "decision_rules": DECISION_RULES,
