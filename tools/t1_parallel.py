@@ -3,7 +3,8 @@
     python tools/t1_parallel.py configs/t1/<config>.yaml --out <results dir> --logs <log dir> --workers 8
 
 Each job calls ``tools/t1_run.py --only-dataset <name> --seeds <seed>``. A job whose
-receipt records exit code 0 is skipped on resume; failed jobs are retried.
+receipt records exit code 0 is skipped on resume; failed jobs are retried, and a
+retry keeps the earlier log as ``<name>__s<seed>.attempt<N>.log``.
 ``progress.json`` in the log directory tracks counts. Exits nonzero if any job fails.
 Datasets that share a name across task types must be split into separate configs,
 because ``--only-dataset`` selects by name.
@@ -14,6 +15,7 @@ import argparse
 import concurrent.futures
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -22,6 +24,23 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from tools.t1_run import load_config  # noqa: E402
+
+
+def keep_previous_log(log: Path) -> None:
+    """Rename an earlier attempt's ``log`` to ``<stem>.attempt<N>.log`` (first free N).
+
+    The pre-registration requires crash reruns to be logged, so a rerun never
+    overwrites an earlier attempt's output.
+    """
+    if not log.exists():
+        return
+    n = 1
+    while (kept := log.with_name(f"{log.stem}.attempt{n}{log.suffix}")).exists():
+        n += 1
+    try:
+        log.rename(kept)
+    except PermissionError:  # Windows: another process (e.g. a tail) holds the log open; copying still works
+        shutil.copyfile(log, kept)
 
 
 def run_job(config: Path, name: str, seed: int, out: Path, logs: Path, device: str | None = None,
@@ -36,6 +55,7 @@ def run_job(config: Path, name: str, seed: int, out: Path, logs: Path, device: s
     if device:
         env["NNKNN_DEVICE"] = device  # tools/t1_run.py defaults to cpu otherwise
     t0 = time.time()
+    keep_previous_log(log)
     with log.open("w", encoding="utf-8") as fh:
         proc = subprocess.run([sys.executable, "-u", str(REPO / "tools/t1_run.py"), str(config),
                                "--only-dataset", name, "--seeds", str(seed), "--out", str(out)],
