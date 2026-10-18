@@ -179,3 +179,26 @@ guard fallbacks ineligible), written before any evaluation-seed result, changed 
 sha256 `e48a064051c0140b71b2bed09e92299c85716c2856c354b111f690835300f370`; use this
 value for `tools/t1_confirm_report.py --prereg-sha256`.
 Addendum 2 (step-D tuning on 18 legacy tasks; car and regression wine in confirmation only) changed the JSON to sha256 `7c27c51036315b054f91ffa9c46f0e137ec18134eac33847ccec2e930783f479`; this value supersedes the one above for `--prereg-sha256`.
+
+## T1 confirmation run log, 2026-10-13 to 2026-10-18
+
+- **Crash.** The machine stopped on 2026-10-13 at 14:36 (bugcheck 0x4E, PFN_LIST_CORRUPT; dump
+  `C:\WINDOWS\Minidump\101326-6687-01.dmp`). Every T1 process died. On 2026-10-17 `git fsck` passed and all
+  31,533 result rows and receipts parsed. Batches were resumed from their pinned checkouts: completed
+  receipts were reused and interrupted jobs reran from the start (pre-registration: "bitwise-identical
+  reruns after a crash, logged").
+- **Confirmation, 26 configs** (`02ed62a`, 7 workers): 400/400 jobs exit 0 on 2026-10-18.
+- **Baselines.** Seeds 40–49 (all 20 legacy tasks) and seeds 50–69 (seven small tasks) were re-evaluated
+  from the frozen legacy grid winners: 28/28 jobs completed.
+- **Transfer grid.** Diamonds, physiochemical protein and superconductivity have NN-kNN selections.
+  `tools/t1_freeze.py` with the freeze's arguments regenerated the 26 frozen configs byte-identically.
+  It added these three (`ba1c02f`, record `results/t1/p4_component_sync/tuning_20261013/freeze_transfer_20261018.json`;
+  F unchanged). They run from pinned checkout `ba1c02f`, whose `model/` and `tools/` equal `02ed62a`'s. Its
+  source fingerprint differs only through the added YAML files, so the report needs `--allow-mixed-code`.
+- **Parallel grid trials.** The grid fits one job's trials one after another; QSAR-TID-11 alone needed
+  about five more days that way. `tools/t1_grid_prefill.py` (`3388f8d`) fits the same trials concurrently
+  with the pinned grid code (`79dbb31`, fingerprint checked against `study.json`) and writes only trial
+  receipts. Rerunning the unchanged grid command then reuses them and writes the shortlist, selection and
+  summary. Three real receipts recomputed through it matched bit for bit: MIC screen, MIC evaluation
+  including test metrics, and Miami screen. The interrupted QSAR screen trial and superconductivity
+  evaluation seed 41 restart from scratch.
