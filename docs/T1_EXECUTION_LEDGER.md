@@ -219,3 +219,13 @@ Addendum 2 (step-D tuning on 18 legacy tasks; car and regression wine in confirm
 - **Seed audit.** `tools/t1_seed_audit.py` over the 29 confirmation configs passed. Its small-task list (iris,
   classification wine, zebra, zebra_special, body_fat, diabetes, yacht; test sets of 22–89 rows) is the one
   passed to the report (`results/t1/p6_confirmation_revision/seed_audit_confirm_20261018.json`).
+- **Yacht row repair (2026-10-18).** `tools/t1_confirm_audit.py` (`3e182b9`) rebuilt all 1,905 existing rows of
+  the 26-config batch byte-identically from their run directories. It then appended the one missing row,
+  `confirm_final_20261013-yacht-tuned__alternating_default_matched-s64-c7a5bd1b`, after checking that the run
+  finished: every file `finish()` writes was present, its `[done]` log line matched the rebuilt metrics, and its
+  receipt showed exit 0. The re-audit is clean: 150/150 yacht rows, one fingerprint `3825a422c093` on all 26
+  tasks (`results/t1/p6_confirmation_revision/confirm_audit_repair_20261018.json`). From `42ac9af` on,
+  `tools/t1_run.py` appends rows under an OS lock (same bytes) and `tools/t1_parallel.py` keeps earlier
+  attempt logs. The three transfer configs already running from `ba1c02f` still use the unlocked append.
+  They are audited the same way when they finish. QSAR's confirmation will run from a commit that includes
+  the lock: an I/O-only difference, recorded by fingerprint per task in the report.
