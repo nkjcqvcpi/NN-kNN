@@ -186,19 +186,36 @@ Addendum 2 (step-D tuning on 18 legacy tasks; car and regression wine in confirm
   `C:\WINDOWS\Minidump\101326-6687-01.dmp`). Every T1 process died. On 2026-10-17 `git fsck` passed and all
   31,533 result rows and receipts parsed. Batches were resumed from their pinned checkouts: completed
   receipts were reused and interrupted jobs reran from the start (pre-registration: "bitwise-identical
-  reruns after a crash, logged").
-- **Confirmation, 26 configs** (`02ed62a`, 7 workers): 400/400 jobs exit 0 on 2026-10-18.
+  reruns after a crash, logged"). The only confirmation job that had started before the crash and was
+  rerun is abalone seeds 45–49. It produced 16 duplicate (condition, seed) rows, each byte-identical to
+  its rerun row. The first attempt's logs were overwritten by the rerun (t1_parallel truncated logs then).
+- **Confirmation, 26 configs** (`02ed62a`, 7 workers): 400/400 jobs exit 0 on 2026-10-18
+  (`logs/.../confirm_final_20261013/progress_26configs_20261018.json`). An audit of all 1,890 run directories
+  found one row missing from its shard: yacht, `tuned__alternating_default_matched`, seed 64. Its run
+  finished (run directory, metrics and `[done]` log line are present), but two processes appended to
+  `runs__yacht.jsonl` 11 ms apart and the longer row overwrote it. t1_run assumed one writer per shard,
+  while t1_parallel runs several seeds of a dataset at once. The row is rebuilt from that run's own saved
+  files, not rerun; the repair is logged below. Every other row matches its run directory. Every run has
+  device cpu, one fingerprint (`3825a422c093`) and no guard fallback.
 - **Baselines.** Seeds 40–49 (all 20 legacy tasks) and seeds 50–69 (seven small tasks) were re-evaluated
   from the frozen legacy grid winners: 28/28 jobs completed.
 - **Transfer grid.** Diamonds, physiochemical protein and superconductivity have NN-kNN selections.
   `tools/t1_freeze.py` with the freeze's arguments regenerated the 26 frozen configs byte-identically.
   It added these three (`ba1c02f`, record `results/t1/p4_component_sync/tuning_20261013/freeze_transfer_20261018.json`;
-  F unchanged). They run from pinned checkout `ba1c02f`, whose `model/` and `tools/` equal `02ed62a`'s. Its
-  source fingerprint differs only through the added YAML files, so the report needs `--allow-mixed-code`.
+  F unchanged). They run from pinned checkout `ba1c02f`. It differs from `02ed62a` by the three YAML files
+  plus `tools/t1_grid_prefill.py` and its test, which nothing in t1_run imports. Its source fingerprint
+  (`c614a768d682`) therefore differs, so the report needs `--allow-mixed-code` with a per-task fingerprint
+  check.
 - **Parallel grid trials.** The grid fits one job's trials one after another; QSAR-TID-11 alone needed
   about five more days that way. `tools/t1_grid_prefill.py` (`3388f8d`) fits the same trials concurrently
   with the pinned grid code (`79dbb31`, fingerprint checked against `study.json`) and writes only trial
   receipts. Rerunning the unchanged grid command then reuses them and writes the shortlist, selection and
   summary. Three real receipts recomputed through it matched bit for bit: MIC screen, MIC evaluation
   including test metrics, and Miami screen. The interrupted QSAR screen trial and superconductivity
-  evaluation seed 41 restart from scratch.
+  evaluation seed 41 restart from scratch. After review, `5ed63ba` made the prefill write `shortlist.json`
+  and `selection.json` as the grid does, the winner before any test-stream trial. It also made the
+  prefill skip receipts still being written and survive a dead worker process. The QSAR instance was
+  restarted on it at 09:43, losing 28 minutes of six screen trials.
+- **Seed audit.** `tools/t1_seed_audit.py` over the 29 confirmation configs passed. Its small-task list (iris,
+  classification wine, zebra, zebra_special, body_fat, diabetes, yacht; test sets of 22–89 rows) is the one
+  passed to the report (`results/t1/p6_confirmation_revision/seed_audit_confirm_20261018.json`).
