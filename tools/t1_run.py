@@ -352,6 +352,63 @@ def truth_retention(model, data) -> dict[str, Any]:
     return out
 
 
+def _lock(fd: int) -> None:
+    """Take an exclusive lock on byte 0 of ``fd``, waiting while another process holds it."""
+    if os.name != "nt":
+        import fcntl
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        return
+    import errno
+    import msvcrt
+    while True:  # LK_LOCK gives up after 10 s; a holder keeps the lock for one write and fsync
+        try:
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+            return
+        except OSError as e:
+            if e.errno != errno.EACCES:
+                raise
+            time.sleep(0.01)
+
+
+def _unlock(fd: int) -> None:
+    if os.name != "nt":
+        import fcntl
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    else:
+        import msvcrt
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+
+
+def append_row(shard: Path, row: dict[str, Any]) -> None:
+    """Append ``row`` to ``shard`` as one JSON line, serialized across processes.
+
+    tools/t1_parallel.py runs one job per (dataset, seed), several at once, so jobs
+    of one dataset append to one shard. The Windows CRT emulates O_APPEND by seek
+    then write, so two unlocked appends can land at one offset and one row overwrites
+    the other. Each append holds an exclusive OS lock on ``<shard>.lock`` (a separate
+    file, so the shard stays readable) and writes the line in one write, fsynced
+    before the lock is released. The bytes equal the earlier text-mode append of
+    ``json.dumps(row) + "\\n"``, whose newline became ``os.linesep``.
+    """
+    data = (json.dumps(row) + os.linesep).encode("utf-8")
+    lock = os.open(shard.with_name(shard.name + ".lock"), os.O_RDWR | os.O_CREAT, 0o666)
+    try:
+        _lock(lock)  # the lock file is never written, so its position stays at byte 0
+        try:
+            fd = os.open(shard, os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0), 0o666)
+            try:
+                view = memoryview(data)
+                while view:  # one write; loops only after a short write
+                    view = view[os.write(fd, view):]
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+        finally:
+            _unlock(lock)
+    finally:
+        os.close(lock)
+
+
 class Runner:
     def __init__(self, cfg: dict[str, Any], out_root: Path) -> None:
         self.cfg = cfg
@@ -448,9 +505,8 @@ class Runner:
         for name, obj in (binary_files or {}).items():
             torch.save(to_cpu(obj), run_dir / name)
         row = {"run_id": run_id, "experiment": self.exp, "dataset": dataset_key, "dataset_name": ds["name"], "task_type": data.task_type, "seed": seed, "condition": cond_label, **{k: v for k, v in cond.items() if not isinstance(v, (dict, list))}, **{k: v for k, v in metrics.items() if not isinstance(v, (dict, list))}}
-        # one shard per dataset: parallel jobs (one per dataset) never share a file
-        with (self.out / f"runs__{dataset_key}.jsonl").open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(row) + "\n")
+        # one shard per dataset; parallel jobs (one per dataset and seed) share it, so append under a lock
+        append_row(self.out / f"runs__{dataset_key}.jsonl", row)
         keys = ("test_accuracy_pre", "test_accuracy_post", "test_rmse_pre", "test_accuracy_rare", "n_cases")
         print(f"[done] {run_id} " + " ".join(f"{k}={metrics[k]:.4f}" for k in keys if isinstance(metrics.get(k), (int, float))), flush=True)
 

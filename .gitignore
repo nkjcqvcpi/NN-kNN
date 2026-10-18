@@ -64,3 +64,5 @@ datasets/t1_cache/
 /results/t1/p6_confirmation_revision/grid_transfer_20261013/
 /results/t1/p6_confirmation_revision/baselines_eval40_20261013/
 /results/t1/p6_confirmation_revision/baselines_eval50_20261013/
+# shard append locks (tools/t1_run.py append_row)
+results/**/runs__*.jsonl.lock
