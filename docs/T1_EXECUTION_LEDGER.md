@@ -229,3 +229,15 @@ Addendum 2 (step-D tuning on 18 legacy tasks; car and regression wine in confirm
   attempt logs. The three transfer configs already running from `ba1c02f` still use the unlocked append.
   They are audited the same way when they finish. QSAR's confirmation will run from a commit that includes
   the lock: an I/O-only difference, recorded by fingerprint per task in the report.
+- **Transfer batch (2026-10-19).** Diamonds, physiochemical protein and superconductivity: 30/30 jobs exit 0
+  (`logs/.../confirm_final_20261013/progress_transfer3_20261019.json`). The audit found every row present and
+  rebuilt exactly; all three tasks carry fingerprint `c614a768d682`
+  (`results/t1/p6_confirmation_revision/confirm_audit_transfer3_20261019.json`).
+- **QSAR-TID-11.** The prefill finished the 64 screen and 6 refit trials (four workers, memory-bound: raw 1,024-feature
+  candidates take about 12 GB each). It wrote `shortlist.json` and then `selection.json` (`1ce3c044643535ae`:
+  raw, k 10, four glocal sets) before any evaluation trial. `tools/t1_freeze.py` left the 29 configs unchanged and
+  added QSAR's (`dc7657b`, record `freeze_transfer_qsar_20261019.json`). Its confirmation runs from pinned checkout
+  `dc7657b` (three workers). That checkout's `model/` equals `02ed62a`'s. In `tools/`, `t1_run.py` differs only
+  by the locked row append (same bytes) and `t1_parallel.py` only by keeping earlier attempt logs. The other
+  differences are tools that t1_run does not import. The grid's own QSAR evaluation runs with one worker, since
+  the pre-registered endpoints do not use it.
