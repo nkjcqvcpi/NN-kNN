@@ -241,3 +241,8 @@ Addendum 2 (step-D tuning on 18 legacy tasks; car and regression wine in confirm
   by the locked row append (same bytes) and `t1_parallel.py` only by keeping earlier attempt logs. The other
   differences are tools that t1_run does not import. The grid's own QSAR evaluation runs with one worker, since
   the pre-registered endpoints do not use it.
+  QSAR jobs need about 12 GB each, so at most four run at a time. At 04:40 the three-worker launch was stopped:
+  seeds 40–42 had been in core training for 33 minutes and had produced no run directory or row. The grid's
+  QSAR evaluation was paused, and the confirmation was relaunched with four workers. The stopped attempts' logs
+  are kept as `tabarena_363697__s4{0,1,2}.attempt1.log`. The grid evaluation resumes when confirmation slots
+  free up.
