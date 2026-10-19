@@ -28,7 +28,8 @@ receipt has exit code 0 (no ``[done]`` line for the run may differ). It refuses 
 changed within the settle window, since older runs append without the lock; it never rewrites
 or removes lines. Run manifests map each task (``<task_type>__<name>``) to its source
 fingerprints; ``--expect-fingerprint`` (task key or dataset key, glob allowed; a hex prefix of
-12+ digits) fails a task with any other fingerprint. Exits 1 when anything is missing,
+12+ digits) fails a task with any other fingerprint; a task is checked against its most specific
+pattern (exact task key, exact dataset key, then the first matching glob). Exits 1 when anything is missing,
 conflicting, malformed, crashed or unexpected, judged on a re-scan after ``--repair``. Identical
 duplicates (a bitwise-identical rerun) are reported but pass unless ``--fail-identical-duplicates``.
 """
@@ -340,16 +341,34 @@ def audit(root, *, logs=None, exclude=(), settle_seconds: float = 300.0, expect=
 
 
 def check_fingerprints(fingerprints: dict, expect) -> list[dict]:
-    """Each ``(pattern, fingerprint)``: tasks it matches (task key or dataset key) and their other fingerprints."""
+    """Each ``(pattern, fingerprint)``: the tasks it decides and their other fingerprints.
+
+    A task is decided by its most specific pattern, as in tools/t1_confirm_report.py: an exact task key, then
+    an exact dataset key, then the first matching glob. A pattern that matches tasks only where a more
+    specific one decides them lists those tasks as ``overridden``.
+    """
+    def decider(t, keys):
+        for exact in (lambda p: p == t, lambda p: p in keys):
+            for i, (pattern, _) in enumerate(expect):
+                if exact(pattern):
+                    return i
+        for i, (pattern, _) in enumerate(expect):
+            if _matches(t, [pattern]) or any(_matches(k, [pattern]) for k in keys):
+                return i
+        return None
+
+    decided = {t: decider(t, e["dataset_keys"]) for t, e in sorted(fingerprints.items())}
     out = []
-    for pattern, want in expect:
-        tasks = [t for t, e in sorted(fingerprints.items())
-                 if _matches(t, [pattern]) or any(_matches(k, [pattern]) for k in e["dataset_keys"])]
+    for i, (pattern, want) in enumerate(expect):
+        matched = [t for t, e in sorted(fingerprints.items())
+                   if _matches(t, [pattern]) or any(_matches(k, [pattern]) for k in e["dataset_keys"])]
+        tasks = [t for t in matched if decided[t] == i]
         other = {t: {fp: n for fp, n in fingerprints[t]["fingerprints"].items() if not fp.startswith(want)}
                  for t in tasks}
         other = {t: fps for t, fps in other.items() if fps}
-        out.append({"pattern": pattern, "fingerprint": want, "tasks": tasks, "other_fingerprints": other,
-                    "passed": bool(tasks) and not other})
+        out.append({"pattern": pattern, "fingerprint": want, "tasks": tasks,
+                    "overridden": [t for t in matched if decided[t] != i], "other_fingerprints": other,
+                    "passed": bool(matched) and not other})
     return out
 
 
@@ -378,7 +397,7 @@ def problems(report: dict, fail_identical_duplicates: bool = False) -> list[str]
         if len(s["terminators"]) > 1:
             out.append(f"{s['path']}: mixed line terminators")
     for e in report["fingerprint_expectations"]:
-        if not e["tasks"]:
+        if not e["tasks"] and not e["overridden"]:
             out.append(f"--expect-fingerprint {e['pattern']} matched no task")
         for task, fps in e["other_fingerprints"].items():
             out.append(f"{task}: source fingerprints {', '.join(f'{fp[:12]} ({n})' for fp, n in fps.items())}"
@@ -527,7 +546,9 @@ def print_report(report: dict) -> None:
     for task, e in report["source_fingerprints"].items():
         print(f"  {task:<40} " + ", ".join(f"{fp[:12]} x{n}" for fp, n in e["fingerprints"].items()))
     for e in report["fingerprint_expectations"]:
-        print(f"expect {e['pattern']}={e['fingerprint'][:12]}: {len(e['tasks'])} tasks, {'pass' if e['passed'] else 'FAIL'}")
+        print(f"expect {e['pattern']}={e['fingerprint'][:12]}: {len(e['tasks'])} tasks"
+              + (f" ({len(e['overridden'])} decided by more specific patterns)" if e["overridden"] else "")
+              + f", {'pass' if e['passed'] else 'FAIL'}")
     if "repair" in report:
         for a in report["repair"]["appended"]:
             print(f"appended to {a['shard']}: {a['run_id']}")

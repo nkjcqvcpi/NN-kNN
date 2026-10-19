@@ -280,3 +280,21 @@ def test_repair_needs_proof_that_finish_completed(root):
                                " (crashed and not rerun, or files removed)"]
     settled = shard.read_bytes()
     assert repair(root, rep) == {"appended": [], "refused": []} and shard.read_bytes() == settled
+
+
+def test_fingerprint_expectation_uses_the_most_specific_pattern():
+    from tools.t1_confirm_audit import check_fingerprints
+    fps = {"regression__wine": {"dataset_keys": ["regression__wine"], "fingerprints": {"bbbb" * 4: 3}},
+           "classification__wine": {"dataset_keys": ["wine"], "fingerprints": {"aaaa" * 4: 5}},
+           "regression__yacht": {"dataset_keys": ["yacht"], "fingerprints": {"aaaa" * 4: 2}}}
+    for expect in ([("*", "aaaa" * 3), ("regression__wine", "bbbb" * 3)],
+                   [("regression__wine", "bbbb" * 3), ("*", "aaaa" * 3)]):
+        got = {e["pattern"]: e for e in check_fingerprints(fps, expect)}
+        assert got["*"]["tasks"] == ["classification__wine", "regression__yacht"] and got["*"]["passed"]
+        assert got["*"]["overridden"] == ["regression__wine"]
+        assert got["regression__wine"]["tasks"] == ["regression__wine"] and got["regression__wine"]["passed"]
+    # dataset key beats a glob; the glob alone would fail classification wine
+    got = check_fingerprints(fps, [("*wine", "bbbb" * 3), ("wine", "aaaa" * 3)])
+    assert [e["passed"] for e in got] == [True, True] and got[1]["tasks"] == ["classification__wine"]
+    got = check_fingerprints(fps, [("*", "bbbb" * 3)])
+    assert not got[0]["passed"] and sorted(got[0]["other_fingerprints"]) == ["classification__wine", "regression__yacht"]
