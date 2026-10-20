@@ -138,7 +138,8 @@ def run_maintenance(
                                    step=step, run_id=run_id, optimizer=optimizer,
                                    reg_bins=reg_bins, reference=reference)
     n_before = model.case_count()
-    ids = model.active_case_ids().detach().cpu().numpy()
+    # a copy: on CPU the array would view the case_ids buffer that compact_cases overwrites
+    ids = model.active_case_ids().detach().cpu().numpy().copy()
     cohorts = active_cohorts(model, reg_bins)
     biases = model.biases[:n_before].detach().cpu().numpy()
     scores = score_cases(ids, cohorts, biases, store, score_cfg)
@@ -185,7 +186,7 @@ def _sequential_removal(model, store, archive, K, cfg, score_cfg, *, step, run_i
                         optimizer, reg_bins, reference):
     """Recompute after each removal; enforce loss against the original memory."""
     from .candidates import removal_influence
-    from .retention import protection_requirements
+    from .retention import protection_requirements, tie_break_label, tie_keys
 
     if reference is None:
         raise ValueError("Removal needs designated maintenance reference queries")
@@ -198,6 +199,7 @@ def _sequential_removal(model, store, archive, K, cfg, score_cfg, *, step, run_i
     distances = case_case_distance(model).cpu().numpy() if cfg.boundary_protect_fraction > 0 else None
     protected, floors, reasons = protection_requirements(scores, cfg, distances)
     protected_ids = set(original_ids[protected].tolist())
+    tie_of = dict(zip(original_ids.tolist(), tie_keys(original_ids, cfg).tolist()))  # one draw per event
     cohorts_original = np.asarray(scores.cohorts)
     required = sum(max(floors[c], int(protected[cohorts_original == c].sum())) for c in floors)
     if min(K, n_before) < required:
@@ -223,7 +225,8 @@ def _sequential_removal(model, store, archive, K, cfg, score_cfg, *, step, run_i
             original_loss = result["baseline_loss"]
         values = result["cached"] if cfg.policy == "removal_cached" else result["full"]
         pool = np.flatnonzero(eligible)
-        j = int(pool[np.lexsort((ids[pool], values[pool]))[0]])
+        tie = np.array([tie_of[int(cid)] for cid in ids[pool]])
+        j = int(pool[np.lexsort((tie, values[pool]))[0]])
         cumulative = result["baseline_loss"] + float(result["full"][j]) - original_loss
         trace.append({"iteration": len(trace), "active_case_ids": ids.tolist(),
                       "scores": values.tolist(), "full_scores": result["full"].tolist(),
@@ -254,7 +257,7 @@ def _sequential_removal(model, store, archive, K, cfg, score_cfg, *, step, run_i
                   policy_version=f"{cfg.policy}/pi-20260920-v2", capacity_before=n_before,
                   capacity_after=len(final_ids), slot_after=final_ids.index(cid) if cid in final_ids else None,
                   restoration={"archive_key": cid} if ev["action"] == "archive" else None,
-                  tie_break="case_id_ascending")
+                  tie_break=tie_break_label(cfg))
         if ev["action"] == "keep":
             ev["reason_codes"] += ["kept_" + stop_reason]
     return {"summary": {"policy": cfg.policy, "n_before": n_before, "K": K,
