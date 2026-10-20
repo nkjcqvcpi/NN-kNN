@@ -178,6 +178,48 @@ def retention_cfg_for(cond: dict[str, Any], cfg: dict[str, Any], seed: int) -> R
     return RetentionConfig(**r)
 
 
+# Sync condition keys besides SyncConfig fields: the label, the core start, the
+# retrieval learning-rate scale and free-radius calibration (each merged over
+# ``sync``), and in-training maintenance (``sync_maintenance_for``).
+SYNC_RUNNER_KEYS = frozenset({"name", "core_pretrain", "retrieval_lr_scale", "s_task", "free_radius_method",
+                              "radius_aggregation", "bias_transform", "shrink_factor", "clipping_quantile"})
+SYNC_MAINTENANCE_KEYS = frozenset({"K", "maintenance_epochs"})
+
+
+def sync_maintenance_for(cond: dict[str, Any], cfg: dict[str, Any], seed: int):
+    """In-training maintenance of one sync condition: ``(retention, K spec, epochs)``.
+
+    For this condition only, its RetentionConfig fields (``policy``,
+    ``min_per_cohort``, ...) override ``retention``, ``K`` overrides the hook's
+    capacity (``capacity_match.K`` if set, else ``sync.K``, else 1.0) and
+    ``maintenance_epochs`` overrides ``sync.maintenance_epochs``, so one config
+    can compare policies on an ``_rrr`` schedule. Only ``_rrr`` schedules maintain
+    during training; on other schedules these keys would be inert yet recorded in
+    the row, so they raise. The post-hoc capacity match stays one protocol for every
+    condition. A key the runner does not read was once dropped silently; it raises.
+    """
+    retention_keys = set(RetentionConfig.__dataclass_fields__) - {"seed"}  # the run seed always wins
+    allowed = (set(SyncConfig.__dataclass_fields__) - {"seed"}) | retention_keys | SYNC_RUNNER_KEYS | SYNC_MAINTENANCE_KEYS
+    label = cond.get("name", cond.get("schedule"))
+    unknown = sorted(set(cond) - allowed)
+    if unknown:
+        raise ValueError(f"sync condition {label!r}: unknown key(s) {unknown}; a condition takes SyncConfig fields, "
+                         f"RetentionConfig fields, K, maintenance_epochs or {sorted(SYNC_RUNNER_KEYS)}")
+    schedule = str({**cfg["sync"], **cond}.get("schedule", ""))
+    own = set(cond) & (retention_keys | SYNC_MAINTENANCE_KEYS)
+    if own and "rrr" not in schedule:
+        raise ValueError(f"sync condition {label!r}: {sorted(own)} have no effect; schedule {schedule!r} "
+                         f"does not maintain during training")
+    capacity_match = cfg.get("capacity_match")
+    K = cond.get("K", capacity_match["K"] if capacity_match else cfg["sync"].get("K", 1.0))
+    epochs = set(cond.get("maintenance_epochs", cfg["sync"].get("maintenance_epochs", [])))
+    if "rrr" not in schedule:
+        return None, K, epochs
+    retention = retention_cfg_for(cond, cfg, seed)
+    retention.validate()  # a bad policy fails before any training, not at the first hook
+    return retention, K, epochs
+
+
 def test_metrics(model, data, prefix="test"):
     e = evaluate(model, data.X_test, data.y_test)
     out = {f"{prefix}_{k}": v for k, v in e.items() if not k.startswith(("pred", "prob"))}
@@ -622,6 +664,8 @@ class Runner:
         retrieval adapters (``reuse_conditions``) and synchronized schedules
         (``conditions``). Arms share splits, seeds, budgets and retrieval rules.
         """
+        for cond in self.cfg.get("conditions") or []:
+            sync_maintenance_for(cond, self.cfg, seed)  # refuse a bad condition before any training
         data = self.data_for(ds, seed)
         for arm in self.cfg["arms"]:
             base, cc, tr, tracker = self.observed_core(data, seed, **arm_core(arm))
@@ -854,6 +898,8 @@ class Runner:
                                          "maintenance_scoring_trace.json": res.get("scoring_trace", [])})
 
     def run_sync(self, ds, seed):
+        for cond in self.cfg["conditions"]:
+            sync_maintenance_for(cond, self.cfg, seed)  # refuse a bad condition before any training
         data = self.data_for(ds, seed)
         for arm in self.arms():
             base, cc, tr = self.trained_core(data, seed, **arm_core(arm))
@@ -865,6 +911,7 @@ class Runner:
         """One synchronized condition continuing ``base`` or, with ``core_pretrain: false``,
         training retrieval and reuse together from the untrained initialization."""
         fields = SyncConfig.__dataclass_fields__
+        rcfg, k_spec, m_epochs = sync_maintenance_for(cond, self.cfg, seed)
         merged = {**self.cfg["sync"], **cond}
         pretrained = bool(merged.get("core_pretrain", True))
         if pretrained:
@@ -898,16 +945,15 @@ class Runner:
         store, archive, events = CaseStatisticsStore(data.task_type), CaseArchive(), []
         capacity_match = self.cfg.get("capacity_match")
         capacity_spec = capacity_match["K"] if capacity_match else self.cfg["sync"].get("K", 1.0)
-        K = resolve_K(capacity_spec, model.case_count()) if "rrr" in sc.schedule else None
+        K = resolve_K(k_spec, model.case_count()) if "rrr" in sc.schedule else None
 
         def hook(ep, mdl, opt, adapter):
             audit(mdl, data, self.cfg, store, ep, adapter=adapter)
-            res = run_maintenance(mdl, store, archive, K, retention_cfg_for({}, self.cfg, seed), score_cfg_for(self.cfg), step=ep, run_id=cond["schedule"], optimizer=opt, reg_bins=data.reg_bins, reference=maintenance_reference(data, self.cfg, adapter))
+            res = run_maintenance(mdl, store, archive, K, rcfg, score_cfg_for(self.cfg), step=ep, run_id=cond["schedule"], optimizer=opt, reg_bins=data.reg_bins, reference=maintenance_reference(data, self.cfg, adapter))
             events.extend(res["events"])
             return res["summary"]
 
         recal = calibrate
-        m_epochs = set(self.cfg["sync"].get("maintenance_epochs", []))
         # A trained core continues its Adam state (see clone_optimizer); an
         # untrained one starts a fresh optimizer.
         ropt = clone_optimizer(tr.optimizer, model, cc) if pretrained else make_optimizer(model, cc)
@@ -979,6 +1025,10 @@ class Runner:
         selected_updates = {phase: sum(h["optimizer_updates"] for h in info["history"]
             if h["phase"] == phase and h["epoch"] <= info["best_epoch"]) for phase in ("retrieval", "adapter", "joint")}
         label = arm_label(arm, cond.get("name", cond["schedule"]) + (f"_matched_K{capacity_spec}" if capacity_match else ""))
+        maintenance = {"policy": (self.cfg["retention"]["policy"] if rcfg is None else rcfg.policy) if events else "none"}
+        if rcfg is not None:  # this condition's effective in-training settings (rows carry only its own keys)
+            maintenance["in_training"] = {"K": K, "K_spec": k_spec, "maintenance_epochs": sorted(m_epochs),
+                                          "retention": dict(rcfg.__dict__)}
         self.finish(ds=ds, seed=seed, cond_label=label, cond={**arm_fields(arm), **cond}, data=data, model=model, store=store, archive=archive, metrics=m, history={"core": tr.history if pretrained else [], "sync": info["history"]}, events=events,
                     components={"retrieve": "NN-kNN core", "reuse_or_adapter": sc.output_mode, "revise": "off", "retain": "checkpoint maintenance" if events else "none", "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": sc.schedule},
                     budgets={"case_capacity": model.case_count(), "sync_epochs_max": sc.epochs,
@@ -987,7 +1037,7 @@ class Runner:
                         "selected_optimizer_updates": selected_updates,
                         "training_retrieval_query_case_pairs": sum(h["retrieval_query_case_pairs"] for h in info["history"]),
                         "sync_elapsed_seconds_including_maintenance_and_validation": info["elapsed_seconds"],
-                        "posthoc_finetune_epochs": 0}, maintenance={"policy": self.cfg["retention"]["policy"] if events else "none"},
+                        "posthoc_finetune_epochs": 0}, maintenance=maintenance,
                     model_desc=model_desc,
                     prediction_adapter=adapter, optimizer=ropt,
                     binary_files=binary_files, extra_files=extra_files,
