@@ -2,6 +2,13 @@
 
 Q and B are alternatives. September 20 supersedes geometric trust and weighted
 Q/B mixtures. Dynamic removal is handled by maintenance.run_maintenance.
+
+Exact score ties are broken by ``RetentionConfig.tie_break``: ``case_id``
+(ascending stable ID, the frozen default) or ``seeded_random``. Synthetic case
+IDs follow class and truth group, so under ``case_id`` the many Q = 0.5 ties of
+unevidenced cases are decided by row order (review F3). The retrained-removal
+loops (retraining.py, adapted_retraining.py) seed only boundary protection here;
+their removal choice still ties by ascending case ID and records no tie_break.
 """
 
 from dataclasses import dataclass, field
@@ -13,6 +20,7 @@ POLICIES = ("full_memory", "random", "stratified", "bias_current",
             "provenance_only", "bias_normalized", "kcenter",
             "coverage_reachability", "removal_influence", "removal_cached")
 RETIRED_POLICIES = {"trust", "trust_utility", "trust_utility_coverage", "utility_redundancy"}
+TIE_BREAKS = ("case_id", "seeded_random")
 
 
 @dataclass
@@ -27,6 +35,7 @@ class RetentionConfig:
     allowed_loss_increase: float | None = None
     seed: int = 0
     notes: dict = field(default_factory=dict)
+    tie_break: str = "case_id"
 
     def validate(self):
         if self.policy in RETIRED_POLICIES:
@@ -43,6 +52,11 @@ class RetentionConfig:
                 raise ValueError("Removal needs an explicit finite cumulative loss-increase budget")
             if self.policy == "removal_cached" and self.cache_activation_threshold is None:
                 raise ValueError("Cached removal needs an explicit activation threshold")
+        if self.tie_break not in TIE_BREAKS:
+            raise ValueError(f"Unknown tie_break {self.tie_break!r}; choose from {TIE_BREAKS}")
+        bad_seed = isinstance(self.seed, bool) or not isinstance(self.seed, (int, np.integer)) or self.seed < 0
+        if self.tie_break == "seeded_random" and bad_seed:
+            raise ValueError("seeded_random tie-break needs a nonnegative integer seed")
 
 
 @dataclass
@@ -50,6 +64,25 @@ class SelectionResult:
     keep_slots: np.ndarray
     decisions: list
     summary: dict
+
+
+def tie_keys(case_ids, cfg):
+    """Secondary sort key for exact score ties, aligned with ``case_ids``.
+
+    ``case_id`` returns the IDs (ascending-ID order). ``seeded_random`` assigns a
+    ``default_rng(seed)`` permutation to the sorted IDs: deterministic per seed
+    and ID set, independent of row order and of how IDs were allocated.
+    """
+    ids = np.asarray(case_ids)
+    if cfg.tie_break == "case_id":
+        return ids
+    keys = np.empty(len(ids), dtype=np.int64)
+    keys[np.argsort(ids, kind="stable")] = np.random.default_rng(cfg.seed).permutation(len(ids))
+    return keys
+
+
+def tie_break_label(cfg):
+    return "case_id_ascending" if cfg.tie_break == "case_id" else f"seeded_random(seed={int(cfg.seed)})"
 
 
 def protection_requirements(scores, cfg, dist=None):
@@ -80,7 +113,7 @@ def protection_requirements(scores, cfg, dist=None):
             if other.any():
                 enemy[j] = dist[j, other].min()
         count = int(np.floor(cfg.boundary_protect_fraction * n))
-        for j in np.lexsort((scores.case_ids, enemy))[:count]:
+        for j in np.lexsort((tie_keys(scores.case_ids, cfg), enemy))[:count]:
             protected[j] = True
             reasons[j].append("protect_boundary")
     return protected, floors, reasons
@@ -116,11 +149,12 @@ def select_active_set(scores, K, cfg, dist):
     if required > K:
         raise ValueError(f"Capacity {K} cannot satisfy {required} protected/floor cases")
     ranking = candidate_rank(scores, cfg)
+    tie = tie_keys(scores.case_ids, cfg)
     chosen = protected.copy()
     for c, floor in floors.items():
         members = np.flatnonzero((cohorts == c) & ~chosen)
         need = max(0, floor - int(chosen[cohorts == c].sum()))
-        order = members[np.lexsort((scores.case_ids[members], -ranking[members]))]
+        order = members[np.lexsort((tie[members], -ranking[members]))]
         for j in order[:need]:
             chosen[j] = True
             reasons[j].append("keep_coverage_floor")
@@ -133,26 +167,26 @@ def select_active_set(scores, K, cfg, dist):
             counts[c] += 1
         for c, count in counts.items():
             members = pool[cohorts[pool] == c]
-            chosen[members[np.lexsort((scores.case_ids[members], -ranking[members]))][:count]] = True
+            chosen[members[np.lexsort((tie[members], -ranking[members]))][:count]] = True
     elif cfg.policy == "kcenter":
         if dist is None:
             raise ValueError("kcenter needs learned distances")
         while chosen.sum() < K:
             pool, kept = np.flatnonzero(~chosen), np.flatnonzero(chosen)
             d = dist[np.ix_(pool, kept)].min(1) if len(kept) else np.zeros(len(pool))
-            j = pool[np.lexsort((scores.case_ids[pool], -d))[0]]
+            j = pool[np.lexsort((tie[pool], -d))[0]]
             chosen[j] = True
     else:
         pool = np.flatnonzero(~chosen)
-        order = pool[np.lexsort((scores.case_ids[pool], -ranking[pool]))]
+        order = pool[np.lexsort((tie[pool], -ranking[pool]))]
         chosen[order[:K - int(chosen.sum())]] = True
-    decisions = []
+    decisions, label = [], tie_break_label(cfg)
     for j in range(n):
         d = scores.row(j)
         d.update(slot_before=j, action="keep" if chosen[j] else "archive",
                  protected=bool(protected[j]), policy_score=float(ranking[j]),
                  reason_codes=reasons[j] + (["keep_policy_rank"] if chosen[j] else ["evicted_by_capacity"]),
-                 tie_break="case_id_ascending")
+                 tie_break=label)
         decisions.append(d)
     return SelectionResult(np.flatnonzero(chosen), decisions,
                            dict(policy=cfg.policy, n_before=n, K=K, n_after=int(chosen.sum()),
