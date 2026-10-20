@@ -246,3 +246,9 @@ Addendum 2 (step-D tuning on 18 legacy tasks; car and regression wine in confirm
   QSAR evaluation was paused, and the confirmation was relaunched with four workers. The stopped attempts' logs
   are kept as `tabarena_363697__s4{0,1,2}.attempt1.log`. The grid evaluation resumes when confirmation slots
   free up.
+- **QSAR-TID-11 and the final report (2026-10-20).** QSAR's 10 confirmation jobs exit 0 (fingerprint `f43f59a46a49`,
+  commit `dc7657b`); its grid evaluation (seeds 40–49) completed and the grid's own run wrote the summaries (50/50
+  jobs). The audit of all 30 tasks is clean: 2,066 rows, every run directory has its row
+  (`confirm_audit_final_20261020.json`). `tools/t1_confirm_report.py` ran with the frozen prereg hash, all 30 tasks,
+  no `--allow-incomplete`, and per-task fingerprint expectations (26 tasks `3825a422c093`, three transfer tasks
+  `c614a768d682`, QSAR `f43f59a46a49`), writing `confirmation_report_20261020/`.
