@@ -1,0 +1,1100 @@
+{
+  "root": "results\\t1\\p6_confirmation_revision\\pi20260920\\confirm_final_20261013",
+  "logs": "logs/t1/p6_confirmation_revision/confirm_final_20261013",
+  "settle_seconds": 300.0,
+  "exclude": [],
+  "fail_identical_duplicates": false,
+  "run_dirs": 1890,
+  "rebuildable_run_dirs": 1890,
+  "rows": 1906,
+  "shards": {
+    "abalone": {
+      "path": "runs__abalone.jsonl",
+      "size": 106415,
+      "sha256": "0b4ef4400dd941b9a2aed262a4d30e27f1461ef7d9a2199e1422298b83fd5115",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 66,
+        "exact": 66,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "airfoil": {
+      "path": "runs__airfoil.jsonl",
+      "size": 83397,
+      "sha256": "eb0afa7fdc7b0a8503909ae4dcff5c656fd6b8ec062913a5a31675e7f34d8b9f",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 50,
+        "exact": 50,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "balance": {
+      "path": "runs__balance.jsonl",
+      "size": 84086,
+      "sha256": "2342a27ac5989ab2de2e3703b2fd51cb8288d6d9c734d6809b2db0cb02b0a723",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 50,
+        "exact": 50,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "body_fat": {
+      "path": "runs__body_fat.jsonl",
+      "size": 245115,
+      "sha256": "9e00d6c9724d7a07fbf2275e9007b721be4de68c508d13f9a708910dc0786827",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 150,
+        "exact": 150,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "breast_cancer": {
+      "path": "runs__breast_cancer.jsonl",
+      "size": 84526,
+      "sha256": "9ef1b5d002c6c5475b37ce58d0bbc5e2f34f6ef188f0826566482b7bfc88fe3e",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 50,
+        "exact": 50,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "car": {
+      "path": "runs__car.jsonl",
+      "size": 62247,
+      "sha256": "8c1aff18fcc3a3b76c0be6876d114a9abe2e3de83db479a6faa8d81ed06b6c10",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 40,
+        "exact": 40,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "diabets": {
+      "path": "runs__diabets.jsonl",
+      "size": 186181,
+      "sha256": "ad9e0ada0148fb5ff2ba9899681bab4be5126e38659cc4be2abd513165cf857e",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 120,
+        "exact": 120,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "digits": {
+      "path": "runs__digits.jsonl",
+      "size": 83080,
+      "sha256": "2e802abc05905ac7398c8186a6ede497ee0398b39972d82a559c286e3ce9e2d8",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 50,
+        "exact": 50,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "energy_efficiency": {
+      "path": "runs__energy_efficiency.jsonl",
+      "size": 82456,
+      "sha256": "dcfceaaefd5101753881d77a6fce1982a3313da470ccd742d5f7f18caa0bc0b0",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 50,
+        "exact": 50,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "iris": {
+      "path": "runs__iris.jsonl",
+      "size": 243320,
+      "sha256": "5690f5e053cacc650df94463ba8029bd76caa184a70bf41016db80529390035d",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 150,
+        "exact": 150,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "regression__wine": {
+      "path": "runs__regression__wine.jsonl",
+      "size": 62689,
+      "sha256": "256ddba95ec0fe7c6fcd068c4da106dee9c9f55cc098863f00db1f92a7793a75",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 40,
+        "exact": 40,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "student_performance": {
+      "path": "runs__student_performance.jsonl",
+      "size": 83706,
+      "sha256": "43a68532137988d27c831d19f17c01b1fc350e284d34e60f50f3c4d7a66506d7",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 50,
+        "exact": 50,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "tabarena_363614": {
+      "path": "runs__tabarena_363614.jsonl",
+      "size": 85037,
+      "sha256": "dd3786833f64817b028716ba2de67f2cba9b51c5f2b3a4a2deafba6fa280b8ab",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 50,
+        "exact": 50,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "tabarena_363623": {
+      "path": "runs__tabarena_363623.jsonl",
+      "size": 64539,
+      "sha256": "01fdb65ad59d5a550c1980b95fa5a47af7c08438cd1e66b44b6775ab173e3bfa",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 40,
+        "exact": 40,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "tabarena_363625": {
+      "path": "runs__tabarena_363625.jsonl",
+      "size": 84209,
+      "sha256": "565fa818f049551f35b1fe376c58fb1177a4e66324153cbb33ab6a622680f194",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 50,
+        "exact": 50,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "tabarena_363626": {
+      "path": "runs__tabarena_363626.jsonl",
+      "size": 84473,
+      "sha256": "5168eced90387a4b7b7fcbe37530fad2c273d7aac91759b9660ea591d1463a72",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 50,
+        "exact": 50,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "tabarena_363675": {
+      "path": "runs__tabarena_363675.jsonl",
+      "size": 82676,
+      "sha256": "9a3f6e8230aee26da614664afbe77d3db9a10c6064acf2320fe5e3ea24876f9f",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 50,
+        "exact": 50,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "tabarena_363681": {
+      "path": "runs__tabarena_363681.jsonl",
+      "size": 64461,
+      "sha256": "68e2d8e3607140c9e00a77b30e7b48d0022b57c96e6d9512f435b266697d1072",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 40,
+        "exact": 40,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "tabarena_363686": {
+      "path": "runs__tabarena_363686.jsonl",
+      "size": 63636,
+      "sha256": "4cfe25d9924ce0f892d071d69381668541cdac953d849ac959e7532cbdb26428",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 40,
+        "exact": 40,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "tabarena_363702": {
+      "path": "runs__tabarena_363702.jsonl",
+      "size": 64426,
+      "sha256": "5cb25a5c175278f61ac2e2b08861cf74f165848cd0d506a16ed5350ea3f4222d",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 40,
+        "exact": 40,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "tabarena_363704": {
+      "path": "runs__tabarena_363704.jsonl",
+      "size": 64979,
+      "sha256": "355c5b3ef5a14613af6c6d2357bc2dad5a6f00ece0e61dee4432d9dc3f601b00",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 40,
+        "exact": 40,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "tabarena_363711": {
+      "path": "runs__tabarena_363711.jsonl",
+      "size": 64920,
+      "sha256": "65315df74ddedeabfcf45d997e38757aebf67151b2c5e6074007a9757f0177f6",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 40,
+        "exact": 40,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "wine": {
+      "path": "runs__wine.jsonl",
+      "size": 247148,
+      "sha256": "d44d0708834025763dcd6860df5ca618435bfc0b4137922a4c21bc45cbc5ce42",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 150,
+        "exact": 150,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "yacht": {
+      "path": "runs__yacht.jsonl",
+      "size": 243044,
+      "sha256": "47ded2cb82c763f776fa9d84556dc0ce00efb5110b23f7faa72bca5036b7c055",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": true,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 150,
+        "exact": 150,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "zebra": {
+      "path": "runs__zebra.jsonl",
+      "size": 237133,
+      "sha256": "c82b938d6a689826e8df2c8040c2aaa92935b374847da82c0ad4933e9eec5ec1",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 150,
+        "exact": 150,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    },
+    "zebra_special": {
+      "path": "runs__zebra_special.jsonl",
+      "size": 248950,
+      "sha256": "4fc45dfaf3e4a34e99e0eb566f021639c39f36e8c2a851dc7a192c2ec26f4d5d",
+      "terminators": [
+        "\r\n"
+      ],
+      "unterminated_tail": false,
+      "recent": false,
+      "blank_lines": [],
+      "malformed": [],
+      "misplaced": [],
+      "self_check": {
+        "rows": 150,
+        "exact": 150,
+        "passed": true,
+        "mismatches": []
+      },
+      "verified_fingerprints": [
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22"
+      ]
+    }
+  },
+  "missing_rows": [],
+  "pending_rows": [],
+  "incomplete_run_dirs": [],
+  "orphan_rows": [],
+  "duplicates": {
+    "identical": [
+      {
+        "run": [
+          "abalone",
+          "tuned__retrieval_only",
+          47
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 20
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 46
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__aggregate_regression_combined",
+          47
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 21
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 47
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__retrieval_only",
+          46
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 22
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 49
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__retrieval_only",
+          45
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 23
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 51
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__aggregate_regression_combined",
+          46
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 24
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 50
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__aggregate_regression_combined",
+          45
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 25
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 52
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__retrieval_only",
+          48
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 29
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 42
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__aggregate_regression_combined",
+          48
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 31
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 43
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__F",
+          45
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 32
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 55
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__F",
+          46
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 33
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 56
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__F",
+          47
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 34
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 53
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__retrieval_only",
+          49
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 35
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 44
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__aggregate_regression_combined",
+          49
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 36
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 45
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__F",
+          48
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 38
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 48
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__alternating_default_matched",
+          46
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 39
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 57
+          }
+        ]
+      },
+      {
+        "run": [
+          "abalone",
+          "tuned__alternating_default_matched",
+          45
+        ],
+        "lines": [
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 41
+          },
+          {
+            "shard": "runs__abalone.jsonl",
+            "line": 59
+          }
+        ]
+      }
+    ],
+    "conflicting": []
+  },
+  "rebuild_errors": [],
+  "source_fingerprints": {
+    "classification__balance": {
+      "dataset_keys": [
+        "balance"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 50
+      }
+    },
+    "classification__breast_cancer": {
+      "dataset_keys": [
+        "breast_cancer"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 50
+      }
+    },
+    "classification__digits": {
+      "dataset_keys": [
+        "digits"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 50
+      }
+    },
+    "classification__iris": {
+      "dataset_keys": [
+        "iris"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 150
+      }
+    },
+    "classification__tabarena_363614": {
+      "dataset_keys": [
+        "tabarena_363614"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 50
+      }
+    },
+    "classification__tabarena_363623": {
+      "dataset_keys": [
+        "tabarena_363623"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 40
+      }
+    },
+    "classification__tabarena_363626": {
+      "dataset_keys": [
+        "tabarena_363626"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 50
+      }
+    },
+    "classification__tabarena_363681": {
+      "dataset_keys": [
+        "tabarena_363681"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 40
+      }
+    },
+    "classification__tabarena_363702": {
+      "dataset_keys": [
+        "tabarena_363702"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 40
+      }
+    },
+    "classification__tabarena_363704": {
+      "dataset_keys": [
+        "tabarena_363704"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 40
+      }
+    },
+    "classification__tabarena_363711": {
+      "dataset_keys": [
+        "tabarena_363711"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 40
+      }
+    },
+    "classification__wine": {
+      "dataset_keys": [
+        "wine"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 150
+      }
+    },
+    "classification__zebra": {
+      "dataset_keys": [
+        "zebra"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 150
+      }
+    },
+    "classification__zebra_special": {
+      "dataset_keys": [
+        "zebra_special"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 150
+      }
+    },
+    "regression__abalone": {
+      "dataset_keys": [
+        "abalone"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 50
+      }
+    },
+    "regression__airfoil": {
+      "dataset_keys": [
+        "airfoil"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 50
+      }
+    },
+    "regression__body_fat": {
+      "dataset_keys": [
+        "body_fat"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 150
+      }
+    },
+    "regression__car": {
+      "dataset_keys": [
+        "car"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 40
+      }
+    },
+    "regression__diabets": {
+      "dataset_keys": [
+        "diabets"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 120
+      }
+    },
+    "regression__energy_efficiency": {
+      "dataset_keys": [
+        "energy_efficiency"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 50
+      }
+    },
+    "regression__student_performance": {
+      "dataset_keys": [
+        "student_performance"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 50
+      }
+    },
+    "regression__tabarena_363625": {
+      "dataset_keys": [
+        "tabarena_363625"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 50
+      }
+    },
+    "regression__tabarena_363675": {
+      "dataset_keys": [
+        "tabarena_363675"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 50
+      }
+    },
+    "regression__tabarena_363686": {
+      "dataset_keys": [
+        "tabarena_363686"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 40
+      }
+    },
+    "regression__wine": {
+      "dataset_keys": [
+        "regression__wine"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 40
+      }
+    },
+    "regression__yacht": {
+      "dataset_keys": [
+        "yacht"
+      ],
+      "fingerprints": {
+        "3825a422c0937e3b03f4fc42bf043eeb4cf9d4e52edd09139c3927a9a2616e22": 150
+      }
+    }
+  },
+  "source_changed_during_run": [],
+  "fingerprint_expectations": [],
+  "problems": [],
+  "ok": true,
+  "before_repair": {
+    "problems": [
+      "1 run directories without a row"
+    ]
+  },
+  "repair": {
+    "appended": [
+      {
+        "shard": "runs__yacht.jsonl",
+        "run": [
+          "yacht",
+          "tuned__alternating_default_matched",
+          64
+        ],
+        "run_id": "confirm_final_20261013-yacht-tuned__alternating_default_matched-s64-c7a5bd1b",
+        "line": "{\"run_id\": \"confirm_final_20261013-yacht-tuned__alternating_default_matched-s64-c7a5bd1b\", \"experiment\": \"confirm_final_20261013\", \"dataset\": \"yacht\", \"dataset_name\": \"yacht\", \"task_type\": \"regression\", \"seed\": 64, \"condition\": \"tuned__alternating_default_matched\", \"arm\": \"tuned\", \"name\": \"alternating_default_matched\", \"schedule\": \"alternating_rr\", \"test_n\": 62, \"test_correction_l1_mean\": 0.02550717070698738, \"test_improved_queries\": 26, \"test_worsened_queries\": 36, \"test_success_tolerance\": 0.5, \"test_loss_pre\": 0.00962431263178587, \"test_rmse_pre\": 0.09810358113639822, \"test_mae_pre\": 0.05492111295461655, \"test_success_rate_pre\": 1.0, \"test_loss_post\": 0.007364875171333551, \"test_rmse_post\": 0.08581885090895561, \"test_mae_post\": 0.0531352274119854, \"test_success_rate_post\": 1.0, \"test_L_post\": 0.007364875171333551, \"tau_task\": 0.4604896008968353, \"free_radius_status\": \"ok\", \"tau_task_final\": 0.4604896008968353, \"n_cases\": 184, \"val_n\": 62, \"val_correction_l1_mean\": 0.02772277221083641, \"val_improved_queries\": 29, \"val_worsened_queries\": 33, \"val_success_tolerance\": 0.5, \"val_loss_pre\": 0.004026216454803944, \"val_rmse_pre\": 0.06345247398489631, \"val_mae_pre\": 0.04214320704340935, \"val_success_rate_pre\": 1.0, \"val_loss_post\": 0.00337479030713439, \"val_rmse_post\": 0.05809294541624129, \"val_mae_post\": 0.03923408314585686, \"val_success_rate_post\": 1.0, \"val_L_post\": 0.00337479030713439, \"best_val_L_post\": 0.00337479030713439, \"sync_best_epoch\": 24, \"best_val_err\": 0.05809294432401657, \"sync_val_L_pre_epoch0\": 0.0047179716639220715, \"sync_val_err_pre_epoch0\": 0.06868749111890793, \"sync_guard_rejected_epochs\": 0, \"sync_no_eligible_checkpoint\": false, \"test_locality_input\": 2.7517874313618433, \"mean_representation_drift\": 0.0, \"mean_neighborhood_churn\": 0.017741935483870958, \"mean_selection_churn\": 0.0}"
+      }
+    ],
+    "refused": []
+  }
+}

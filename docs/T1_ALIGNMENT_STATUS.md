@@ -61,7 +61,7 @@ adapted/larger retraining comparisons, intervention extensions/UI, regression sy
 modern/legacy benchmark reconstruction, external MCB source, general-score
 derivations, RL Stage A integration and T3 host integration.
 
-Old `results/t1/` artifacts are not overwritten. New verified runs are under
+Old pilot artifacts (`results/t1/<phase>/pilot_20260929/`) are not overwritten. New verified runs are under
 `results/t1_pi20260920/verification_20261002/`. The initial alignment changes are
 committed as `77ccd50`. Continuation work is committed by verified part; no push
 has been made.

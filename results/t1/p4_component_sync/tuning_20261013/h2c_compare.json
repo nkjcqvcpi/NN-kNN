@@ -1,0 +1,51 @@
+{
+  "comparison": "classification pool at kappa 10 (H2c) vs kappa 1; err/pertask with per-task feasibility 1.02; held-out log ratio vs the kappa-1 alternating default",
+  "kappa1": {
+    "mean_log_ratio": -0.17244499276925507,
+    "gmr": 0.8416045818759662,
+    "n_cells": 54
+  },
+  "kappa10": {
+    "mean_log_ratio": -0.1955478067573411,
+    "gmr": 0.8223840271107685,
+    "n_cells": 54
+  },
+  "kappa10_vs_kappa1": {
+    "mean_difference": -0.023102813988086054,
+    "se_cells": 0.061353635094208506,
+    "se_task_clustered": 0.0355390317044219,
+    "z_task_clustered": -0.6500687520198113,
+    "tasks_better": 5,
+    "tasks_worse": 3,
+    "n_cells": 54,
+    "n_tasks": 9,
+    "adopt": false
+  },
+  "rule": "adopt kappa 10 iff mean paired difference <= +1 task-clustered SE",
+  "adopt_kappa10": true,
+  "note": "iris seed 21 rerun after a native crash (0xC0000409); 7 overlapping rows reproduced bitwise",
+  "kappa1_selections": {
+    "balance": "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "breast_cancer": "tuned::frozen_reuse__combined",
+    "digits": "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "iris": "tuned::joint_separated_w5__w_post=0.25__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+    "tabarena_363614": "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "tabarena_363626": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.3",
+    "wine": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+    "zebra": "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+    "zebra_special": "tuned::alternating_b2__retrieval_lr_scale=1.0"
+  },
+  "kappa1_val_ece_post_of_selections_median_seeds22_25": 0.23936406812572386,
+  "kappa10_selections": {
+    "balance": "tuned::joint_summed_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10",
+    "breast_cancer": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003__kappa10",
+    "digits": "tuned::joint_separated_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10",
+    "iris": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003__kappa10",
+    "tabarena_363614": "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10",
+    "tabarena_363626": "tuned::joint_separated_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.003__kappa10",
+    "wine": "tuned::joint_summed_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10",
+    "zebra": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003__kappa10",
+    "zebra_special": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.3__kappa10"
+  },
+  "kappa10_val_ece_post_of_selections_median_seeds22_25": 0.012387700990075245
+}

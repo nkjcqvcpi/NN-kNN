@@ -1,0 +1,28 @@
+# Batch-64 rerun with the HPO grid's training settings; the batch-32 run is ema_tuned_mlp_20261012.yaml.
+# EMA check where an encoder is the validation-selected representation.
+# The default-setting ablation (ema_ablation_20261010) found raw features best on
+# most tasks, so an encoder-favoring test is still needed: here every task is one
+# where the full-study HPO grid chose the MLP encoder, and each arm starts from
+# that tuned core (no embedding normalization, as tuned). Arms differ only in
+# whether stored cases use an EMA copy of the encoder.
+base: schedule_search_tuned_bs64_20261012.yaml
+experiment: ema_tuned_mlp_bs64_20261012
+status: exploratory_pilot
+seeds: [30, 31, 32, 33, 34]
+arms:
+  - {name: shared, mcb_enabled: false}
+  - {name: ema090, mcb_enabled: true, mcb_momentum: 0.9}
+  - {name: ema099, mcb_enabled: true, mcb_momentum: 0.99}
+reuse_conditions:
+  - {output_mode: nominal_residual_scores, loss: combined}
+conditions:
+  - {name: alternating_default, schedule: alternating_rr}
+  - {name: joint_summed_w5, schedule: joint_rr, joint_objective: summed, adapter_warmup_epochs: 5, retrieval_lr_scale: 1.0}
+condition_grid: []
+datasets:
+  - {name: balance, task_type: classification}
+  - {name: wine, task_type: classification}
+  - {name: tabarena_363614, task_type: classification, display: anneal}
+  - {name: abalone, task_type: regression, max_train: 1500}
+  - {name: airfoil, task_type: regression}
+  - {name: tabarena_363625, task_type: regression, display: concrete_compressive_strength}

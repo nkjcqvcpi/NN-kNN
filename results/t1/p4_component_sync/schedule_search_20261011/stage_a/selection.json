@@ -1,0 +1,189 @@
+{
+  "rule": "per task: mean validation error (1-accuracy_post or rmse_post), then mean validation post-adaptation loss, then name; global: mean per-task rank, then tasks won, then name",
+  "test_stream_used": false,
+  "development_seeds": [
+    20,
+    21
+  ],
+  "seeds_per_condition": 2,
+  "global_winner": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=1.0",
+  "global_ranking": [
+    {
+      "condition": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=1.0",
+      "mean_rank": 9.625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.3",
+      "mean_rank": 10.4375,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=0.1",
+      "mean_rank": 10.5,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=0.3",
+      "mean_rank": 10.6875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+      "mean_rank": 10.8125,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=1.0",
+      "mean_rank": 10.9375,
+      "tasks_won": 3
+    },
+    {
+      "condition": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.1",
+      "mean_rank": 11.125,
+      "tasks_won": 2
+    },
+    {
+      "condition": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=0.1",
+      "mean_rank": 11.3125,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=0.3",
+      "mean_rank": 11.5625,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::frozen_reuse__combined",
+      "mean_rank": 12.0625,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint_scratch__joint_objective=separated",
+      "mean_rank": 12.625,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::alternating__block_epochs=1__retrieval_lr_scale=0.1",
+      "mean_rank": 13.375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_scratch__joint_objective=summed",
+      "mean_rank": 13.8125,
+      "tasks_won": 2
+    },
+    {
+      "condition": "tuned::alternating_default",
+      "mean_rank": 14.25,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+      "mean_rank": 14.625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=0.1",
+      "mean_rank": 14.6875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0",
+      "mean_rank": 14.875,
+      "tasks_won": 2
+    },
+    {
+      "condition": "tuned::alternating__block_epochs=1__retrieval_lr_scale=0.3",
+      "mean_rank": 15.0625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::alternating__block_epochs=1__retrieval_lr_scale=1.0",
+      "mean_rank": 15.375,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::alternating_b2__retrieval_lr_scale=1.0",
+      "mean_rank": 15.375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::sequential__retrieval_lr_scale=0.1",
+      "mean_rank": 15.9375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::alternating_b2__retrieval_lr_scale=0.3",
+      "mean_rank": 16.6875,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::alternating__block_epochs=5__retrieval_lr_scale=0.1",
+      "mean_rank": 17.0625,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::sequential__retrieval_lr_scale=0.3",
+      "mean_rank": 17.1875,
+      "tasks_won": 1
+    },
+    {
+      "condition": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=0.3",
+      "mean_rank": 17.9375,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::alternating__block_epochs=5__retrieval_lr_scale=0.3",
+      "mean_rank": 18.25,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::sequential__retrieval_lr_scale=1.0",
+      "mean_rank": 21.8125,
+      "tasks_won": 0
+    }
+  ],
+  "per_task_winner": {
+    "abalone": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=0.1",
+    "airfoil": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=1.0",
+    "balance": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=1.0",
+    "breast_cancer": "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0",
+    "digits": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=0.3",
+    "energy_efficiency": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.1",
+    "iris": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.1",
+    "student_performance": "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0",
+    "tabarena_363614": "tuned::frozen_reuse__combined",
+    "tabarena_363625": "tuned::joint_scratch__joint_objective=summed",
+    "tabarena_363626": "tuned::alternating__block_epochs=1__retrieval_lr_scale=1.0",
+    "tabarena_363675": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.3",
+    "wine": "tuned::sequential__retrieval_lr_scale=0.3",
+    "yacht": "tuned::joint_scratch__joint_objective=separated",
+    "zebra": "tuned::joint_scratch__joint_objective=summed",
+    "zebra_special": "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=1.0"
+  },
+  "finalists": [
+    "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=1.0",
+    "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.3",
+    "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=0.1",
+    "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=0.3",
+    "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+    "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=0.1",
+    "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=1.0",
+    "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0",
+    "tuned::joint__joint_objective=separated__adapter_warmup_epochs=5__retrieval_lr_scale=0.3",
+    "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.1",
+    "tuned::frozen_reuse__combined",
+    "tuned::joint_scratch__joint_objective=summed",
+    "tuned::alternating__block_epochs=1__retrieval_lr_scale=1.0",
+    "tuned::sequential__retrieval_lr_scale=0.3",
+    "tuned::joint_scratch__joint_objective=separated",
+    "tuned::alternating_default",
+    "tuned::sequential__retrieval_lr_scale=0.1"
+  ],
+  "references": [
+    "tuned::alternating_default",
+    "tuned::frozen_reuse__combined",
+    "tuned::sequential__retrieval_lr_scale=0.1"
+  ]
+}

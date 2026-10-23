@@ -1,0 +1,300 @@
+{
+  "rule": "per task: mean validation error, then validation loss; per-task pre-adaptation feasibility 1.02; development seeds [20, 21, 22, 23, 24, 25]",
+  "global_rule": "best mean per-task rank over schedules present on every tuned task, every-task feasibility",
+  "F_global": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+  "F_global_top5": [
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "mean_rank": 2.9444444444444446,
+      "tasks_won": 6
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 3.2222222222222223,
+      "tasks_won": 3
+    },
+    {
+      "condition": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 3.388888888888889,
+      "tasks_won": 0
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 3.888888888888889,
+      "tasks_won": 3
+    },
+    {
+      "condition": "tuned::joint_separated_w5__w_post=0.25__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+      "mean_rank": 4.555555555555555,
+      "tasks_won": 1
+    }
+  ],
+  "F_global_excluded_by_feasibility": [
+    "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0",
+    "tuned::alternating_b2__retrieval_lr_scale=1.0",
+    "tuned::alternating_default",
+    "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=0.3",
+    "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+    "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+    "tuned::joint_separated_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "tuned::joint_summed_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+    "tuned::sequential__retrieval_lr_scale=0.1"
+  ],
+  "per_task": {
+    "classification__iris": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003__kappa10",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "classification__wine": {
+      "F": "tuned::joint_summed_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "classification__breast_cancer": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003__kappa10",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "classification__balance": {
+      "F": "tuned::joint_summed_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "classification__digits": {
+      "F": "tuned::joint_separated_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "classification__zebra": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003__kappa10",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "classification__zebra_special": {
+      "F": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=5__retrieval_lr_scale=0.3__kappa10",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "classification__tabarena_363614": {
+      "F": "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "classification__tabarena_363626": {
+      "F": "tuned::joint_separated_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.003__kappa10",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "regression__energy_efficiency": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "regression__yacht": {
+      "F": "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "regression__airfoil": {
+      "F": "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "regression__student_performance": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "regression__tabarena_363625": {
+      "F": "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "regression__tabarena_363675": {
+      "F": "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "regression__abalone": {
+      "F": "tuned::joint_summed_w5__w_post=1.0__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "regression__body_fat": {
+      "F": "tuned::joint_separated_w5__w_post=0.5__w_near=0.0__v_small=0.0__adapter_lr=0.003",
+      "F_is_frozen_reuse": false,
+      "group": "legacy_tuned"
+    },
+    "regression__diabets": {
+      "F": "tuned::frozen_reuse__combined",
+      "F_is_frozen_reuse": true,
+      "group": "legacy_tuned"
+    },
+    "regression__car": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "group": "legacy_untuned_global"
+    },
+    "regression__wine": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "group": "legacy_untuned_global"
+    },
+    "classification__tabarena_363702": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "group": "transfer"
+    },
+    "classification__tabarena_363704": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "group": "transfer"
+    },
+    "classification__tabarena_363681": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "group": "transfer"
+    },
+    "classification__tabarena_363623": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "group": "transfer"
+    },
+    "classification__tabarena_363711": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "group": "transfer"
+    },
+    "regression__tabarena_363705": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "group": "transfer"
+    },
+    "regression__tabarena_363686": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "group": "transfer"
+    },
+    "regression__tabarena_363631": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "group": "transfer"
+    },
+    "regression__tabarena_363693": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "group": "transfer"
+    },
+    "regression__tabarena_363697": {
+      "F": "tuned::joint_summed_w5__w_post=0.5__w_near=0.0__v_small=0.1__adapter_lr=0.003",
+      "group": "transfer",
+      "pending": "no NN-kNN selection yet"
+    }
+  },
+  "classification_excluded": {
+    "breast_cancer": [
+      "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0__kappa10",
+      "tuned::alternating_b2__retrieval_lr_scale=1.0__kappa10",
+      "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=1.0__kappa10",
+      "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10",
+      "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10"
+    ],
+    "digits": [
+      "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0__kappa10",
+      "tuned::alternating_b2__retrieval_lr_scale=1.0__kappa10",
+      "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=1.0__kappa10",
+      "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=1.0__kappa10",
+      "tuned::joint_summed_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10"
+    ],
+    "iris": [
+      "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0__kappa10",
+      "tuned::alternating_b2__retrieval_lr_scale=1.0__kappa10",
+      "tuned::sequential__retrieval_lr_scale=0.1__kappa10"
+    ],
+    "tabarena_363626": [
+      "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0__kappa10"
+    ],
+    "wine": [
+      "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0__kappa10",
+      "tuned::joint_separated_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10",
+      "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.003__kappa10"
+    ]
+  },
+  "regression_excluded": {
+    "abalone": [
+      "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0",
+      "tuned::alternating_b2__retrieval_lr_scale=1.0",
+      "tuned::alternating_default",
+      "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=0.3",
+      "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+      "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+      "tuned::joint_separated_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "tuned::joint_summed_w5__w_post=0.25__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003"
+    ],
+    "energy_efficiency": [
+      "tuned::alternating__block_epochs=5__retrieval_lr_scale=1.0",
+      "tuned::alternating_b2__retrieval_lr_scale=1.0",
+      "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=0.3",
+      "tuned::joint__joint_objective=separated__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+      "tuned::joint__joint_objective=summed__adapter_warmup_epochs=0__retrieval_lr_scale=1.0",
+      "tuned::joint_summed_w5__w_post=1.0__w_near=0.1__v_small=0.0__adapter_lr=0.003"
+    ],
+    "tabarena_363675": [
+      "tuned::joint_separated_w5__w_post=0.5__w_near=0.1__v_small=0.0__adapter_lr=0.003",
+      "tuned::sequential__retrieval_lr_scale=0.1"
+    ],
+    "diabets": [
+      "tuned::sequential__retrieval_lr_scale=0.1"
+    ],
+    "student_performance": [
+      "tuned::sequential__retrieval_lr_scale=0.1"
+    ],
+    "tabarena_363625": [
+      "tuned::sequential__retrieval_lr_scale=0.1"
+    ],
+    "yacht": [
+      "tuned::sequential__retrieval_lr_scale=0.1"
+    ]
+  },
+  "configs": {
+    "configs\\t1\\confirm_final_20261013\\classification__iris.yaml": "7994eec5310fc2d0e699f7605078ebdcf6a004ade9132e631b9dd06e4e294de3",
+    "configs\\t1\\confirm_final_20261013\\classification__wine.yaml": "cd8ce58705a94c542bb94eaab2c56099dc0710c417eaa2fd0b79379781a38c04",
+    "configs\\t1\\confirm_final_20261013\\classification__breast_cancer.yaml": "dc75de33579cf0f91f739caa775ca2819963d15db9d6267785e5d623169e91f9",
+    "configs\\t1\\confirm_final_20261013\\classification__balance.yaml": "47f03067d1d8d758e4aaa8ba7756f94b18b783699877ae82906fec3193439aca",
+    "configs\\t1\\confirm_final_20261013\\classification__digits.yaml": "15e7ff9696cadcf58f873ada0997dc77664879a5a406e448e947ed5f885e19d8",
+    "configs\\t1\\confirm_final_20261013\\classification__zebra.yaml": "9129b673eb18126d18ea4eb2e337a8c1d977e65c7c2549b8f31bd047da3a7750",
+    "configs\\t1\\confirm_final_20261013\\classification__zebra_special.yaml": "415aaded9674db4bc722161066ea069059976fcd633282a17d15b7f7dfedf7b4",
+    "configs\\t1\\confirm_final_20261013\\classification__tabarena_363614.yaml": "0a0be96cef6e1aba388060cc23152dfb50b7420bee3e7a79e56851f0a55f2883",
+    "configs\\t1\\confirm_final_20261013\\classification__tabarena_363626.yaml": "2fcb94dfc36399b9c6da300ae8b63f95e0c29eb2c9f7c3f414ab50942ad2fa0a",
+    "configs\\t1\\confirm_final_20261013\\regression__energy_efficiency.yaml": "e62420ec2999447e9acb8f1c5386be415432d3c6dc5c51c9688003696b7befce",
+    "configs\\t1\\confirm_final_20261013\\regression__yacht.yaml": "ad7d7d0558c430f4c41ee18787dac5ebbb3262f6fa844e5995f28d1aab509039",
+    "configs\\t1\\confirm_final_20261013\\regression__airfoil.yaml": "3f9d687854853ef631788130208d0ac8df2a460ef48fed312eea15c7a8c22317",
+    "configs\\t1\\confirm_final_20261013\\regression__student_performance.yaml": "77a72851f12604c7395c6188880f590ace80fd1845350ceb05c1421465a2b91d",
+    "configs\\t1\\confirm_final_20261013\\regression__tabarena_363625.yaml": "e1a83480838d6da16a3b37b1c8d6c789794dfe3bf6839f1ae54bb7c2d6f4d404",
+    "configs\\t1\\confirm_final_20261013\\regression__tabarena_363675.yaml": "8ab51dbd04a54b7daadb04a74d2903e1a41f661e3285ade56c67eb546f5ec82d",
+    "configs\\t1\\confirm_final_20261013\\regression__abalone.yaml": "0156dbc88e630944efef2fdc5db84423140950818bc8d12e076b512b88fdb379",
+    "configs\\t1\\confirm_final_20261013\\regression__body_fat.yaml": "4086471663ea0e06a70d03711cfdcea907546336bd0c9928b8773c4cd76a780d",
+    "configs\\t1\\confirm_final_20261013\\regression__diabets.yaml": "9f2ecfe5da07633036e60949ed3f8e59c04fdcb853fa4b7f93d11743917365f4",
+    "configs\\t1\\confirm_final_20261013\\regression__car.yaml": "3d7987b28950405bb9b3638c37d05fbf6d6ee14e6c56e7975fc8110f3626ed02",
+    "configs\\t1\\confirm_final_20261013\\regression__wine.yaml": "3a4eaf3215a4b44bcd8c144b46a0f5db8f19dfbff9d557ad32320c0d86c9f615",
+    "configs\\t1\\confirm_final_20261013\\classification__tabarena_363702.yaml": "c7e90b4b79c5270513b87cd6ca658518d9223d101dfa404f1748ebb50647244c",
+    "configs\\t1\\confirm_final_20261013\\classification__tabarena_363704.yaml": "a39be9104a4115dbc3cc2e3b002a1a19c65bffa08045584bea9f3d1e0ff3044f",
+    "configs\\t1\\confirm_final_20261013\\classification__tabarena_363681.yaml": "889c7ffd975d0dd82a18013e3dfb8a8f52a66fed5653695892aca76c7575b5e6",
+    "configs\\t1\\confirm_final_20261013\\classification__tabarena_363623.yaml": "1f0ec25d24e69d05f1077a4387e84518b96eb8bd9c9d57e7be50e17b2ba3658b",
+    "configs\\t1\\confirm_final_20261013\\classification__tabarena_363711.yaml": "48216f994e76e5d628fc9407cf9c8dc530314888fef0e3d6edffcfbc0c08a46b",
+    "configs\\t1\\confirm_final_20261013\\regression__tabarena_363705.yaml": "0fdaf0aed0b539a295f618495c401fd0bf5919dd3dd7d236f7568d46d5fb9157",
+    "configs\\t1\\confirm_final_20261013\\regression__tabarena_363686.yaml": "df47585cc1679057e05f695d42c50fef4478a80752d8aeee6c0cb9a3a80e4482",
+    "configs\\t1\\confirm_final_20261013\\regression__tabarena_363631.yaml": "f7b7ec3708fda7d3a1d7d09bd3c158f290baec4f3e7d10f8edee19dff9578415",
+    "configs\\t1\\confirm_final_20261013\\regression__tabarena_363693.yaml": "8cba7f90b3ebb03190f07244586b13c418ecaab836d747a299c7ac20c726b69e"
+  },
+  "code_head": "a0912179b157a74cc634d327d6337016c6a9a446",
+  "test_stream_used": false,
+  "final_id": "tuned::F",
+  "final_map": {
+    "regression__diabets": "tuned::frozen_reuse__combined"
+  },
+  "pools": {
+    "classification": [
+      "results/t1/p4_component_sync/pi20260920/tuning_h2c_20261013"
+    ],
+    "regression": [
+      "results/t1/p4_component_sync/pi20260920/tuning_h6_20261013",
+      "results/t1/p4_component_sync/pi20260920/schedule_search_bs64_20261012",
+      "results/t1/p4_component_sync/pi20260920/schedule_search_b_bs64_20261012"
+    ]
+  }
+}

@@ -63,7 +63,7 @@ None of the `results/t1` pilots include the `6adeb30` fix.
 **Common protocol for Phase B pilots.** Train/val/test 60/20/20. One core per (dataset, seed). Seeds 0–4, except P1-S and T1.2, which use seeds 0–9 (`synthetic_diag` uses 5 seeds in P2/P4/P5). The core trains for ≤300 epochs with patience 40, followed by a 30-epoch post-selection fine-tune. PILOT values in `configs/t1/_base.yaml`: s=1.0, α=0.5, evidence R≥2 and A≥0.1, coverage floor 2 per cohort, weights trust 1.0 and utility/redundancy/coverage 0.5. All Phase B results are exploratory pilots and **historical under the later PI alignment**.
 
 #### 1.3.1 P0: legacy reference
-*Tests:* the maintained legacy `train_model` on the T1 splits, as Gate 1 context. *Setup:* 12 datasets, 5 seeds. Source: `results/t1/p0_legacy_reference/runs__*.jsonl` (computed for this report).
+*Tests:* the maintained legacy `train_model` on the T1 splits, as Gate 1 context. *Setup:* 12 datasets, 5 seeds. Source: `results/t1/p0_reproduce_instrument/pilot_20260929/p0_legacy_reference/runs__*.jsonl` (computed for this report).
 
 | dataset | task | n | acc | ECE | RMSE | MAE | n_cases |
 |---|---|---|---|---|---|---|---|
@@ -83,7 +83,7 @@ None of the `results/t1` pilots include the `6adeb30` fix.
 *Caveat:* zebra and zebra_special are near chance, which matches the HANDOFF note that Zebra (a)/(b) are the immediate debugging priority. Regression errors are presumably on the standardized target scale; the source does not say.
 
 #### 1.3.2 P1-C: retention on classification (Gate 2)
-*Tests:* whether any retention policy beats random or current bias pruning at matched K, and how close it gets to full memory. *Setup:* 7 datasets × 11 policies × K ∈ {0.2, 0.33, 0.5, 0.75}, 5 seeds; continued optimizer (after `ec6323a`). Source: `results/t1/p1_retention_classification/runs__*.jsonl` (computed for this report).
+*Tests:* whether any retention policy beats random or current bias pruning at matched K, and how close it gets to full memory. *Setup:* 7 datasets × 11 policies × K ∈ {0.2, 0.33, 0.5, 0.75}, 5 seeds; continued optimizer (after `ec6323a`). Source: `results/t1/p1_supervised_retention/pilot_20260929/p1_retention_classification/runs__*.jsonl` (computed for this report).
 
 **After the 30-epoch fine-tune** (`test_accuracy_pre`):
 
@@ -188,7 +188,7 @@ K=0.75
 *Observations (this report; there is no author conclusion):* fine-tuning lowered accuracy by more than 0.1 in 230 of 1,400 non-full-memory runs (16.4%). By dataset: balance 10.5%, breast_cancer 21%, digits 74.5%, iris 0.5%, wine 0%, zebra 7.5%, zebra_special 1%. After fine-tune on digits at K ≥ 0.33, every policy is about 0.10, except bias_current at K=0.33 (0.2800 ± 0.3871, because some seeds did not collapse). Without fine-tune the same digits cells are 0.93–0.98. This is the failure that `6adeb30` targets, and that fix is not rerun. Without fine-tune, the policies stay within a few points of random and full memory on most datasets.
 
 #### 1.3.3 P1-R: retention on regression
-*Tests:* the same question for regression, scored by `test_rmse_pre` (lower is better). *Setup:* 5 datasets × 11 policies × K ∈ {0.2, 0.5}, 5 seeds. Source: `results/t1/p1_retention_regression/runs__*.jsonl` (computed for this report).
+*Tests:* the same question for regression, scored by `test_rmse_pre` (lower is better). *Setup:* 5 datasets × 11 policies × K ∈ {0.2, 0.5}, 5 seeds. Source: `results/t1/p1_supervised_retention/pilot_20260929/p1_retention_regression/runs__*.jsonl` (computed for this report).
 
 K=0.2, after fine-tune
 
@@ -233,7 +233,7 @@ K=0.5, no fine-tune
 *Observations:* without fine-tune, the evidence-based policies beat random, stratified and kcenter on airfoil, energy_efficiency and yacht, but none beats full memory except at near-tie level. Fine-tuning degrades K=0.5 badly on abalone and airfoil. Full memory also changes under fine-tune (abalone 0.7543 vs 0.7269 at K=0.2), so the "K" label on full_memory only names the paired condition.
 
 #### 1.3.4 P1-S: retention on `synthetic_diag`
-*Tests:* whether retention keeps clean and rare cases and drops corrupted and duplicate ones, using ground truth. *Setup:* `synthetic_diag` (15% label corruption, 60 duplicates, a 12-case rare cluster, a shifted test group), K ∈ {0.3, 0.5}, 10 seeds. Source: `results/t1/p1_retention_synthetic/runs__synthetic_diag.jsonl` (computed for this report).
+*Tests:* whether retention keeps clean and rare cases and drops corrupted and duplicate ones, using ground truth. *Setup:* `synthetic_diag` (15% label corruption, 60 duplicates, a 12-case rare cluster, a shifted test group), K ∈ {0.3, 0.5}, 10 seeds. Source: `results/t1/p1_supervised_retention/pilot_20260929/p1_retention_synthetic/runs__synthetic_diag.jsonl` (computed for this report).
 
 | condition | n | acc (after FT) | acc (no FT) | in_domain | shifted | rare | kept_corrupted | kept_duplicate | kept_rare | kept_clean |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -263,7 +263,7 @@ K=0.5, no fine-tune
 *Observations (this report):* fine-tuning lost more than 0.1 in 27 of 200 non-full-memory runs. The bias, trust and trust-utility policies discard the rare cluster entirely (kept_rare = 0; the one exception is trust_utility_K0.5 at 0.025) while keeping 39–71% of duplicates. provenance_only keeps about 0% of corrupted cases and most of the rare cluster.
 
 #### 1.3.5 P2: reuse adapter (Gate 3)
-*Tests:* whether the NN-CDH adapter improves accuracy without calibration damage or harmful flips. *Setup:* 8 datasets × {logit_residual, nominal_residual_scores} × {cls_only, combined, diff_only}, 5 seeds, with retrieval frozen. It ran **before `ec6323a`**, but because retrieval is frozen the optimizer fix should not matter here. Source: untracked `results/t1/p2_reuse/summary.csv` (pivot by this report).
+*Tests:* whether the NN-CDH adapter improves accuracy without calibration damage or harmful flips. *Setup:* 8 datasets × {logit_residual, nominal_residual_scores} × {cls_only, combined, diff_only}, 5 seeds, with retrieval frozen. It ran **before `ec6323a`**, but because retrieval is frozen the optimizer fix should not matter here. Source: untracked `results/t1/p2_classification_reuse/pilot_20260929/p2_reuse/summary.csv` (pivot by this report).
 
 | dataset | condition | acc_pre | acc_post | ece_pre | ece_post | net_flips | wrong→correct | correct→wrong | corr_L1 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -319,7 +319,7 @@ K=0.5, no fine-tune
 *Observations (this report):* only balance gains clearly (acc_post − acc_pre from +0.035 to +0.050). Nominal-residual modes raise ECE sharply, up to 0.7555 on digits. zebra loses up to 0.19 accuracy (nominal cls_only). Logit-residual leaves ECE roughly unchanged.
 
 #### 1.3.6 P4: synchronization (Gate 5)
-*Tests:* the independent, alternating_rr and alternating_rrr schedules for retrieval/reuse co-training under the free-correction radius. *Setup:* 8 datasets, 5 seeds, maintenance at epochs 40/80. `sync.K=0.5` applies only to the retain step, so only alternating_rrr compacts (iris n_cases 45). independent and alternating_rr run on full memory (iris n_cases 90). Runs came after `ec6323a` and before `6adeb30`. Source: `results/t1/p4_sync/runs__*.jsonl` (computed for this report).
+*Tests:* the independent, alternating_rr and alternating_rrr schedules for retrieval/reuse co-training under the free-correction radius. *Setup:* 8 datasets, 5 seeds, maintenance at epochs 40/80. `sync.K=0.5` applies only to the retain step, so only alternating_rrr compacts (iris n_cases 45). independent and alternating_rr run on full memory (iris n_cases 90). Runs came after `ec6323a` and before `6adeb30`. Source: `results/t1/p4_component_sync/pilot_20260929/p4_sync/runs__*.jsonl` (computed for this report).
 
 | dataset | schedule | acc_pre | acc_post | ece_post | net_flips | correct→wrong | corr_L1 | tau_task | radius_status |
 |---|---|---|---|---|---|---|---|---|---|
@@ -351,7 +351,7 @@ K=0.5, no fine-tune
 *Observations (this report):* ECE after adaptation is 0.09–0.61, far above the P2 logit-mode values. Only balance gains clearly (about +0.03 to +0.035), and zebra alternating_rr loses 0.23. On digits the free-radius calibration reports `empty_region` or `near_zero` for some seeds.
 
 #### 1.3.7 P5: MCB on/off (Gate 6)
-*Tests:* whether MCB (EMA memory encoder) changes representation, neighbourhood and selection stability, and at what accuracy cost. *Setup:* 4 datasets × MCB {0,1} × {random, trust_utility_coverage (tuc)}, K=0.5, maintenance at epochs 50/100/150, 5 seeds. It ran **before `ec6323a`**. The later plan changed the policy to provenance_only. Source: untracked `results/t1/p5_mcb/summary.csv`, `paired_vs_mcb0_random_K0.5.csv` and `paired_vs_mcb0_trust_utility_coverage_K0.5.csv`.
+*Tests:* whether MCB (EMA memory encoder) changes representation, neighbourhood and selection stability, and at what accuracy cost. *Setup:* 4 datasets × MCB {0,1} × {random, trust_utility_coverage (tuc)}, K=0.5, maintenance at epochs 50/100/150, 5 seeds. It ran **before `ec6323a`**. The later plan changed the policy to provenance_only. Source: untracked `results/t1/p5_mcb_interaction/pilot_20260929/p5_mcb/summary.csv`, `paired_vs_mcb0_random_K0.5.csv` and `paired_vs_mcb0_trust_utility_coverage_K0.5.csv`.
 
 | dataset | condition | test_acc | repr_drift | nbr_churn | sel_churn |
 |---|---|---|---|---|---|
@@ -406,7 +406,7 @@ Paired differences vs `mcb0_trust_utility_coverage_K0.5` (MCB-relevant rows; the
 *Observations (this report):* MCB lowers representation drift in all 5 seeds on all 4 datasets. Neighbourhood churn moves in mixed directions. On breast_cancer, MCB costs accuracy (mcb1_random −0.0193, p=0.040, 0/5 seeds better). The digits gain for MCB-on (+0.30 to +0.44) comes mainly from MCB-off runs collapsing (0.6328 ± 0.3270 and 0.5083 ± 0.3052), which is probably the fresh-Adam instability fixed in `ec6323a` (inferred, not verified).
 
 #### 1.3.8 T1.2: revise harness
-*Tests:* which flagging signal finds corrupted cases at a matched review budget, and accuracy at M0 (before correction), M1 (immediately after) and M2 (after retraining). *Setup:* `synthetic_diag`, simulated oracle reviewer, budgets b10–b75, 10 seeds; continued optimizer, before `6adeb30`. Source: `results/t1/t12_revise_synthetic/runs__synthetic_diag.jsonl` (computed for this report). Collateral correct→wrong at M1 was 0.0 for every condition, so that column is dropped.
+*Tests:* which flagging signal finds corrupted cases at a matched review budget, and accuracy at M0 (before correction), M1 (immediately after) and M2 (after retraining). *Setup:* `synthetic_diag`, simulated oracle reviewer, budgets b10–b75, 10 seeds; continued optimizer, before `6adeb30`. Source: `results/t1/p6_confirmation_revision/pilot_20260929/t12_revise_synthetic/runs__synthetic_diag.jsonl` (computed for this report). Collateral correct→wrong at M1 was 0.0 for every condition, so that column is dropped.
 
 | condition | precision | recall | M0 acc | M1 acc | M2 acc | M0→M1 w→c | M0→M1 c→w | M0→M2 w→c | M0→M2 c→w |
 |---|---|---|---|---|---|---|---|---|---|

@@ -23,7 +23,7 @@
 | 历史故障点 | 根本机理 | 本次修复与实测结果 |
 | :--- | :--- | :--- |
 | **1. 早期 TopK 掉卡** | 旧驱动 6557 在执行密集 `topk` 时触发 `UR_RESULT_ERROR_DEVICE_LOST` | 当前驱动 `32.0.101.8991` 下，**150/150 压力迭代 100% 通过**。 |
-| **2. FP64 硬中断** | Arc A770 无原生双精度硬件单元（`has_fp64=0`），传入 `float64` 抛异常 | 在 [`model/device_utils.py`](file:///C:/Users/Administrator/NN-KNN/neural-cbr/model/device_utils.py) 增加 `ensure_xpu_tensor_dtype`，全链路保证使用 `float32`。 |
+| **2. FP64 硬中断** | Arc A770 无原生双精度硬件单元（`has_fp64=0`），传入 `float64` 抛异常 | 在 [`model/device_utils.py`](../model/device_utils.py) 增加 `ensure_xpu_tensor_dtype`，全链路保证使用 `float32`。 |
 | **3. Adam Foreach 算子崩溃** | PyTorch 2.13 默认走 `_multi_tensor_adam` 触发驱动级未知错误 `2147483646` | 在优化器初始化引入 `adam_kwargs_for_device`，在 XPU 下自动采用 `foreach=False` 单张量稳定更新。 |
 | **4. 多进程并发驱动崩溃** | 多进程高并发同时调度 Level-Zero 导致 `ze_intel_gpu64.dll` 栈缓冲区溢出 (`0xc0000409`) | 升级至 `torch 2.14.0+xpu` 与 oneAPI `2026.1.0` 后，**3 进程并发训练（各 2000 步）实测全数顺利通过（Exit Code 0）**。 |
 | **5. 5000 步持续训练显存泄露** | 长时间训练易因内存碎片引发崩溃 | 实测持续 5,000 步 CNN 训练，显存常驻稳定保持在 107.5 MB，吞吐率达 332 steps/s，**零泄露、零异常**。 |
@@ -39,7 +39,7 @@
   - **首选 XPU** (`--device xpu`)：Nature-CNN 等大张量前向与反向传播速度是 CPU 的 **2.6 倍**。
 
 ### 2. 运行时初始化与环境变量
-在启动任何 XPU 任务前，推荐配置以下环境变量（已集成在 [`configure_xpu_environment`](file:///C:/Users/Administrator/NN-KNN/neural-cbr/model/device_utils.py) 中）：
+在启动任何 XPU 任务前，推荐配置以下环境变量（已集成在 [`configure_xpu_environment`](../model/device_utils.py) 中）：
 ```powershell
 # 统一 PCI 设备枚举顺序
 $env:ZE_ENABLE_PCI_ID_DEVICE_ORDER = "1"
