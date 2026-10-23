@@ -1,0 +1,20 @@
+# Batch-64 rerun: tuned cores now use the HPO grid's training settings (see
+# tools/t1_grid_search.nnknn_core_settings); the batch-32 run is schedule_search_b_20261012.yaml.
+# Stage B of the training-schedule search: loss weights and adapter learning rate
+# around the two stage-A leaders (validation only, same development seeds and
+# tuned cores; ranked together with stage A by tools/t1_schedule_search.py select).
+#   joint, summed objective, adapter warm-up 5, retrieval scale 1.0 (global rank 1)
+#   joint, separated objective, warm-up 5, scale 1.0 (best separated; won 3 tasks)
+# Each block includes the stage-A point (w_post 0.5, w_near 0.1, v_small 0.1,
+# adapter_lr 0.001) under a new name, which doubles as a determinism check.
+base: schedule_search_tuned_bs64_20261012.yaml
+experiment: schedule_search_b_bs64_20261012
+reuse_conditions: []          # frozen reuse already ranked in stage A
+conditions: []
+condition_grid:
+  - name: joint_summed_w5
+    fixed: {schedule: joint_rr, joint_objective: summed, adapter_warmup_epochs: 5, retrieval_lr_scale: 1.0}
+    grid: {w_post: [0.25, 0.5, 1.0], w_near: [0.0, 0.1], v_small: [0.0, 0.1], adapter_lr: [0.001, 0.003]}
+  - name: joint_separated_w5
+    fixed: {schedule: joint_rr, joint_objective: separated, adapter_warmup_epochs: 5, retrieval_lr_scale: 1.0}
+    grid: {w_post: [0.25, 0.5, 1.0], w_near: [0.0, 0.1], v_small: [0.0, 0.1], adapter_lr: [0.001, 0.003]}

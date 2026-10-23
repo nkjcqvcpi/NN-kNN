@@ -169,3 +169,86 @@ host,including withholding; four real-core archived-output replays preserve
 all four new events and exact delivered prompt payloads.34 focused tests pass.
 `T3_HOST_FAILURE_JOURNAL.md` records old evidence gaps and pending public outcomes;
 no replacement host needs or reconstructed original IDs are claimed.
+
+## T1 pre-registration, 2026-10-13
+
+`docs/T1_PREREG_20261013.md` froze the tuning and confirmation phase before any run:
+JSON `configs/t1/prereg_20261013.json` sha256 `b6a10acf5717391440667348cafc02c0af52a09faa74785eb760b8cc8517d2fb`
+(commit `79dbb31`). Addendum 1 (E3 decided by its Holm-adjusted non-inferiority p;
+guard fallbacks ineligible), written before any evaluation-seed result, changed the JSON to
+sha256 `e48a064051c0140b71b2bed09e92299c85716c2856c354b111f690835300f370`; use this
+value for `tools/t1_confirm_report.py --prereg-sha256`.
+Addendum 2 (step-D tuning on 18 legacy tasks; car and regression wine in confirmation only) changed the JSON to sha256 `7c27c51036315b054f91ffa9c46f0e137ec18134eac33847ccec2e930783f479`; this value supersedes the one above for `--prereg-sha256`.
+
+## T1 confirmation run log, 2026-10-13 to 2026-10-18
+
+- **Crash.** The machine stopped on 2026-10-13 at 14:36 (bugcheck 0x4E, PFN_LIST_CORRUPT; dump
+  `C:\WINDOWS\Minidump\101326-6687-01.dmp`). Every T1 process died. On 2026-10-17 `git fsck` passed and all
+  31,533 result rows and receipts parsed. Batches were resumed from their pinned checkouts: completed
+  receipts were reused and interrupted jobs reran from the start (pre-registration: "bitwise-identical
+  reruns after a crash, logged"). The only confirmation job that had started before the crash and was
+  rerun is abalone seeds 45–49. It produced 16 duplicate (condition, seed) rows, each byte-identical to
+  its rerun row. The first attempt's logs were overwritten by the rerun (t1_parallel truncated logs then).
+- **Confirmation, 26 configs** (`02ed62a`, 7 workers): 400/400 jobs exit 0 on 2026-10-18
+  (`logs/.../confirm_final_20261013/progress_26configs_20261018.json`). An audit of all 1,890 run directories
+  found one row missing from its shard: yacht, `tuned__alternating_default_matched`, seed 64. Its run
+  finished (run directory, metrics and `[done]` log line are present), but two processes appended to
+  `runs__yacht.jsonl` 11 ms apart and the longer row overwrote it. t1_run assumed one writer per shard,
+  while t1_parallel runs several seeds of a dataset at once. The row is rebuilt from that run's own saved
+  files, not rerun; the repair is logged below. Every other row matches its run directory. Every run has
+  device cpu, one fingerprint (`3825a422c093`) and no guard fallback.
+- **Baselines.** Seeds 40–49 (all 20 legacy tasks) and seeds 50–69 (seven small tasks) were re-evaluated
+  from the frozen legacy grid winners: 28/28 jobs completed.
+- **Transfer grid.** Diamonds, physiochemical protein and superconductivity have NN-kNN selections.
+  `tools/t1_freeze.py` with the freeze's arguments regenerated the 26 frozen configs byte-identically.
+  It added these three (`ba1c02f`, record `results/t1/p4_component_sync/tuning_20261013/freeze_transfer_20261018.json`;
+  F unchanged). They run from pinned checkout `ba1c02f`. It differs from `02ed62a` by the three YAML files
+  plus `tools/t1_grid_prefill.py` and its test, which nothing in t1_run imports. Its source fingerprint
+  (`c614a768d682`) therefore differs, so the report needs `--allow-mixed-code` with a per-task fingerprint
+  check.
+- **Parallel grid trials.** The grid fits one job's trials one after another; QSAR-TID-11 alone needed
+  about five more days that way. `tools/t1_grid_prefill.py` (`3388f8d`) fits the same trials concurrently
+  with the pinned grid code (`79dbb31`, fingerprint checked against `study.json`) and writes only trial
+  receipts. Rerunning the unchanged grid command then reuses them and writes the shortlist, selection and
+  summary. Three real receipts recomputed through it matched bit for bit: MIC screen, MIC evaluation
+  including test metrics, and Miami screen. The interrupted QSAR screen trial and superconductivity
+  evaluation seed 41 restart from scratch. After review, `5ed63ba` made the prefill write `shortlist.json`
+  and `selection.json` as the grid does, the winner before any test-stream trial. It also made the
+  prefill skip receipts still being written and survive a dead worker process. The QSAR instance was
+  restarted on it at 09:43, losing 28 minutes of six screen trials.
+- **Seed audit.** `tools/t1_seed_audit.py` over the 29 confirmation configs passed. Its small-task list (iris,
+  classification wine, zebra, zebra_special, body_fat, diabetes, yacht; test sets of 22–89 rows) is the one
+  passed to the report (`results/t1/p6_confirmation_revision/seed_audit_confirm_20261018.json`).
+- **Yacht row repair (2026-10-18).** `tools/t1_confirm_audit.py` (`3e182b9`) rebuilt all 1,905 existing rows of
+  the 26-config batch byte-identically from their run directories. It then appended the one missing row,
+  `confirm_final_20261013-yacht-tuned__alternating_default_matched-s64-c7a5bd1b`, after checking that the run
+  finished: every file `finish()` writes was present, its `[done]` log line matched the rebuilt metrics, and its
+  receipt showed exit 0. The re-audit is clean: 150/150 yacht rows, one fingerprint `3825a422c093` on all 26
+  tasks (`results/t1/p6_confirmation_revision/confirm_audit_repair_20261018.json`). From `42ac9af` on,
+  `tools/t1_run.py` appends rows under an OS lock (same bytes) and `tools/t1_parallel.py` keeps earlier
+  attempt logs. The three transfer configs already running from `ba1c02f` still use the unlocked append.
+  They are audited the same way when they finish. QSAR's confirmation will run from a commit that includes
+  the lock: an I/O-only difference, recorded by fingerprint per task in the report.
+- **Transfer batch (2026-10-19).** Diamonds, physiochemical protein and superconductivity: 30/30 jobs exit 0
+  (`logs/.../confirm_final_20261013/progress_transfer3_20261019.json`). The audit found every row present and
+  rebuilt exactly; all three tasks carry fingerprint `c614a768d682`
+  (`results/t1/p6_confirmation_revision/confirm_audit_transfer3_20261019.json`).
+- **QSAR-TID-11.** The prefill finished the 64 screen and 6 refit trials (four workers, memory-bound: raw 1,024-feature
+  candidates take about 12 GB each). It wrote `shortlist.json` and then `selection.json` (`1ce3c044643535ae`:
+  raw, k 10, four glocal sets) before any evaluation trial. `tools/t1_freeze.py` left the 29 configs unchanged and
+  added QSAR's (`dc7657b`, record `freeze_transfer_qsar_20261019.json`). Its confirmation runs from pinned checkout
+  `dc7657b` (three workers). That checkout's `model/` equals `02ed62a`'s. In `tools/`, `t1_run.py` differs only
+  by the locked row append (same bytes) and `t1_parallel.py` only by keeping earlier attempt logs. The other
+  differences are tools that t1_run does not import. The grid's own QSAR evaluation runs with one worker, since
+  the pre-registered endpoints do not use it.
+  QSAR jobs need about 12 GB each, so at most four run at a time. At 04:40 the three-worker launch was stopped:
+  seeds 40–42 had been in core training for 33 minutes and had produced no run directory or row. The grid's
+  QSAR evaluation was paused, and the confirmation was relaunched with four workers. The stopped attempts' logs
+  are kept as `tabarena_363697__s4{0,1,2}.attempt1.log`. The grid evaluation resumes when confirmation slots
+  free up.
+- **QSAR-TID-11 and the final report (2026-10-20).** QSAR's 10 confirmation jobs exit 0 (fingerprint `f43f59a46a49`,
+  commit `dc7657b`); its grid evaluation (seeds 40–49) completed and the grid's own run wrote the summaries (50/50
+  jobs). The audit of all 30 tasks is clean: 2,066 rows, every run directory has its row
+  (`confirm_audit_final_20261020.json`). `tools/t1_confirm_report.py` ran with the frozen prereg hash, all 30 tasks,
+  no `--allow-incomplete`, and per-task fingerprint expectations (26 tasks `3825a422c093`, three transfer tasks
+  `c614a768d682`, QSAR `f43f59a46a49`), writing `confirmation_report_20261020/`.

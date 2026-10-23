@@ -33,22 +33,36 @@ checkpoints/regression_covid_anxious_reg.h5
 checkpoints/regression_covid_depressed_reg.h5
 checkpoints/regression_covid_lonely_reg.h5
 checkpoints/regression_covid_physical_reg.h5
-results/table1_kfold_20260418_213251/stdout.log
-/results/rl/
-/results/t0_battery/
-/results/t0_battery_xpu/
-/results/t0_benchmark/
-/results/t1_battery/
-/results/t1_benchmark/
-
-# T1 per-run artifacts stay on the experiment host (1.7 GB); only runs__*.jsonl shards are versioned
-results/t1/*/*/
-results/t1_invalid_fresh_adam/
-results/t1_smoke/
+# T1 artifacts by handoff phase (results/README.md). Only the 2026-09-29 pilot's runs__*.jsonl
+# shards and summary CSVs are versioned; per-run directories, pipeline outputs and logs stay local.
+results/t1/*/pilot_20260929/*/*/
+results/t1/*/pi20260920/
+results/t1/historical_t0/
+results/t1/invalid_fresh_adam/
 logs/t1/
 
-# Revised PI verification artifacts: snapshots, checkpoints and event streams remain local.
+# Default output of tools/t1_run.py and of the 2026-10-09 full study; file finished batches by phase.
 /results/t1_pi20260920/
+
+# Pre-reorganization locations of local artifacts, until
+# scripts/reorganize_t1_results_20261010.py has moved them.
+/results/t0_battery/
+/results/t1_invalid_fresh_adam/
+/results/t1/p0_legacy_reference/
+/results/t1/p1_retention_classification/
+/results/t1/p1_retention_regression/
+/results/t1/p1_retention_synthetic/
+/results/t1/p2_reuse/
+/results/t1/p4_sync/
+/results/t1/p5_mcb/
+/results/t1/t12_revise_synthetic/
 
 .pytest_cache/
 datasets/t1_cache/
+
+# Raw HPO-grid outputs of this phase (models, predictions, receipts); summaries are versioned separately.
+/results/t1/p6_confirmation_revision/grid_transfer_20261013/
+/results/t1/p6_confirmation_revision/baselines_eval40_20261013/
+/results/t1/p6_confirmation_revision/baselines_eval50_20261013/
+# shard append locks (tools/t1_run.py append_row)
+results/**/runs__*.jsonl.lock

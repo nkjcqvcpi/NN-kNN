@@ -4,7 +4,7 @@ Updated 2026-10-09 for career-2027 `cd772776`. Current maintenance uses Q, B,
 coverage/reachability and final-loss removal separately. Thresholded cached
 removal is validated against full queries; optional retrieval-only and adapted
 retraining have bounded implementations and pilots, not scalable confirmation.
-New runs use `results/t1_pi20260920/`; old `results/t1/` is historical.
+New runs use `results/t1_pi20260920/` and are then filed by phase under `results/t1/<phase>/pi20260920/`; the September 29 pilot under `results/t1/<phase>/pilot_20260929/` is historical (see `results/README.md`).
 A removal run that stops above K is not eligible for a matched fixed-K claim.
 
 Everything here is **exploratory pilot** until the PI freezes the open values

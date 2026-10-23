@@ -1,0 +1,44 @@
+# Is the EMA case encoder (MCB) useful before any case-base maintenance?
+# Collaborator request of 2026-10-10: compare NN-kNN with and without EMA in
+#   setting 1, retrieval only, and
+#   setting 2, retrieval + reuse (frozen-core adapter; alternating and joint
+#   synchronization continuing the same core),
+# before comparing maintenance policies. Full memory throughout: no retention.
+# Arms differ only in the encoder. Shared MLP and EMA arms use the same MLP,
+# L2-normalized embeddings (as in the MCB manuscript) and learning rates.
+# EMA momentum is applied once per optimizer step; three values are reported
+# separately, and any per-task choice among them must use validation only.
+base: _base.yaml
+experiment: ema_ablation_20261010
+type: encoder_ablation
+status: exploratory_pilot
+seeds: [30, 31, 32, 33, 34]
+core: {mlp_dims: [32, 16], epochs: 300, patience: 40}
+arms:
+  - {name: raw, representation: raw, mcb_enabled: false}          # earlier NN-kNN: raw features, no encoder
+  - {name: shared, representation: mlp, mcb_enabled: false, normalize_embeddings: true}   # one encoder for queries and cases
+  - {name: ema090, representation: mlp, mcb_enabled: true, mcb_momentum: 0.9, normalize_embeddings: true}
+  - {name: ema099, representation: mlp, mcb_enabled: true, mcb_momentum: 0.99, normalize_embeddings: true}
+  - {name: ema0999, representation: mlp, mcb_enabled: true, mcb_momentum: 0.999, normalize_embeddings: true}
+reuse: {lambda_diff: 1.0, lambda_cls: 1.0, probability_mode: softmax, epochs: 300, patience: 30, lr: 0.001}
+reuse_conditions:
+  - {output_mode: nominal_residual_scores, loss: combined}   # regression uses its aggregate residual adapter
+sync: {s_task: 0.5, retrieval_lr_scale: 0.1, w_pre: 1.0, w_post: 0.5, w_near: 0.1, v_post: 1.0, v_delta: 1.0, v_small: 0.1,
+       epochs: 120, block_epochs: 2, patience: 30, probability_mode: softmax}
+conditions:
+  - {schedule: alternating_rr}
+  - {schedule: joint_rr}
+datasets:
+  - {name: synthetic_diag, task_type: classification, synthetic: {generator_version: independent_v1}}
+  - {name: iris, task_type: classification}
+  - {name: wine, task_type: classification}
+  - {name: breast_cancer, task_type: classification}
+  - {name: balance, task_type: classification}
+  - {name: digits, task_type: classification}
+  - {name: zebra, task_type: classification}
+  - {name: zebra_special, task_type: classification}
+  - {name: energy_efficiency, task_type: regression}
+  - {name: yacht, task_type: regression}
+  - {name: airfoil, task_type: regression}
+  - {name: student_performance, task_type: regression}
+  - {name: abalone, task_type: regression, max_train: 1500}

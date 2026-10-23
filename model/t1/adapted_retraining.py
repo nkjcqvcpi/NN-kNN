@@ -15,7 +15,7 @@ import torch
 from .core import clone_optimizer
 from .maintenance import CaseArchive, realign_optimizer_state
 from .nominal import encoded_queries
-from .reuse import _adapter_losses, regression_adapter_losses
+from .reuse import _adapter_losses, adapter_optimizer, regression_adapter_losses
 from .sync import _forward_terms, frozen_parameters
 
 
@@ -244,7 +244,8 @@ starting with retrieval. Equal budgets mean equal examples/updates, not cost.
         raise ValueError("Removal slot must identify an active case")
     trial, ad = copy.deepcopy(model), copy.deepcopy(adapter)
     ropt = clone_optimizer(core_optimizer, trial, core_cfg)
-    aopt = torch.optim.Adam([p for p in ad.parameters() if p.requires_grad], lr=reuse_cfg.lr)
+    aopt = adapter_optimizer([p for p in ad.parameters() if p.requires_grad], reuse_cfg.lr,
+                             reuse_cfg.weight_decay, trial.cases.device)
     aopt.load_state_dict(copy.deepcopy(adapter_optimizer_state))
     if drop_slot is not None:
         n = trial.case_count()
@@ -290,7 +291,8 @@ starting with retrieval. Equal budgets mean equal examples/updates, not cost.
                     with frozen_parameters(ad):
                         terms = _forward_terms(trial, ad, X[b], y[b], None,
                             output_mode=reuse_cfg.output_mode, near_scale=1.,
-                            query_case_ids=qids[b], query_nominal=query_nominal)
+                            query_case_ids=qids[b], query_nominal=query_nominal,
+                            score_scale=reuse_cfg.score_scale)
                     loss = terms["L_post"]
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(trial.parameters(), core_cfg.grad_clip)

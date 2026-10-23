@@ -23,6 +23,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from model.device_utils import adam_kwargs_for_device
+
 from model.nnknn_model import (
     GlocalFeatureWeight,
     MLPFeatureProjector,
@@ -119,6 +121,9 @@ def build_model(X_train: torch.Tensor, y_train: torch.Tensor, cfg: CoreConfig, n
         momentum_encoder=mom,
         **cfg.to_model_kwargs(),
     )
+    # NN_KNN_Model places its buffers on the runtime device; the encoder, feature
+    # weights and EMA copy built above must follow (no-op on CPU).
+    model.to(model.cases.device)
     init_bias = cfg.bias_manual_value
     if cfg.bias_init == "knn_mean":
         init_bias = kth_neighbor_learned_distance(model, cfg.bias_init_k)
@@ -157,7 +162,9 @@ def make_optimizer(model: NN_KNN_Model, cfg: CoreConfig) -> torch.optim.Optimize
     groups = [{"params": case, "lr": cfg.lr_case, "name": "case"}, {"params": gw, "lr": cfg.lr_glocal, "name": "glocal"}]
     if fe:
         groups.append({"params": fe, "lr": cfg.lr_feature, "name": "feature"})
-    return torch.optim.Adam(groups, weight_decay=cfg.weight_decay)
+    # foreach=False on XPU: the multi-tensor path crashes concurrent Level-Zero
+    # processes (no change on CPU/CUDA).
+    return torch.optim.Adam(groups, weight_decay=cfg.weight_decay, **adam_kwargs_for_device(model.cases.device))
 
 
 def clone_optimizer(src: torch.optim.Optimizer, model: NN_KNN_Model, cfg: CoreConfig) -> torch.optim.Optimizer:
