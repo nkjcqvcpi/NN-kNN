@@ -1,0 +1,81 @@
+{
+  "status": "completed",
+  "variant": "lr0.03",
+  "settings": {
+    "task_type": "classification",
+    "representation": "raw",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5,
+    "top_k": 3,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.03,
+    "lr_glocal": 0.03,
+    "lr_feature": 0.003,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 33
+  },
+  "seed": 33,
+  "validation_error": 0.045454545454545414,
+  "validation_metrics": {
+    "accuracy": 0.9545454545454546,
+    "loss": 0.1284339561486493,
+    "roc_auc": 1.0
+  },
+  "test_error": 0.13636363636363635,
+  "test_metrics": {
+    "accuracy": 0.8636363636363636,
+    "loss": 0.20968990185976102,
+    "roc_auc": 0.9833333333333334
+  },
+  "train_resubstitution_error": 0.0,
+  "best_epoch": 32,
+  "epochs_run": 73,
+  "best_val_loss": 0.128433957695961,
+  "training_seconds": 1.9680560999549925,
+  "inference_seconds": 0.0059241000562906265,
+  "diagnostics": {
+    "effective_neighbours_mean": 2.866719961166382,
+    "feature_weights_set0": [
+      1.7962360382080078,
+      -0.00026982929557561874
+    ],
+    "bias_mean": 0.34144899249076843,
+    "bias_std": 0.25838902592658997
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "zebra",
+    "task_type": "classification",
+    "n_train": 66,
+    "n_maint": 0,
+    "n_val": 22,
+    "n_test": 22,
+    "n_features": 2,
+    "num_classes": 2,
+    "reg_bins": null,
+    "source": "datasets.classification_data",
+    "split_indices_sha256": "f4d4d4acaafc30aafc3b6a11527c47bf9c9635f592dea2295a396471b3c9f244",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 33,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

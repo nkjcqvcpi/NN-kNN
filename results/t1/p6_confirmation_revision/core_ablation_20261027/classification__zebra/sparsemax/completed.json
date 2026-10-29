@@ -1,0 +1,435 @@
+{
+  "task": "classification__zebra",
+  "variant": "sparsemax",
+  "override": {
+    "case_normalizer": "sparsemax"
+  },
+  "base_parameters": {
+    "representation": "raw",
+    "top_k": 3,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5
+  },
+  "settings": {
+    "representation": "raw",
+    "top_k": 3,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "epochs": 300,
+    "patience": 40,
+    "case_normalizer": "sparsemax"
+  },
+  "status": "completed",
+  "rows": [
+    {
+      "status": "completed",
+      "variant": "sparsemax",
+      "settings": {
+        "task_type": "classification",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 4,
+        "tau": 0.5,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "sparsemax",
+        "lr_case": 0.01,
+        "lr_glocal": 0.01,
+        "lr_feature": 0.001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 30
+      },
+      "seed": 30,
+      "validation_error": 0.0,
+      "validation_metrics": {
+        "accuracy": 1.0,
+        "loss": 1.0000889005828412e-12,
+        "roc_auc": 1.0
+      },
+      "test_error": 0.0,
+      "test_metrics": {
+        "accuracy": 1.0,
+        "loss": 1.0000889005828412e-12,
+        "roc_auc": 1.0
+      },
+      "train_resubstitution_error": 0.030303001403808594,
+      "best_epoch": 52,
+      "epochs_run": 93,
+      "best_val_loss": 0.0,
+      "training_seconds": 2.92768090008758,
+      "inference_seconds": 0.0004898000042885542,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.62084698677063,
+        "feature_weights_set0": [
+          1.5922471284866333,
+          -2.574417339928914e-05
+        ],
+        "bias_mean": 0.5114449262619019,
+        "bias_std": 0.13830243051052094
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "zebra",
+        "task_type": "classification",
+        "n_train": 66,
+        "n_maint": 0,
+        "n_val": 22,
+        "n_test": 22,
+        "n_features": 2,
+        "num_classes": 2,
+        "reg_bins": null,
+        "source": "datasets.classification_data",
+        "split_indices_sha256": "01af4169baf4147d292a5d7ea36b17f4f443c7d2b1af17b4e1a6db2d06eebd2b",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 30,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    },
+    {
+      "status": "completed",
+      "variant": "sparsemax",
+      "settings": {
+        "task_type": "classification",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 4,
+        "tau": 0.5,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "sparsemax",
+        "lr_case": 0.01,
+        "lr_glocal": 0.01,
+        "lr_feature": 0.001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 31
+      },
+      "seed": 31,
+      "validation_error": 0.0,
+      "validation_metrics": {
+        "accuracy": 1.0,
+        "loss": 1.0000889005828412e-12,
+        "roc_auc": 1.0
+      },
+      "test_error": 0.0,
+      "test_metrics": {
+        "accuracy": 1.0,
+        "loss": 1.0000889005828412e-12,
+        "roc_auc": 1.0
+      },
+      "train_resubstitution_error": 0.0,
+      "best_epoch": 45,
+      "epochs_run": 86,
+      "best_val_loss": 0.0,
+      "training_seconds": 0.4395210000220686,
+      "inference_seconds": 0.0006212000735104084,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.711632013320923,
+        "feature_weights_set0": [
+          0.8303510546684265,
+          -4.907902257400565e-05
+        ],
+        "bias_mean": 0.40340012311935425,
+        "bias_std": 0.12936854362487793
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "zebra",
+        "task_type": "classification",
+        "n_train": 66,
+        "n_maint": 0,
+        "n_val": 22,
+        "n_test": 22,
+        "n_features": 2,
+        "num_classes": 2,
+        "reg_bins": null,
+        "source": "datasets.classification_data",
+        "split_indices_sha256": "1cbd34f9517a2b42e4c7a52de107b9086bd13c1e51e530b2a4ac0e4e6a57e0a3",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 31,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    },
+    {
+      "status": "completed",
+      "variant": "sparsemax",
+      "settings": {
+        "task_type": "classification",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 4,
+        "tau": 0.5,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "sparsemax",
+        "lr_case": 0.01,
+        "lr_glocal": 0.01,
+        "lr_feature": 0.001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 32
+      },
+      "seed": 32,
+      "validation_error": 0.045454545454545414,
+      "validation_metrics": {
+        "accuracy": 0.9545454545454546,
+        "loss": 0.06169145998468988,
+        "roc_auc": 1.0
+      },
+      "test_error": 0.0,
+      "test_metrics": {
+        "accuracy": 1.0,
+        "loss": 1.0000889005828412e-12,
+        "roc_auc": 1.0
+      },
+      "train_resubstitution_error": 0.0,
+      "best_epoch": 127,
+      "epochs_run": 168,
+      "best_val_loss": 0.06169145926833153,
+      "training_seconds": 0.6750829999800771,
+      "inference_seconds": 0.0007486001122742891,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.640634298324585,
+        "feature_weights_set0": [
+          1.7173380851745605,
+          -7.80949994805269e-05
+        ],
+        "bias_mean": 0.3941187560558319,
+        "bias_std": 0.10633061826229095
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "zebra",
+        "task_type": "classification",
+        "n_train": 66,
+        "n_maint": 0,
+        "n_val": 22,
+        "n_test": 22,
+        "n_features": 2,
+        "num_classes": 2,
+        "reg_bins": null,
+        "source": "datasets.classification_data",
+        "split_indices_sha256": "b3b6fb5d0e13085e3a68ead5052d892b6e9938cee9ad4a87fb0d76b96c8abe4f",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 32,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    },
+    {
+      "status": "completed",
+      "variant": "sparsemax",
+      "settings": {
+        "task_type": "classification",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 4,
+        "tau": 0.5,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "sparsemax",
+        "lr_case": 0.01,
+        "lr_glocal": 0.01,
+        "lr_feature": 0.001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 33
+      },
+      "seed": 33,
+      "validation_error": 0.0,
+      "validation_metrics": {
+        "accuracy": 1.0,
+        "loss": 1.0000889005828412e-12,
+        "roc_auc": 1.0
+      },
+      "test_error": 0.045454545454545414,
+      "test_metrics": {
+        "accuracy": 0.9545454545454546,
+        "loss": 0.043324802931408606,
+        "roc_auc": 1.0
+      },
+      "train_resubstitution_error": 0.015151500701904297,
+      "best_epoch": 50,
+      "epochs_run": 91,
+      "best_val_loss": 0.0,
+      "training_seconds": 0.4772731000557542,
+      "inference_seconds": 0.0005504000000655651,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.6516273021698,
+        "feature_weights_set0": [
+          1.1922321319580078,
+          -0.00011045583960367367
+        ],
+        "bias_mean": 0.32165929675102234,
+        "bias_std": 0.138589009642601
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "zebra",
+        "task_type": "classification",
+        "n_train": 66,
+        "n_maint": 0,
+        "n_val": 22,
+        "n_test": 22,
+        "n_features": 2,
+        "num_classes": 2,
+        "reg_bins": null,
+        "source": "datasets.classification_data",
+        "split_indices_sha256": "f4d4d4acaafc30aafc3b6a11527c47bf9c9635f592dea2295a396471b3c9f244",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 33,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    },
+    {
+      "status": "completed",
+      "variant": "sparsemax",
+      "settings": {
+        "task_type": "classification",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 4,
+        "tau": 0.5,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "sparsemax",
+        "lr_case": 0.01,
+        "lr_glocal": 0.01,
+        "lr_feature": 0.001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 34
+      },
+      "seed": 34,
+      "validation_error": 0.0,
+      "validation_metrics": {
+        "accuracy": 1.0,
+        "loss": 1.0000889005828412e-12,
+        "roc_auc": 1.0
+      },
+      "test_error": 0.0,
+      "test_metrics": {
+        "accuracy": 1.0,
+        "loss": 0.0070093563692346875,
+        "roc_auc": 1.0
+      },
+      "train_resubstitution_error": 0.0,
+      "best_epoch": 25,
+      "epochs_run": 66,
+      "best_val_loss": 0.0,
+      "training_seconds": 0.3563427000772208,
+      "inference_seconds": 0.0006458000279963017,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.751462697982788,
+        "feature_weights_set0": [
+          1.220276117324829,
+          -8.982777217170224e-05
+        ],
+        "bias_mean": 0.3688291609287262,
+        "bias_std": 0.06918147206306458
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "zebra",
+        "task_type": "classification",
+        "n_train": 66,
+        "n_maint": 0,
+        "n_val": 22,
+        "n_test": 22,
+        "n_features": 2,
+        "num_classes": 2,
+        "reg_bins": null,
+        "source": "datasets.classification_data",
+        "split_indices_sha256": "de76b9c7de01fbb9384bef3dcde9e31c8a4ab29d9e3ccdeb028efc6eb56201fb",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 34,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+# One-factor ablation of the NN-kNN retrieval core around each task's frozen grid winner (tools/t1_core_ablation.py).
+# Motivation: confirmation report 2026-10-20, E3a (F trails tuned CatBoost by 13.5%) and E3b (TabM non-inferiority
+# not shown); E1 shows reuse adds little, so the retrieval core decides the gap. Exploratory and descriptive.
+# Every variant is evaluated on the grid's own evaluation seeds and splits, so its test errors are directly
+# comparable with the grid's kNN / CatBoost / MLP / TabM rows. Tasks: those where the grid winner trails CatBoost
+# or plain kNN, plus two controls where NN-kNN is competitive (energy_efficiency, digits).
+status: exploratory_core_ablation
+experiment: core_ablation_20261027
+grid: results/t1_pi20260920/grid_full_20261009
+evaluation_seeds: [30, 31, 32, 33, 34]
+epochs: 300
+patience: 40
+torch_threads: 1
+splits: {test_frac: 0.2, val_frac: 0.2, maint_frac: 0.0, reg_cohort_bins: 5}
+datasets:
+  # cost: relative fit time from the grid, used only to order jobs
+  - {name: car, task_type: regression, cost: 200}
+  - {name: digits, task_type: classification, cost: 33}
+  - {name: tabarena_363625, task_type: regression, cost: 30, display: concrete_compressive_strength}
+  - {name: energy_efficiency, task_type: regression, cost: 20}
+  - {name: balance, task_type: classification, cost: 9}
+  - {name: tabarena_363626, task_type: classification, cost: 9, display: credit-g}
+  - {name: student_performance, task_type: regression, cost: 8}
+  - {name: tabarena_363675, task_type: regression, cost: 7, display: healthcare_insurance_expenses}
+  - {name: breast_cancer, task_type: classification, cost: 5}
+  - {name: yacht, task_type: regression, cost: 4}
+  - {name: zebra_special, task_type: classification, cost: 3}
+  - {name: wine, task_type: classification, cost: 2}
+  - {name: zebra, task_type: classification, cost: 2}
+variants:
+  - {name: base, override: {}}
+  # A. neighbourhood size (grid: 3 or 10 only; kNN's grid went to 80)
+  - {name: k3, override: {top_k: 3}}
+  - {name: k10, override: {top_k: 10}}
+  - {name: k20, override: {top_k: 20}}
+  - {name: k40, override: {top_k: 40}}
+  - {name: k_all, override: {pre_topk_mask: false}}
+  # B. temperature of the softmax over cases (grid: 0.5 or 1)
+  - {name: tau0.1, override: {tau: 0.1}}
+  - {name: tau0.25, override: {tau: 0.25}}
+  - {name: tau0.5, override: {tau: 0.5}}
+  - {name: tau1, override: {tau: 1.0}}
+  - {name: tau2, override: {tau: 2.0}}
+  # C. learning rate (grid: 0.001 or 0.01; glocal = case rate, encoder = 0.1 x case rate)
+  - {name: lr0.0003, override: {lr_case: 0.0003}}
+  - {name: lr0.001, override: {lr_case: 0.001}}
+  - {name: lr0.003, override: {lr_case: 0.003}}
+  - {name: lr0.01, override: {lr_case: 0.01}}
+  - {name: lr0.03, override: {lr_case: 0.03}}
+  # D. which parameters learn (a learned part that hurts shows up as a lower error when frozen)
+  - {name: frozen_bias, override: {lr_case: 0.0, lr_glocal: base, lr_feature: base}}
+  - {name: frozen_feature_weights, override: {lr_case: base, lr_glocal: 0.0, lr_feature: base}}
+  - {name: soft_knn, override: {lr_case: 0.0, lr_glocal: 0.0, lr_feature: 0.0}}
+  - {name: soft_knn_bias0, override: {lr_case: 0.0, lr_glocal: 0.0, lr_feature: 0.0, bias_init: manual, bias_manual_value: 0.0}}
+  # E. representation (grid: raw or MLP 32-16 with encoder rate 0.1 x case rate)
+  - {name: raw, override: {representation: raw}}
+  - {name: mlp32_16, override: {representation: mlp, mlp_dims: [32, 16]}}
+  - {name: mlp128_64, override: {representation: mlp, mlp_dims: [128, 64]}}
+  - {name: mlp256_128, override: {representation: mlp, mlp_dims: [256, 128]}}
+  - {name: mlp128_64_lrf_equal, override: {representation: mlp, mlp_dims: [128, 64], lr_feature: "=lr_case"}}
+  - {name: mlp128_64_dropout0.1, override: {representation: mlp, mlp_dims: [128, 64], mlp_dropout: 0.1}}
+  - {name: mlp128_64_l2norm, override: {representation: mlp, mlp_dims: [128, 64], normalize_embeddings: true}}
+  - {name: mlp128_64_mcb, override: {representation: mlp, mlp_dims: [128, 64], mcb_enabled: true}}
+  # F. glocal weight sets (grid: 1 or 4)
+  - {name: sets1, override: {glocal_fw_set_num: 1}}
+  - {name: sets4, override: {glocal_fw_set_num: 4}}
+  - {name: sets8, override: {glocal_fw_set_num: 8}}
+  # G. regularisation
+  - {name: wd1e-3, override: {weight_decay: 0.001}}
+  - {name: bias_penalty0.01, override: {lambda_case_bias: 0.01}}
+  # H. budget and normaliser
+  - {name: long, override: {epochs: 1000, patience: 100}}
+  - {name: sparsemax, override: {case_normalizer: sparsemax}}

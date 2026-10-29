@@ -1,0 +1,100 @@
+{
+  "status": "completed",
+  "variant": "mlp32_16",
+  "settings": {
+    "task_type": "regression",
+    "representation": "mlp",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5,
+    "top_k": 10,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.01,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 30
+  },
+  "seed": 30,
+  "validation_error": 0.0459027465867237,
+  "validation_metrics": {
+    "rmse_standardized": 0.0459027465867237,
+    "rmse_original": 0.46545561719965456,
+    "loss": 0.002107062144204974
+  },
+  "test_error": 0.04631998381399146,
+  "test_metrics": {
+    "rmse_standardized": 0.04631998381399146,
+    "rmse_original": 0.4696864187437338,
+    "loss": 0.002145540900528431
+  },
+  "train_resubstitution_error": 0.03756040889353032,
+  "best_epoch": 281,
+  "epochs_run": 300,
+  "best_val_loss": 0.002107061678543687,
+  "training_seconds": 88.83305540005676,
+  "inference_seconds": 0.03716790000908077,
+  "diagnostics": {
+    "effective_neighbours_mean": 9.110285758972168,
+    "feature_weights_set0": [
+      0.7272477149963379,
+      2.030409097671509,
+      -8.685995567248028e-07,
+      -7.396012335902924e-08,
+      0.7708232998847961,
+      0.4731069803237915,
+      0.5626723170280457,
+      0.5873586535453796,
+      2.434600353240967,
+      2.1680827140808105,
+      1.980134129524231,
+      1.8495491743087769,
+      0.16245487332344055,
+      0.16331322491168976,
+      0.6880071759223938,
+      0.16555635631084442
+    ],
+    "bias_mean": 0.035833604633808136,
+    "bias_std": 0.2054785043001175
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "energy_efficiency",
+    "task_type": "regression",
+    "n_train": 460,
+    "n_maint": 0,
+    "n_val": 154,
+    "n_test": 154,
+    "n_features": 8,
+    "num_classes": null,
+    "reg_bins": [
+      -0.9269967079162598,
+      -0.6767017483711242,
+      0.3195469498634342,
+      1.034534215927124
+    ],
+    "source": "datasets.reg_data",
+    "split_indices_sha256": "c1a68fab1761caad673f7bc18e4a5a1ed17ee2641996d46a29a96c3424f42522",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 30,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

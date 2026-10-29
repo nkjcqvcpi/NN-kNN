@@ -1,0 +1,81 @@
+{
+  "status": "completed",
+  "variant": "lr0.03",
+  "settings": {
+    "task_type": "classification",
+    "representation": "raw",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5,
+    "top_k": 3,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.03,
+    "lr_glocal": 0.03,
+    "lr_feature": 0.003,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 31
+  },
+  "seed": 31,
+  "validation_error": 0.0,
+  "validation_metrics": {
+    "accuracy": 1.0,
+    "loss": 1.0000889005828412e-12,
+    "roc_auc": 1.0
+  },
+  "test_error": 0.0,
+  "test_metrics": {
+    "accuracy": 1.0,
+    "loss": 1.0000889005828412e-12,
+    "roc_auc": 1.0
+  },
+  "train_resubstitution_error": 0.0,
+  "best_epoch": 27,
+  "epochs_run": 68,
+  "best_val_loss": 0.0,
+  "training_seconds": 1.7075551999732852,
+  "inference_seconds": 0.0008006999269127846,
+  "diagnostics": {
+    "effective_neighbours_mean": 2.9226737022399902,
+    "feature_weights_set0": [
+      1.3928524255752563,
+      -9.547887020744383e-05
+    ],
+    "bias_mean": 0.41047221422195435,
+    "bias_std": 0.22651715576648712
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "zebra",
+    "task_type": "classification",
+    "n_train": 66,
+    "n_maint": 0,
+    "n_val": 22,
+    "n_test": 22,
+    "n_features": 2,
+    "num_classes": 2,
+    "reg_bins": null,
+    "source": "datasets.classification_data",
+    "split_indices_sha256": "1cbd34f9517a2b42e4c7a52de107b9086bd13c1e51e530b2a4ac0e4e6a57e0a3",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 31,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

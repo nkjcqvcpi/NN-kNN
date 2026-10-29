@@ -1,0 +1,81 @@
+{
+  "status": "completed",
+  "variant": "raw",
+  "settings": {
+    "task_type": "classification",
+    "representation": "raw",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5,
+    "top_k": 10,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.01,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 32
+  },
+  "seed": 32,
+  "validation_error": 0.10399999999999998,
+  "validation_metrics": {
+    "accuracy": 0.896,
+    "loss": 0.296065548232659
+  },
+  "test_error": 0.11199999999999999,
+  "test_metrics": {
+    "accuracy": 0.888,
+    "loss": 0.9301136779419692
+  },
+  "train_resubstitution_error": 0.013333320617675781,
+  "best_epoch": 26,
+  "epochs_run": 67,
+  "best_val_loss": 0.2960655391216278,
+  "training_seconds": 11.598509700037539,
+  "inference_seconds": 0.023535299813374877,
+  "diagnostics": {
+    "effective_neighbours_mean": 9.130597114562988,
+    "feature_weights_set0": [
+      1.4142650365829468,
+      1.1690036058425903,
+      1.078348159790039,
+      1.3893201351165771
+    ],
+    "bias_mean": 0.7969200015068054,
+    "bias_std": 0.3759492337703705
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "balance",
+    "task_type": "classification",
+    "n_train": 375,
+    "n_maint": 0,
+    "n_val": 125,
+    "n_test": 125,
+    "n_features": 4,
+    "num_classes": 3,
+    "reg_bins": null,
+    "source": "datasets.classification_data",
+    "split_indices_sha256": "b93e4f7f13421f47b9da608e2e6c781ac3e5f23b7c496dd6a7b4dd7318598325",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 32,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

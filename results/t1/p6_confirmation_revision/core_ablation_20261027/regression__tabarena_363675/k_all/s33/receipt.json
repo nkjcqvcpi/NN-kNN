@@ -1,0 +1,108 @@
+{
+  "status": "completed",
+  "variant": "k_all",
+  "settings": {
+    "task_type": "regression",
+    "representation": "raw",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0,
+    "top_k": 10,
+    "pre_topk_mask": false,
+    "case_normalizer": "softmax",
+    "lr_case": 0.01,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 33
+  },
+  "seed": 33,
+  "validation_error": 0.4704040431915685,
+  "validation_metrics": {
+    "rmse_standardized": 0.4704040431915685,
+    "rmse_original": 5503.1273217614125,
+    "loss": 0.221279963850975
+  },
+  "test_error": 0.3789261291637586,
+  "test_metrics": {
+    "rmse_standardized": 0.3789261291637586,
+    "rmse_original": 4432.9524044527825,
+    "loss": 0.14358501136302948
+  },
+  "train_resubstitution_error": 0.3802360128316881,
+  "best_epoch": 125,
+  "epochs_run": 166,
+  "best_val_loss": 0.22127996385097504,
+  "training_seconds": 69.07197149982676,
+  "inference_seconds": 0.1099825999699533,
+  "diagnostics": {
+    "effective_neighbours_mean": 225.18832397460938,
+    "feature_weights_set0": [
+      -0.00010224909783573821,
+      1.6486355066299438,
+      0.08298139274120331,
+      -0.00011416009510867298,
+      -0.00011415435437811539,
+      2.6110527515411377,
+      2.551558256149292,
+      -0.000189212107216008,
+      -0.00012901893933303654,
+      -6.176297756610438e-05,
+      -0.00014028359146323055
+    ],
+    "bias_mean": 0.05129562318325043,
+    "bias_std": 0.839387834072113
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "tabarena_363675",
+    "task_type": "regression",
+    "n_train": 669,
+    "n_maint": 0,
+    "n_val": 223,
+    "n_test": 446,
+    "n_features": 11,
+    "num_classes": null,
+    "reg_bins": [
+      -0.7523666918136549,
+      -0.4821200371153975,
+      -0.13639571582980742,
+      0.5344438457030953
+    ],
+    "source": "openml",
+    "openml_id": 46931,
+    "openml_version": 1,
+    "name_on_source": "healthcare_insurance_expenses",
+    "license": "Database Contents License (DbCL) v1.0",
+    "protocol": "OpenML official outer split; train-only inner holdout; no TabArena bagging/leaderboard equivalence",
+    "openml_task_id": 363675,
+    "outer_repeat": 1,
+    "outer_fold": 0,
+    "nominal_coverage": {
+      "sex": "joint_one_hot_representation_train_fitted",
+      "smoker": "joint_one_hot_representation_train_fitted",
+      "region": "joint_one_hot_representation_train_fitted"
+    },
+    "split_indices_sha256": "931491ae3af931789f6c672c1a81bb74691ac0224333e4c6236d4ba8dbcaf883",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 33,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

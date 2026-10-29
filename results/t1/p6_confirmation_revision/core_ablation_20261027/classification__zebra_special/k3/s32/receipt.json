@@ -1,0 +1,81 @@
+{
+  "status": "completed",
+  "variant": "k3",
+  "settings": {
+    "task_type": "classification",
+    "representation": "raw",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5,
+    "top_k": 3,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.01,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 32
+  },
+  "seed": 32,
+  "validation_error": 0.38636363636363635,
+  "validation_metrics": {
+    "accuracy": 0.6136363636363636,
+    "loss": 2.318213912331921,
+    "roc_auc": 0.7489583333333334
+  },
+  "test_error": 0.5227272727272727,
+  "test_metrics": {
+    "accuracy": 0.4772727272727273,
+    "loss": 7.2939852291537015,
+    "roc_auc": 0.48854166666666665
+  },
+  "train_resubstitution_error": 0.1818181872367859,
+  "best_epoch": 3,
+  "epochs_run": 44,
+  "best_val_loss": 1.690236210823059,
+  "training_seconds": 2.1793895999435335,
+  "inference_seconds": 0.006097299978137016,
+  "diagnostics": {
+    "effective_neighbours_mean": 2.9521872997283936,
+    "feature_weights_set0": [
+      0.9918771386146545,
+      1.0767974853515625
+    ],
+    "bias_mean": 0.4087511897087097,
+    "bias_std": 0.05195509269833565
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "zebra_special",
+    "task_type": "classification",
+    "n_train": 132,
+    "n_maint": 0,
+    "n_val": 44,
+    "n_test": 44,
+    "n_features": 2,
+    "num_classes": 2,
+    "reg_bins": null,
+    "source": "datasets.classification_data",
+    "split_indices_sha256": "2743728146b2275fe2f6d2f8d9fa2362d67334387b22a9a1869b2b8e3a6390e0",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 32,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

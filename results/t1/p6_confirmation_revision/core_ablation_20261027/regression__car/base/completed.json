@@ -1,0 +1,482 @@
+{
+  "task": "regression__car",
+  "variant": "base",
+  "override": {},
+  "base_parameters": {
+    "representation": "raw",
+    "top_k": 3,
+    "lr_case": 0.001,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5
+  },
+  "settings": {
+    "representation": "raw",
+    "top_k": 3,
+    "lr_case": 0.001,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5,
+    "batch_size": 64,
+    "lr_glocal": 0.001,
+    "lr_feature": 0.0001,
+    "epochs": 300,
+    "patience": 40
+  },
+  "status": "completed",
+  "rows": [
+    {
+      "status": "completed",
+      "variant": "base",
+      "settings": {
+        "task_type": "regression",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 1,
+        "tau": 0.5,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "softmax",
+        "lr_case": 0.001,
+        "lr_glocal": 0.001,
+        "lr_feature": 0.0001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 30
+      },
+      "seed": 30,
+      "validation_error": 0.19450391286245847,
+      "validation_metrics": {
+        "rmse_standardized": 0.19450391286245847,
+        "rmse_original": 11635.303084646866,
+        "loss": 0.03783177211880684
+      },
+      "test_error": 0.25051097506809955,
+      "test_metrics": {
+        "rmse_standardized": 0.25051097506809955,
+        "rmse_original": 14985.668298657336,
+        "loss": 0.06275574862957
+      },
+      "train_resubstitution_error": 0.11705959015125361,
+      "best_epoch": 3,
+      "epochs_run": 44,
+      "best_val_loss": 0.03783177211880684,
+      "training_seconds": 180.49657330010086,
+      "inference_seconds": 0.7643114000093192,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.9598865509033203,
+        "feature_weights_set0": [
+          1.0614731311798096,
+          1.0714534521102905,
+          1.0051023960113525,
+          0.9290745854377747,
+          1.0644363164901733,
+          1.0693340301513672,
+          1.072944164276123
+        ],
+        "bias_mean": 0.28144264221191406,
+        "bias_std": 0.06129291653633118
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "car",
+        "task_type": "regression",
+        "n_train": 3977,
+        "n_maint": 0,
+        "n_val": 1326,
+        "n_test": 1326,
+        "n_features": 7,
+        "num_classes": null,
+        "reg_bins": [
+          -0.47176626324653625,
+          -0.32028619647026063,
+          -0.16867571473121637,
+          0.10571225285530121
+        ],
+        "source": "datasets.reg_data",
+        "split_indices_sha256": "d78f8a606748537f19330211413ace91fd076a3a1014cc145acbe1cb042848fa",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 30,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    },
+    {
+      "status": "completed",
+      "variant": "base",
+      "settings": {
+        "task_type": "regression",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 1,
+        "tau": 0.5,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "softmax",
+        "lr_case": 0.001,
+        "lr_glocal": 0.001,
+        "lr_feature": 0.0001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 31
+      },
+      "seed": 31,
+      "validation_error": 0.15872419165348203,
+      "validation_metrics": {
+        "rmse_standardized": 0.15872419165348203,
+        "rmse_original": 9732.176911315119,
+        "loss": 0.025193369016051296
+      },
+      "test_error": 0.19600748391119893,
+      "test_metrics": {
+        "rmse_standardized": 0.19600748391119893,
+        "rmse_original": 12018.202704286332,
+        "loss": 0.03841893374919891
+      },
+      "train_resubstitution_error": 0.11647051982747832,
+      "best_epoch": 33,
+      "epochs_run": 74,
+      "best_val_loss": 0.025193365290760994,
+      "training_seconds": 289.2305606000591,
+      "inference_seconds": 0.7160237999632955,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.9761290550231934,
+        "feature_weights_set0": [
+          1.1902090311050415,
+          1.3206053972244263,
+          1.1826997995376587,
+          1.07468843460083,
+          1.6188606023788452,
+          1.7603920698165894,
+          1.6503561735153198
+        ],
+        "bias_mean": 0.1044306755065918,
+        "bias_std": 0.14007948338985443
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "car",
+        "task_type": "regression",
+        "n_train": 3977,
+        "n_maint": 0,
+        "n_val": 1326,
+        "n_test": 1326,
+        "n_features": 7,
+        "num_classes": null,
+        "reg_bins": [
+          -0.4884058952331543,
+          -0.3283472239971161,
+          -0.1733933568000793,
+          0.11055012047290805
+        ],
+        "source": "datasets.reg_data",
+        "split_indices_sha256": "2727e61fc22e970c710eca9d730681282f7155905551215ef2f0dae2da7a7f04",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 31,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    },
+    {
+      "status": "completed",
+      "variant": "base",
+      "settings": {
+        "task_type": "regression",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 1,
+        "tau": 0.5,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "softmax",
+        "lr_case": 0.001,
+        "lr_glocal": 0.001,
+        "lr_feature": 0.0001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 32
+      },
+      "seed": 32,
+      "validation_error": 0.3383435868054711,
+      "validation_metrics": {
+        "rmse_standardized": 0.3383435868054711,
+        "rmse_original": 20251.338636881177,
+        "loss": 0.11447638273239136
+      },
+      "test_error": 0.2841612557532754,
+      "test_metrics": {
+        "rmse_standardized": 0.2841612557532754,
+        "rmse_original": 17008.28992230783,
+        "loss": 0.08074761927127838
+      },
+      "train_resubstitution_error": 0.09801939202964131,
+      "best_epoch": 28,
+      "epochs_run": 69,
+      "best_val_loss": 0.11447639763355255,
+      "training_seconds": 666.9316591999959,
+      "inference_seconds": 1.77330829994753,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.975694417953491,
+        "feature_weights_set0": [
+          1.0698175430297852,
+          1.6327993869781494,
+          0.9530177712440491,
+          0.8070393204689026,
+          1.3970389366149902,
+          1.5088746547698975,
+          1.4077764749526978
+        ],
+        "bias_mean": 0.11330311745405197,
+        "bias_std": 0.13510261476039886
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "car",
+        "task_type": "regression",
+        "n_train": 3977,
+        "n_maint": 0,
+        "n_val": 1326,
+        "n_test": 1326,
+        "n_features": 7,
+        "num_classes": null,
+        "reg_bins": [
+          -0.4815875291824341,
+          -0.3262103796005249,
+          -0.1732557713985443,
+          0.11298903971910502
+        ],
+        "source": "datasets.reg_data",
+        "split_indices_sha256": "b93c85e2006dfd61b97ef81ddd0640ea5c819f3aa44055f9e74b538665a96662",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 32,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    },
+    {
+      "status": "completed",
+      "variant": "base",
+      "settings": {
+        "task_type": "regression",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 1,
+        "tau": 0.5,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "softmax",
+        "lr_case": 0.001,
+        "lr_glocal": 0.001,
+        "lr_feature": 0.0001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 33
+      },
+      "seed": 33,
+      "validation_error": 0.21885950889645944,
+      "validation_metrics": {
+        "rmse_standardized": 0.21885950889645944,
+        "rmse_original": 13288.120911485195,
+        "loss": 0.04789948463439941
+      },
+      "test_error": 0.24504895419407643,
+      "test_metrics": {
+        "rmse_standardized": 0.24504895419407643,
+        "rmse_original": 14878.220960024104,
+        "loss": 0.06004898995161057
+      },
+      "train_resubstitution_error": 0.12161674157241795,
+      "best_epoch": 27,
+      "epochs_run": 68,
+      "best_val_loss": 0.047899480909109116,
+      "training_seconds": 684.5359356000554,
+      "inference_seconds": 1.847962399944663,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.9741902351379395,
+        "feature_weights_set0": [
+          1.0181673765182495,
+          1.3716812133789062,
+          1.093778371810913,
+          0.7302775979042053,
+          1.2561285495758057,
+          1.4267125129699707,
+          1.5894125699996948
+        ],
+        "bias_mean": 0.1133229061961174,
+        "bias_std": 0.1354505568742752
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "car",
+        "task_type": "regression",
+        "n_train": 3977,
+        "n_maint": 0,
+        "n_val": 1326,
+        "n_test": 1326,
+        "n_features": 7,
+        "num_classes": null,
+        "reg_bins": [
+          -0.4782441139221191,
+          -0.3260584056377411,
+          -0.16851986944675437,
+          0.10029210895299927
+        ],
+        "source": "datasets.reg_data",
+        "split_indices_sha256": "50e4b6070165b71ea76c07fd0c91c9b32867ea2ef5e2eb413eb0d77be7857401",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 33,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    },
+    {
+      "status": "completed",
+      "variant": "base",
+      "settings": {
+        "task_type": "regression",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 1,
+        "tau": 0.5,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "softmax",
+        "lr_case": 0.001,
+        "lr_glocal": 0.001,
+        "lr_feature": 0.0001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 34
+      },
+      "seed": 34,
+      "validation_error": 0.21721691817421002,
+      "validation_metrics": {
+        "rmse_standardized": 0.21721691817421002,
+        "rmse_original": 13027.298721789555,
+        "loss": 0.04718318954110145
+      },
+      "test_error": 0.2666690168177836,
+      "test_metrics": {
+        "rmse_standardized": 0.2666690168177836,
+        "rmse_original": 15993.123238886152,
+        "loss": 0.07111236453056335
+      },
+      "train_resubstitution_error": 0.10425806109104699,
+      "best_epoch": 25,
+      "epochs_run": 66,
+      "best_val_loss": 0.047183189541101456,
+      "training_seconds": 645.2248710000422,
+      "inference_seconds": 1.9957761000841856,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.9766509532928467,
+        "feature_weights_set0": [
+          1.0560857057571411,
+          1.3683791160583496,
+          1.135005235671997,
+          0.748710036277771,
+          1.397793173789978,
+          1.6025803089141846,
+          1.5324201583862305
+        ],
+        "bias_mean": 0.11679907888174057,
+        "bias_std": 0.13997936248779297
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "car",
+        "task_type": "regression",
+        "n_train": 3977,
+        "n_maint": 0,
+        "n_val": 1326,
+        "n_test": 1326,
+        "n_features": 7,
+        "num_classes": null,
+        "reg_bins": [
+          -0.4963554501533508,
+          -0.3239164888858795,
+          -0.16514685153961173,
+          0.11115767508745208
+        ],
+        "source": "datasets.reg_data",
+        "split_indices_sha256": "0273f274091ebceb703cb40de07dcd01de3a2b9a37220bccbdeb5b36adb0facc",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 34,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    }
+  ]
+}

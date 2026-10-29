@@ -1,0 +1,101 @@
+{
+  "status": "completed",
+  "variant": "raw",
+  "settings": {
+    "task_type": "regression",
+    "representation": "raw",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0,
+    "top_k": 10,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.01,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 33
+  },
+  "seed": 33,
+  "validation_error": 0.4154625381516077,
+  "validation_metrics": {
+    "rmse_standardized": 0.4154625381516077,
+    "rmse_original": 6.969513862227257,
+    "loss": 0.1726091206073761
+  },
+  "test_error": 0.4135268183075577,
+  "test_metrics": {
+    "rmse_standardized": 0.4135268183075577,
+    "rmse_original": 6.937041557151289,
+    "loss": 0.17100442945957187
+  },
+  "train_resubstitution_error": 0.2041180708930283,
+  "best_epoch": 153,
+  "epochs_run": 194,
+  "best_val_loss": 0.1726091206073761,
+  "training_seconds": 55.9735904999543,
+  "inference_seconds": 0.05348829994909465,
+  "diagnostics": {
+    "effective_neighbours_mean": 8.319710731506348,
+    "feature_weights_set0": [
+      3.5796163082122803,
+      2.2334048748016357,
+      -1.8538084987085313e-05,
+      1.409981608390808,
+      0.8440188765525818,
+      2.4351892471313477,
+      4.843593597412109,
+      1.3458009958267212
+    ],
+    "bias_mean": 0.4395252764225006,
+    "bias_std": 0.7486696839332581
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "tabarena_363625",
+    "task_type": "regression",
+    "n_train": 514,
+    "n_maint": 0,
+    "n_val": 172,
+    "n_test": 344,
+    "n_features": 8,
+    "num_classes": null,
+    "reg_bins": [
+      -0.9389426018248112,
+      -0.30196495264341516,
+      0.2004492158682237,
+      0.88372262089153
+    ],
+    "source": "openml",
+    "openml_id": 46917,
+    "openml_version": 8,
+    "name_on_source": "concrete_compressive_strength",
+    "license": "CC BY 4.0",
+    "protocol": "OpenML official outer split; train-only inner holdout; no TabArena bagging/leaderboard equivalence",
+    "openml_task_id": 363625,
+    "outer_repeat": 1,
+    "outer_fold": 0,
+    "nominal_coverage": {},
+    "split_indices_sha256": "99df25a4382e839c1b14a98a5196b3013034450e863826d4467ec89ad8fb5a7e",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 33,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

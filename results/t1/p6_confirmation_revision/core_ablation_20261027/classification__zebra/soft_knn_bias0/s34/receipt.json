@@ -1,0 +1,81 @@
+{
+  "status": "completed",
+  "variant": "soft_knn_bias0",
+  "settings": {
+    "task_type": "classification",
+    "representation": "raw",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5,
+    "top_k": 3,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.0,
+    "lr_glocal": 0.0,
+    "lr_feature": 0.0,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "manual",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 34
+  },
+  "seed": 34,
+  "validation_error": 0.36363636363636365,
+  "validation_metrics": {
+    "accuracy": 0.6363636363636364,
+    "loss": 0.5229618706448642,
+    "roc_auc": 0.8583333333333334
+  },
+  "test_error": 0.5454545454545454,
+  "test_metrics": {
+    "accuracy": 0.45454545454545453,
+    "loss": 5.508924560559773,
+    "roc_auc": 0.5416666666666667
+  },
+  "train_resubstitution_error": 0.10606062412261963,
+  "best_epoch": 1,
+  "epochs_run": 42,
+  "best_val_loss": 0.5229618549346924,
+  "training_seconds": 1.181061499984935,
+  "inference_seconds": 0.0008238998707383871,
+  "diagnostics": {
+    "effective_neighbours_mean": 2.960923194885254,
+    "feature_weights_set0": [
+      0.8717899918556213,
+      0.1155468225479126
+    ],
+    "bias_mean": 0.0,
+    "bias_std": 0.0
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "zebra",
+    "task_type": "classification",
+    "n_train": 66,
+    "n_maint": 0,
+    "n_val": 22,
+    "n_test": 22,
+    "n_features": 2,
+    "num_classes": 2,
+    "reg_bins": null,
+    "source": "datasets.classification_data",
+    "split_indices_sha256": "de76b9c7de01fbb9384bef3dcde9e31c8a4ab29d9e3ccdeb028efc6eb56201fb",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 34,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

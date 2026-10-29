@@ -1,0 +1,81 @@
+{
+  "status": "completed",
+  "variant": "long",
+  "settings": {
+    "task_type": "classification",
+    "representation": "raw",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5,
+    "top_k": 10,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.01,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 1000,
+    "patience": 100,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 32
+  },
+  "seed": 32,
+  "validation_error": 0.15909090909090906,
+  "validation_metrics": {
+    "accuracy": 0.8409090909090909,
+    "loss": 0.4122432531174132,
+    "roc_auc": 0.8916666666666667
+  },
+  "test_error": 0.2954545454545454,
+  "test_metrics": {
+    "accuracy": 0.7045454545454546,
+    "loss": 0.6454733655704863,
+    "roc_auc": 0.7666666666666667
+  },
+  "train_resubstitution_error": 0.13636362552642822,
+  "best_epoch": 735,
+  "epochs_run": 836,
+  "best_val_loss": 0.4122432470321655,
+  "training_seconds": 37.77484180009924,
+  "inference_seconds": 0.0058663999661803246,
+  "diagnostics": {
+    "effective_neighbours_mean": 5.536715507507324,
+    "feature_weights_set0": [
+      1.7335326671600342,
+      11.492485046386719
+    ],
+    "bias_mean": 0.3128722310066223,
+    "bias_std": 0.9033941030502319
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "zebra_special",
+    "task_type": "classification",
+    "n_train": 132,
+    "n_maint": 0,
+    "n_val": 44,
+    "n_test": 44,
+    "n_features": 2,
+    "num_classes": 2,
+    "reg_bins": null,
+    "source": "datasets.classification_data",
+    "split_indices_sha256": "2743728146b2275fe2f6d2f8d9fa2362d67334387b22a9a1869b2b8e3a6390e0",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 32,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

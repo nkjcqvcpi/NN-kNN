@@ -1,0 +1,81 @@
+{
+  "status": "completed",
+  "variant": "soft_knn_bias0",
+  "settings": {
+    "task_type": "classification",
+    "representation": "raw",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5,
+    "top_k": 10,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.0,
+    "lr_glocal": 0.0,
+    "lr_feature": 0.0,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "manual",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 30
+  },
+  "seed": 30,
+  "validation_error": 0.4772727272727273,
+  "validation_metrics": {
+    "accuracy": 0.5227272727272727,
+    "loss": 0.7596385325817032,
+    "roc_auc": 0.47291666666666665
+  },
+  "test_error": 0.5,
+  "test_metrics": {
+    "accuracy": 0.5,
+    "loss": 0.7236568129352041,
+    "roc_auc": 0.5375000000000001
+  },
+  "train_resubstitution_error": 0.2878788113594055,
+  "best_epoch": 1,
+  "epochs_run": 42,
+  "best_val_loss": 0.7596384286880493,
+  "training_seconds": 1.97926350007765,
+  "inference_seconds": 0.0011934998910874128,
+  "diagnostics": {
+    "effective_neighbours_mean": 9.512423515319824,
+    "feature_weights_set0": [
+      1.0,
+      1.0
+    ],
+    "bias_mean": 0.0,
+    "bias_std": 0.0
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "zebra_special",
+    "task_type": "classification",
+    "n_train": 132,
+    "n_maint": 0,
+    "n_val": 44,
+    "n_test": 44,
+    "n_features": 2,
+    "num_classes": 2,
+    "reg_bins": null,
+    "source": "datasets.classification_data",
+    "split_indices_sha256": "05e56496da48f0389ef31a8ac85a6de8217ac521ca81b8959b8cde826be0fc1f",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 30,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

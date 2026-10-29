@@ -1,0 +1,479 @@
+{
+  "task": "regression__yacht",
+  "variant": "sets8",
+  "override": {
+    "glocal_fw_set_num": 8
+  },
+  "base_parameters": {
+    "representation": "raw",
+    "top_k": 3,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 1.0
+  },
+  "settings": {
+    "representation": "raw",
+    "top_k": 3,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 8,
+    "tau": 1.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "epochs": 300,
+    "patience": 40
+  },
+  "status": "completed",
+  "rows": [
+    {
+      "status": "completed",
+      "variant": "sets8",
+      "settings": {
+        "task_type": "regression",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 8,
+        "tau": 1.0,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "softmax",
+        "lr_case": 0.01,
+        "lr_glocal": 0.01,
+        "lr_feature": 0.001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 30
+      },
+      "seed": 30,
+      "validation_error": 0.12767618848885393,
+      "validation_metrics": {
+        "rmse_standardized": 0.12767618848885393,
+        "rmse_original": 1.9710863928479274,
+        "loss": 0.016301209107041355
+      },
+      "test_error": 0.14122939035401968,
+      "test_metrics": {
+        "rmse_standardized": 0.14122939035401968,
+        "rmse_original": 2.1803229943797904,
+        "loss": 0.01994574069976807
+      },
+      "train_resubstitution_error": 0.10396025193698522,
+      "best_epoch": 196,
+      "epochs_run": 237,
+      "best_val_loss": 0.01630120910704136,
+      "training_seconds": 13.38280489994213,
+      "inference_seconds": 0.006385100074112415,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.7698466777801514,
+        "feature_weights_set0": [
+          0.992395281791687,
+          0.9243441820144653,
+          0.2731565535068512,
+          0.8209646940231323,
+          0.41973403096199036,
+          1.827988624572754
+        ],
+        "bias_mean": 0.6640522480010986,
+        "bias_std": 0.4179539084434509
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "yacht",
+        "task_type": "regression",
+        "n_train": 184,
+        "n_maint": 0,
+        "n_val": 62,
+        "n_test": 62,
+        "n_features": 6,
+        "num_classes": null,
+        "reg_bins": [
+          -0.6728876233100891,
+          -0.5866079688072204,
+          -0.31468453407287583,
+          0.6140526175498964
+        ],
+        "source": "datasets.reg_data",
+        "split_indices_sha256": "f5de6e31015b8b6d5eb285f7ccf1ef41895c79dd3e13de5fb8a1b5859b37b62e",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 30,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    },
+    {
+      "status": "completed",
+      "variant": "sets8",
+      "settings": {
+        "task_type": "regression",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 8,
+        "tau": 1.0,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "softmax",
+        "lr_case": 0.01,
+        "lr_glocal": 0.01,
+        "lr_feature": 0.001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 31
+      },
+      "seed": 31,
+      "validation_error": 0.12789020948394966,
+      "validation_metrics": {
+        "rmse_standardized": 0.12789020948394966,
+        "rmse_original": 1.8590217525406532,
+        "loss": 0.01635590568184853
+      },
+      "test_error": 0.4094324173592182,
+      "test_metrics": {
+        "rmse_standardized": 0.4094324173592182,
+        "rmse_original": 5.951540568565682,
+        "loss": 0.16763490438461304
+      },
+      "train_resubstitution_error": 0.15587448056477846,
+      "best_epoch": 54,
+      "epochs_run": 95,
+      "best_val_loss": 0.016355909407138824,
+      "training_seconds": 5.49087080010213,
+      "inference_seconds": 0.006101599894464016,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.9528703689575195,
+        "feature_weights_set0": [
+          -5.261765909381211e-05,
+          -5.079476613900624e-05,
+          -0.00012104943743906915,
+          -0.00012468599015846848,
+          -7.007267413428053e-05,
+          1.6317706108093262
+        ],
+        "bias_mean": 0.7711190581321716,
+        "bias_std": 0.3014817535877228
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "yacht",
+        "task_type": "regression",
+        "n_train": 184,
+        "n_maint": 0,
+        "n_val": 62,
+        "n_test": 62,
+        "n_features": 6,
+        "num_classes": null,
+        "reg_bins": [
+          -0.6611496686935425,
+          -0.5737808823585511,
+          -0.3539140880107878,
+          0.7107473731040955
+        ],
+        "source": "datasets.reg_data",
+        "split_indices_sha256": "c67a57dc4a86a17695028e7fe853bb4b4e9f76960494129cd1c0ce60d5a96f68",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 31,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    },
+    {
+      "status": "completed",
+      "variant": "sets8",
+      "settings": {
+        "task_type": "regression",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 8,
+        "tau": 1.0,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "softmax",
+        "lr_case": 0.01,
+        "lr_glocal": 0.01,
+        "lr_feature": 0.001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 32
+      },
+      "seed": 32,
+      "validation_error": 0.10074126185849455,
+      "validation_metrics": {
+        "rmse_standardized": 0.10074126185849455,
+        "rmse_original": 1.5992274689979677,
+        "loss": 0.010148801840841768
+      },
+      "test_error": 0.10041014578017288,
+      "test_metrics": {
+        "rmse_standardized": 0.10041014578017288,
+        "rmse_original": 1.5939711329335782,
+        "loss": 0.01008219737559557
+      },
+      "train_resubstitution_error": 0.09757350754177999,
+      "best_epoch": 183,
+      "epochs_run": 224,
+      "best_val_loss": 0.010148802772164345,
+      "training_seconds": 12.281035699881613,
+      "inference_seconds": 0.007054000161588192,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.931925058364868,
+        "feature_weights_set0": [
+          0.20578031241893768,
+          -7.262554572662339e-05,
+          -8.757330215303227e-05,
+          -5.961035640211776e-05,
+          -7.500790525227785e-05,
+          1.838623046875
+        ],
+        "bias_mean": 0.6338266134262085,
+        "bias_std": 0.3192240595817566
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "yacht",
+        "task_type": "regression",
+        "n_train": 184,
+        "n_maint": 0,
+        "n_val": 62,
+        "n_test": 62,
+        "n_features": 6,
+        "num_classes": null,
+        "reg_bins": [
+          -0.7125648260116577,
+          -0.5878373503684997,
+          -0.29693243503570543,
+          0.5922867059707642
+        ],
+        "source": "datasets.reg_data",
+        "split_indices_sha256": "fba421d942369e0888b7a6261387a145adae22c45df4079160a557a1063ffa8d",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 32,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    },
+    {
+      "status": "completed",
+      "variant": "sets8",
+      "settings": {
+        "task_type": "regression",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 8,
+        "tau": 1.0,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "softmax",
+        "lr_case": 0.01,
+        "lr_glocal": 0.01,
+        "lr_feature": 0.001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 33
+      },
+      "seed": 33,
+      "validation_error": 0.14459582767679843,
+      "validation_metrics": {
+        "rmse_standardized": 0.14459582767679843,
+        "rmse_original": 2.0821103631341007,
+        "loss": 0.020907953381538388
+      },
+      "test_error": 0.3233880696326363,
+      "test_metrics": {
+        "rmse_standardized": 0.3233880696326363,
+        "rmse_original": 4.656632642271498,
+        "loss": 0.10457984358072281
+      },
+      "train_resubstitution_error": 0.09393120181885602,
+      "best_epoch": 271,
+      "epochs_run": 300,
+      "best_val_loss": 0.02090795524418354,
+      "training_seconds": 16.43058930011466,
+      "inference_seconds": 0.001865800004452467,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.7152132987976074,
+        "feature_weights_set0": [
+          1.052513837814331,
+          -0.0001116068015107885,
+          -0.00012076851999154314,
+          -0.00024056629627011716,
+          -0.00025517476024106145,
+          2.442554235458374
+        ],
+        "bias_mean": 0.539736270904541,
+        "bias_std": 0.4704876244068146
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "yacht",
+        "task_type": "regression",
+        "n_train": 184,
+        "n_maint": 0,
+        "n_val": 62,
+        "n_test": 62,
+        "n_features": 6,
+        "num_classes": null,
+        "reg_bins": [
+          -0.6386596441268921,
+          -0.5460176467895508,
+          -0.37601198554039,
+          0.6605504393577577
+        ],
+        "source": "datasets.reg_data",
+        "split_indices_sha256": "820d859624f85b67249f839fc665817b9a94a9a54af920acdeb2dd1ee57211f7",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 33,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    },
+    {
+      "status": "completed",
+      "variant": "sets8",
+      "settings": {
+        "task_type": "regression",
+        "representation": "raw",
+        "mlp_dims": [
+          32,
+          16
+        ],
+        "mlp_dropout": 0.0,
+        "glocal_fw_set_num": 8,
+        "tau": 1.0,
+        "top_k": 3,
+        "pre_topk_mask": true,
+        "case_normalizer": "softmax",
+        "lr_case": 0.01,
+        "lr_glocal": 0.01,
+        "lr_feature": 0.001,
+        "weight_decay": 1e-05,
+        "lambda_case_bias": 0.0,
+        "epochs": 300,
+        "patience": 40,
+        "batch_size": 64,
+        "bias_init": "knn_mean",
+        "bias_init_k": 5,
+        "bias_manual_value": 0.0,
+        "mcb_enabled": false,
+        "mcb_momentum": 0.99,
+        "normalize_embeddings": false,
+        "grad_clip": 0.5,
+        "seed": 34
+      },
+      "seed": 34,
+      "validation_error": 0.10969141338437073,
+      "validation_metrics": {
+        "rmse_standardized": 0.10969141338437073,
+        "rmse_original": 1.6060770086002647,
+        "loss": 0.012032206170260906
+      },
+      "test_error": 0.13003664300374548,
+      "test_metrics": {
+        "rmse_standardized": 0.13003664300374548,
+        "rmse_original": 1.9039672856803003,
+        "loss": 0.016909528523683548
+      },
+      "train_resubstitution_error": 0.07900070306534518,
+      "best_epoch": 282,
+      "epochs_run": 300,
+      "best_val_loss": 0.012032205238938332,
+      "training_seconds": 16.47888380009681,
+      "inference_seconds": 0.006516800029203296,
+      "diagnostics": {
+        "effective_neighbours_mean": 2.7842836380004883,
+        "feature_weights_set0": [
+          0.40404820442199707,
+          -9.700757073005661e-05,
+          0.5635998845100403,
+          -8.845399133861065e-05,
+          0.6279518604278564,
+          0.6841093897819519
+        ],
+        "bias_mean": 0.6131834983825684,
+        "bias_std": 0.37085309624671936
+      },
+      "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+      "dataset": {
+        "name": "yacht",
+        "task_type": "regression",
+        "n_train": 184,
+        "n_maint": 0,
+        "n_val": 62,
+        "n_test": 62,
+        "n_features": 6,
+        "num_classes": null,
+        "reg_bins": [
+          -0.6528364539146423,
+          -0.5583124399185181,
+          -0.3170848488807677,
+          0.5098640501499189
+        ],
+        "source": "datasets.reg_data",
+        "split_indices_sha256": "7ceeac84cec1aa0f4563bf24cda18704c84b237ee0f50b1cfc755d83927509b3",
+        "preprocessing_fit_stream": "train_only",
+        "split_seed": 34,
+        "test_frac": 0.2,
+        "val_frac": 0.2,
+        "maint_frac": 0.0
+      }
+    }
+  ]
+}

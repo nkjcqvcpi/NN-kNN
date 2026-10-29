@@ -1,0 +1,91 @@
+{
+  "status": "completed",
+  "variant": "tau1",
+  "settings": {
+    "task_type": "regression",
+    "representation": "raw",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 1,
+    "tau": 1.0,
+    "top_k": 3,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.001,
+    "lr_glocal": 0.001,
+    "lr_feature": 0.0001,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 30
+  },
+  "seed": 30,
+  "validation_error": 0.20313015344391325,
+  "validation_metrics": {
+    "rmse_standardized": 0.20313015344391325,
+    "rmse_original": 12151.328300639727,
+    "loss": 0.04126185923814774
+  },
+  "test_error": 0.25710407373323474,
+  "test_metrics": {
+    "rmse_standardized": 0.25710407373323474,
+    "rmse_original": 15380.070139252057,
+    "loss": 0.06610250473022461
+  },
+  "train_resubstitution_error": 0.13384496258906245,
+  "best_epoch": 2,
+  "epochs_run": 43,
+  "best_val_loss": 0.041261859238147736,
+  "training_seconds": 175.8907273001969,
+  "inference_seconds": 0.8505337000824511,
+  "diagnostics": {
+    "effective_neighbours_mean": 2.9876766204833984,
+    "feature_weights_set0": [
+      1.042967438697815,
+      1.053152322769165,
+      0.9949390292167664,
+      0.9101020097732544,
+      1.047215223312378,
+      1.042977213859558,
+      1.0500160455703735
+    ],
+    "bias_mean": 0.299157053232193,
+    "bias_std": 0.04005364701151848
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "car",
+    "task_type": "regression",
+    "n_train": 3977,
+    "n_maint": 0,
+    "n_val": 1326,
+    "n_test": 1326,
+    "n_features": 7,
+    "num_classes": null,
+    "reg_bins": [
+      -0.47176626324653625,
+      -0.32028619647026063,
+      -0.16867571473121637,
+      0.10571225285530121
+    ],
+    "source": "datasets.reg_data",
+    "split_indices_sha256": "d78f8a606748537f19330211413ace91fd076a3a1014cc145acbe1cb042848fa",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 30,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

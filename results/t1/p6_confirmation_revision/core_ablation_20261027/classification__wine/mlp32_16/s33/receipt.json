@@ -1,0 +1,93 @@
+{
+  "status": "completed",
+  "variant": "mlp32_16",
+  "settings": {
+    "task_type": "classification",
+    "representation": "mlp",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0,
+    "top_k": 3,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.01,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 33
+  },
+  "seed": 33,
+  "validation_error": 0.0,
+  "validation_metrics": {
+    "accuracy": 1.0,
+    "loss": 0.04463739873956436
+  },
+  "test_error": 0.05555555555555558,
+  "test_metrics": {
+    "accuracy": 0.9444444444444444,
+    "loss": 0.07259662230873555
+  },
+  "train_resubstitution_error": 0.0,
+  "best_epoch": 111,
+  "epochs_run": 152,
+  "best_val_loss": 0.044637396931648254,
+  "training_seconds": 7.315121699823067,
+  "inference_seconds": 0.005943899974226952,
+  "diagnostics": {
+    "effective_neighbours_mean": 2.998631477355957,
+    "feature_weights_set0": [
+      0.7168293595314026,
+      0.13386297225952148,
+      0.6074936985969543,
+      0.5174632668495178,
+      0.6745973229408264,
+      -2.553584818087984e-05,
+      -6.556048901984468e-05,
+      0.25399884581565857,
+      0.9741625785827637,
+      -2.8889917125241027e-09,
+      0.18940305709838867,
+      0.08922973275184631,
+      0.060175735503435135,
+      0.043314360082149506,
+      -1.8556421821358526e-07,
+      0.6812997460365295
+    ],
+    "bias_mean": 0.09717460721731186,
+    "bias_std": 0.1590418666601181
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "wine",
+    "task_type": "classification",
+    "n_train": 106,
+    "n_maint": 0,
+    "n_val": 36,
+    "n_test": 36,
+    "n_features": 13,
+    "num_classes": 3,
+    "reg_bins": null,
+    "source": "datasets.classification_data",
+    "split_indices_sha256": "1badd425e46c7a559ad516966897480dc54f000374e824a4a8dda6223a574741",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 33,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

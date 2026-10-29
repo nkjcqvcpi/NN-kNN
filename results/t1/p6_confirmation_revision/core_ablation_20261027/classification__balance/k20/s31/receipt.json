@@ -1,0 +1,93 @@
+{
+  "status": "completed",
+  "variant": "k20",
+  "settings": {
+    "task_type": "classification",
+    "representation": "mlp",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5,
+    "top_k": 20,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.01,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 31
+  },
+  "seed": 31,
+  "validation_error": 0.04800000000000004,
+  "validation_metrics": {
+    "accuracy": 0.952,
+    "loss": 0.07857098077384812
+  },
+  "test_error": 0.016000000000000014,
+  "test_metrics": {
+    "accuracy": 0.984,
+    "loss": 0.27068625001306523
+  },
+  "train_resubstitution_error": 0.0,
+  "best_epoch": 71,
+  "epochs_run": 112,
+  "best_val_loss": 0.07857097685337067,
+  "training_seconds": 25.410352800041437,
+  "inference_seconds": 0.018786099972203374,
+  "diagnostics": {
+    "effective_neighbours_mean": 19.279251098632812,
+    "feature_weights_set0": [
+      0.6662604808807373,
+      0.3392212688922882,
+      0.5458939671516418,
+      3.293612003326416,
+      1.8593372106552124,
+      2.8903276920318604,
+      2.605149507522583,
+      2.1598665714263916,
+      0.6522653698921204,
+      2.211347818374634,
+      0.8305546641349792,
+      -4.580175300361589e-06,
+      2.0335018634796143,
+      3.586073398590088,
+      0.8082817196846008,
+      0.5976755023002625
+    ],
+    "bias_mean": 0.1735122948884964,
+    "bias_std": 0.23187018930912018
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "balance",
+    "task_type": "classification",
+    "n_train": 375,
+    "n_maint": 0,
+    "n_val": 125,
+    "n_test": 125,
+    "n_features": 4,
+    "num_classes": 3,
+    "reg_bins": null,
+    "source": "datasets.classification_data",
+    "split_indices_sha256": "cb605d7324c336d267c16fc799dab4b99462122aa2ce341d3a16c0cb19693870",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 31,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

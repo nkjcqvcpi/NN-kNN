@@ -1,0 +1,93 @@
+{
+  "status": "completed",
+  "variant": "lr0.0003",
+  "settings": {
+    "task_type": "classification",
+    "representation": "mlp",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0,
+    "top_k": 3,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.0003,
+    "lr_glocal": 0.0003,
+    "lr_feature": 2.9999999999999997e-05,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 34
+  },
+  "seed": 34,
+  "validation_error": 0.08333333333333337,
+  "validation_metrics": {
+    "accuracy": 0.9166666666666666,
+    "loss": 0.16864898093372388
+  },
+  "test_error": 0.2222222222222222,
+  "test_metrics": {
+    "accuracy": 0.7777777777777778,
+    "loss": 1.033727363216017
+  },
+  "train_resubstitution_error": 0.04716980457305908,
+  "best_epoch": 156,
+  "epochs_run": 197,
+  "best_val_loss": 0.16864897310733795,
+  "training_seconds": 8.785947399912402,
+  "inference_seconds": 0.001322000054642558,
+  "diagnostics": {
+    "effective_neighbours_mean": 2.9993693828582764,
+    "feature_weights_set0": [
+      0.7859741449356079,
+      0.2007717341184616,
+      0.12738271057605743,
+      0.7832663655281067,
+      0.5756062865257263,
+      0.0966380164027214,
+      0.6622121930122375,
+      0.38201797008514404,
+      0.846525251865387,
+      0.135767862200737,
+      0.7278193831443787,
+      0.40954962372779846,
+      0.4508233964443207,
+      0.2977733612060547,
+      0.7067705988883972,
+      -1.7297527392656775e-06
+    ],
+    "bias_mean": 0.23086097836494446,
+    "bias_std": 0.04517578333616257
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "wine",
+    "task_type": "classification",
+    "n_train": 106,
+    "n_maint": 0,
+    "n_val": 36,
+    "n_test": 36,
+    "n_features": 13,
+    "num_classes": 3,
+    "reg_bins": null,
+    "source": "datasets.classification_data",
+    "split_indices_sha256": "a2fceca29429db6e3c9992fb840e22d0b6d828e9144bda610a65a5ea68683c0a",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 34,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

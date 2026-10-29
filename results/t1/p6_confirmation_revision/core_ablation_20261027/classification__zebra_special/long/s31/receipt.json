@@ -1,0 +1,81 @@
+{
+  "status": "completed",
+  "variant": "long",
+  "settings": {
+    "task_type": "classification",
+    "representation": "raw",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5,
+    "top_k": 10,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.01,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 1000,
+    "patience": 100,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 31
+  },
+  "seed": 31,
+  "validation_error": 0.2727272727272727,
+  "validation_metrics": {
+    "accuracy": 0.7272727272727273,
+    "loss": 0.4963452260102528,
+    "roc_auc": 0.8291666666666667
+  },
+  "test_error": 0.25,
+  "test_metrics": {
+    "accuracy": 0.75,
+    "loss": 0.47387032614565716,
+    "roc_auc": 0.8541666666666666
+  },
+  "train_resubstitution_error": 0.10606062412261963,
+  "best_epoch": 191,
+  "epochs_run": 292,
+  "best_val_loss": 0.4963452219963074,
+  "training_seconds": 13.11069169989787,
+  "inference_seconds": 0.0012494998518377542,
+  "diagnostics": {
+    "effective_neighbours_mean": 8.733020782470703,
+    "feature_weights_set0": [
+      0.20263411104679108,
+      4.632989406585693
+    ],
+    "bias_mean": 0.433910071849823,
+    "bias_std": 0.29624271392822266
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "zebra_special",
+    "task_type": "classification",
+    "n_train": 132,
+    "n_maint": 0,
+    "n_val": 44,
+    "n_test": 44,
+    "n_features": 2,
+    "num_classes": 2,
+    "reg_bins": null,
+    "source": "datasets.classification_data",
+    "split_indices_sha256": "063bef40cae196e1b5958fd32523b39eae2342777d17a6602827c2c388102cfd",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 31,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

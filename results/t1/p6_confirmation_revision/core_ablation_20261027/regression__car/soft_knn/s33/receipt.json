@@ -1,0 +1,91 @@
+{
+  "status": "completed",
+  "variant": "soft_knn",
+  "settings": {
+    "task_type": "regression",
+    "representation": "raw",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5,
+    "top_k": 3,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.0,
+    "lr_glocal": 0.0,
+    "lr_feature": 0.0,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 33
+  },
+  "seed": 33,
+  "validation_error": 0.24767949088520513,
+  "validation_metrics": {
+    "rmse_standardized": 0.24767949088520513,
+    "rmse_original": 15037.934786442098,
+    "loss": 0.06134513020515441
+  },
+  "test_error": 0.23711158996502718,
+  "test_metrics": {
+    "rmse_standardized": 0.23711158996502718,
+    "rmse_original": 14396.301503447045,
+    "loss": 0.05622190609574318
+  },
+  "train_resubstitution_error": 0.11935761109746744,
+  "best_epoch": 1,
+  "epochs_run": 42,
+  "best_val_loss": 0.06134513020515442,
+  "training_seconds": 413.6551487999968,
+  "inference_seconds": 1.871296999976039,
+  "diagnostics": {
+    "effective_neighbours_mean": 2.9514689445495605,
+    "feature_weights_set0": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "bias_mean": 0.3694925606250763,
+    "bias_std": 0.0
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "car",
+    "task_type": "regression",
+    "n_train": 3977,
+    "n_maint": 0,
+    "n_val": 1326,
+    "n_test": 1326,
+    "n_features": 7,
+    "num_classes": null,
+    "reg_bins": [
+      -0.4782441139221191,
+      -0.3260584056377411,
+      -0.16851986944675437,
+      0.10029210895299927
+    ],
+    "source": "datasets.reg_data",
+    "split_indices_sha256": "50e4b6070165b71ea76c07fd0c91c9b32867ea2ef5e2eb413eb0d77be7857401",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 33,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

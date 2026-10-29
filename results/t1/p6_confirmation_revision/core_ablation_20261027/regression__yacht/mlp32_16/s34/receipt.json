@@ -1,0 +1,100 @@
+{
+  "status": "completed",
+  "variant": "mlp32_16",
+  "settings": {
+    "task_type": "regression",
+    "representation": "mlp",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 1,
+    "tau": 1.0,
+    "top_k": 3,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.01,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "weight_decay": 1e-05,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 34
+  },
+  "seed": 34,
+  "validation_error": 0.35215711112191733,
+  "validation_metrics": {
+    "rmse_standardized": 0.35215711112191733,
+    "rmse_original": 5.1562052319091345,
+    "loss": 0.12401463091373444
+  },
+  "test_error": 0.32000404718566633,
+  "test_metrics": {
+    "rmse_standardized": 0.32000404718566633,
+    "rmse_original": 4.685427299974628,
+    "loss": 0.10240259021520616
+  },
+  "train_resubstitution_error": 0.10864466118690781,
+  "best_epoch": 64,
+  "epochs_run": 105,
+  "best_val_loss": 0.12401460856199265,
+  "training_seconds": 7.963204700034112,
+  "inference_seconds": 0.007686299970373511,
+  "diagnostics": {
+    "effective_neighbours_mean": 2.9908487796783447,
+    "feature_weights_set0": [
+      0.6682179570198059,
+      1.8563355207443237,
+      1.3134275674819946,
+      0.9717240929603577,
+      1.8777230978012085,
+      1.1401914358139038,
+      0.8577636480331421,
+      1.8372217416763306,
+      1.5120739936828613,
+      1.5557552576065063,
+      1.655299425125122,
+      1.3191558122634888,
+      0.9884664416313171,
+      1.0681331157684326,
+      1.0735300779342651,
+      0.021003857254981995
+    ],
+    "bias_mean": 0.15139658749103546,
+    "bias_std": 0.1482154279947281
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "yacht",
+    "task_type": "regression",
+    "n_train": 184,
+    "n_maint": 0,
+    "n_val": 62,
+    "n_test": 62,
+    "n_features": 6,
+    "num_classes": null,
+    "reg_bins": [
+      -0.6528364539146423,
+      -0.5583124399185181,
+      -0.3170848488807677,
+      0.5098640501499189
+    ],
+    "source": "datasets.reg_data",
+    "split_indices_sha256": "7ceeac84cec1aa0f4563bf24cda18704c84b237ee0f50b1cfc755d83927509b3",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 34,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}

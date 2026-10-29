@@ -1,0 +1,93 @@
+{
+  "status": "completed",
+  "variant": "wd1e-3",
+  "settings": {
+    "task_type": "classification",
+    "representation": "mlp",
+    "mlp_dims": [
+      32,
+      16
+    ],
+    "mlp_dropout": 0.0,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5,
+    "top_k": 10,
+    "pre_topk_mask": true,
+    "case_normalizer": "softmax",
+    "lr_case": 0.01,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001,
+    "weight_decay": 0.001,
+    "lambda_case_bias": 0.0,
+    "epochs": 300,
+    "patience": 40,
+    "batch_size": 64,
+    "bias_init": "knn_mean",
+    "bias_init_k": 5,
+    "bias_manual_value": 0.0,
+    "mcb_enabled": false,
+    "mcb_momentum": 0.99,
+    "normalize_embeddings": false,
+    "grad_clip": 0.5,
+    "seed": 34
+  },
+  "seed": 34,
+  "validation_error": 0.040000000000000036,
+  "validation_metrics": {
+    "accuracy": 0.96,
+    "loss": 0.10243433489755066
+  },
+  "test_error": 0.06399999999999995,
+  "test_metrics": {
+    "accuracy": 0.936,
+    "loss": 0.5087981307960603
+  },
+  "train_resubstitution_error": 0.002666652202606201,
+  "best_epoch": 111,
+  "epochs_run": 152,
+  "best_val_loss": 0.10243433713912964,
+  "training_seconds": 36.86328239995055,
+  "inference_seconds": 0.02384370006620884,
+  "diagnostics": {
+    "effective_neighbours_mean": 9.967594146728516,
+    "feature_weights_set0": [
+      -3.865299902372499e-07,
+      0.09195017069578171,
+      -3.2026931876316667e-05,
+      0.0026553457137197256,
+      -5.973200956077562e-08,
+      -3.043727474505431e-07,
+      -4.0040026760834735e-06,
+      0.7510529160499573,
+      -2.635780205206828e-10,
+      -1.2320424502831884e-07,
+      -1.0723329069151077e-07,
+      -1.0810457524712547e-06,
+      -1.997948402276961e-06,
+      0.1558692455291748,
+      -5.088714260637062e-06,
+      -4.771946292975171e-12
+    ],
+    "bias_mean": 0.010432612150907516,
+    "bias_std": 0.04011598601937294
+  },
+  "source_sha256": "773c806577e0b63ef7bfc294f54bf712ff1fcbe421d3946c96ae7d9035eadd5a",
+  "dataset": {
+    "name": "balance",
+    "task_type": "classification",
+    "n_train": 375,
+    "n_maint": 0,
+    "n_val": 125,
+    "n_test": 125,
+    "n_features": 4,
+    "num_classes": 3,
+    "reg_bins": null,
+    "source": "datasets.classification_data",
+    "split_indices_sha256": "c3376fafe950e1d63cab4de238ce7424f06b224bee253aa7caec33feb3726b9f",
+    "preprocessing_fit_stream": "train_only",
+    "split_seed": 34,
+    "test_frac": 0.2,
+    "val_frac": 0.2,
+    "maint_frac": 0.0
+  }
+}
