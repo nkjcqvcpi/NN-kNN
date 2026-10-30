@@ -1,0 +1,27 @@
+{
+  "checked_continuations": 72,
+  "matched_pretrained_and_warmup_pairs": 36,
+  "unchanged_frozen_retrievers": 36,
+  "independently_recomputed_predictions_and_losses": "all match",
+  "disjoint_splits": "all checked",
+  "execution_source_fingerprint_matches_with_archived_test": true,
+  "current_source_sha256": "84e23040c5ea7168876e5e07aa52767cc1ed4426b135e08085c0be2f304dcb7d",
+  "post_launch_change": "New test fixture now restores torch process settings; archived test reconstructs the execution fingerprint. Training implementation unchanged.",
+  "synthetic_integrity_tests": "classification and regression passed",
+  "import_smoke": "passed",
+  "branch_tests": {
+    "passed": 377,
+    "failed": 7,
+    "skipped": 1,
+    "failures": [
+      "FAILED tests/test_t1_grid_prefill.py::test_prefilled_receipts_reproduce_the_sequential_grid",
+      "FAILED tests/test_t1_grid_prefill.py::test_legacy_trial_matches_the_grid_trial",
+      "FAILED tests/test_t1_grid_search.py::test_evaluate_refits_the_frozen_winner_without_reselection",
+      "FAILED tests/test_t1_synthetic_reliability.py::test_legacy_tensor_bytes_preserved[5-a4bd42c71027060c74f524f87a3321b249bc5ab2bc276be3f84946c7cba514fe]",
+      "FAILED tests/test_t1_synthetic_reliability.py::test_legacy_tensor_bytes_preserved[6-8fdc6ab17717d28c7e668138f560ce92c127cd17e496a179085d84367ca6f639]",
+      "FAILED tests/test_t1_synthetic_reliability.py::test_legacy_tensor_bytes_preserved[7-e567211d8135dc218b34daa59dd0f34f5e6fe46e40da9ca91698841c07356cd6]",
+      "FAILED tests/test_t1_tuning_features.py::test_defaults_reproduce_pre_change_toy_outputs_exactly"
+    ],
+    "note": "Final suite after restoring torch process settings in the new test; no claim of a fully passing suite."
+  }
+}

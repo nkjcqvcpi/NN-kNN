@@ -1,0 +1,70 @@
+{
+  "study": {
+    "status": "exploratory_paired_pilot",
+    "seeds": [
+      70,
+      71,
+      72
+    ],
+    "splits": {
+      "test_frac": 0.2,
+      "val_frac": 0.2
+    },
+    "core": {
+      "representation": "raw",
+      "glocal_fw_set_num": 1,
+      "case_normalizer": "softmax",
+      "tau": 1.0,
+      "top_k": 5,
+      "bias_init": "knn_mean",
+      "bias_init_k": 5,
+      "lr_case": 0.01,
+      "lr_glocal": 0.01,
+      "lr_feature": 0.001,
+      "batch_size": 64,
+      "epochs": 120,
+      "patience": 20
+    },
+    "datasets": [
+      {
+        "name": "linear_regression",
+        "task_type": "regression",
+        "generator": {
+          "n": 400,
+          "d": 5,
+          "noise_scale": 1.0
+        }
+      },
+      {
+        "name": "yacht",
+        "task_type": "regression"
+      },
+      {
+        "name": "energy_efficiency",
+        "task_type": "regression"
+      },
+      {
+        "name": "iris",
+        "task_type": "classification"
+      }
+    ]
+  },
+  "git": {
+    "commit": "eb326576edc11fd2d4c705651ab55baa0afa9281",
+    "branch": "neural-cbr",
+    "dirty_code_worktree": true,
+    "remote": "https://github.com/nkjcqvcpi/NN-kNN.git"
+  },
+  "source_sha256": "39d572320b637999835130a3741b15cc667f611680b33d72a7a37b8f92f787ef",
+  "environment": {
+    "python": "3.12.10",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "torch": "2.8.0+cu126",
+    "numpy": "2.3.3",
+    "sklearn": "1.7.2",
+    "torch_threads": 1,
+    "environment_lock": "uv.lock"
+  },
+  "python_executable": "D:\\NN-kNN-Haotang-branch\\.venv\\Scripts\\python.exe",
+  "note": "Actual local packages recorded above; no uv.lock environment-reproduction claim."
+}

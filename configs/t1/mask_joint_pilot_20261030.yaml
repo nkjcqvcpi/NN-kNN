@@ -1,0 +1,41 @@
+status: exploratory_mask_by_retrieval_freezing_pilot
+seeds: [70, 71, 72]
+splits: {test_frac: 0.2, val_frac: 0.2}
+core:
+  representation: raw
+  glocal_fw_set_num: 1
+  case_normalizer: softmax
+  tau: 1.0
+  top_k: 5
+  bias_init: knn_mean
+  bias_init_k: 5
+  lr_case: 0.01
+  lr_glocal: 0.01
+  lr_feature: 0.001
+  batch_size: 64
+  epochs: 300
+  patience: 40
+sync:
+  schedule: joint_rr
+  joint_objective: summed
+  w_pre: 1.0
+  w_post: 0.5
+  w_near: 0.0
+  v_post: 1.0
+  v_delta: 1.0
+  v_small: 0.1
+  adapter_lr: 0.003
+  hidden_dims: [64, 32]
+  adapter_warmup_epochs: 5
+  epochs: 85                 # 5 adapter-only warm-up + at most 80 continuation epochs.
+  patience: 20
+  diagnostics_every: 0
+  early_stopping: val_L_post
+classification_score_scale: 10.0
+datasets:
+  - {name: iris, task_type: classification}
+  - {name: wine, task_type: classification}
+  - {name: breast_cancer, task_type: classification}
+  - {name: yacht, task_type: regression}
+  - {name: energy_efficiency, task_type: regression}
+  - {name: student_performance, task_type: regression}

@@ -1,0 +1,54 @@
+[
+  {
+    "dataset": "linear_regression",
+    "task_type": "regression",
+    "n_pairs": 3,
+    "masked_mean_error": 0.32420543302676763,
+    "masked_sd_error": 0.06462017517291521,
+    "all_case_mean_error": 0.23745650750280864,
+    "all_case_sd_error": 0.03085548791472907,
+    "mean_paired_change": -0.086748925523959,
+    "unmasked_better_pairs": 3,
+    "unmasked_worse_pairs": 0,
+    "ties": 0
+  },
+  {
+    "dataset": "yacht",
+    "task_type": "regression",
+    "n_pairs": 3,
+    "masked_mean_error": 0.2687253654394255,
+    "masked_sd_error": 0.15444926187825103,
+    "all_case_mean_error": 0.17714333342735,
+    "all_case_sd_error": 0.025390165780386355,
+    "mean_paired_change": -0.09158203201207549,
+    "unmasked_better_pairs": 2,
+    "unmasked_worse_pairs": 1,
+    "ties": 0
+  },
+  {
+    "dataset": "energy_efficiency",
+    "task_type": "regression",
+    "n_pairs": 3,
+    "masked_mean_error": 0.05434998731635035,
+    "masked_sd_error": 0.005711366655178028,
+    "all_case_mean_error": 0.08819482355731978,
+    "all_case_sd_error": 0.004654393545005015,
+    "mean_paired_change": 0.033844836240969435,
+    "unmasked_better_pairs": 0,
+    "unmasked_worse_pairs": 3,
+    "ties": 0
+  },
+  {
+    "dataset": "iris",
+    "task_type": "classification",
+    "n_pairs": 3,
+    "masked_mean_error": 0.04444446166356405,
+    "masked_sd_error": 0.019244990619516747,
+    "all_case_mean_error": 0.011111120382944742,
+    "all_case_sd_error": 0.019245025032274456,
+    "mean_paired_change": -0.0333333412806193,
+    "unmasked_better_pairs": 2,
+    "unmasked_worse_pairs": 0,
+    "ties": 1
+  }
+]

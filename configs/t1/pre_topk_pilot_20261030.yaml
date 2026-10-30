@@ -1,0 +1,22 @@
+status: exploratory_paired_pilot
+seeds: [70, 71, 72]
+splits: {test_frac: 0.2, val_frac: 0.2}
+core:
+  representation: raw
+  glocal_fw_set_num: 1
+  case_normalizer: softmax
+  tau: 1.0
+  top_k: 5                 # Truncation only; ignored for aggregation in the unmasked arm.
+  bias_init: knn_mean
+  bias_init_k: 5           # Initial bias only; unchanged in both arms.
+  lr_case: 0.01
+  lr_glocal: 0.01
+  lr_feature: 0.001
+  batch_size: 64
+  epochs: 120
+  patience: 20
+datasets:
+  - {name: linear_regression, task_type: regression, generator: {n: 400, d: 5, noise_scale: 1.0}}
+  - {name: yacht, task_type: regression}
+  - {name: energy_efficiency, task_type: regression}
+  - {name: iris, task_type: classification}

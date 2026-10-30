@@ -1,0 +1,17 @@
+{
+  "checked_fits": 72,
+  "identical_initialization_pairs": 36,
+  "only_configuration_difference": "pre_topk_mask",
+  "bias_init_k_both_arms": 5,
+  "prediction_metrics": "independently recomputed; all match",
+  "split_disjointness": "all checked",
+  "original_pilot_fits_reproduced_exactly": 24,
+  "source_fingerprint_matches": true,
+  "import_smoke": "passed",
+  "branch_tests": {
+    "passed": 375,
+    "failed": 7,
+    "skipped": 1,
+    "note": "Same seven failures as initial pilot: three missing CatBoost metadata, four exact historical-output checks."
+  }
+}

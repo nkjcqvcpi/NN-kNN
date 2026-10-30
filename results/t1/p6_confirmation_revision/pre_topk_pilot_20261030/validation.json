@@ -1,0 +1,28 @@
+{
+  "independent_prediction_recalculation": "24 of 24 match",
+  "paired_initial_state_hashes": "12 of 12 identical",
+  "paired_configuration_changes": "only pre_topk_mask differs",
+  "training_and_test_initial_support": "masked arms at most 5 positive weights; all-case arms more than 5",
+  "leave_one_out": "self weights zero in training probes",
+  "separate_k_sanity": {
+    "top_k_5_vs_11_with_mask_off": "identical initial model state and retrieval weights",
+    "bias_init_k_5_bias": 3.299999952316284,
+    "bias_init_k_2_bias": 1.100000023841858
+  },
+  "execution_source_fingerprint_matches_current_code": true,
+  "import_smoke": "passed",
+  "branch_tests": {
+    "passed": 375,
+    "failed": 7,
+    "skipped": 1,
+    "failures": [
+      "test_t1_grid_prefill.py::test_prefilled_receipts_reproduce_the_sequential_grid (CatBoost package metadata missing)",
+      "test_t1_grid_prefill.py::test_legacy_trial_matches_the_grid_trial (CatBoost package metadata missing)",
+      "test_t1_grid_search.py::test_evaluate_refits_the_frozen_winner_without_reselection (CatBoost package metadata missing)",
+      "test_t1_synthetic_reliability.py::test_legacy_tensor_bytes_preserved (three seeds: 5, 6, 7)",
+      "test_t1_tuning_features.py::test_defaults_reproduce_pre_change_toy_outputs_exactly"
+    ],
+    "scope": "all tests/test_t1_*.py and tests/test_nnknn_core.py",
+    "note": "No shared source or existing test edits; causes of exact historical-output differences not resolved."
+  }
+}

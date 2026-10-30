@@ -1,0 +1,19 @@
+{
+  "scope": "Constructed example: query targets are fixed to the initial retrieval predictions; adapter starts with correction +1. Not a benchmark result.",
+  "objective": "L_pre + 2.5 * L_post; L_small inactive",
+  "step": "normalized negative total gradient, parameter displacement norm 0.001",
+  "retrieval_gradient_from_pre_zero": true,
+  "retrieval_gradient_from_total_nonzero": true,
+  "before": {
+    "L_pre": 0.0,
+    "L_post": 1.0,
+    "L_delta": 1.0,
+    "total": 2.5
+  },
+  "after": {
+    "L_pre": 4.459406621748485e-09,
+    "L_post": 0.9979369640350342,
+    "L_delta": 0.9979369640350342,
+    "total": 2.494842529296875
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "probes": 12,
+  "gradient_routes": "all assertions passed",
+  "encoder_gradients": "online encoder gradients nonzero in all 8 MLP fixtures",
+  "finite_difference_max_relative_discrepancy": 0.0006346213858173865,
+  "targeted_tests_passed": 64,
+  "scope": "joint and regression synchronization, chunked retrieval, shared core",
+  "counterexample": "total loss decreases while retrieval loss increases",
+  "source_fingerprint_matches": true,
+  "limit": "Local synthetic derivatives and steps do not establish convergence or generalization."
+}

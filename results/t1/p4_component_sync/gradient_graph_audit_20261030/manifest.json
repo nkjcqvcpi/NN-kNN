@@ -1,0 +1,19 @@
+{
+  "git": {
+    "commit": "eb326576edc11fd2d4c705651ab55baa0afa9281",
+    "branch": "neural-cbr",
+    "dirty_code_worktree": true,
+    "remote": "https://github.com/nkjcqvcpi/NN-kNN.git"
+  },
+  "source_sha256": "80b9157a75fab5146c34be8b75991cfc30d93b053322950f6313700755ae2f0f",
+  "environment": {
+    "python": "3.12.10",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "torch": "2.8.0+cu126",
+    "numpy": "2.3.3",
+    "sklearn": "1.7.2",
+    "torch_threads": 1,
+    "environment_lock": "uv.lock"
+  },
+  "scope": "synthetic local derivatives, not convergence or generalization"
+}

@@ -1,0 +1,1247 @@
+{
+  "probes": [
+    {
+      "task": "classification",
+      "representation": "raw",
+      "mcb": false,
+      "masked": true,
+      "graph": {
+        "weights_require_grad": true,
+        "query_features_require_grad": false,
+        "case_features_require_grad": false
+      },
+      "term_grad_norms": {
+        "L_pre": {
+          "retrieval": 0.08375991398321848,
+          "adapter": 0.0
+        },
+        "L_post": {
+          "retrieval": 0.5815148948584756,
+          "adapter": 4.373056556260206
+        },
+        "L_delta": {
+          "retrieval": 0.05480885604508609,
+          "adapter": 0.9986595311713922
+        },
+        "L_small": {
+          "retrieval": 0.018963368069357327,
+          "adapter": 0.9641918328468057
+        }
+      },
+      "per_retrieval_parameter_post_gradient": {
+        "biases": 0.40164998173713684,
+        "negative_weights": 0.0,
+        "glocal_weights": 0.2848237156867981,
+        "glocal_weightor.feature_weights": 0.309374064207077
+      },
+      "retrieval_pre_post_gradient_cosine": 0.8426805745205433,
+      "residual_identity": "L_delta equals squared error of nominal scores against one-hot labels",
+      "backward_checks": {
+        "summed": "backward matches independently assembled autograd objective",
+        "separated": "backward matches independently assembled autograd objective"
+      },
+      "finite_difference_trials": [
+        {
+          "epsilon": 0.001,
+          "numerical": 0.5815625190734863,
+          "analytical": 0.5815148948584756,
+          "relative_error": 8.189681026535046e-05,
+          "mask_support_unchanged": true
+        }
+      ],
+      "descent": {
+        "retrieval_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.2673667371273041,
+            "target_loss_after": 0.26678547263145447,
+            "retrieval_loss_before": 0.11833163350820541,
+            "retrieval_loss_after": 0.11826108396053314,
+            "same_mask_support": true
+          }
+        ],
+        "adapter_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.2673667371273041,
+            "target_loss_after": 0.2630016803741455,
+            "retrieval_loss_before": 0.11833163350820541,
+            "retrieval_loss_after": 0.11833163350820541,
+            "same_mask_support": true
+          }
+        ],
+        "both_on_total": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.6388418674468994,
+            "target_loss_after": 0.6312986612319946,
+            "retrieval_loss_before": 0.11833163350820541,
+            "retrieval_loss_after": 0.11832203716039658,
+            "same_mask_support": true
+          }
+        ]
+      },
+      "actual_adam_changed_parameters": {
+        "retrieval": true,
+        "adapter": true
+      },
+      "actual_adam_loss_before": {
+        "L_pre": 0.11833163350820541,
+        "L_post": 0.2673667371273041,
+        "total": 0.6388418674468994
+      },
+      "actual_adam_loss_after": {
+        "L_pre": 0.1147986426949501,
+        "L_post": 0.2177601307630539,
+        "total": 0.5525805354118347
+      }
+    },
+    {
+      "task": "classification",
+      "representation": "raw",
+      "mcb": false,
+      "masked": false,
+      "graph": {
+        "weights_require_grad": true,
+        "query_features_require_grad": false,
+        "case_features_require_grad": false
+      },
+      "term_grad_norms": {
+        "L_pre": {
+          "retrieval": 0.15448415630151335,
+          "adapter": 0.0
+        },
+        "L_post": {
+          "retrieval": 0.7807134563674352,
+          "adapter": 10.038305808441686
+        },
+        "L_delta": {
+          "retrieval": 0.07836860607069053,
+          "adapter": 0.9017906418589842
+        },
+        "L_small": {
+          "retrieval": 0.003653632828223905,
+          "adapter": 0.40903776569803413
+        }
+      },
+      "per_retrieval_parameter_post_gradient": {
+        "biases": 0.4282427430152893,
+        "negative_weights": 0.0,
+        "glocal_weights": 0.45299032330513,
+        "glocal_weightor.feature_weights": 0.4700227975845337
+      },
+      "retrieval_pre_post_gradient_cosine": 0.5009066774972633,
+      "residual_identity": "L_delta equals squared error of nominal scores against one-hot labels",
+      "backward_checks": {
+        "summed": "backward matches independently assembled autograd objective",
+        "separated": "backward matches independently assembled autograd objective"
+      },
+      "finite_difference_trials": [
+        {
+          "epsilon": 0.001,
+          "numerical": 0.7805079221725464,
+          "analytical": 0.7807134563674352,
+          "relative_error": 0.0002632645732085939,
+          "mask_support_unchanged": true
+        }
+      ],
+      "descent": {
+        "retrieval_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.42318543791770935,
+            "target_loss_after": 0.422405481338501,
+            "retrieval_loss_before": 0.4216093420982361,
+            "retrieval_loss_after": 0.42153200507164,
+            "same_mask_support": true
+          }
+        ],
+        "adapter_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.42318543791770935,
+            "target_loss_after": 0.41321951150894165,
+            "retrieval_loss_before": 0.4216093420982361,
+            "retrieval_loss_after": 0.4216093420982361,
+            "same_mask_support": true
+          }
+        ],
+        "both_on_total": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 1.2099025249481201,
+            "target_loss_after": 1.1941838264465332,
+            "retrieval_loss_before": 0.4216093420982361,
+            "retrieval_loss_after": 0.4216015934944153,
+            "same_mask_support": true
+          }
+        ]
+      },
+      "actual_adam_changed_parameters": {
+        "retrieval": true,
+        "adapter": true
+      },
+      "actual_adam_loss_before": {
+        "L_pre": 0.4216093420982361,
+        "L_post": 0.42318543791770935,
+        "total": 1.2099025249481201
+      },
+      "actual_adam_loss_after": {
+        "L_pre": 0.4208564758300781,
+        "L_post": 0.3110199570655823,
+        "total": 1.0316276550292969
+      }
+    },
+    {
+      "task": "classification",
+      "representation": "mlp",
+      "mcb": false,
+      "masked": true,
+      "graph": {
+        "weights_require_grad": true,
+        "query_features_require_grad": true,
+        "case_features_require_grad": true
+      },
+      "term_grad_norms": {
+        "L_pre": {
+          "retrieval": 0.31380024186932404,
+          "adapter": 0.0
+        },
+        "L_post": {
+          "retrieval": 4.31859607279132,
+          "adapter": 12.922170056883768
+        },
+        "L_delta": {
+          "retrieval": 0.3574300668821448,
+          "adapter": 1.1872894610226268
+        },
+        "L_small": {
+          "retrieval": 0.0029995922893559872,
+          "adapter": 0.015664225795123755
+        }
+      },
+      "per_retrieval_parameter_post_gradient": {
+        "biases": 1.2189528942108154,
+        "negative_weights": 0.0,
+        "glocal_weights": 0.09439701586961746,
+        "feature_extractor.net.0.weight": 1.6407170295715332,
+        "feature_extractor.net.0.bias": 0.5289376378059387,
+        "feature_extractor.net.2.weight": 3.588000774383545,
+        "feature_extractor.net.2.bias": 1.1437746286392212,
+        "glocal_weightor.feature_weights": 0.04265839233994484
+      },
+      "retrieval_pre_post_gradient_cosine": 0.782776480285614,
+      "residual_identity": "L_delta equals squared error of nominal scores against one-hot labels",
+      "backward_checks": {
+        "summed": "backward matches independently assembled autograd objective",
+        "separated": "backward matches independently assembled autograd objective"
+      },
+      "finite_difference_trials": [
+        {
+          "epsilon": 0.001,
+          "numerical": 244.39918994903564,
+          "analytical": 4.31859607279132,
+          "relative_error": 55.592278099088,
+          "mask_support_unchanged": false
+        },
+        {
+          "epsilon": 0.0003,
+          "numerical": 408.4241390228272,
+          "analytical": 4.31859607279132,
+          "relative_error": 93.57335952210106,
+          "mask_support_unchanged": false
+        },
+        {
+          "epsilon": 0.0001,
+          "numerical": 1217.777132987976,
+          "analytical": 4.31859607279132,
+          "relative_error": 280.9844950678305,
+          "mask_support_unchanged": false
+        },
+        {
+          "epsilon": 3e-05,
+          "numerical": 4.32133674621582,
+          "analytical": 4.31859607279132,
+          "relative_error": 0.0006346213858173865,
+          "mask_support_unchanged": true
+        }
+      ],
+      "descent": {
+        "retrieval_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 1.9504060745239258,
+            "target_loss_after": 1.4659205675125122,
+            "retrieval_loss_before": 0.446831613779068,
+            "retrieval_loss_after": 0.40254634618759155,
+            "same_mask_support": false
+          }
+        ],
+        "adapter_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 1.9504060745239258,
+            "target_loss_after": 1.9374828338623047,
+            "retrieval_loss_before": 0.446831613779068,
+            "retrieval_loss_after": 0.446831613779068,
+            "same_mask_support": true
+          }
+        ],
+        "both_on_total": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 3.646266460418701,
+            "target_loss_after": 3.2181525230407715,
+            "retrieval_loss_before": 0.446831613779068,
+            "retrieval_loss_after": 0.4247329831123352,
+            "same_mask_support": false
+          }
+        ]
+      },
+      "actual_adam_changed_parameters": {
+        "retrieval": true,
+        "adapter": true
+      },
+      "actual_adam_loss_before": {
+        "L_pre": 0.446831613779068,
+        "L_post": 1.9504060745239258,
+        "total": 3.646266460418701
+      },
+      "actual_adam_loss_after": {
+        "L_pre": 0.3054538071155548,
+        "L_post": 1.6035759449005127,
+        "total": 2.983633041381836
+      }
+    },
+    {
+      "task": "classification",
+      "representation": "mlp",
+      "mcb": false,
+      "masked": false,
+      "graph": {
+        "weights_require_grad": true,
+        "query_features_require_grad": true,
+        "case_features_require_grad": true
+      },
+      "term_grad_norms": {
+        "L_pre": {
+          "retrieval": 0.297408667794998,
+          "adapter": 0.0
+        },
+        "L_post": {
+          "retrieval": 2.928397334163095,
+          "adapter": 15.157240023853745
+        },
+        "L_delta": {
+          "retrieval": 0.28795677726115426,
+          "adapter": 1.4391987320360193
+        },
+        "L_small": {
+          "retrieval": 0.00026172753529880746,
+          "adapter": 0.003027718061494049
+        }
+      },
+      "per_retrieval_parameter_post_gradient": {
+        "biases": 1.013335943222046,
+        "negative_weights": 0.0,
+        "glocal_weights": 0.11857610195875168,
+        "feature_extractor.net.0.weight": 0.926096498966217,
+        "feature_extractor.net.0.bias": 0.4171678423881531,
+        "feature_extractor.net.2.weight": 2.358790159225464,
+        "feature_extractor.net.2.bias": 0.9629893898963928,
+        "glocal_weightor.feature_weights": 0.10806206613779068
+      },
+      "retrieval_pre_post_gradient_cosine": 0.8539522042755071,
+      "residual_identity": "L_delta equals squared error of nominal scores against one-hot labels",
+      "backward_checks": {
+        "summed": "backward matches independently assembled autograd objective",
+        "separated": "backward matches independently assembled autograd objective"
+      },
+      "finite_difference_trials": [
+        {
+          "epsilon": 0.001,
+          "numerical": 2.9287338256835938,
+          "analytical": 2.928397334163095,
+          "relative_error": 0.00011490637440940927,
+          "mask_support_unchanged": true
+        }
+      ],
+      "descent": {
+        "retrieval_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 4.844794750213623,
+            "target_loss_after": 4.841862678527832,
+            "retrieval_loss_before": 0.7117435932159424,
+            "retrieval_loss_after": 0.7114890813827515,
+            "same_mask_support": true
+          }
+        ],
+        "adapter_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 4.844794750213623,
+            "target_loss_after": 4.829623699188232,
+            "retrieval_loss_before": 0.7117435932159424,
+            "retrieval_loss_after": 0.7117435932159424,
+            "same_mask_support": true
+          }
+        ],
+        "both_on_total": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 8.487133026123047,
+            "target_loss_after": 8.462504386901855,
+            "retrieval_loss_before": 0.7117435932159424,
+            "retrieval_loss_after": 0.711691677570343,
+            "same_mask_support": true
+          }
+        ]
+      },
+      "actual_adam_changed_parameters": {
+        "retrieval": true,
+        "adapter": true
+      },
+      "actual_adam_loss_before": {
+        "L_pre": 0.7117435932159424,
+        "L_post": 4.844794750213623,
+        "total": 8.487133026123047
+      },
+      "actual_adam_loss_after": {
+        "L_pre": 0.709892749786377,
+        "L_post": 4.677377700805664,
+        "total": 8.218222618103027
+      }
+    },
+    {
+      "task": "classification",
+      "representation": "mlp",
+      "mcb": true,
+      "masked": true,
+      "graph": {
+        "weights_require_grad": true,
+        "query_features_require_grad": true,
+        "case_features_require_grad": false
+      },
+      "term_grad_norms": {
+        "L_pre": {
+          "retrieval": 0.24681209174715726,
+          "adapter": 0.0
+        },
+        "L_post": {
+          "retrieval": 5.909643278673442,
+          "adapter": 12.922170056883768
+        },
+        "L_delta": {
+          "retrieval": 0.4930393175399517,
+          "adapter": 1.1872894610226268
+        },
+        "L_small": {
+          "retrieval": 0.004524435447163858,
+          "adapter": 0.015664225795123755
+        }
+      },
+      "per_retrieval_parameter_post_gradient": {
+        "biases": 1.2189528942108154,
+        "negative_weights": 0.0,
+        "glocal_weights": 0.09439701586961746,
+        "feature_extractor.net.0.weight": 1.509088397026062,
+        "feature_extractor.net.0.bias": 0.862703263759613,
+        "feature_extractor.net.2.weight": 4.8520684242248535,
+        "feature_extractor.net.2.bias": 2.6197590827941895,
+        "glocal_weightor.feature_weights": 0.04265839233994484
+      },
+      "retrieval_pre_post_gradient_cosine": 0.6983326978563458,
+      "residual_identity": "L_delta equals squared error of nominal scores against one-hot labels",
+      "backward_checks": {
+        "summed": "backward matches independently assembled autograd objective",
+        "separated": "backward matches independently assembled autograd objective"
+      },
+      "finite_difference_trials": [
+        {
+          "epsilon": 0.001,
+          "numerical": 126.35612487792969,
+          "analytical": 5.909643278673442,
+          "relative_error": 20.381345526204637,
+          "mask_support_unchanged": false
+        },
+        {
+          "epsilon": 0.0003,
+          "numerical": 409.6277554829916,
+          "analytical": 5.909643278673442,
+          "relative_error": 68.31514072283262,
+          "mask_support_unchanged": false
+        },
+        {
+          "epsilon": 0.0001,
+          "numerical": 1218.9829349517822,
+          "analytical": 5.909643278673442,
+          "relative_error": 205.2701380556783,
+          "mask_support_unchanged": false
+        },
+        {
+          "epsilon": 3e-05,
+          "numerical": 5.91278076171875,
+          "analytical": 5.909643278673442,
+          "relative_error": 0.0005309090409282109,
+          "mask_support_unchanged": true
+        }
+      ],
+      "descent": {
+        "retrieval_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 1.9504060745239258,
+            "target_loss_after": 1.7036100625991821,
+            "retrieval_loss_before": 0.446831613779068,
+            "retrieval_loss_after": 0.42469924688339233,
+            "same_mask_support": false
+          }
+        ],
+        "adapter_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 1.9504060745239258,
+            "target_loss_after": 1.9374828338623047,
+            "retrieval_loss_before": 0.446831613779068,
+            "retrieval_loss_after": 0.446831613779068,
+            "same_mask_support": true
+          }
+        ],
+        "both_on_total": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 3.646266460418701,
+            "target_loss_after": 3.2177581787109375,
+            "retrieval_loss_before": 0.446831613779068,
+            "retrieval_loss_after": 0.42475658655166626,
+            "same_mask_support": false
+          }
+        ]
+      },
+      "actual_adam_changed_parameters": {
+        "retrieval": true,
+        "adapter": true
+      },
+      "actual_adam_loss_before": {
+        "L_pre": 0.446831613779068,
+        "L_post": 1.9504060745239258,
+        "total": 3.646266460418701
+      },
+      "actual_adam_loss_after": {
+        "L_pre": 0.3063357174396515,
+        "L_post": 1.6031482219696045,
+        "total": 2.983534812927246
+      }
+    },
+    {
+      "task": "classification",
+      "representation": "mlp",
+      "mcb": true,
+      "masked": false,
+      "graph": {
+        "weights_require_grad": true,
+        "query_features_require_grad": true,
+        "case_features_require_grad": false
+      },
+      "term_grad_norms": {
+        "L_pre": {
+          "retrieval": 0.1514856799986854,
+          "adapter": 0.0
+        },
+        "L_post": {
+          "retrieval": 3.766825363247375,
+          "adapter": 15.157240023853745
+        },
+        "L_delta": {
+          "retrieval": 0.38746287918413436,
+          "adapter": 1.4391987320360193
+        },
+        "L_small": {
+          "retrieval": 0.0004137215775353987,
+          "adapter": 0.003027718061494049
+        }
+      },
+      "per_retrieval_parameter_post_gradient": {
+        "biases": 1.013335943222046,
+        "negative_weights": 0.0,
+        "glocal_weights": 0.11857610195875168,
+        "feature_extractor.net.0.weight": 0.8051811456680298,
+        "feature_extractor.net.0.bias": 0.5132501721382141,
+        "feature_extractor.net.2.weight": 2.9990899562835693,
+        "feature_extractor.net.2.bias": 1.7972486019134521,
+        "glocal_weightor.feature_weights": 0.10806206613779068
+      },
+      "retrieval_pre_post_gradient_cosine": 0.5231371180640015,
+      "residual_identity": "L_delta equals squared error of nominal scores against one-hot labels",
+      "backward_checks": {
+        "summed": "backward matches independently assembled autograd objective",
+        "separated": "backward matches independently assembled autograd objective"
+      },
+      "finite_difference_trials": [
+        {
+          "epsilon": 0.001,
+          "numerical": 3.7670135498046875,
+          "analytical": 3.766825363247375,
+          "relative_error": 4.995892805343825e-05,
+          "mask_support_unchanged": true
+        }
+      ],
+      "descent": {
+        "retrieval_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 4.844794750213623,
+            "target_loss_after": 4.841029167175293,
+            "retrieval_loss_before": 0.7117435932159424,
+            "retrieval_loss_after": 0.7116647362709045,
+            "same_mask_support": true
+          }
+        ],
+        "adapter_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 4.844794750213623,
+            "target_loss_after": 4.829623699188232,
+            "retrieval_loss_before": 0.7117435932159424,
+            "retrieval_loss_after": 0.7117435932159424,
+            "same_mask_support": true
+          }
+        ],
+        "both_on_total": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 8.487133026123047,
+            "target_loss_after": 8.462240219116211,
+            "retrieval_loss_before": 0.7117435932159424,
+            "retrieval_loss_after": 0.7117234468460083,
+            "same_mask_support": true
+          }
+        ]
+      },
+      "actual_adam_changed_parameters": {
+        "retrieval": true,
+        "adapter": true
+      },
+      "actual_adam_loss_before": {
+        "L_pre": 0.7117435932159424,
+        "L_post": 4.844794750213623,
+        "total": 8.487133026123047
+      },
+      "actual_adam_loss_after": {
+        "L_pre": 0.7113099694252014,
+        "L_post": 4.681835651397705,
+        "total": 8.22668743133545
+      }
+    },
+    {
+      "task": "regression",
+      "representation": "raw",
+      "mcb": false,
+      "masked": true,
+      "graph": {
+        "weights_require_grad": true,
+        "query_features_require_grad": false,
+        "case_features_require_grad": false
+      },
+      "term_grad_norms": {
+        "L_pre": {
+          "retrieval": 0.11758299655112779,
+          "adapter": 0.0
+        },
+        "L_post": {
+          "retrieval": 0.10141951940266043,
+          "adapter": 0.4947831269127242
+        },
+        "L_delta": {
+          "retrieval": 0.10141951940266043,
+          "adapter": 0.4947831269127242
+        },
+        "L_small": {
+          "retrieval": 0.0,
+          "adapter": 0.0
+        }
+      },
+      "per_retrieval_parameter_post_gradient": {
+        "biases": 0.06373781710863113,
+        "negative_weights": 0.0,
+        "glocal_weights": 0.06005808711051941,
+        "glocal_weightor.feature_weights": 0.0511511005461216
+      },
+      "retrieval_pre_post_gradient_cosine": 0.5874762341197628,
+      "residual_identity": "L_delta equals L_post in value and both component gradients",
+      "backward_checks": {
+        "summed": "backward matches independently assembled autograd objective",
+        "separated": "backward matches independently assembled autograd objective"
+      },
+      "finite_difference_trials": [
+        {
+          "epsilon": 0.001,
+          "numerical": 0.10141730308532715,
+          "analytical": 0.10141951940266043,
+          "relative_error": 2.185296623704806e-05,
+          "mask_support_unchanged": true
+        }
+      ],
+      "descent": {
+        "retrieval_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.2250223159790039,
+            "target_loss_after": 0.22492089867591858,
+            "retrieval_loss_before": 0.19264571368694305,
+            "retrieval_loss_after": 0.19257664680480957,
+            "same_mask_support": true
+          }
+        ],
+        "adapter_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.2250223159790039,
+            "target_loss_after": 0.22452862560749054,
+            "retrieval_loss_before": 0.19264571368694305,
+            "retrieval_loss_after": 0.19264571368694305,
+            "same_mask_support": true
+          }
+        ],
+        "both_on_total": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.755201518535614,
+            "target_loss_after": 0.7539223432540894,
+            "retrieval_loss_before": 0.19264571368694305,
+            "retrieval_loss_after": 0.19262130558490753,
+            "same_mask_support": true
+          }
+        ]
+      },
+      "actual_adam_changed_parameters": {
+        "retrieval": true,
+        "adapter": true
+      },
+      "actual_adam_loss_before": {
+        "L_pre": 0.19264571368694305,
+        "L_post": 0.2250223159790039,
+        "total": 0.755201518535614
+      },
+      "actual_adam_loss_after": {
+        "L_pre": 0.1892237663269043,
+        "L_post": 0.217939093708992,
+        "total": 0.7340714931488037
+      }
+    },
+    {
+      "task": "regression",
+      "representation": "raw",
+      "mcb": false,
+      "masked": false,
+      "graph": {
+        "weights_require_grad": true,
+        "query_features_require_grad": false,
+        "case_features_require_grad": false
+      },
+      "term_grad_norms": {
+        "L_pre": {
+          "retrieval": 0.20586909114491775,
+          "adapter": 0.0
+        },
+        "L_post": {
+          "retrieval": 0.1883585664237242,
+          "adapter": 0.45697409581631915
+        },
+        "L_delta": {
+          "retrieval": 0.18835856592066338,
+          "adapter": 0.4569740969436405
+        },
+        "L_small": {
+          "retrieval": 0.0,
+          "adapter": 0.0
+        }
+      },
+      "per_retrieval_parameter_post_gradient": {
+        "biases": 0.08035977184772491,
+        "negative_weights": 0.0,
+        "glocal_weights": 0.07963597029447556,
+        "glocal_weightor.feature_weights": 0.1505967080593109
+      },
+      "retrieval_pre_post_gradient_cosine": 0.5346889106266929,
+      "residual_identity": "L_delta equals L_post in value and both component gradients",
+      "backward_checks": {
+        "summed": "backward matches independently assembled autograd objective",
+        "separated": "backward matches independently assembled autograd objective"
+      },
+      "finite_difference_trials": [
+        {
+          "epsilon": 0.001,
+          "numerical": 0.18836557865142822,
+          "analytical": 0.1883585664237242,
+          "relative_error": 3.7228079599249816e-05,
+          "mask_support_unchanged": true
+        }
+      ],
+      "descent": {
+        "retrieval_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.3491485118865967,
+            "target_loss_after": 0.3489602208137512,
+            "retrieval_loss_before": 0.3259432911872864,
+            "retrieval_loss_after": 0.3258332908153534,
+            "same_mask_support": true
+          }
+        ],
+        "adapter_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.3491485118865967,
+            "target_loss_after": 0.3486926555633545,
+            "retrieval_loss_before": 0.3259432911872864,
+            "retrieval_loss_after": 0.3259432911872864,
+            "same_mask_support": true
+          }
+        ],
+        "both_on_total": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 1.1988146305084229,
+            "target_loss_after": 1.197523593902588,
+            "retrieval_loss_before": 0.3259432911872864,
+            "retrieval_loss_after": 0.32587045431137085,
+            "same_mask_support": true
+          }
+        ]
+      },
+      "actual_adam_changed_parameters": {
+        "retrieval": true,
+        "adapter": true
+      },
+      "actual_adam_loss_before": {
+        "L_pre": 0.3259432911872864,
+        "L_post": 0.3491485118865967,
+        "total": 1.1988146305084229
+      },
+      "actual_adam_loss_after": {
+        "L_pre": 0.3199535310268402,
+        "L_post": 0.3381832242012024,
+        "total": 1.1654115915298462
+      }
+    },
+    {
+      "task": "regression",
+      "representation": "mlp",
+      "mcb": false,
+      "masked": true,
+      "graph": {
+        "weights_require_grad": true,
+        "query_features_require_grad": true,
+        "case_features_require_grad": true
+      },
+      "term_grad_norms": {
+        "L_pre": {
+          "retrieval": 0.17085736027661863,
+          "adapter": 0.0
+        },
+        "L_post": {
+          "retrieval": 0.25731208123827237,
+          "adapter": 0.9158818386584947
+        },
+        "L_delta": {
+          "retrieval": 0.2573120805177442,
+          "adapter": 0.915881895690129
+        },
+        "L_small": {
+          "retrieval": 0.0,
+          "adapter": 0.0
+        }
+      },
+      "per_retrieval_parameter_post_gradient": {
+        "biases": 0.13228003680706024,
+        "negative_weights": 0.0,
+        "glocal_weights": 0.0045327674597501755,
+        "feature_extractor.net.0.weight": 0.0935228019952774,
+        "feature_extractor.net.0.bias": 0.034310195595026016,
+        "feature_extractor.net.2.weight": 0.191922128200531,
+        "feature_extractor.net.2.bias": 0.043886806815862656,
+        "glocal_weightor.feature_weights": 0.0026631199289113283
+      },
+      "retrieval_pre_post_gradient_cosine": 0.8180973832202115,
+      "residual_identity": "L_delta equals L_post in value and both component gradients",
+      "backward_checks": {
+        "summed": "backward matches independently assembled autograd objective",
+        "separated": "backward matches independently assembled autograd objective"
+      },
+      "finite_difference_trials": [
+        {
+          "epsilon": 0.001,
+          "numerical": 0.25725364685058594,
+          "analytical": 0.25731208123827237,
+          "relative_error": 0.00022709539095571674,
+          "mask_support_unchanged": true
+        }
+      ],
+      "descent": {
+        "retrieval_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.6341440677642822,
+            "target_loss_after": 0.6338866949081421,
+            "retrieval_loss_before": 0.4767511487007141,
+            "retrieval_loss_after": 0.47661128640174866,
+            "same_mask_support": true
+          }
+        ],
+        "adapter_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.6341440677642822,
+            "target_loss_after": 0.6332296133041382,
+            "retrieval_loss_before": 0.4767511487007141,
+            "retrieval_loss_after": 0.4767511487007141,
+            "same_mask_support": true
+          }
+        ],
+        "both_on_total": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 2.0621113777160645,
+            "target_loss_after": 2.059692859649658,
+            "retrieval_loss_before": 0.4767511487007141,
+            "retrieval_loss_after": 0.4767019748687744,
+            "same_mask_support": true
+          }
+        ]
+      },
+      "actual_adam_changed_parameters": {
+        "retrieval": true,
+        "adapter": true
+      },
+      "actual_adam_loss_before": {
+        "L_pre": 0.4767511487007141,
+        "L_post": 0.6341440677642822,
+        "total": 2.0621113777160645
+      },
+      "actual_adam_loss_after": {
+        "L_pre": 0.4610194265842438,
+        "L_post": 0.5814564228057861,
+        "total": 1.9146604537963867
+      }
+    },
+    {
+      "task": "regression",
+      "representation": "mlp",
+      "mcb": false,
+      "masked": false,
+      "graph": {
+        "weights_require_grad": true,
+        "query_features_require_grad": true,
+        "case_features_require_grad": true
+      },
+      "term_grad_norms": {
+        "L_pre": {
+          "retrieval": 0.6464471558897701,
+          "adapter": 0.0
+        },
+        "L_post": {
+          "retrieval": 0.6324967586495333,
+          "adapter": 1.2445945329276895
+        },
+        "L_delta": {
+          "retrieval": 0.6324967583426676,
+          "adapter": 1.2445945314728981
+        },
+        "L_small": {
+          "retrieval": 0.0,
+          "adapter": 0.0
+        }
+      },
+      "per_retrieval_parameter_post_gradient": {
+        "biases": 0.18417230248451233,
+        "negative_weights": 0.0,
+        "glocal_weights": 0.019559521228075027,
+        "feature_extractor.net.0.weight": 0.20225082337856293,
+        "feature_extractor.net.0.bias": 0.09441377967596054,
+        "feature_extractor.net.2.weight": 0.5047498345375061,
+        "feature_extractor.net.2.bias": 0.24706046283245087,
+        "glocal_weightor.feature_weights": 0.010931463912129402
+      },
+      "retrieval_pre_post_gradient_cosine": 0.9474661006589152,
+      "residual_identity": "L_delta equals L_post in value and both component gradients",
+      "backward_checks": {
+        "summed": "backward matches independently assembled autograd objective",
+        "separated": "backward matches independently assembled autograd objective"
+      },
+      "finite_difference_trials": [
+        {
+          "epsilon": 0.001,
+          "numerical": 0.6324052810668945,
+          "analytical": 0.6324967586495333,
+          "relative_error": 0.00014462933032896268,
+          "mask_support_unchanged": true
+        }
+      ],
+      "descent": {
+        "retrieval_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.9032465815544128,
+            "target_loss_after": 0.9026142358779907,
+            "retrieval_loss_before": 0.6404888033866882,
+            "retrieval_loss_after": 0.6398763656616211,
+            "same_mask_support": true
+          }
+        ],
+        "adapter_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.9032465815544128,
+            "target_loss_after": 0.902003288269043,
+            "retrieval_loss_before": 0.6404888033866882,
+            "retrieval_loss_after": 0.6404888033866882,
+            "same_mask_support": true
+          }
+        ],
+        "both_on_total": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 2.8986053466796875,
+            "target_loss_after": 2.8947954177856445,
+            "retrieval_loss_before": 0.6404888033866882,
+            "retrieval_loss_after": 0.6401252150535583,
+            "same_mask_support": true
+          }
+        ]
+      },
+      "actual_adam_changed_parameters": {
+        "retrieval": true,
+        "adapter": true
+      },
+      "actual_adam_loss_before": {
+        "L_pre": 0.6404888033866882,
+        "L_post": 0.9032465815544128,
+        "total": 2.8986053466796875
+      },
+      "actual_adam_loss_after": {
+        "L_pre": 0.6328192949295044,
+        "L_post": 0.8860155940055847,
+        "total": 2.847858428955078
+      }
+    },
+    {
+      "task": "regression",
+      "representation": "mlp",
+      "mcb": true,
+      "masked": true,
+      "graph": {
+        "weights_require_grad": true,
+        "query_features_require_grad": true,
+        "case_features_require_grad": false
+      },
+      "term_grad_norms": {
+        "L_pre": {
+          "retrieval": 0.12976378620257642,
+          "adapter": 0.0
+        },
+        "L_post": {
+          "retrieval": 0.2274864068259361,
+          "adapter": 0.9158818386584947
+        },
+        "L_delta": {
+          "retrieval": 0.2274864083792916,
+          "adapter": 0.915881895690129
+        },
+        "L_small": {
+          "retrieval": 0.0,
+          "adapter": 0.0
+        }
+      },
+      "per_retrieval_parameter_post_gradient": {
+        "biases": 0.13228003680706024,
+        "negative_weights": 0.0,
+        "glocal_weights": 0.0045327674597501755,
+        "feature_extractor.net.0.weight": 0.047005124390125275,
+        "feature_extractor.net.0.bias": 0.0364542081952095,
+        "feature_extractor.net.2.weight": 0.1399732530117035,
+        "feature_extractor.net.2.bias": 0.10532574355602264,
+        "glocal_weightor.feature_weights": 0.0026631199289113283
+      },
+      "retrieval_pre_post_gradient_cosine": 0.8036113165995135,
+      "residual_identity": "L_delta equals L_post in value and both component gradients",
+      "backward_checks": {
+        "summed": "backward matches independently assembled autograd objective",
+        "separated": "backward matches independently assembled autograd objective"
+      },
+      "finite_difference_trials": [
+        {
+          "epsilon": 0.001,
+          "numerical": 0.22745132446289062,
+          "analytical": 0.2274864068259361,
+          "relative_error": 0.00015421740373400898,
+          "mask_support_unchanged": true
+        }
+      ],
+      "descent": {
+        "retrieval_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.6341440677642822,
+            "target_loss_after": 0.6339167952537537,
+            "retrieval_loss_before": 0.4767511487007141,
+            "retrieval_loss_after": 0.4766469895839691,
+            "same_mask_support": true
+          }
+        ],
+        "adapter_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.6341440677642822,
+            "target_loss_after": 0.6332296133041382,
+            "retrieval_loss_before": 0.4767511487007141,
+            "retrieval_loss_after": 0.4767511487007141,
+            "same_mask_support": true
+          }
+        ],
+        "both_on_total": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 2.0621113777160645,
+            "target_loss_after": 2.059727191925049,
+            "retrieval_loss_before": 0.4767511487007141,
+            "retrieval_loss_after": 0.47671931982040405,
+            "same_mask_support": true
+          }
+        ]
+      },
+      "actual_adam_changed_parameters": {
+        "retrieval": true,
+        "adapter": true
+      },
+      "actual_adam_loss_before": {
+        "L_pre": 0.4767511487007141,
+        "L_post": 0.6341440677642822,
+        "total": 2.0621113777160645
+      },
+      "actual_adam_loss_after": {
+        "L_pre": 0.4806513786315918,
+        "L_post": 0.5871975421905518,
+        "total": 1.9486452341079712
+      }
+    },
+    {
+      "task": "regression",
+      "representation": "mlp",
+      "mcb": true,
+      "masked": false,
+      "graph": {
+        "weights_require_grad": true,
+        "query_features_require_grad": true,
+        "case_features_require_grad": false
+      },
+      "term_grad_norms": {
+        "L_pre": {
+          "retrieval": 0.6067194886923838,
+          "adapter": 0.0
+        },
+        "L_post": {
+          "retrieval": 0.8240087967471017,
+          "adapter": 1.2445945329276895
+        },
+        "L_delta": {
+          "retrieval": 0.8240087967110402,
+          "adapter": 1.2445945314728981
+        },
+        "L_small": {
+          "retrieval": 0.0,
+          "adapter": 0.0
+        }
+      },
+      "per_retrieval_parameter_post_gradient": {
+        "biases": 0.18417230248451233,
+        "negative_weights": 0.0,
+        "glocal_weights": 0.019559521228075027,
+        "feature_extractor.net.0.weight": 0.22518771886825562,
+        "feature_extractor.net.0.bias": 0.13213993608951569,
+        "feature_extractor.net.2.weight": 0.6634712219238281,
+        "feature_extractor.net.2.bias": 0.36905890703201294,
+        "glocal_weightor.feature_weights": 0.010931463912129402
+      },
+      "retrieval_pre_post_gradient_cosine": 0.9668336357863385,
+      "residual_identity": "L_delta equals L_post in value and both component gradients",
+      "backward_checks": {
+        "summed": "backward matches independently assembled autograd objective",
+        "separated": "backward matches independently assembled autograd objective"
+      },
+      "finite_difference_trials": [
+        {
+          "epsilon": 0.001,
+          "numerical": 0.8240640163421631,
+          "analytical": 0.8240087967471017,
+          "relative_error": 6.701335626436506e-05,
+          "mask_support_unchanged": true
+        }
+      ],
+      "descent": {
+        "retrieval_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.9032465815544128,
+            "target_loss_after": 0.9024240374565125,
+            "retrieval_loss_before": 0.6404888033866882,
+            "retrieval_loss_after": 0.6399036049842834,
+            "same_mask_support": true
+          }
+        ],
+        "adapter_only_on_post": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 0.9032465815544128,
+            "target_loss_after": 0.902003288269043,
+            "retrieval_loss_before": 0.6404888033866882,
+            "retrieval_loss_after": 0.6404888033866882,
+            "same_mask_support": true
+          }
+        ],
+        "both_on_total": [
+          {
+            "step_norm": 0.001,
+            "target_loss_before": 2.8986053466796875,
+            "target_loss_after": 2.8945229053497314,
+            "retrieval_loss_before": 0.6404888033866882,
+            "retrieval_loss_after": 0.640103816986084,
+            "same_mask_support": true
+          }
+        ]
+      },
+      "actual_adam_changed_parameters": {
+        "retrieval": true,
+        "adapter": true
+      },
+      "actual_adam_loss_before": {
+        "L_pre": 0.6404888033866882,
+        "L_post": 0.9032465815544128,
+        "total": 2.8986053466796875
+      },
+      "actual_adam_loss_after": {
+        "L_pre": 0.633921205997467,
+        "L_post": 0.8862512707710266,
+        "total": 2.8495492935180664
+      }
+    }
+  ],
+  "missing_true_class": [
+    {
+      "masked": true,
+      "top_k": 2,
+      "pre_loss": 18.42068099975586,
+      "retrieval_gradient_from_pre": 0.0,
+      "retrieval_gradient_from_post": 0.6784607163615967
+    },
+    {
+      "masked": false,
+      "top_k": 2,
+      "pre_loss": 3.2812981605529785,
+      "retrieval_gradient_from_pre": 2.0920250987354825,
+      "retrieval_gradient_from_post": 1.0239449203375048
+    }
+  ],
+  "note": "Descent probes use normalized gradient steps with predefined backtracking; actual Adam is checked for updates, not monotonic loss."
+}
