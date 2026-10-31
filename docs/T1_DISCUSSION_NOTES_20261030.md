@@ -2,7 +2,17 @@
 
 Date: October 30, 2026. Code and saved results reviewed at `eb326576`.
 
-**Discussion status:** Only points 1-3 have been discussed and recorded. Points 4 onward are title-only placeholders, pending discussion.
+**Discussion status:** Only points 1-3 have been discussed and recorded; their proposed changes and follow-up experiments are not all complete. Points 4 onward are deferred title-only placeholders, to be re-evaluated after establishing the revised baseline from points 1-3.
+
+**Re-evaluation decision, October 31:** The Zoom observations describe earlier model configurations. They remain historical evidence for those configurations, but must not be assumed to hold after changing pre-Top-K masking, the training setup, or correction-size regularization. Claims about difficult datasets, concentrated retrieval loss, adapter behavior, and the relative value of later interventions require fresh evaluation under the revised configuration.
+
+The next research steps are to:
+
+1. Resolve and apply the agreed baseline decisions from points 1-3, especially all-case softmax without pre-Top-K masking while preserving neighbor-based bias initialization. Declare the training schedule, loss weights, and correction-size penalty explicitly.
+2. Retrain and evaluate matched retrieval-only and retrieval-plus-adapter baselines, using controlled splits and seeds. Recompute the relevant diagnostics under that setup.
+3. Revisit points 4 onward using the new results, retaining, revising, or dropping earlier hypotheses and proposed experiments as the evidence warrants.
+
+The October 30 pilots below remain evidence for their stated paired comparisons and limitations. They do not establish that the remaining Zoom observations still hold under a fully revised baseline. Preserve earlier results for provenance and comparison, rather than treating them as current conclusions. No new experiment is reported by this re-evaluation decision.
 
 ## 1. Disable pre-Top-K masking by default
 
@@ -307,6 +317,8 @@ Sources: [calibration](../model/t1/calibration.py), [learned distance](../model/
 Keep the total post-adaptation error weight constant across conditions. Removing or redefining the duplicated regression `L_delta` without compensating its weight would also change the accuracy objective and confound the comparison. Use a declared scale and validation-based penalty-weight selection. Assess retrieval-only error, adapted error, correction magnitude (including its upper tail), and the fraction of corrections exceeding `tau_task`. Current checkpoint selection prioritizes validation adapted loss or error; it does not directly select for small corrections.
 
 This point records the design clarification and a proposed experiment, not new benchmark results. No training implementation or frozen experiment configuration was changed.
+
+**Deferred agenda:** The titles below preserve the remaining Zoom topics for later reassessment. They do not endorse the earlier observations or commit to conducting every proposed experiment before seeing the revised baseline results.
 
 ## 4. Learning-rate and optimizer sensitivity
 
