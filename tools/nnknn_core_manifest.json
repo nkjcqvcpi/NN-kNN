@@ -5,7 +5,7 @@
     "model/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "model/nnknn_model.py": "630a65d89f5f1ec4ac3658b87b189d844bba6028af010a2874f4832f55a92dbf",
     "model/nn_cdh.py": "eba0b2fa3e8ca185add142f4abd0da3e9ba270cd228641735d8bb5282a24e61c",
-    "model/device_utils.py": "f2e807db98c35e2da8e58f9718b5d75289b1267a33f2f1befe7453488c09f300",
+    "model/device_utils.py": "9ac12041973876551bc9e55a11a4d9cd92e6a0b0f97ecd73eea9d27ad000e19c",
     "model/feature_extractors.py": "a1411f2121eb4877a9b97a2f71af401ad701a14248c1b00037a903d8e4a1e0e6",
     "model/common/__init__.py": "18233732578ba21c849d7fe8aa2b3641f539022365d44b20e463d07263fc2fab",
     "model/common/artifacts.py": "6dba0ef9f347ce46c5740035011f1a472a8b2d2ffccd87e506be193191b01bf1",
