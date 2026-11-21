@@ -26,6 +26,13 @@ The original rl branch was merged with the mixed neural-cbr tip before removing 
 - T3 evidence, previously only in the Codex task workspace, was copied into `results/t3/<stage>/` and `logs/t3/<stage>/` by T3 handoff stage; see `results/README.md`. Run directories are an ignored local mirror.
 - `docs/t1_spec/` now also holds the roadmap, shared experiment contract, and open-decision checklist that the T3 plan links to.
 
+## Layout and environment rules (2026-11-21)
+
+- No README, CHANGELOG or LICENSE: owner decision for this project. Obsolete tracked content is deleted (Git history keeps it), not archived.
+- Environments and dependencies use uv only; the one `pyproject.toml`/`uv.lock`/`.python-version` (Python 3.14) is on `main` and all worktrees share the venv `NN-KNN/.venv` (`uv run --project ../main --no-sync ...`). `requirements*.txt`, `verify_packages.py`, the `codex/` setup scripts and the Codex-history sync tools were deleted (`codex/smoke_test.py` stays).
+- `python_version.txt` became `.python-version`. Main moved its sample notebooks to `notebooks/` ; rl moved its demo notebooks to `notebooks/` and `ENVIRONMENT_g234.md` to `docs/`; neural-cbr moved `handoff/` to `reports/`. The long agent guide lives at `docs/NNKNN_AGENT_GUIDE.md` on main only; the stage branches have no copy.
+- Branch names are `main`, `neural-cbr`, `rl`, `LLM` (the hub copy of this branch is the `llm/` folder; there is no `nnknn-work` folder here).
+
 ## Git recovery boundary
 
 Git fsck found no object corruption. The previous filter-repo pass rewrote local branches and upstream tracking refs, while origin still advertised the original commits. It left tracked checkpoints, so ordinary pushes would reject the divergent history. The parent directory NN-KNN is not a Git repository; run Git inside neural-cbr, rl, llm, or nnknn (main).

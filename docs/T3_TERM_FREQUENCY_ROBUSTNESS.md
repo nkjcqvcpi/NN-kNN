@@ -26,3 +26,7 @@ Existing bounded149 and internal152 jobs keep their frozen sources. The current
 live default-public results do not evaluate these new encodings. Source matching
 is still distinct from outcome utility;rare words/cases are not labeled harmful
 because a repetition-robust encoding changes their ranks.
+
+## Later runs
+
+The binary and sublinear runs (`t3-need-binary-20261006*`, `t3-need-sublinear-20261006*`) and the default-compatibility check (`t3-term-frequency-default-compat-20261006`) have since completed and are filed under `results/t3/s1_single_hop_retrieval/`. This document has not been updated with their numbers; see `results/README.md` for the run locations.

@@ -76,11 +76,13 @@ preparation time is reported separately from generation. Task evidence:
 audit remain necessary. No internal quality benefit or empirical architecture
 selection is established by this preflight.
 
-## Queued actual experiment
+## Actual experiment (completed)
 
-The four-arm64-call experiment is now queued as session96676 behind the verified
-bounded experiment owner23992. It is independent of that experiment's scientific
-outcome and waits for its GPU use to finish. Source152 files:
+The four-arm64-call experiment was queued as session96676 behind the verified
+bounded experiment owner23992 and has since completed (64 trials, 2 errors, all
+recorded checks passed; see `HANDOFF.md` and `results/README.md`). The text below
+is the plan as written when it was queued; it was independent of that experiment's
+scientific outcome and waited for its GPU use to finish. Source152 files:
 `225483f26fb77911321ac86ac52db90095e5b88d8d0a14500fe237e2ab8e8a40`,
 ZIP `54a5c8265b13ab9aafd6196458c437ec675875b048abf1c6749718ee0065110a`.
 The prospective plan records alpha0.1 and all four arms before new answers.
@@ -92,7 +94,7 @@ fresh independent LLM regeneration or certify the internal architecture.
 
 Task paths: `results/t3/s1_model_integration/codex_task_20261002/provenance/t3_internal_experiment_plan.json`,
 `results/t3/s1_model_integration/codex_task_20261002/drivers/run_t3_internal_after_bounded.ps1`,`logs/t3/s1_model_integration/codex_task_20261002/t3_internal_after_bounded_driver.log`.
-Future results: `results/t3/s1_model_integration/codex_task_20261002/runs/t3-internal-host-20261006/`,
+Results: `results/t3/s1_model_integration/codex_task_20261002/runs/t3-internal-host-20261006/`,
 `results/t3/s1_model_integration/codex_task_20261002/outputs/neural-cbr-t3-internal-host-verification.json`.
 All242 repository tests pass with the existing T1 tensor-to-scalar warning.
 The career-2027 remote HEAD was rechecked onOctober6 and remains the imported
