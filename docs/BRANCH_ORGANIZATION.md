@@ -9,6 +9,13 @@
 
 Stage documents, result tables, logs and notebooks follow their owning branch. `docs/t1_spec/` is the historical specification namespace: each branch keeps its own stage plan plus the shared experiment contract. The current neural-cbr checkout excludes RL and LLM implementations. Git ancestors still record the original mixed development; the branch split changes current trees, not authorship history.
 
+## Repository rules (2026-11-21)
+
+- Core (`main`) is the source of the shared core; stage branches (`neural-cbr`, `rl`, `llm`) follow it. Obsolete tracked content is deleted, not archived (Git history keeps it).
+- No README, CHANGELOG or LICENSE. Environments and dependencies are managed by uv only (`pyproject.toml` + `uv.lock` + `.python-version`; `uv sync`, `uv run ...`). only `main` carries `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14); all worktrees share the venv `NN-KNN/.venv`.
+- Moved on 2026-11-21: `python_version.txt` -> `.python-version`; on neural-cbr `handoff/` -> `reports/`; on main sample notebooks -> `notebooks/`; on rl notebooks -> `notebooks/` and `ENVIRONMENT_g234.md` -> `docs/`.
+- Worktree folders on g234 are `nnknn` (main), `rl`, `llm`, `neural-cbr`; there is no `nnknn-work` path.
+
 ## Common code
 
 The shared NN-kNN core is defined in [NNKNN_CORE.md](NNKNN_CORE.md); `tools/check_nnknn_core.py` lists its files and `tools/nnknn_core_manifest.json` records their hashes. Since 2026-10-10 the core originates on `main` and is copied unchanged to each stage branch in one dedicated commit; `python tools/check_nnknn_core.py --branches main neural-cbr rl LLM` checks all four. Core files never import stage code. Do not merge an entire stage branch to share code.
