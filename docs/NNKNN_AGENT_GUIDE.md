@@ -37,36 +37,36 @@ The key practical distinction in the current Table 1 work is:
 
 ## Core Model Files
 
-- [model/nnknn_model.py](model/nnknn_model.py)
+- [model/nnknn_model.py](../model/nnknn_model.py)
   This is the main NN-kNN implementation.
-- [model/nn_cdh.py](model/nn_cdh.py)
+- [model/nn_cdh.py](../model/nn_cdh.py)
   This contains the regression adaptation module used after retrieval.
-- [model/regression_workflow.py](model/regression_workflow.py)
+- [model/regression_workflow.py](../model/regression_workflow.py)
   This is the main orchestration layer for regression experiments and repeated
   benchmarks.
-- [model/classification_workflow.py](model/classification_workflow.py)
+- [model/classification_workflow.py](../model/classification_workflow.py)
   This is the maintained orchestration layer for classification experiments,
   image comparisons, and small-dataset benchmark checks.
-- [model/common/](model/common)
+- [model/common/](../model/common)
   Shared construction/training (`core`), learned distances (`geometry`),
   prediction and loss (`outcomes`), nominal schema (`nominal`), and
   fingerprints/manifests (`artifacts`) used by every stage branch.
-- [datasets/classification_data.py](datasets/classification_data.py)
+- [datasets/classification_data.py](../datasets/classification_data.py)
   This contains portable classification loaders with train-only preprocessing.
 
 These files form the shared NN-kNN core. They are byte-identical on `main`,
-`neural-cbr`, `rl`, and `LLM`; see [docs/NNKNN_CORE.md](docs/NNKNN_CORE.md)
+`neural-cbr`, `rl`, and `LLM`; see [NNKNN_CORE.md](NNKNN_CORE.md)
 before changing them. RL (T2), neural CBR (T1), and LLM (T3) code lives on
 those branches, not here.
 
 Important anchors:
 
-- `GlocalFeatureWeight` at [model/nnknn_model.py](model/nnknn_model.py#L109)
-- `MLPFeatureProjector` at [model/nnknn_model.py](model/nnknn_model.py#L197)
-- `NN_KNN_Model` at [model/nnknn_model.py](model/nnknn_model.py#L529)
-- `train_model(...)` at [model/nnknn_model.py](model/nnknn_model.py#L1493)
-- `add_to_pair_list(...)` at [model/nn_cdh.py](model/nn_cdh.py#L46)
-- `NNCDHAdapter` at [model/nn_cdh.py](model/nn_cdh.py#L115)
+- `GlocalFeatureWeight` at [model/nnknn_model.py](../model/nnknn_model.py#L109)
+- `MLPFeatureProjector` at [model/nnknn_model.py](../model/nnknn_model.py#L197)
+- `NN_KNN_Model` at [model/nnknn_model.py](../model/nnknn_model.py#L529)
+- `train_model(...)` at [model/nnknn_model.py](../model/nnknn_model.py#L1493)
+- `add_to_pair_list(...)` at [model/nn_cdh.py](../model/nn_cdh.py#L46)
+- `NNCDHAdapter` at [model/nn_cdh.py](../model/nn_cdh.py#L115)
 
 ## Classification Workflow Files
 
@@ -100,8 +100,8 @@ removed from the maintained core.
 Routine classification check:
 
 ```bash
-.venv/bin/python codex/smoke_test.py --mode classification
-.venv/bin/python tools/run_classification_benchmarks.py iris --mode kfold --runs 3 --epochs 20
+uv run python codex/smoke_test.py --mode classification
+uv run python tools/run_classification_benchmarks.py iris --mode kfold --runs 3 --epochs 20
 ```
 
 The benchmark CLI creates a fresh timestamped folder under `results/` with
@@ -109,7 +109,7 @@ The benchmark CLI creates a fresh timestamped folder under `results/` with
 tabular and image benchmark sections opt-in so its default path stays quick.
 
 For manual small-data classification debugging, use
-[nnknn_sample_classification.ipynb](nnknn_sample_classification.ipynb). Run the
+[nnknn_sample_classification.ipynb](../notebooks/nnknn_sample_classification.ipynb). Run the
 single-experiment sanity section first and change the dataset passed to
 `run_single_nnknn_classification_experiment(...)`:
 
@@ -133,10 +133,10 @@ The regression work has been refactored so repeated experiment logic lives in
 
 Important anchors:
 
-- `load_regression_dataset_state(...)` at [model/regression_workflow.py](model/regression_workflow.py#L259)
-- `train_nnknn_regression_state(...)` at [model/regression_workflow.py](model/regression_workflow.py#L903)
-- `evaluate_nnknn_pre_post_adaptation_state(...)` at [model/regression_workflow.py](model/regression_workflow.py#L1452)
-- `run_repeated_regression_model_benchmarks(...)` at [model/regression_workflow.py](model/regression_workflow.py#L1875)
+- `load_regression_dataset_state(...)` at [model/regression_workflow.py](../model/regression_workflow.py#L259)
+- `train_nnknn_regression_state(...)` at [model/regression_workflow.py](../model/regression_workflow.py#L903)
+- `evaluate_nnknn_pre_post_adaptation_state(...)` at [model/regression_workflow.py](../model/regression_workflow.py#L1452)
+- `run_repeated_regression_model_benchmarks(...)` at [model/regression_workflow.py](../model/regression_workflow.py#L1875)
 
 NN-kNN-only workflow entry points:
 
@@ -189,14 +189,14 @@ The repeated benchmark runner is new orchestration:
 
 Current Table 1 reruns are driven by:
 
-- [tools/table1_nnknn_kfold.py](tools/table1_nnknn_kfold.py)
+- [tools/table1_nnknn_kfold.py](../tools/table1_nnknn_kfold.py)
 
 Important anchors:
 
-- `build_table1_paper_base_cfg(...)` at [tools/table1_nnknn_kfold.py](tools/table1_nnknn_kfold.py#L42)
-- `build_table1_baseline_method_cfgs(...)` at [tools/table1_nnknn_kfold.py](tools/table1_nnknn_kfold.py#L193)
-- `run_table1_nnknn_kfold(...)` at [tools/table1_nnknn_kfold.py](tools/table1_nnknn_kfold.py#L479)
-- `run_table1_kfold(...)` at [tools/table1_nnknn_kfold.py](tools/table1_nnknn_kfold.py#L713)
+- `build_table1_paper_base_cfg(...)` at [tools/table1_nnknn_kfold.py](../tools/table1_nnknn_kfold.py#L42)
+- `build_table1_baseline_method_cfgs(...)` at [tools/table1_nnknn_kfold.py](../tools/table1_nnknn_kfold.py#L193)
+- `run_table1_nnknn_kfold(...)` at [tools/table1_nnknn_kfold.py](../tools/table1_nnknn_kfold.py#L479)
+- `run_table1_kfold(...)` at [tools/table1_nnknn_kfold.py](../tools/table1_nnknn_kfold.py#L713)
 
 This helper currently:
 
@@ -341,14 +341,14 @@ older folders for postmortem comparison.
 
 Primary regression dataset loader:
 
-- [datasets/reg_data.py](datasets/reg_data.py)
+- [datasets/reg_data.py](../datasets/reg_data.py)
 
 Important anchors:
 
-- `Bike_Sharing()` at [datasets/reg_data.py](datasets/reg_data.py#L219)
-- `Wine()` at [datasets/reg_data.py](datasets/reg_data.py#L236)
-- `DATATYPES` at [datasets/reg_data.py](datasets/reg_data.py#L303)
-- `Reg_data(...)` at [datasets/reg_data.py](datasets/reg_data.py#L323)
+- `Bike_Sharing()` at [datasets/reg_data.py](../datasets/reg_data.py#L219)
+- `Wine()` at [datasets/reg_data.py](../datasets/reg_data.py#L236)
+- `DATATYPES` at [datasets/reg_data.py](../datasets/reg_data.py#L303)
+- `Reg_data(...)` at [datasets/reg_data.py](../datasets/reg_data.py#L323)
 
 Important status note:
 
@@ -360,9 +360,9 @@ Important status note:
 
 Primary notebooks:
 
-- [nnknn_sample_classification.ipynb](nnknn_sample_classification.ipynb)
+- [nnknn_sample_classification.ipynb](../notebooks/nnknn_sample_classification.ipynb)
   for classification single-run inspection and opt-in benchmark checks.
-- [nnknn_sample_regression.ipynb](nnknn_sample_regression.ipynb)
+- [nnknn_sample_regression.ipynb](../notebooks/nnknn_sample_regression.ipynb)
   for regression single-run inspection and workflow calls.
 
 The notebooks are still useful for interactive debugging and single-run
@@ -371,13 +371,11 @@ Python files.
 
 Legacy or specialized files:
 
-- [nnknn_reg_yu.py](nnknn_reg_yu.py)
-  Older standalone script with dataset-specific experimentation history.
 - `older versions/`
   Historical code snapshots.
-- `model/Copy_nnknn_model.py`, `model/nnknn_model_1_4.py`,
+- `model/nnknn_model_1_4.py`,
   `model/nnknn_model_with_post_mlp.py`, `model/nn_cdh_old.py`,
-  `model/train_GMM3.py`, and the original `model/cls_model.py`,
+  and the original `model/cls_model.py`,
   `model/reg_model.py`, `model/module.py`
   Older variants kept on `main` only. They are outside the shared core and
   are not imported by maintained code.
@@ -396,13 +394,18 @@ Legacy or specialized files:
   6. Evaluate/visualize
   7. Run explanation blocks on the trained model if desired
 - For notebook batch table work, use the batch runner cell in
-  `nnknn_sample_regression.ipynb`; it calls
+  `notebooks/nnknn_sample_regression.ipynb`; it calls
   `run_repeated_regression_model_benchmarks(...)`.
 - For paper-style Table 1 reruns with 5-fold CV and std reporting, use
   `run_table1_kfold(...)` from `tools/table1_nnknn_kfold.py`.
 - Use `datasets/reg_data.py` as the source of truth for tabular regression
   datasets.
 - Treat `HANDOFF.md` as the current experiment-status document.
+
+## Environment
+
+Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; experiment results are to be logged with TensorBoard (TODO, not built yet). The two notebooks must be launched with the repo root as the working
+directory.
 
 ## Machine-Specific Caveats
 
@@ -427,7 +430,7 @@ Legacy or specialized files:
 
 ## If You Are Picking Up Mid-Run
 
-- Check [HANDOFF.md](HANDOFF.md) first.
+- Check [HANDOFF.md](../HANDOFF.md) first.
 - Then check the newest `results/table1_kfold_*` folder (completed reruns are
   filed under `results/prior_baseline/`; see `results/README.md`).
 - Tail:
@@ -439,10 +442,10 @@ Legacy or specialized files:
 
 If you need to understand the repo quickly, read in this order:
 
-1. [HANDOFF.md](HANDOFF.md)
-2. [tools/table1_nnknn_kfold.py](tools/table1_nnknn_kfold.py)
-3. [model/regression_workflow.py](model/regression_workflow.py)
-4. [model/nnknn_model.py](model/nnknn_model.py)
-5. [model/nn_cdh.py](model/nn_cdh.py)
-6. [datasets/reg_data.py](datasets/reg_data.py)
+1. [HANDOFF.md](../HANDOFF.md)
+2. [tools/table1_nnknn_kfold.py](../tools/table1_nnknn_kfold.py)
+3. [model/regression_workflow.py](../model/regression_workflow.py)
+4. [model/nnknn_model.py](../model/nnknn_model.py)
+5. [model/nn_cdh.py](../model/nn_cdh.py)
+6. [datasets/reg_data.py](../datasets/reg_data.py)
 

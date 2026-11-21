@@ -1,10 +1,10 @@
-# Branch scope: NN-kNN core on main
-
-This checkout is `nnknn/` on `main`. Follow the parent workspace AGENTS.md. Neural CBR/T1, RL/T2 (including NN-kNN-RL), and LLM/T3 work belongs to `../neural-cbr/`, `../rl/`, and `../llm/` respectively; do not add stage implementations here.
-
-`main` owns the shared NN-kNN core. Read `docs/NNKNN_CORE.md` before editing any file listed in `tools/check_nnknn_core.py`. Core changes are made here first, in commits that touch only core files, then copied unchanged to the stage branches.
-
 # AGENTS.md
+
+## Branch scope
+
+This checkout is the `nnknn/` worktree on `main`. Follow the parent workspace AGENTS.md. Neural CBR/T1, RL/T2 (including NN-kNN-RL), and LLM/T3 work belongs to `../neural-cbr/`, `../rl/`, and `../llm/` respectively; do not add stage implementations here.
+
+`main` owns the shared NN-kNN core. Read `docs/NNKNN_CORE.md` before editing any file listed in `tools/check_nnknn_core.py`. Core changes are made here first, in commits that touch only core files, then copied unchanged to the stage branches (stage branches follow `main`).
 
 ## Repository expectations
 
@@ -12,23 +12,28 @@ This checkout is `nnknn/` on `main`. Follow the parent workspace AGENTS.md. Neur
 - For regression work, prefer the helpers in `model/regression_workflow.py` instead of calling low-level training code directly.
 - Regression configs must explicitly set `task_type="regression"`. The notebook does this already; ad hoc scripts should too.
 - Core files must not import stage code (`model.t1`, `model.t2`, `model.t3`, RL workflows, `datasets.rl_tasks`), even inside functions. `tests/test_nnknn_core.py` enforces this.
-- After changing a core file, refresh the manifest with `python tools/check_nnknn_core.py --write` and record in the commit message that the stage branches need the same files.
-- `model/Copy_nnknn_model.py`, `model/nnknn_model_1_4.py`, `model/nnknn_model_with_post_mlp.py`, `model/nn_cdh_old.py`, `model/train_GMM3.py`, `model/cls_model.py`, `model/reg_model.py`, `model/module.py`, and `older versions/` are legacy. They are outside the core and are kept on `main` only.
+- After changing a core file, refresh the manifest with `uv run python tools/check_nnknn_core.py --write` and record in the commit message that the stage branches need the same files.
+- `model/nnknn_model_1_4.py`, `model/nnknn_model_with_post_mlp.py`, `model/nn_cdh_old.py`, `model/cls_model.py`, `model/reg_model.py`, `model/module.py`, and `older versions/` are legacy. They are outside the core and are kept on `main` only.
+- Obsolete tracked content is deleted, not archived; git history keeps it.
 - Use synthetic datasets for quick validation unless a task specifically requires the larger real datasets in `datasets/`.
+
+## Layout and project rules
+
+- This project has no `README.md`, `CHANGELOG.md`, or `LICENSE`. Durable guidance is in this file, `HANDOFF.md`, and `docs/` (`docs/NNKNN_AGENT_GUIDE.md` is the long agent guide).
+- Notebooks live in `notebooks/` (`nnknn_sample_classification.ipynb`, `nnknn_sample_regression.ipynb`). They assume the repo root as the working directory.
+- Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; experiment results are to be logged with TensorBoard (TODO, not built yet).
 
 ## Setup
 
-- For Codex cloud tasks, use `bash codex/setup.sh` as the setup script.
-- For cached Codex cloud environments, use `bash codex/maintenance.sh` as the maintenance script.
-- The cloud setup assumes Python `3.11.9`, matching `python_version.txt`.
-- On the Windows workstation, `main` has no `.venv`; run checks with a stage checkout's interpreter, for example `..\neural-cbr\.venv\Scripts\python.exe`.
+- Install with `uv sync` in `main` (creates or updates `NN-KNN/.venv`). Use the same venv from every worktree as described above.
+- Cloud and Codex setup scripts no longer exist (`codex/setup.sh`, `codex/maintenance.sh` were deleted); only `codex/smoke_test.py` remains.
 
 ## Validation
 
-- Fast import check: `python codex/smoke_test.py --mode imports`
-- Fast training smoke tests: `python codex/smoke_test.py --mode train` and `--mode classification`
-- Core contract: `python -m pytest tests -q --basetemp=<new-temp-directory>`
-- Cross-branch core check: `python tools/check_nnknn_core.py --branches main neural-cbr rl LLM`
+- Fast import check: `uv run python codex/smoke_test.py --mode imports`
+- Fast training smoke tests: `uv run python codex/smoke_test.py --mode train` and `--mode classification`
+- Core contract: `uv run python -m pytest tests -q --basetemp=<new-temp-directory>`
+- Cross-branch core check: `uv run python tools/check_nnknn_core.py --branches main neural-cbr rl LLM`
 
 ## Notes
 

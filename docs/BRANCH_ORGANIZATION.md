@@ -1,6 +1,6 @@
 # Branch organization: main
 
-`main` (`nnknn/`) is the standalone NN-kNN branch. The four-workstream layout, the shared core, and the propagation rules are in [NNKNN_CORE.md](NNKNN_CORE.md).
+`main` (`nnknn/` worktree) is the standalone NN-kNN branch. The four-workstream layout, the shared core, and the propagation rules are in [NNKNN_CORE.md](NNKNN_CORE.md).
 
 ## What lives on main
 
@@ -8,10 +8,10 @@
 | --- | --- |
 | Shared core (identical on all branches) | files listed in `tools/check_nnknn_core.py` |
 | Core contract | `docs/NNKNN_CORE.md`, `tools/check_nnknn_core.py`, `tools/nnknn_core_manifest.json`, `tests/test_nnknn_core.py` |
-| Supervised notebooks | `nnknn_sample_classification.ipynb`, `nnknn_sample_regression.ipynb` |
+| Supervised notebooks | `notebooks/nnknn_sample_classification.ipynb`, `notebooks/nnknn_sample_regression.ipynb` (launch with the repo root as cwd) |
 | Prior results | `results/prior_baseline/` (see `results/README.md`) |
-| Legacy model code | `model/Copy_nnknn_model.py`, `model/nnknn_model_1_4.py`, `model/nnknn_model_with_post_mlp.py`, `model/nn_cdh_old.py`, `model/train_GMM3.py`, `model/cls_model.py`, `model/reg_model.py`, `model/module.py`, `nnknn_reg_yu.py` |
-| Reference material | `older versions/`, `notes/`, `papers and presentations/`, `checkpoints/*.h5`, `tmp_eval_section.txt`, `selected_indices*.json`, `config.yaml` |
+| Legacy model code | `model/nnknn_model_1_4.py`, `model/nnknn_model_with_post_mlp.py`, `model/nn_cdh_old.py`, `model/cls_model.py`, `model/reg_model.py`, `model/module.py` |
+| Reference material | `older versions/`, `notes/`, `papers and presentations/`, `checkpoints/*.h5` |
 
 The legacy and reference material is kept on `main` only. Stage branches carry the shared core plus their own stage code.
 
@@ -23,3 +23,9 @@ The legacy and reference material is kept on `main` only. Stage branches carry t
 - Moved the prior results under `results/prior_baseline/` without changing their contents.
 
 Earlier history of the mixed repository, the checkpoint-history rewrite, and the recovery bundle are described in the stage branches' `docs/BRANCH_ORGANIZATION.md` and in `../recovery-20261009/`.
+
+## Layout cleanup of 2026-11-21
+
+- Deleted: `README.md`, `requirements*.txt`, `verify_packages.py`, `codex/README.md`, `codex/setup.sh`, `codex/maintenance.sh` (`codex/smoke_test.py` is kept), `tools/Sync-CodexHistory.ps1`, `tools/codex-history-sync.md`, `tmp_eval_section.txt`, `model/desktop.ini`, `model/NN-kNN.code-workspace`, `notes/testFile.md`, `.DS_Store`. Obsolete tracked content is deleted, not archived.
+- Moved: `python_version.txt` to `.python-version`; notebooks to `notebooks/`; the agent guide to `docs/NNKNN_AGENT_GUIDE.md`. The retired scripts and configs briefly moved to `archive/legacy/` were then deleted together with `model/train_GMM3.py` (wandb).
+- No README, CHANGELOG, or LICENSE in this project. Environments and dependencies use uv only (`pyproject.toml`, `uv.lock`, `.python-version`); only `main` carries `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14); all worktrees share the venv `NN-KNN/.venv`.
