@@ -19,6 +19,12 @@ Branch `rl` (`rl/`): shared NN-kNN core + RL (T2). Current scope: `tools/run_rl_
 - Step 8 (continuous action): neural TD3/PPO baselines only.
 - Step 9 (MinAtar bridge, Atari Pong): seed-0 batteries plus PPO/DQN multi-seed references.
 
+## 2026-11-21: repository layout cleanup
+
+- Removed (obsolete, git history keeps them): README.md, `requirements.txt`, `requirements-latest.txt`, `verify_packages.py`, `codex/README.md`, `codex/setup.sh`, `codex/maintenance.sh` (`codex/smoke_test.py` kept), `tools/Sync-CodexHistory.ps1`, `tools/codex-history-sync.md`, `NNKNN_AGENT_GUIDE.md`, `.DS_Store`, both `Outdated` notebooks, and the plans `CLAUDE_CODE_REPRODUCTION_PLAN.md`, `NEXT_STEPS_PLAN.md`, `G234_CAMPAIGN_STATUS.md` (their still-valid content is in this file and `reports/`).
+- Moved: `python_version.txt` to `.python-version`; `ENVIRONMENT_g234.md` to `docs/ENVIRONMENT_g234.md`; the demo notebook(s) to `notebooks/`.
+- Decision (owner): no README/CHANGELOG/LICENSE for this project; environments and dependencies by uv only (`uv sync`, `uv run python ...`; no pip/requirements/hand-made venv). The 2026-11-21 follow-up: only `main` has `pyproject.toml`/`uv.lock`/`.python-version` (Python 3.14, shared venv `NN-KNN/.venv`); this branch's own copies were deleted. See `main/HANDOFF.md` for versions and known gaps.
+
 ## History
 
 The original mixed handoff is preserved in the pre-reorganization Git bundle at `../recovery-20261009/before-repair.bundle`. See `docs/BRANCH_ORGANIZATION.md` and `docs/REORGANIZATION_MANIFEST.json` for the 2026-10-09 split, and `results/t2/PATH_MAP.json` for the 2026-10-10 results move.

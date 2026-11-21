@@ -24,24 +24,23 @@ This checkout is `rl/` on branch `rl`: the shared NN-kNN core plus RL (T2), incl
 - NN-kNN-RL trains the final partial rollout at the fixed step budget, uses episode-boundary-aware GAE, validates `reward_shaping`, and reports actor/critic case maintenance separately.
 - NN-kNN-RL defaults every profile to a 500-case actor/critic capacity; larger case bases must be explicit experiment overrides because exact retrieval cost grows materially with memory size.
 - NN-kNN-RL critic holdout diagnostics must use separate stochastic behavior-policy rollouts, preserve the training RNG stream, exclude all holdout transitions from gradients and case insertion, and report discounted Monte Carlo metrics separately in `critic_holdout_metrics.csv`. Bootstrap only time-limit truncations, preferably with the lagged target critic.
-- Treat notebooks named `Outdated...` as archival only. Do not use them as implementation references for RL work.
+- The outdated RL notebooks were deleted (git history keeps them). Demo notebooks live in `notebooks/`; use the workflow modules and `tools/run_rl_*.py` as implementation references, not notebooks.
 - DQN, NEC, and NN-kNN-RL share evaluation-based early stopping: patience 30, minimum improvement 1.0, patience counting after 25,000 environment steps, and immediate stopping at task-maximum mean return. Fast enables it for every workflow, as does debug where available; smoke/gold disable it. Use gold or `--no-early-stopping` for strict fixed-budget comparisons, and interpret actual/configured timesteps plus `training_efficiency` before paper-style claims.
 - Use synthetic datasets for quick validation unless a task specifically requires the larger real datasets in `datasets/`.
 
 ## Setup
 
-- For Codex cloud tasks, use `bash codex/setup.sh` as the setup script.
-- For cached Codex cloud environments, use `bash codex/maintenance.sh` as the maintenance script.
-- The cloud setup assumes Python `3.11.9`, matching `python_version.txt`.
+- Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; experiment results are to be logged with TensorBoard (TODO, not built yet).
+- This project has no README, CHANGELOG or LICENSE by owner decision (2026-11-21).
 
 ## Validation
 
-- Fast import check: `python codex/smoke_test.py --mode imports`
-- Fast training smoke test: `python codex/smoke_test.py --mode train`
-- Fast RL smoke test: `python codex/smoke_test.py --mode rl`
-- Fast NEC smoke test: `python codex/smoke_test.py --mode nec`
-- Fast NN-kNN-RL smoke test: `python codex/smoke_test.py --mode nnknn_rl`
-- Core contract: `python -m pytest tests/test_nnknn_core.py -q` and `python tools/check_nnknn_core.py`
+- Fast import check: `uv run python codex/smoke_test.py --mode imports`
+- Fast training smoke test: `uv run python codex/smoke_test.py --mode train`
+- Fast RL smoke test: `uv run python codex/smoke_test.py --mode rl`
+- Fast NEC smoke test: `uv run python codex/smoke_test.py --mode nec`
+- Fast NN-kNN-RL smoke test: `uv run python codex/smoke_test.py --mode nnknn_rl`
+- Core contract: `uv run python -m pytest tests/test_nnknn_core.py -q` and `uv run python tools/check_nnknn_core.py`
 
 ## Notes
 

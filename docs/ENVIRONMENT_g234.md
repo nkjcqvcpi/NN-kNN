@@ -1,6 +1,6 @@
 # g234 (Windows) environment notes
 
-Companion to `pyproject.toml`. Records the things about this host that are not
+Companion to `pyproject.toml` (in the repo root, one level up from `docs/`). Records the things about this host that are not
 recoverable from the lockfile and that cost real time to rediscover.
 
 ## Host
@@ -9,7 +9,7 @@ recoverable from the lockfile and that cost real time to rediscover.
 - CPU: **10-core i5-13400F** (6 P-cores + 4 E-cores, 16 logical threads).
   Not a 16-core server part -- size concurrency against 10 real cores.
 - GPU: Intel Arc A770, 15.9 GB. No CUDA.
-- Python/env managed by `uv` (see `pyproject.toml`, `.python-version`).
+- Python/env managed by `uv` only: the project file lives on `main` (`../main/pyproject.toml`) and the venv is the shared `NN-KNN/.venv` (Python 3.14, torch 2.15.0+xpu). Run `uv run --project ../main --no-sync python ...` from this worktree. Driver scripts under `scripts/g234/` still call `.venv\Scripts\python.exe` as written for the record; that path no longer exists here.
 
 ## Device: use CPU
 

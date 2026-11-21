@@ -1,4 +1,6 @@
-# Experiment Log — rl-iclr2027
+# Experiment Log — rl
+
+> Note 2026-11-21: early entries below that read capacity as "bigger is worse" were superseded by the CPU replication (p17/p22, see the later entries and `capacity_ablation.md`). Entries are historical; commands there that use `requirements-latest.txt`, `verify_packages.py` or a hand-made `.venv` refer to files since deleted (uv only now).
 
 ## 2026-07-31 — Phase 0 — Environment set up with latest deps; all smoke modes pass
 Runs: results/t2/s01_inventory_reproduction/r760_smoke_checks/dqn_cartpole_20260731_162701_012310 (rl smoke), results/t2/s01_inventory_reproduction/r760_smoke_checks/nec_cartpole_20260731_162704_510780 (nec smoke), results/t2/s01_inventory_reproduction/r760_smoke_checks/nnknn_rl_cartpole_20260731_1627{11_376292,11_947776,12_189329} (nnknn_rl smoke)

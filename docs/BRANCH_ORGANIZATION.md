@@ -11,7 +11,7 @@ Stage documents, result tables, logs and notebooks follow their owning branch. `
 
 ## Common code
 
-The shared NN-kNN core is defined in [NNKNN_CORE.md](NNKNN_CORE.md); `tools/check_nnknn_core.py` lists its files and `tools/nnknn_core_manifest.json` records their hashes. Since 2026-10-10 the core originates on `main` and is copied unchanged to each stage branch in one dedicated commit; `python tools/check_nnknn_core.py --branches main neural-cbr rl LLM` checks all four. Core files never import stage code. Do not merge an entire stage branch to share code.
+The shared NN-kNN core is defined in [NNKNN_CORE.md](NNKNN_CORE.md); `tools/check_nnknn_core.py` lists its files and `tools/nnknn_core_manifest.json` records their hashes. Since 2026-10-10 the core originates on `main` and is copied unchanged to each stage branch in one dedicated commit; `uv run python tools/check_nnknn_core.py --branches main neural-cbr rl LLM` checks all four. Core files never import stage code. Do not merge an entire stage branch to share code.
 
 On neural-cbr, the `model/t1` paths for the five extracted modules remain compatibility imports. T2 and T3 code import `model.common` directly.
 
@@ -27,9 +27,15 @@ The original rl branch was merged with the mixed neural-cbr tip before removing 
 - `results/` and `logs/` are organized by T2 handoff step under `results/t2/<step>/` and `logs/t2/<step>/`; see `results/README.md`. `results/t2/PATH_MAP.json` maps every previous `results/r760`, `results/g234`, `results/t2_pi20260920`, `results/rl_*`, `logs/r760` and `logs/g234` path to its new location.
 - T2 evidence that existed only in the Codex task workspace was copied into the matching step's `codex_task_20261002/` folder.
 
+## Cleanup of 2026-11-21
+
+- Obsolete tracked content is deleted, not archived (git history keeps it). Removed on rl: README.md, `requirements.txt`, `requirements-latest.txt`, `verify_packages.py`, `codex/README.md`, `codex/setup.sh`, `codex/maintenance.sh` (`codex/smoke_test.py` is kept), `tools/Sync-CodexHistory.ps1`, `tools/codex-history-sync.md`, `NNKNN_AGENT_GUIDE.md`, `.DS_Store`, the two `Outdated` notebooks, `CLAUDE_CODE_REPRODUCTION_PLAN.md`, `NEXT_STEPS_PLAN.md`, `G234_CAMPAIGN_STATUS.md`.
+- Moved: `python_version.txt` to `.python-version`; `ENVIRONMENT_g234.md` to `docs/ENVIRONMENT_g234.md`; the demo notebooks to `notebooks/`.
+- Rules: no README/CHANGELOG/LICENSE in this project; environments and dependencies by uv only (`pyproject.toml`, `uv.lock`, `.python-version`; `uv sync`, `uv run ...`). Next step is unifying the virtual environment and tech stack under uv; only `main` carries `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14); all worktrees share the venv `NN-KNN/.venv`.
+
 ## Git recovery boundary
 
-Git fsck found no object corruption. The previous filter-repo pass rewrote local branches and upstream tracking refs, while origin still advertised the original commits. It left tracked checkpoints, so ordinary pushes would reject the divergent history. The parent directory NN-KNN is not a Git repository; run Git inside neural-cbr, rl, llm, or nnknn (main).
+Git fsck found no object corruption. The previous filter-repo pass rewrote local branches and upstream tracking refs, while origin still advertised the original commits. It left tracked checkpoints, so ordinary pushes would reject the divergent history. The parent directory NN-KNN is not a Git repository; run Git inside the worktree folders neural-cbr, rl, llm, or the main worktree (nnknn/ in the table above).
 
 The full pre-change .git directory, a verified all-ref bundle, old filter maps, local checkpoint copies, validation logs, and repair scripts are preserved outside the repository in `../recovery-20261009/`. That backup intentionally retains old checkpoint history. Local ignored datasets/checkpoints and original untracked experiment artifacts are preserved.
 
