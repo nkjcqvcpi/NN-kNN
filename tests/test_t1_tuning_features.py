@@ -112,6 +112,9 @@ def regression_reuse_scenario():
 
 
 def accelerator():
+    if torch.xpu.is_available():
+        from model.device_utils import install_xpu_index_workaround
+        install_xpu_index_workaround()
     return "xpu" if torch.xpu.is_available() else "cuda" if torch.cuda.is_available() else None
 
 
