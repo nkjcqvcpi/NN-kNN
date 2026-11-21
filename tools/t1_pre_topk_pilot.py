@@ -12,7 +12,7 @@ import time
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
-os.environ["NNKNN_DEVICE"] = "cpu"
+os.environ.setdefault("NNKNN_DEVICE", "cpu")
 
 import numpy as np
 import pandas as pd
