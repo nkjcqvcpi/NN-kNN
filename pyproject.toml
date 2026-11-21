@@ -1,0 +1,53 @@
+[project]
+name = "nnknn"
+version = "0.1.0"
+description = "NN-kNN: shared environment for the main, rl, llm and neural-cbr worktrees"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    # core numerics / ML (Intel Arc XPU build of PyTorch)
+    "torch",
+    "torchvision",
+    "triton-xpu",
+    "numpy",
+    "scipy",
+    "pandas",
+    "scikit-learn",
+    "metric-learn",
+    "imbalanced-learn",
+    "ucimlrepo",
+    "matplotlib",
+    "PyYAML",
+    "joblib",
+    # neural-cbr: T1 benchmark
+    "openml",
+    "tabm",
+    "catboost",
+    # llm: T3 host models
+    "transformers",
+    "huggingface-hub",
+    "lm-format-enforcer",
+    # rl: environments
+    "gymnasium[classic-control]",
+    "ale-py",
+    "MinAtar",
+    "opencv-python",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+notebook = ["ipykernel", "ipywidgets"]
+
+[[tool.uv.index]]
+name = "pytorch-xpu"
+url = "https://download.pytorch.org/whl/xpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-xpu" }
+torchvision = { index = "pytorch-xpu" }
+triton-xpu = { index = "pytorch-xpu" }
+
+[tool.uv]
+package = false
+default-groups = ["dev"]
+environments = ["sys_platform == 'win32' and platform_machine == 'AMD64'"]
