@@ -31,6 +31,8 @@ dependencies = [
     "ale-py",
     "MinAtar",
     "opencv-python",
+    # experiment recording
+    "tensorboard>=2.21.0,<2.22",
 ]
 
 [dependency-groups]
