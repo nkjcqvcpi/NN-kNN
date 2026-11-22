@@ -782,7 +782,8 @@ class Run:
         """Save ``weights/<name>.pt`` (once per name), then bind it with ``rec/state/<name>``; returns that record."""
         if _check_component(name, "state name") == "resume" or ".superseded" in name:
             raise ValueError(f"state name {name!r} is reserved")
-        tag, meta = "rec/state/" + name, canonicalize(dict(meta or {}))
+        tag, meta = "rec/state/" + name, dict(meta or {})
+        canonicalize(meta)  # validate before writing; _emit_json canonicalizes once (twice breaks NaN markers)
         if not self._writing():
             return None
         wdir, cpu = self.path / "weights", _to_cpu(state)

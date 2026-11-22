@@ -330,7 +330,13 @@ def test_save_state_and_load_state(root):
             run.save_state("best", state)
         with pytest.raises(TypeError):
             run.save_state("np", {"a": np.zeros(2)})
+        run.save_state("diverged", {"w": torch.ones(1)}, meta={"val_loss": math.nan, "lo": -math.inf, "v": [math.inf]})
+        with pytest.raises(TypeError):  # refused before the weight file is written
+            run.save_state("badmeta", {"w": torch.ones(1)}, meta={"$nonfinite": "nan"})
     path = upath(root)
+    meta = tr.load_run(path).states()["diverged"]["meta"]
+    assert math.isnan(meta["val_loss"]) and meta["lo"] == -math.inf and meta["v"] == [math.inf]
+    assert not (path / "weights" / "badmeta.pt").exists() and "badmeta" not in tr.load_run(path).states()
     loaded = tr.load_state(path, "best")
     assert torch.equal(loaded["w"], state["w"]) and torch.equal(loaded["h"], state["h"]) and loaded["n"] == 3
     rec = tr.load_run(path).states()["best"]
