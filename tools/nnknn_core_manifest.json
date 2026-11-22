@@ -27,6 +27,6 @@
     "tools/table1_nnknn_kfold.py": "1eea58c4d866185f80bf1d0b7e2f8e5ed467a527528053a0171f3cf4233a1e4e",
     "tools/check_nnknn_core.py": "4ec4bf83d1d1778b9379d16dc4794327db2348bc03ee92bc1f96f55111da74f9",
     "tests/test_nnknn_core.py": "dfe4bd0eb103af4a58e174fef692be0bbe8e2c33c50f8d9d35499d77d47e63e4",
-    "docs/NNKNN_CORE.md": "fa1452964bb2b133743f686633a5528ae1f399e0736d797fac008339177cb7cb"
+    "docs/NNKNN_CORE.md": "95e4a084e204dbc43140e6998aad6974d00346ff6283331100e319e3b4a128d3"
   }
 }
