@@ -26,7 +26,8 @@ This checkout is `rl/` on branch `rl`: the shared NN-kNN core plus RL (T2), incl
 - NN-kNN-RL critic holdout diagnostics must use separate stochastic behavior-policy rollouts, preserve the training RNG stream, exclude all holdout transitions from gradients and case insertion, and report discounted Monte Carlo metrics separately in `critic_holdout_metrics.csv`. Bootstrap only time-limit truncations, preferably with the lagged target critic.
 - The outdated RL notebooks were deleted (git history keeps them). Demo notebooks live in `notebooks/`; use the workflow modules and `tools/run_rl_*.py` as implementation references, not notebooks.
 - DQN, NEC, and NN-kNN-RL share evaluation-based early stopping: patience 30, minimum improvement 1.0, patience counting after 25,000 environment steps, and immediate stopping at task-maximum mean return. Fast enables it for every workflow, as does debug where available; smoke/gold disable it. Use gold or `--no-early-stopping` for strict fixed-budget comparisons, and interpret actual/configured timesteps plus `training_efficiency` before paper-style claims.
-- Use synthetic datasets for quick validation unless a task specifically requires the larger real datasets in `datasets/`.
+- Use synthetic datasets for quick validation unless a task specifically requires the larger real datasets.
+- `datasets/` in the repo holds loader code only (`datasets/*.py`, including `datasets/rl_tasks.py`). Data files and preprocessed caches are not tracked: they live in the shared `NN-KNN/datasets/` next to the worktrees (or `$NNKNN_DATASETS`), found through `datasets.paths.datasets_root()`, which raises if the directory is missing. Never add data files to git (`.gitignore` blocks everything under `datasets/` except `*.py`). No model weights are kept in the repo.
 
 ## Setup
 
