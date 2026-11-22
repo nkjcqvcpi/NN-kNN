@@ -20,11 +20,11 @@ The authoritative list is `CORE_FILES` in `tools/check_nnknn_core.py`; `tools/nn
 - `model/nnknn_model.py`: retrieval model, glocal feature weighting, stable case IDs, case activation, case-store operations.
 - `model/nn_cdh.py`: NN-CDH regression and classification adaptation networks.
 - `model/feature_extractors.py`, `model/device_utils.py`: representations and CPU/CUDA/XPU handling.
-- `model/common/`: model construction and training (`core`), learned distances (`geometry`), prediction and loss (`outcomes`), nominal schema and grouped differences (`nominal`), fingerprints and manifests (`artifacts`).
+- `model/common/`: model construction and training (`core`), learned distances (`geometry`), prediction and loss (`outcomes`), nominal schema and grouped differences (`nominal`), fingerprints and manifests (`artifacts`), run tracking on TensorBoard event files (`tracking`, below).
 - `model/classification_workflow.py`, `model/regression_workflow.py`, `model/mlkr.py` and their loaders in `datasets/`: the supervised baseline layer.
 - `datasets/paths.py`: `datasets_root()`, the one place that locates the data. The `datasets/` package holds only loader code; the project data files and preprocessed caches live outside git in one directory shared by all worktrees, `NN-KNN/datasets/` next to the worktrees, or the directory named by `NNKNN_DATASETS`. Library downloads are not kept there: a dataset that a library fetches with a default cache of its own stays in that library's default location (scikit-learn: `~/scikit_learn_data`, or `$SCIKIT_LEARN_DATA`; OpenML: the `openml` cache). Only project data and project-preprocessed caches live in `NN-KNN/datasets/`; torchvision has no default location, so MNIST/CIFAR-10/SVHN stay there too.
 - `tools/run_classification_benchmarks.py`, `tools/run_table1_kfold.py`, `tools/resume_table1_kfold.py`, `tools/table1_nnknn_kfold.py`: supervised benchmark runners.
-- `tools/check_nnknn_core.py`, `tests/test_nnknn_core.py`, and this file.
+- `tools/check_nnknn_core.py`, `tests/test_nnknn_core.py`, `tests/test_tracking.py`, and this file.
 
 Core files never import stage code (`model.t1`, `model.t2`, `model.t3`, RL workflows, `datasets.rl_tasks`). Stage code imports the core, never the reverse. `tests/test_nnknn_core.py` enforces this, including imports inside functions.
 
@@ -36,6 +36,35 @@ Core files never import stage code (`model.t1`, `model.t2`, `model.t3`, RL workf
 4. Check all branches from any checkout: `python tools/check_nnknn_core.py --branches main neural-cbr rl LLM`.
 
 Never merge a whole stage branch into another to share core code. A core fix found on a stage branch is first made on `main`, then propagated.
+
+## Run tracking
+
+`model/common/tracking.py` records runs in TensorBoard event files, which are the only record of how a run went and what it produced; code reads results back from them. The run root is `NN-KNN/runs/` next to the worktrees, or `$NNKNN_RUNS`; it must exist (it is never created). `runs/<workstream>/<study>/<unit...>/` is one run (workstream `core`, `t1`, `t2` or `t3`). Every process session that writes to a unit adds one event file to that directory; weights stay in it: `weights/<name>.pt` (named states, written once), `weights/resume/last.pt` (the resume checkpoint; the one before it stays as `prev.pt`, so a crash between writing `last.pt` and recording it resumes from `prev.pt`), `weights/<name>.superseded-s<NNN>.pt` (a named state that a later session cut; renamed, never deleted).
+
+```python
+info = resolve_unit(key, config=cfg)            # complete with this config -> skip (another config raises)
+if info is None:
+    with open_run(key, config=cfg) as run:      # fresh, resume or restart in place, same directory
+        ...                                     # setup; data logged here is discarded in a resumed session
+        payload, start = run.load_resume(), 0   # payload is None unless resuming
+        if payload is not None:                 # rebuild objects and load payload.state first
+            start = payload.step + 1
+            payload.restore_rng()               # last, right before the loop continues
+        for step in range(start, n):
+            ...; run.log_step(step, {"train/loss": loss.item()})   # numbers only: .item() at a sync point
+            if run.checkpoint_due(step):        # every 300 s; NNKNN_RESUME_EVERY_SECONDS / _STEPS
+                run.save_resume({"model": model.state_dict(), "opt": opt.state_dict()}, step=step)
+        run.save_state("best", best_state)
+        run.log_final({"acc": acc})
+data = load_run(info.path)                      # final(), series(), record(), records(), array(), table(), states()
+```
+
+- Names: unit components are `[A-Za-z0-9_][A-Za-z0-9._=+-]{0,63}`, without a trailing `.`, Windows device names (`aux`, `nul`, `com1`, ...) or embargoed words; units cannot nest. Steps must increase per tag (`log_step` raises otherwise); a float step raises.
+- Exact channel: `x/<tag>` (float64/int64/bool), `rec/<name>` (canonical JSON; `log_records` appends rows), `arr/<name>` (`log_array`, `log_table`), `rec/state/<name>` (written by `save_state`), `rec/config`, and the session records `_run/begin|resume|checkpoint|complete|failed`. The display channel (float32 scalars without the `x/` prefix, a session card) is for TensorBoard only. A `torch.Tensor` value raises, so logging never adds a device sync or consumes RNG.
+- Resume: `open_run` raises `UnitCompleteError` on a complete unit, `UnitBusyError` if the latest unfinished session's process still runs on this host (pid plus process start identity, so a reused pid or a reboot does not block; a cheap guard, not a lock; `NNKNN_IGNORE_BUSY=1` skips it), or if another launch wrote its session header at the same moment (a launch that sees a rival steps back and its segment is marked withdrawn, so at most one continues), `ConfigMismatchError` if the config changed (unless `resume="restart"`). It resumes when `last.pt` matches the last `_run/checkpoint` record, otherwise it restarts in place (`resume="restart"` or `NNKNN_RESUME=restart` forces that). A resume cuts every data record written after that checkpoint; a restart cuts all earlier data records. Log everything for step S before `save_resume(step=S)`, and use the checkpoint step axis for every tag of a resumable unit. Saved states hold tensors and plain JSON scalars (numpy scalars are converted; other types raise). `load_resume(map_location=...)` moves the state; `restore_rng()` always restores the RNG states on the CPU side.
+- `_run/complete` holds `result_digest`, a SHA-256 over the logical stream without `x/sys/*` and without weight-file bytes (`state_sha256` is included). On CPU an interrupted and resumed run has the same digest and state digests as an uninterrupted one (`tests/test_tracking.py` kills a real process to check this). XPU runs record the same digests, but are not promised to match.
+- TensorBoard after a resume: the Python loader (`tensorboard --load_fast=false`) shows one continuous curve for re-logged tags and hides the stale tail of tags that are not logged again; the Rust loader ignores the SessionLog and keeps those stale points.
+- Status (`run_status`): `complete`, `failed`, `incomplete` (crash; a cut or zero-filled last record reads as incomplete), `invalid` (damaged record, digest mismatch, missing or wrong-size weight file, ...) or `empty`. Readers use complete units only. `run_status` and `load_run` check weight files by size; only `verify_run`, `load_state` and `load_resume` check their SHA-256, so read weights through `load_state`, not through `state_path`. CLI: `python -m model.common.tracking {ls|show|verify} <path>`; the reader side needs only `tensorboard` and `numpy`, so on accel: `uvx --with tensorboard==2.21.0 --with numpy python -m model.common.tracking ls ../runs`.
 
 ## Results and logs
 
