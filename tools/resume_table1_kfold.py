@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from datasets.paths import datasets_root
 from tools.table1_nnknn_kfold import (
     TABLE1_DEFAULT_DATASET_NAMES,
     export_table1_outputs,
@@ -83,7 +84,7 @@ def parse_args() -> argparse.Namespace:
         "--scikit-learn-data",
         type=Path,
         default=None,
-        help="Writable sklearn dataset cache directory. Defaults to <outdir>/scikit_learn_data.",
+        help="Writable sklearn dataset cache directory. Defaults to the shared <datasets root>/scikit_learn_data (see datasets/paths.py).",
     )
     return parser.parse_args()
 
@@ -95,7 +96,7 @@ def main() -> None:
         outdir = REPO_ROOT / outdir
     outdir.mkdir(parents=True, exist_ok=True)
 
-    sklearn_data = args.scikit_learn_data or (outdir / "scikit_learn_data")
+    sklearn_data = args.scikit_learn_data or (datasets_root() / "scikit_learn_data")
     sklearn_data.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("MPLBACKEND", "Agg")
     os.environ["SCIKIT_LEARN_DATA"] = str(sklearn_data)
