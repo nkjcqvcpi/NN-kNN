@@ -40,6 +40,6 @@ This checkout is the `nnknn/` worktree on `main`. Follow the parent workspace AG
 ## Notes
 
 - `checkpoints/` and transient artifacts are expected and are gitignored.
-- Completed prior-paper reruns are filed under `results/prior_baseline/`; see `results/README.md`.
+- Results and logs are not in git. They live on the experiment host and will move to the shared `NN-KNN/runs/` directory with TensorBoard logging. On disk, completed prior-paper reruns are filed under `results/prior_baseline/`, indexed by `results/README.md` beside them.
 - `matplotlib` should run headlessly in cloud tasks with `MPLBACKEND=Agg`.
 - Avoid full multi-run benchmarks for routine verification; they are intentionally expensive.

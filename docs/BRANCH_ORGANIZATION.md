@@ -9,7 +9,7 @@
 | Shared core (identical on all branches) | files listed in `tools/check_nnknn_core.py` |
 | Core contract | `docs/NNKNN_CORE.md`, `tools/check_nnknn_core.py`, `tools/nnknn_core_manifest.json`, `tests/test_nnknn_core.py` |
 | Supervised notebooks | `notebooks/nnknn_sample_classification.ipynb`, `notebooks/nnknn_sample_regression.ipynb` (launch with the repo root as cwd) |
-| Prior results | `results/prior_baseline/` (see `results/README.md`) |
+| Prior results | not in git: `results/prior_baseline/` on the experiment host (see `results/README.md` there) |
 | Legacy model code | `model/nnknn_model_1_4.py`, `model/nnknn_model_with_post_mlp.py`, `model/nn_cdh_old.py`, `model/cls_model.py`, `model/reg_model.py`, `model/module.py` |
 | Reference material | `older versions/`, `notes/`, `papers and presentations/` (the old `checkpoints/*.h5` weights were removed from git on 2026-11-21; no model weights are kept) |
 
@@ -29,3 +29,7 @@ Earlier history of the mixed repository, the checkpoint-history rewrite, and the
 - Deleted: `README.md`, `requirements*.txt`, `verify_packages.py`, `codex/README.md`, `codex/setup.sh`, `codex/maintenance.sh` (`codex/smoke_test.py` is kept), `tools/Sync-CodexHistory.ps1`, `tools/codex-history-sync.md`, `tmp_eval_section.txt`, `model/desktop.ini`, `model/NN-kNN.code-workspace`, `notes/testFile.md`, `.DS_Store`. Obsolete tracked content is deleted, not archived.
 - Moved: `python_version.txt` to `.python-version`; notebooks to `notebooks/`; the agent guide to `docs/NNKNN_AGENT_GUIDE.md`. The retired scripts and configs briefly moved to `archive/legacy/` were then deleted together with `model/train_GMM3.py` (wandb).
 - No README, CHANGELOG, or LICENSE in this project. Environments and dependencies use uv only (`pyproject.toml`, `uv.lock`, `.python-version`); only `main` carries `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14); all worktrees share the venv `NN-KNN/.venv`.
+
+## Results removed from git, 2026-11-22
+
+- All results, logs and generated report files were removed from the history of this fork's commits (the upstream commits are unchanged). They are ignored by `.gitignore`; the files stay on disk on the experiment host and will move to the shared `NN-KNN/runs/` directory with TensorBoard logging.

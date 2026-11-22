@@ -11,7 +11,7 @@ Branch `main` (`nnknn/` worktree): the standalone NN-kNN model and the shared co
 - `model/classification_workflow.py` and `datasets/classification_data.py` provide tabular and image classification workflows and representative baselines. `model/regression_workflow.py` and `tools/table1_nnknn_kfold.py` provide regression benchmarks and Table 1 reruns.
 - `notebooks/nnknn_sample_classification.ipynb` and `notebooks/nnknn_sample_regression.ipynb` are the maintained notebook entry points; they call the Python workflows. They assume the repo root as the working directory, so launch them with the repo root as cwd.
 - 2026-10-12 (commit `e1b1d00`): accelerator support was added; the core's device handling (`model/device_utils.py`) covers CPU, CUDA, and XPU (see `docs/NNKNN_CORE.md`).
-- A June 1 NN-kNN-only 10-fold rerun confirmed the recorded Iris and Zebra representative results exactly. These are current-core functionality checks, not exact reproductions of IJCAI-25 results from the older classification formulation. The run is in `results/prior_baseline/ijcai2025_classification/classification_nnknn_rerun_20260601_103353/`.
+- A June 1 NN-kNN-only 10-fold rerun confirmed the recorded Iris and Zebra representative results exactly. These are current-core functionality checks, not exact reproductions of IJCAI-25 results from the older classification formulation. The run is in `results/prior_baseline/ijcai2025_classification/classification_nnknn_rerun_20260601_103353/` on the experiment host (not in git).
 
 ## Current Work Focus
 
@@ -35,7 +35,7 @@ Branch `main` (`nnknn/` worktree): the standalone NN-kNN model and the shared co
 - `checkpoints/` and transient smoke-test artifacts are expected and gitignored.
 - Root checkpoint files such as `nnknn_regression_best.pth` and `nnknn_regression_best_retr.pth` may change when experiments are run.
 - Classification runs write checkpoints beneath `checkpoints/` by default. The CLI creates a fresh `results/classification_<suite>_<timestamp>/` folder with summary, per-run, and manifest files.
-- Completed prior-paper reruns are filed under `results/prior_baseline/`; see `results/README.md`. Keep old run folders for comparison and postmortem context rather than overwriting them.
+- Results and logs are not in git. They live on the experiment host and will move to the shared `NN-KNN/runs/` directory with TensorBoard logging. On disk, completed prior-paper reruns are filed under `results/prior_baseline/`; see `results/README.md` beside them. Keep old run folders for comparison and postmortem context rather than overwriting them.
 
 ## Where Durable Guidance Lives
 
