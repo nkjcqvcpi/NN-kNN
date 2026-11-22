@@ -217,8 +217,14 @@ def test_chunked_records_and_arrays(root, monkeypatch):
         run.log_table("t", {"x": np.arange(3), "y": np.ones(3, np.float32)})
         with pytest.raises(ValueError):
             run.log_table("bad", {"x": np.arange(3), "y": np.ones(2)})
+        run.log_records("nonfinite", [{"x": math.nan, "y": [math.inf, 1.5]}, {"x": -math.inf, "y": []}])
+        with pytest.raises(TypeError):  # rejected before anything is written
+            run.log_records("bad", [{"ok": 1}, {"$nonfinite": "nan"}])
     data = tr.load_run(upath(root))
     assert data.records("rows") == [{"i": i} for i in range(7)]
+    nf = data.records("nonfinite")
+    assert math.isnan(nf[0]["x"]) and nf[0]["y"] == [math.inf, 1.5] and nf[1] == {"x": -math.inf, "y": []}
+    assert "bad" not in data._rows
     assert sum(r.tag == "arr/a" for r in tr._scan(upath(root)).stream) == 10
     for name, a in arrays.items():
         got = data.array(name)

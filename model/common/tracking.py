@@ -745,7 +745,8 @@ class Run:
 
     def log_records(self, name: str, rows: Iterable[Any]) -> None:
         """Append rows to the row record ``rec/<name>``; rows are numbered over the logical stream."""
-        tag, rows = self._record_tag(name), [canonicalize(row) for row in rows]
+        tag, rows = self._record_tag(name), list(rows)
+        canonicalize(rows)  # validate before writing; _emit_json canonicalizes once (twice breaks NaN markers)
         if not self._writing() or not rows:
             return
         if tag in self._singles:
