@@ -6,7 +6,7 @@ This file is identical on every branch. It defines the NN-kNN core that the four
 
 | Folder | Branch | Contents |
 | --- | --- | --- |
-| `nnknn/` | `main` | Standalone NN-kNN model: the core below, its supervised classification/regression baselines, prior (pre-MCB) results, papers, notes, and legacy notebooks. |
+| `nnknn/` | `main` | Standalone NN-kNN model: the core below, its supervised classification/regression baselines, papers, notes, and legacy notebooks. |
 | `neural-cbr/` | `neural-cbr` | Core + full-cycle neural CBR (T1): `model/t1/`, `configs/t1/`, `tools/t1_*`, `tests/test_t1_*`. |
 | `rl/` | `rl` | Core + reinforcement learning (T2), including NN-kNN-RL: RL workflows, `model/t2/`, `datasets/rl_tasks.py`, `tools/run_rl_*`, `tools/t2_*`, `tests/test_t2_*`. |
 | `llm/` | `LLM` | Core + LLM/agent retrieval (T3): `model/t3/`, `tools/t3_*`, `tests/test_t3_*`. |
@@ -39,11 +39,13 @@ Never merge a whole stage branch into another to share core code. A core fix fou
 
 ## Results and logs
 
-Each branch keeps its own results and logs, organized by the handoff that defines the work:
+Results and logs are not in git. They live on the experiment host and will move to the shared `NN-KNN/runs/` directory next to the worktrees, with TensorBoard logging. Every branch ignores `results/`, `logs/` and generated report files (figures, tables and manifests under `reports/`).
+
+Until that move, the runners keep their current default output paths, and finished work stays organized on disk by the handoff that defines it:
 
 - `main`: `results/prior_baseline/` (pre-MCB NN-kNN results; T1 Phase 0/6 references).
 - `neural-cbr`: `results/t1/` and `logs/t1/` by T1 implementation phase.
 - `rl`: `results/t2/` and `logs/t2/` by T2 implementation step and benchmark stage.
 - `llm`: `results/t3/` and `logs/t3/` by T3 development stage.
 
-Each branch's `results/README.md` maps handoff steps to directories, documents, and status. Run artifacts keep the paths they were written with; when a directory moves, the branch records the old and new locations instead of editing the artifacts.
+The `results/README.md` kept with each branch's results maps handoff steps to directories, documents, and status. Run artifacts keep the paths they were written with; when a directory moves, the old and new locations are recorded instead of editing the artifacts.
