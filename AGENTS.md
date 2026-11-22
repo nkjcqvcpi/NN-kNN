@@ -16,7 +16,7 @@ This checkout is the `nnknn/` worktree on `main`. Follow the parent workspace AG
 - `model/nnknn_model_1_4.py`, `model/nnknn_model_with_post_mlp.py`, `model/nn_cdh_old.py`, `model/cls_model.py`, `model/reg_model.py`, `model/module.py`, and `older versions/` are legacy. They are outside the core and are kept on `main` only.
 - Obsolete tracked content is deleted, not archived; git history keeps it.
 - Use synthetic datasets for quick validation unless a task specifically requires the larger real datasets.
-- `datasets/` in the repo holds loader code only (`datasets/*.py`). Data files and preprocessed caches are not tracked: they live in the shared `NN-KNN/datasets/` next to the worktrees (or `$NNKNN_DATASETS`), found through `datasets.paths.datasets_root()`. Never add data files to git (`.gitignore` blocks everything under `datasets/` except `*.py`). No model weights are kept in the repo.
+- `datasets/` in the repo holds loader code only (`datasets/*.py`). Data files and preprocessed caches are not tracked: they live in the shared `NN-KNN/datasets/` next to the worktrees (or `$NNKNN_DATASETS`), found through `datasets.paths.datasets_root()`; datasets that a library downloads (scikit-learn's California Housing, OpenML) stay in that library's default location instead (`~/scikit_learn_data` or `$SCIKIT_LEARN_DATA`; the `openml` cache), and torchvision images, which have no library default, stay in the shared directory. Never add data files to git (`.gitignore` blocks everything under `datasets/` except `*.py`). No model weights are kept in the repo.
 
 ## Layout and project rules
 

@@ -341,12 +341,20 @@ older folders for postmortem comparison.
 
 ## Dataset Files
 
-The `datasets/` package holds only loader code. The data files (CSV/UCI tables,
-MNIST, FashionMNIST, CIFAR-10) and preprocessed caches (`t1_cache/`,
-`scikit_learn_data/`) are not in git: they live in one directory shared by all
+The `datasets/` package holds only loader code. Project data (CSV/UCI tables,
+the torchvision MNIST and CIFAR-10 files) and project-preprocessed caches
+(`t1_cache/`) are not in git: they live in one directory shared by all
 worktrees, `NN-KNN/datasets/` next to the worktrees, or the directory named by
 the `NNKNN_DATASETS` environment variable. Loaders find it through
 `datasets.paths.datasets_root()`, which raises if the directory is missing.
+
+Datasets that a library downloads into a default cache of its own stay in that
+library's default location, not in `NN-KNN/datasets/`: scikit-learn's
+California Housing goes to `~/scikit_learn_data` (or `$SCIKIT_LEARN_DATA`,
+which scikit-learn reads itself; `tools/resume_table1_kfold.py
+--scikit-learn-data` sets it for one run), and OpenML datasets go to the
+`openml` cache. torchvision has no default location (its `root` argument is
+required), so MNIST, CIFAR-10 and SVHN stay in the shared directory.
 
 Primary regression dataset loader:
 

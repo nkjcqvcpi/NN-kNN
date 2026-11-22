@@ -30,6 +30,6 @@ uv run --project ../main --no-sync python -m pytest tests -q
 
 ## Datasets
 
-Data files and preprocessed caches are not in git. They live in one directory shared by all worktrees, `NN-KNN/datasets/` (next to `main/`, `rl/`, ...; see its `README.md`). To use another location set `NNKNN_DATASETS` to its absolute path. The `datasets/` folder inside each worktree holds only the loader code.
+Data files and preprocessed caches are not in git. Project data and project-preprocessed caches live in one directory shared by all worktrees, `NN-KNN/datasets/` (next to `main/`, `rl/`, ...; see its `README.md`). To use another location set `NNKNN_DATASETS` to its absolute path. Library downloads are not kept there: a dataset that a library fetches into a default cache of its own stays in that library's default location (scikit-learn: `~/scikit_learn_data`, or `$SCIKIT_LEARN_DATA`; OpenML: the `openml` cache). torchvision has no default location, so MNIST/CIFAR-10/SVHN stay in `NN-KNN/datasets/`. The `datasets/` folder inside each worktree holds only the loader code.
 
 Only `main` has `pyproject.toml`, `uv.lock` and `.python-version`. Do not create another venv, and do not use pip or requirements files.
