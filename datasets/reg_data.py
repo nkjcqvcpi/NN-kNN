@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from urllib import request
 
@@ -7,13 +8,11 @@ import torch
 from imblearn.over_sampling import SMOTE
 
 from . import cls_small_data
-
-
-DATA_DIR = Path(__file__).resolve().parent
+from .paths import datasets_root
 
 
 def _dataset_path(filename: str) -> Path:
-    return DATA_DIR / filename
+    return datasets_root() / filename
 
 def airfoil():
     file_path = _dataset_path("airfoil_self_noise.dat")
@@ -131,7 +130,10 @@ def psych_depression_physical_symptons_reg():
 def California_Housing():
     from sklearn.datasets import fetch_california_housing
 
-    california_housing = fetch_california_housing()
+    # SCIKIT_LEARN_DATA (set by tools/resume_table1_kfold.py) wins; otherwise the
+    # shared cache <datasets root>/scikit_learn_data.
+    data_home = os.environ.get("SCIKIT_LEARN_DATA") or (datasets_root() / "scikit_learn_data")
+    california_housing = fetch_california_housing(data_home=data_home)
     Xs = california_housing.data
     ys = california_housing.target
 
