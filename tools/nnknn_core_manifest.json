@@ -23,7 +23,7 @@
     "datasets/reg_data.py": "e90e196d23b5eea491e10f3ead062c6c931a10922d6d38c2520580ed6d939bea",
     "tools/run_classification_benchmarks.py": "fe928d3fcf9ad879f8a6bf38b89e041bb7e336f5ed605dfb71506bfcddc5c79b",
     "tools/run_table1_kfold.py": "ed4ef3ff06759dd152f5b147c77ae9d572872bb7ec57744a8d4f4ce9905354a9",
-    "tools/resume_table1_kfold.py": "576923e40558aa012ff9e42630d1c2cd0a174d7862c9e5a604249c1b31486fe2",
+    "tools/resume_table1_kfold.py": "1a294891925354f3c04beef98a4cabeedb907101216c97037b6d16edb71b61fb",
     "tools/table1_nnknn_kfold.py": "1eea58c4d866185f80bf1d0b7e2f8e5ed467a527528053a0171f3cf4233a1e4e",
     "tools/check_nnknn_core.py": "4ec4bf83d1d1778b9379d16dc4794327db2348bc03ee92bc1f96f55111da74f9",
     "tests/test_nnknn_core.py": "dfe4bd0eb103af4a58e174fef692be0bbe8e2c33c50f8d9d35499d77d47e63e4",
