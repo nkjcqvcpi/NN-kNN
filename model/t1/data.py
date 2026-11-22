@@ -127,6 +127,17 @@ def _load_raw(name: str, task_type: str, seed: int) -> tuple[np.ndarray, np.ndar
     # Repeated HPO seeds/families must not refetch UCI at every fit.
     cache = datasets_root() / "t1_cache" / f"{name}.npz"
     cacheable = name in {"abalone", "califonia_housing", "bike_sharing", "wine"}
+    if cacheable and not cache.exists():
+        # The cache used to live in the worktree (<repo>/datasets/t1_cache). If it
+        # was not moved, rebuilding from the network would silently record a new
+        # raw_snapshot_sha256, so stop and ask for the move instead.
+        from pathlib import Path
+        legacy = Path(__file__).resolve().parents[2] / "datasets" / "t1_cache" / f"{name}.npz"
+        if legacy.exists():
+            raise FileNotFoundError(
+                f"T1 raw-snapshot cache {cache} is missing but the old copy {legacy} exists. "
+                f"Move {legacy.parent} into {cache.parent} byte for byte (do not regenerate it), then rerun."
+            )
     if cacheable and cache.exists():
         with np.load(cache, allow_pickle=False) as raw:
             X, y = raw["X"], raw["y"]
