@@ -4,15 +4,15 @@ import os
 
 from .paths import datasets_root
 
-# DATA_ROOT overrides the shared NN-kNN data directory (datasets.paths); nothing
-# is created at import time.
-DATA_ROOT = os.environ.get("DATA_ROOT") or None
+# Data come from the shared NN-kNN data directory (datasets.paths; override it with
+# NNKNN_DATASETS, the one variable every loader honours). It is looked up at call
+# time and nothing is created at import time.
 
 
 def _root(root, *sub):
     if root:
         return root
-    return os.path.join(DATA_ROOT or str(datasets_root()), *sub)
+    return os.path.join(str(datasets_root()), *sub)
 
 
 def compute_mean_std(dataset):
