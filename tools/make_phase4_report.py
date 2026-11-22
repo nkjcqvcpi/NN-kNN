@@ -3,7 +3,10 @@
 Usage:
     .venv/bin/python tools/make_phase4_report.py --manifest reports/phase4_manifest.json
 
-The manifest maps method -> {seed: run_dir}. Which methods appear in the table
+The manifest maps method -> {seed: run_dir}. Manifests, run directories and
+figures are not in git: they are read from and written to disk on the
+experiment host (reports/*_manifest.json and results/ there), so the default
+--manifest only works where those files exist. Which methods appear in the table
 and figures is driven by the manifest keys: every key must be one of the known
 methods below, and the known-method order fixes the plotting/table order, so a
 4-method manifest and a 6-method manifest both work with no code change.
@@ -70,6 +73,12 @@ def load_runs(manifest: dict) -> dict:
         data[method] = {}
         for seed, run_dir in sorted(seeds.items(), key=lambda kv: int(kv[0])):
             d = Path(run_dir)
+            missing = [name for name in ("summary.json", "eval_metrics.csv") if not (d / name).is_file()]
+            if missing:
+                raise SystemExit(
+                    f"{method} seed {seed}: {', '.join(missing)} not found in {d}. "
+                    "Run directories are not in git; run this on the experiment host that holds them."
+                )
             summary = json.loads((d / "summary.json").read_text())
             evals = pd.read_csv(d / "eval_metrics.csv")
             data[method][int(seed)] = {"summary": summary, "evals": evals, "dir": str(d)}
@@ -203,15 +212,25 @@ def plot_means(data: dict, outdir: Path, *, task: str, threshold: float,
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--manifest", default="reports/phase4_manifest.json")
-    parser.add_argument("--outdir", default="reports/figures")
+    parser.add_argument(
+        "--manifest",
+        default="reports/phase4_manifest.json",
+        help="Run manifest read from disk (not in git; it exists only on the experiment host).",
+    )
+    parser.add_argument("--outdir", default="reports/figures", help="Figure directory (ignored by git).")
     parser.add_argument("--task", default="CartPole-v1", help="Task label used in figure titles.")
     parser.add_argument("--success-threshold", type=float, default=SUCCESS_THRESHOLD)
     parser.add_argument("--ylim", type=float, nargs=2, default=(0.0, 525.0))
     parser.add_argument("--prefix", default="phase4", help="Figure filename prefix.")
     args = parser.parse_args()
 
-    manifest = json.loads(Path(args.manifest).read_text())
+    manifest_path = Path(args.manifest)
+    if not manifest_path.is_file():
+        raise SystemExit(
+            f"manifest {manifest_path} not found. Run manifests and run directories are not in git; "
+            "run this on the experiment host that holds them, or pass --manifest."
+        )
+    manifest = json.loads(manifest_path.read_text())
     order = resolve_method_order(manifest, source=args.manifest)
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
