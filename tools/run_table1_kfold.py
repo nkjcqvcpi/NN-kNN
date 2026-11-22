@@ -1,10 +1,25 @@
+"""Run the Table 1 5-fold regression benchmark as run units under ``runs/core/<study>/``.
+
+Every (dataset, NN-kNN family or baseline method, fold) is one unit; rerunning the same
+``--study`` skips complete units and resumes incomplete ones. The tables are printed and
+recorded in the report unit ``runs/core/<study>/_reports/table1/<timestamp>``.
+"""
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 from pathlib import Path
+import sys
 
-from tools.table1_nnknn_kfold import export_table1_outputs, run_table1_kfold
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from tools.table1_nnknn_kfold import (  # noqa: E402
+    build_table1_transposed_df,
+    record_table1_report,
+    run_table1_kfold,
+    utc_stamp,
+)
 
 
 DEFAULT_TABLE1_DATASETS = [
@@ -22,7 +37,7 @@ DEFAULT_TABLE1_DATASETS = [
 ]
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run the Table 1 5-fold regression benchmark suite."
     )
@@ -45,61 +60,44 @@ def parse_args() -> argparse.Namespace:
         help="Base random seed. Default: 42.",
     )
     parser.add_argument(
-        "--output-dir",
-        type=str,
+        "--study",
         default=None,
-        help="Optional explicit output directory. Defaults to results/table1_kfold_<timestamp>.",
+        help="Study name under runs/core/. Defaults to table1_kfold_<timestamp>; pass an existing "
+             "study to skip its complete units and resume the others.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def resolve_output_dir(output_dir: str | None) -> Path:
-    if output_dir:
-        outdir = Path(output_dir)
-    else:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        outdir = Path("results") / f"table1_kfold_{timestamp}"
-    outdir.mkdir(parents=True, exist_ok=True)
-    return outdir
-
-
-def main() -> None:
-    args = parse_args()
-    outdir = resolve_output_dir(args.output_dir)
+def main(argv: list[str] | None = None) -> Path:
+    args = parse_args(argv)
+    study = args.study or f"table1_kfold_{utc_stamp('%Y%m%d_%H%M%S')}"  # UTC
 
     print("Starting Table 1 k-fold sweep", flush=True)
-    print(f"Output directory: {outdir}", flush=True)
+    print(f"Study: runs/core/{study}", flush=True)
     print(f"Datasets: {args.datasets}", flush=True)
     print(f"num_folds={args.num_folds} base_seed={args.base_seed}", flush=True)
 
+    unit_log: list[dict] = []
     summary_df, runs_df, _ = run_table1_kfold(
         dataset_names=args.datasets,
         num_folds=args.num_folds,
         base_seed=args.base_seed,
+        study=study,
+        unit_log=unit_log,
     )
-
-    done_path = outdir / "done.json"
-    written_paths = export_table1_outputs(
+    report = record_table1_report(
         summary_df,
         runs_df,
-        outdir,
-        metadata={
-            "output_dir": str(outdir),
-            "datasets": list(args.datasets),
-            "num_folds": int(args.num_folds),
-            "base_seed": int(args.base_seed),
-        },
+        study=study,
+        metadata={"datasets": list(args.datasets), "num_folds": int(args.num_folds), "base_seed": int(args.base_seed)},
+        units=unit_log,
     )
 
-    if written_paths["done"] != done_path:
-        raise RuntimeError(f"Expected done path {done_path}, got {written_paths['done']}")
-
     print("Finished Table 1 k-fold sweep", flush=True)
-    print(f"Wrote: {written_paths['summary']}", flush=True)
-    print(f"Wrote: {written_paths['runs']}", flush=True)
-    print(f"Wrote: {written_paths['table']}", flush=True)
-    print(f"Wrote: {written_paths['transposed']}", flush=True)
-    print(f"Wrote: {written_paths['done']}", flush=True)
+    print(summary_df.to_string(index=False), flush=True)
+    print(build_table1_transposed_df(summary_df).to_string(index=False), flush=True)
+    print(f"Report unit: {report}", flush=True)
+    return report
 
 
 if __name__ == "__main__":

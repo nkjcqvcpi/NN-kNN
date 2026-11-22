@@ -54,6 +54,7 @@ CORE_FILES = (
     "tools/check_nnknn_core.py",
     "tests/test_nnknn_core.py",
     "tests/test_tracking.py",
+    "tests/test_core_runs.py",
     "docs/NNKNN_CORE.md",
 )
 
