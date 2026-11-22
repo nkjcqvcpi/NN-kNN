@@ -1,3 +1,5 @@
+import copy
+from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,6 +13,7 @@ import os
 import numpy as np
 
 from model.nn_cdh import NNCDHAdapter, add_to_pair_list
+from model.common.tracking import NullRun
 from model.device_utils import resolve_runtime_device
 
 debug_print_flag = False
@@ -1493,7 +1496,21 @@ def classification_class_mass_loss(
     probabilities = probabilities / probabilities.sum(dim=1, keepdim=True).clamp_min(float(eps))
     return F.nll_loss(probabilities.log(), targets.long())
 
-def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg): # , glocal_fw_set_num=glocal_fw_set_num
+def _state_dict_on_cpu(module: nn.Module) -> OrderedDict:
+    """Exact copy of ``module.state_dict()`` on the CPU, with the version metadata ``load_state_dict`` reads.
+
+    Best states are kept this way so that they cost no accelerator memory (the case buffers are part of the
+    state); loading one back copies the same values onto the module's device. Consumes no RNG.
+    """
+    sd = module.state_dict()
+    out = OrderedDict((k, v.detach().to("cpu", copy=True) if torch.is_tensor(v) else copy.deepcopy(v))
+                      for k, v in sd.items())
+    if getattr(sd, "_metadata", None) is not None:
+        out._metadata = copy.deepcopy(sd._metadata)
+    return out
+
+
+def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg, *, run=NullRun(), resumable=False): # , glocal_fw_set_num=glocal_fw_set_num
     """
     Train an NN-kNN model using the provided train/validation split.
 
@@ -1503,6 +1520,17 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg): # , glo
         X_val: Validation feature tensor.
         y_val: Validation labels.
         cfg: Configuration object or dict with training hyperparameters.
+            ``cfg["checkpoint_path"]`` is accepted and ignored (deprecated): best states are
+            kept in memory and no file is written outside ``run``.
+        run: ``tracking.Run`` that records the training (default ``NullRun``: nothing is
+            recorded and the result is the same). Per epoch it logs ``val/loss``,
+            ``val/acc`` (classification) or ``val/r2``, and ``train/stage`` at step = global
+            epoch (stage-1 epochs, then stage-2 epochs continuing that count); it saves the
+            named states ``best_retrieval`` (end of stage 1), ``best_adapter`` (end of stage 2,
+            when an adapter is trained) and ``final``.
+        resumable: call ``run.load_resume()`` after setup and write resume checkpoints at the
+            end of epochs after which the same stage continues (when ``run.checkpoint_due``)
+            and once at the start of stage 2; a resumed call continues bit for bit (CPU).
 
     Returns:
         best_accuracy: The best accuracy achieved during training.
@@ -1884,16 +1912,8 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg): # , glo
 
 
     # -------------------------
-    # Setup + checkpoints
+    # Setup (best states stay in memory; cfg["checkpoint_path"] is ignored)
     # -------------------------
-    checkpoint_path = cfg.get("checkpoint_path", default_args["checkpoint_path"]) or "nnknn_tmp.pth"
-    if checkpoint_path.endswith(".pth"):
-        retr_ckpt = checkpoint_path.replace(".pth", "_retr.pth")
-        cdh_ckpt  = checkpoint_path.replace(".pth", "_cdh.pth")
-    else:
-        retr_ckpt = checkpoint_path + "_retr.pth"
-        cdh_ckpt  = checkpoint_path + "_cdh.pth"
-
     patience = cfg.get("patience", default_args.get("patience", 20))
     training_epochs = cfg.get("training_epochs", default_args["training_epochs"])
     eps_sigma_multiplier = cfg.get("eps_sigma_multiplier", 0.1)
@@ -1903,6 +1923,19 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg): # , glo
     final_type = cfg.get("case_normalizer", "softmax")
 
     base_adapter_lr = cfg.get("adapter_lr", default_args["adapter_lr"])
+    metric_tag = "val/acc" if task == "classification" else "val/r2"
+
+    def _save_resume(stage: int, stage_epoch: int, step: int) -> None:
+        # everything the loops below read or change, at an epoch boundary (no iterator state)
+        run.save_resume({
+            "stage": stage, "stage_epoch": stage_epoch, "s1_epochs": s1_epochs,
+            "model": model.state_dict(), "optimizer": optimizer.state_dict(), "best_state": best_state,
+            "best_val_loss": best_val_loss, "best_val_metric": best_val_metric, "best_epoch": best_epoch,
+            "patience_counter": patience_counter, "metric_for_model_select": metric_for_model_select,
+            "requires_grad": {n: bool(p.requires_grad) for n, p in model.named_parameters()},
+            "case_normalizer": model.case_normalizer, "adapt_enabled": bool(model.adapt_enabled),
+            "case_default_bias": model.case_default_bias,  # a plain attribute, not in state_dict
+        }, step=step)
 
 
     # ==========================================================
@@ -1938,8 +1971,30 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg): # , glo
     best_val_metric = -float("inf")
     patience_counter = 0
     best_epoch = 0
+    best_state = None  # in-memory copy of the best state of the current stage
+    s1_epochs = 0  # stage-1 epochs run; stage-2 steps continue from this count
+    stage, start_epoch = 1, 0
 
-    for epoch in range(training_epochs):
+    resume = run.load_resume() if resumable else None
+    if resume is not None:  # rebuild the loop state of the checkpoint; RNG states last
+        st = resume.state
+        model.load_state_dict(st["model"])
+        model._invalidate_case_cache()
+        optimizer.load_state_dict(st["optimizer"])  # also restores the per-stage learning rates
+        if set(st["requires_grad"]) != {n for n, _ in model.named_parameters()}:
+            raise RuntimeError("resume checkpoint does not match the parameters of the rebuilt model")
+        for n, p in model.named_parameters():
+            p.requires_grad_(st["requires_grad"][n])
+        model.case_normalizer, model.adapt_enabled = st["case_normalizer"], st["adapt_enabled"]
+        model.case_default_bias = st["case_default_bias"]  # drawn from the RNG at construction unless set manually
+        best_state, best_val_loss, best_val_metric = st["best_state"], st["best_val_loss"], st["best_val_metric"]
+        best_epoch, patience_counter = st["best_epoch"], st["patience_counter"]
+        metric_for_model_select = st["metric_for_model_select"]
+        stage, start_epoch, s1_epochs = st["stage"], st["stage_epoch"] + 1, st["s1_epochs"]
+        print(f"[resume] continuing stage {stage} at epoch {start_epoch + 1} (checkpoint step {resume.step})")
+        resume.restore_rng()
+
+    for epoch in range(start_epoch, training_epochs) if stage == 1 else ():
         # unfreeze feature extractor at scheduled epoch (stage1 only)
         if not freeze_feature_extractor and freeze_epochs > 0 and model.feature_extractor is not None and epoch == freeze_epochs:
             for p in model.feature_extractor.parameters():
@@ -1986,26 +2041,33 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg): # , glo
 
         # validate + early stop
         val_loss, val_metric = _validate_one_epoch(epoch, "Stage1")
+        s1_epochs = epoch + 1
+        run.log_step(epoch, {"val/loss": val_loss, metric_tag: val_metric, "train/stage": 1})  # floats already on host
 
         if epoch == 0 or _is_better_checkpoint(val_loss, val_metric, best_val_loss, best_val_metric):
             best_val_loss = val_loss
             best_val_metric = val_metric
             best_epoch = epoch
             metric_for_model_select = val_metric
-            torch.save(model.state_dict(), retr_ckpt)
-            print(f"[Stage1] New best (epoch {epoch+1}) Val Metric: {val_metric:.4f} | Val Loss: {val_loss:.4f} — saved: {retr_ckpt}")
+            best_state = _state_dict_on_cpu(model)
+            print(f"[Stage1] New best (epoch {epoch+1}) Val Metric: {val_metric:.4f} | Val Loss: {val_loss:.4f} — kept in memory")
             patience_counter = 0
         else:
             patience_counter += 1
             print(f"[Stage1] No improv. Best so far: {best_val_loss:.4f} (epoch {best_epoch+1})")
             if patience_counter > patience:
                 print("[Stage1] Patience exceeded. Restoring best retrieval model.")
-                model.load_state_dict(torch.load(retr_ckpt))
+                model.load_state_dict(best_state)
                 break
+        if resumable and epoch < training_epochs - 1 and run.checkpoint_due(epoch):  # stage 1 continues
+            _save_resume(1, epoch, epoch)
 
-    # Restore best retrieval model before stage 2
-    if os.path.exists(retr_ckpt):
-        model.load_state_dict(torch.load(retr_ckpt))
+    if stage == 1:
+        # Restore best retrieval model before stage 2
+        if best_state is not None:
+            model.load_state_dict(best_state)
+            run.save_state("best_retrieval", best_state, step=best_epoch,
+                           meta={"val_loss": best_val_loss, "val_metric": best_val_metric})
 
 
     # ==========================================================
@@ -2013,34 +2075,37 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg): # , glo
     # ==========================================================
     if adapter is None or len(adapter_params) == 0:
         print("\n[Stage 2] Skipped: adapter not enabled.")
-        # final save
-        torch.save(model.state_dict(), checkpoint_path)
     else:
-        print(f"\n[Stage 2] Adapter-only training for up to {training_epochs} epochs (patience={patience})")
+        if stage == 1:
+            print(f"\n[Stage 2] Adapter-only training for up to {training_epochs} epochs (patience={patience})")
 
-        model.adapt_enabled = True
-        model.case_normalizer = final_type  # fixed in stage2
+            model.adapt_enabled = True
+            model.case_normalizer = final_type  # fixed in stage2
 
-        # Freeze retrieval parts
-        _set_requires_grad(feature_extractor_params + glocal_weightor_params + case_net_params, False)
-        _freeze_standalone_params(model, False)
+            # Freeze retrieval parts
+            _set_requires_grad(feature_extractor_params + glocal_weightor_params + case_net_params, False)
+            _freeze_standalone_params(model, False)
 
-        # Train adapter only
-        _set_requires_grad(adapter_params, True)
+            # Train adapter only
+            _set_requires_grad(adapter_params, True)
 
-        # Optimizer LR: only adapter group learns
-        if len(optimizer.param_groups) >= 4:
-            optimizer.param_groups[0]["lr"] = 0.0
-            optimizer.param_groups[1]["lr"] = 0.0
-            optimizer.param_groups[2]["lr"] = base_adapter_lr
-            optimizer.param_groups[3]["lr"] = 0.0
+            # Optimizer LR: only adapter group learns
+            if len(optimizer.param_groups) >= 4:
+                optimizer.param_groups[0]["lr"] = 0.0
+                optimizer.param_groups[1]["lr"] = 0.0
+                optimizer.param_groups[2]["lr"] = base_adapter_lr
+                optimizer.param_groups[3]["lr"] = 0.0
 
-        best_val_loss = float("inf")
-        best_val_metric = -float("inf")
-        patience_counter = 0
-        best_epoch = 0
+            best_val_loss = float("inf")
+            best_val_metric = -float("inf")
+            patience_counter = 0
+            best_epoch = 0
+            best_state = None
+            stage, start_epoch = 2, 0
+            if resumable and training_epochs > 0:  # unconditional checkpoint between the stages
+                _save_resume(2, -1, s1_epochs - 1)
 
-        for epoch in range(training_epochs):
+        for epoch in range(start_epoch, training_epochs):
             model.train()
 
             for X_batch, y_batch in train_loader:
@@ -2075,28 +2140,33 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg): # , glo
 
             # validate + early stop
             val_loss, val_metric = _validate_one_epoch(epoch, "Stage2")
+            run.log_step(s1_epochs + epoch, {"val/loss": val_loss, metric_tag: val_metric, "train/stage": 2})
 
             if epoch == 0 or _is_better_checkpoint(val_loss, val_metric, best_val_loss, best_val_metric):
                 best_val_loss = val_loss
                 best_val_metric = val_metric
                 best_epoch = epoch
                 metric_for_model_select = val_metric
-                torch.save(model.state_dict(), cdh_ckpt)
-                print(f"[Stage2] New best (epoch {epoch+1}) Val Metric: {val_metric:.4f} | Val Loss: {val_loss:.4f} — saved: {cdh_ckpt}")
+                best_state = _state_dict_on_cpu(model)
+                print(f"[Stage2] New best (epoch {epoch+1}) Val Metric: {val_metric:.4f} | Val Loss: {val_loss:.4f} — kept in memory")
                 patience_counter = 0
             else:
                 patience_counter += 1
                 print(f"[Stage2] No improv. Best so far: {best_val_loss:.4f} (epoch {best_epoch+1})")
                 if patience_counter > patience:
                     print("[Stage2] Patience exceeded. Restoring best adapter model.")
-                    model.load_state_dict(torch.load(cdh_ckpt))
+                    model.load_state_dict(best_state)
                     break
+            if resumable and epoch < training_epochs - 1 and run.checkpoint_due(s1_epochs + epoch):  # stage 2 continues
+                _save_resume(2, epoch, s1_epochs + epoch)
 
-        if os.path.exists(cdh_ckpt):
-            model.load_state_dict(torch.load(cdh_ckpt))
+        if best_state is not None:
+            model.load_state_dict(best_state)
+            run.save_state("best_adapter", best_state, step=s1_epochs + best_epoch,
+                           meta={"val_loss": best_val_loss, "val_metric": best_val_metric})
 
-        # final save
-        torch.save(model.state_dict(), checkpoint_path)
+    # final state (where checkpoint_path used to be written)
+    run.save_state("final", model.state_dict())
 
 
     print("Training completed. Best Acc or R2: ", metric_for_model_select)
