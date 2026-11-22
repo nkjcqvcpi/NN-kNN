@@ -53,6 +53,8 @@ The key practical distinction in the current Table 1 work is:
   fingerprints/manifests (`artifacts`) used by every stage branch.
 - [datasets/classification_data.py](../datasets/classification_data.py)
   This contains portable classification loaders with train-only preprocessing.
+- [datasets/paths.py](../datasets/paths.py)
+  `datasets_root()` locates the shared data directory (see Dataset Files).
 
 These files form the shared NN-kNN core. They are byte-identical on `main`,
 `neural-cbr`, `rl`, and `LLM`; see [NNKNN_CORE.md](NNKNN_CORE.md)
@@ -339,16 +341,23 @@ older folders for postmortem comparison.
 
 ## Dataset Files
 
+The `datasets/` package holds only loader code. The data files (CSV/UCI tables,
+MNIST, FashionMNIST, CIFAR-10) and preprocessed caches (`t1_cache/`,
+`scikit_learn_data/`) are not in git: they live in one directory shared by all
+worktrees, `NN-KNN/datasets/` next to the worktrees, or the directory named by
+the `NNKNN_DATASETS` environment variable. Loaders find it through
+`datasets.paths.datasets_root()`, which raises if the directory is missing.
+
 Primary regression dataset loader:
 
 - [datasets/reg_data.py](../datasets/reg_data.py)
 
 Important anchors:
 
-- `Bike_Sharing()` at [datasets/reg_data.py](../datasets/reg_data.py#L219)
-- `Wine()` at [datasets/reg_data.py](../datasets/reg_data.py#L236)
-- `DATATYPES` at [datasets/reg_data.py](../datasets/reg_data.py#L303)
-- `Reg_data(...)` at [datasets/reg_data.py](../datasets/reg_data.py#L323)
+- `Bike_Sharing()` at [datasets/reg_data.py](../datasets/reg_data.py#L221)
+- `Wine()` at [datasets/reg_data.py](../datasets/reg_data.py#L238)
+- `DATATYPES` at [datasets/reg_data.py](../datasets/reg_data.py#L305)
+- `Reg_data(...)` at [datasets/reg_data.py](../datasets/reg_data.py#L325)
 
 Important status note:
 

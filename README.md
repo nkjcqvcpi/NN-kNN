@@ -28,4 +28,8 @@ cd NN-KNN/neural-cbr
 uv run --project ../main --no-sync python -m pytest tests -q
 ```
 
+## Datasets
+
+Data files and preprocessed caches are not in git. They live in one directory shared by all worktrees, `NN-KNN/datasets/` (next to `main/`, `rl/`, ...; see its `README.md`). To use another location set `NNKNN_DATASETS` to its absolute path. The `datasets/` folder inside each worktree holds only the loader code.
+
 Only `main` has `pyproject.toml`, `uv.lock` and `.python-version`. Do not create another venv, and do not use pip or requirements files.

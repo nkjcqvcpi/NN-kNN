@@ -15,17 +15,19 @@ This checkout is the `nnknn/` worktree on `main`. Follow the parent workspace AG
 - After changing a core file, refresh the manifest with `uv run python tools/check_nnknn_core.py --write` and record in the commit message that the stage branches need the same files.
 - `model/nnknn_model_1_4.py`, `model/nnknn_model_with_post_mlp.py`, `model/nn_cdh_old.py`, `model/cls_model.py`, `model/reg_model.py`, `model/module.py`, and `older versions/` are legacy. They are outside the core and are kept on `main` only.
 - Obsolete tracked content is deleted, not archived; git history keeps it.
-- Use synthetic datasets for quick validation unless a task specifically requires the larger real datasets in `datasets/`.
+- Use synthetic datasets for quick validation unless a task specifically requires the larger real datasets.
+- `datasets/` in the repo holds loader code only (`datasets/*.py`). Data files and preprocessed caches are not tracked: they live in the shared `NN-KNN/datasets/` next to the worktrees (or `$NNKNN_DATASETS`), found through `datasets.paths.datasets_root()`. Never add data files to git (`.gitignore` blocks everything under `datasets/` except `*.py`). No model weights are kept in the repo.
 
 ## Layout and project rules
 
-- This project has no `README.md`, `CHANGELOG.md`, or `LICENSE`. Durable guidance is in this file, `HANDOFF.md`, and `docs/` (`docs/NNKNN_AGENT_GUIDE.md` is the long agent guide).
+- This project has no `CHANGELOG.md` or `LICENSE`; `README.md` covers the venv and dataset setup. Durable guidance is in this file, `HANDOFF.md`, and `docs/` (`docs/NNKNN_AGENT_GUIDE.md` is the long agent guide).
 - Notebooks live in `notebooks/` (`nnknn_sample_classification.ipynb`, `nnknn_sample_regression.ipynb`). They assume the repo root as the working directory.
 - Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; experiment results are to be logged with TensorBoard (TODO, not built yet).
 
 ## Setup
 
 - Install with `uv sync` in `main` (creates or updates `NN-KNN/.venv`). Use the same venv from every worktree as described above.
+- The data must exist at `NN-KNN/datasets/` (or set `NNKNN_DATASETS`); loaders raise `FileNotFoundError` instead of downloading into a missing directory.
 - Cloud and Codex setup scripts no longer exist (`codex/setup.sh`, `codex/maintenance.sh` were deleted); only `codex/smoke_test.py` remains.
 
 ## Validation
