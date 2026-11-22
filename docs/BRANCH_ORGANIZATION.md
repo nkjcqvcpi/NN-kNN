@@ -11,7 +11,7 @@
 | Supervised notebooks | `notebooks/nnknn_sample_classification.ipynb`, `notebooks/nnknn_sample_regression.ipynb` (launch with the repo root as cwd) |
 | Prior results | `results/prior_baseline/` (see `results/README.md`) |
 | Legacy model code | `model/nnknn_model_1_4.py`, `model/nnknn_model_with_post_mlp.py`, `model/nn_cdh_old.py`, `model/cls_model.py`, `model/reg_model.py`, `model/module.py` |
-| Reference material | `older versions/`, `notes/`, `papers and presentations/`, `checkpoints/*.h5` |
+| Reference material | `older versions/`, `notes/`, `papers and presentations/` (the old `checkpoints/*.h5` weights were removed from git on 2026-11-21; no model weights are kept) |
 
 The legacy and reference material is kept on `main` only. Stage branches carry the shared core plus their own stage code.
 
