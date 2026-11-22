@@ -33,7 +33,16 @@ checkpoints/regression_covid_anxious_reg.h5
 checkpoints/regression_covid_depressed_reg.h5
 checkpoints/regression_covid_lonely_reg.h5
 checkpoints/regression_covid_physical_reg.h5
-results/prior_baseline/ijcai2026_regression/table1_kfold_20260418_213251/stdout.log
+# Results, logs and generated report files are not in git. They stay on the experiment
+# host and will move to the shared NN-KNN/runs/ directory with TensorBoard logging.
+/results/
+/logs/
+/reports/figures/
+/reports/*.csv
+/reports/*.json
+/reports/*.txt
+/reports/*.png
+/docs/experiments/*.csv
 
 # Data and preprocessed caches live in the shared NN-KNN/datasets (see datasets/paths.py);
 # only the loader code datasets/*.py is tracked here.
