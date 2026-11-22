@@ -33,9 +33,8 @@ Branch `main` (`nnknn/` worktree): the standalone NN-kNN model and the shared co
 ## Current Local Artifacts
 
 - `checkpoints/` and transient smoke-test artifacts are expected and gitignored.
-- Root checkpoint files such as `nnknn_regression_best.pth` and `nnknn_regression_best_retr.pth` may change when experiments are run.
-- Classification runs write checkpoints beneath `checkpoints/` by default. The CLI creates a fresh `results/classification_<suite>_<timestamp>/` folder with summary, per-run, and manifest files.
-- Results and logs are not in git. They live on the experiment host and will move to the shared `NN-KNN/runs/` directory with TensorBoard logging. On disk, completed prior-paper reruns are filed under `results/prior_baseline/`; see `results/README.md` beside them. Keep old run folders for comparison and postmortem context rather than overwriting them.
+- Training writes no checkpoint files any more (best states stay in memory; `checkpoint_path` in configs is ignored). The classification and Table 1 CLIs record one run unit per dataset, method and split under `NN-KNN/runs/core/<study>/` and a report unit with the tables (`docs/NNKNN_CORE.md`); rerunning a study skips complete units and resumes the others.
+- Results and logs are not in git. New runs are recorded in TensorBoard event files under the shared `NN-KNN/runs/` directory. On disk, completed prior-paper reruns are filed under `results/prior_baseline/`; see `results/README.md` beside them. Keep old run folders for comparison and postmortem context rather than overwriting them.
 
 ## Where Durable Guidance Lives
 
@@ -43,7 +42,7 @@ Read `docs/NNKNN_AGENT_GUIDE.md` for model descriptions, workflow entry points, 
 
 ## Environment (uv only)
 
-Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; experiment results are to be logged with TensorBoard (TODO, not built yet).
+Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; runs are recorded in TensorBoard event files by `model/common/tracking.py`.
 
 ## 2026-11-21: repository layout cleanup
 
@@ -57,4 +56,4 @@ Environment and dependencies are managed by uv only. The single `pyproject.toml`
 - Added `pyproject.toml`, `uv.lock`, `.python-version` (Python 3.14.7). Locked: torch 2.15.0+xpu, torchvision 0.29.2+xpu, triton-xpu 3.9.0, numpy 2.5.5, scipy 1.18.1, pandas 3.1.1, scikit-learn 1.9.1, gymnasium 1.4.0, matplotlib 3.11.2, transformers 5.24.0, pytest 9.2.0. Only libraries the code imports are dependencies; `notebook` group = ipykernel, ipywidgets.
 - Removed: wandb (dependency, `model/train_GMM3.py` with a hard-coded key, `archive/legacy/`). The key is public in GitHub history and must be revoked by its owner.
 - Worktree directory `nnknn` renamed to `main` (g234). The three stage branches lost their own `pyproject.toml`, `uv.lock`, `.python-version`.
-- Known gaps: LunarLander (Box2D) has no Python 3.14 wheel and `gymnasium[box2d]` needs MSVC + swig, so it is not installed. On torch 2.15.0+xpu two neural-cbr tests fail (`test_t1_tuning_features.py` accelerator tests, `UR_RESULT_ERROR_UNKNOWN` in the glocal feature weighting); they pass on torch 2.14.0+xpu / Python 3.12. TensorBoard logging is not implemented (TODO: rework the experiment flow).
+- Known gaps: LunarLander (Box2D) has no Python 3.14 wheel and `gymnasium[box2d]` needs MSVC + swig, so it is not installed. On torch 2.15.0+xpu two neural-cbr tests fail (`test_t1_tuning_features.py` accelerator tests, `UR_RESULT_ERROR_UNKNOWN` in the glocal feature weighting); they pass on torch 2.14.0+xpu / Python 3.12. TensorBoard run tracking covers the core training and the core benchmark tools; the stage workflows (T1, T2, T3) still write their own result files until their tracking steps.

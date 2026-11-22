@@ -22,7 +22,7 @@ This checkout is the `nnknn/` worktree on `main`. Follow the parent workspace AG
 
 - This project has no `CHANGELOG.md` or `LICENSE`; `README.md` covers the venv and dataset setup. Durable guidance is in this file, `HANDOFF.md`, and `docs/` (`docs/NNKNN_AGENT_GUIDE.md` is the long agent guide).
 - Notebooks live in `notebooks/` (`nnknn_sample_classification.ipynb`, `nnknn_sample_regression.ipynb`). They assume the repo root as the working directory.
-- Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; experiment results are to be logged with TensorBoard (TODO, not built yet).
+- Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; runs are recorded in TensorBoard event files by `model/common/tracking.py` (see `docs/NNKNN_CORE.md`, "Run tracking").
 
 ## Setup
 
@@ -39,7 +39,7 @@ This checkout is the `nnknn/` worktree on `main`. Follow the parent workspace AG
 
 ## Notes
 
-- `checkpoints/` and transient artifacts are expected and are gitignored.
-- Results and logs are not in git. They live on the experiment host and will move to the shared `NN-KNN/runs/` directory with TensorBoard logging. On disk, completed prior-paper reruns are filed under `results/prior_baseline/`, indexed by `results/README.md` beside them.
+- Training and the benchmark tools write no checkpoint or result files: runs, their weights and their tables are units under the shared `NN-KNN/runs/` directory (`runs/core/<study>/...` for the core tools; `docs/NNKNN_CORE.md`). Tests point `NNKNN_RUNS` at a temporary directory.
+- Results and logs are not in git. Earlier results stay on the experiment host as legacy: completed prior-paper reruns are filed under `results/prior_baseline/`, indexed by `results/README.md` beside them; new code does not read them.
 - `matplotlib` should run headlessly in cloud tasks with `MPLBACKEND=Agg`.
 - Avoid full multi-run benchmarks for routine verification; they are intentionally expensive.
