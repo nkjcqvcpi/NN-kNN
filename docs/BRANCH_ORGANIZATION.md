@@ -54,3 +54,7 @@ Original commit IDs and source fingerprints in experiment reports are preserved 
 - Tests used workspace temporary directories because the existing system pytest temporary directory is inaccessible.
 
 Exact source-file ownership and exclusions are recorded in `REORGANIZATION_MANIFEST.json`. See the external recovery directory for commit maps and checkpoint-history scan evidence.
+
+## Results removed from git, 2026-11-22
+
+- All results, logs and generated report files (`reports/figures/`, the tables and run manifests directly under `reports/`, `docs/experiments/*.csv`) were removed from the history of this fork's commits (the upstream commits are unchanged); hand-written reports and docs stay. The files are ignored by `.gitignore` and stay on disk on the experiment host; they will move to the shared `NN-KNN/runs/` directory with TensorBoard logging. The Git LFS rules for results were dropped.
