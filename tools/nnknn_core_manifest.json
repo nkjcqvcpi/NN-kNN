@@ -20,13 +20,13 @@
     "datasets/paths.py": "0611dfbd86eb8050976605aca9a1130c52c23e6d8cf13c1a563052c313652bcf",
     "datasets/classification_data.py": "b3849056f6aebac9076ba55954ecad91a913f5cf69b0605d38b6647ad0532842",
     "datasets/cls_small_data.py": "400d2ca46c60adbd17961de294a45251c06e8643e3fa18d8b0090c79ea031562",
-    "datasets/reg_data.py": "e90e196d23b5eea491e10f3ead062c6c931a10922d6d38c2520580ed6d939bea",
+    "datasets/reg_data.py": "5f104babf93298aa096cbad50d7548bdec22a06fd36be0371ccf4f206abb15ac",
     "tools/run_classification_benchmarks.py": "fe928d3fcf9ad879f8a6bf38b89e041bb7e336f5ed605dfb71506bfcddc5c79b",
     "tools/run_table1_kfold.py": "ed4ef3ff06759dd152f5b147c77ae9d572872bb7ec57744a8d4f4ce9905354a9",
-    "tools/resume_table1_kfold.py": "1a294891925354f3c04beef98a4cabeedb907101216c97037b6d16edb71b61fb",
+    "tools/resume_table1_kfold.py": "fb203728ed258f20efdb77153c3a2a4791503c204f38dd99a523b93034f8f10a",
     "tools/table1_nnknn_kfold.py": "1eea58c4d866185f80bf1d0b7e2f8e5ed467a527528053a0171f3cf4233a1e4e",
     "tools/check_nnknn_core.py": "4ec4bf83d1d1778b9379d16dc4794327db2348bc03ee92bc1f96f55111da74f9",
     "tests/test_nnknn_core.py": "dfe4bd0eb103af4a58e174fef692be0bbe8e2c33c50f8d9d35499d77d47e63e4",
-    "docs/NNKNN_CORE.md": "21a32033da1da81a0f992be540de069f08d03e041f89ff0b5be506e59aacfebb"
+    "docs/NNKNN_CORE.md": "fa1452964bb2b133743f686633a5528ae1f399e0736d797fac008339177cb7cb"
   }
 }

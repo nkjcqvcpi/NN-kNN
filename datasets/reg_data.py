@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from urllib import request
 
@@ -130,10 +129,10 @@ def psych_depression_physical_symptons_reg():
 def California_Housing():
     from sklearn.datasets import fetch_california_housing
 
-    # SCIKIT_LEARN_DATA (set by tools/resume_table1_kfold.py) wins; otherwise the
-    # shared cache <datasets root>/scikit_learn_data.
-    data_home = os.environ.get("SCIKIT_LEARN_DATA") or (datasets_root() / "scikit_learn_data")
-    california_housing = fetch_california_housing(data_home=data_home)
+    # A library download: it stays in scikit-learn's own cache (~/scikit_learn_data,
+    # or $SCIKIT_LEARN_DATA, which sklearn reads itself), not in the shared
+    # NN-kNN data directory.
+    california_housing = fetch_california_housing()
     Xs = california_housing.data
     ys = california_housing.target
 

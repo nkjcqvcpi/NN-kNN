@@ -11,7 +11,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from datasets.paths import datasets_root
 from tools.table1_nnknn_kfold import (
     TABLE1_DEFAULT_DATASET_NAMES,
     export_table1_outputs,
@@ -84,7 +83,7 @@ def parse_args() -> argparse.Namespace:
         "--scikit-learn-data",
         type=Path,
         default=None,
-        help="Writable sklearn dataset cache directory. Defaults to $SCIKIT_LEARN_DATA if set, else the shared <datasets root>/scikit_learn_data (see datasets/paths.py).",
+        help="Writable sklearn dataset cache directory. Defaults to scikit-learn's own location ($SCIKIT_LEARN_DATA if set, else ~/scikit_learn_data).",
     )
     return parser.parse_args()
 
@@ -96,17 +95,16 @@ def main() -> None:
         outdir = REPO_ROOT / outdir
     outdir.mkdir(parents=True, exist_ok=True)
 
-    # --scikit-learn-data wins, then a SCIKIT_LEARN_DATA already set outside the
-    # tool; only then the shared data directory is needed.
-    env_sklearn = os.environ.get("SCIKIT_LEARN_DATA", "").strip()
-    sklearn_data = (
-        args.scikit_learn_data
-        or (Path(env_sklearn) if env_sklearn else None)
-        or (datasets_root() / "scikit_learn_data")
-    )
-    sklearn_data.mkdir(parents=True, exist_ok=True)
+    # Library downloads stay in the library's default location: only an explicit
+    # --scikit-learn-data overrides it; otherwise scikit-learn picks its own cache
+    # ($SCIKIT_LEARN_DATA if set, else ~/scikit_learn_data).
     os.environ.setdefault("MPLBACKEND", "Agg")
-    os.environ["SCIKIT_LEARN_DATA"] = str(sklearn_data)
+    if args.scikit_learn_data is not None:
+        args.scikit_learn_data.mkdir(parents=True, exist_ok=True)
+        os.environ["SCIKIT_LEARN_DATA"] = str(args.scikit_learn_data)
+    from sklearn.datasets import get_data_home
+
+    sklearn_data = Path(get_data_home())
 
     dataset_names = args.datasets or TABLE1_DEFAULT_DATASET_NAMES
     checkpoint_mtime_after = _parse_datetime(args.checkpoint_mtime_after)
