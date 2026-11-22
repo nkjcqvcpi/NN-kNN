@@ -5,7 +5,7 @@ Branch `LLM` (`llm/`): shared NN-kNN core + T3. Current scope: `tools/t3_*.py`, 
 ## Where things are
 
 - Specification: Xiaomeng Ye's `T3_LLM_AGENT_IMPLEMENTATION_PLAN.md` in `career-2027/03-research-architecture/implementation-handoff/` (copy and companions in `docs/t1_spec/`).
-- Results and logs: filed by T3 handoff stage under `results/t3/<stage>/` and `logs/t3/<stage>/`; `results/README.md` maps every `docs/T3_*.md` to its stage and evidence.
+- Results and logs: not in git (on the experiment host; moving to the shared `NN-KNN/runs/` directory with TensorBoard logging). On disk they are filed by T3 handoff stage under `results/t3/<stage>/` and `logs/t3/<stage>/`; `results/README.md` maps every `docs/T3_*.md` to its stage and evidence.
 - Shared core: synced from `main`; see `docs/NNKNN_CORE.md`.
 
 ## Status by handoff stage (2026-10-10)
