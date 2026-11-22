@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "tools" / "nnknn_core_manifest.json"
 
 # The shared core: model, adaptation, device handling, construction/geometry/
-# artifact helpers, the supervised classification/regression workflows and
+# artifact and run-tracking helpers, the supervised classification/regression workflows and
 # their loaders, the supervised benchmark tools, and this contract itself.
 CORE_FILES = (
     "model/__init__.py",
@@ -34,6 +34,7 @@ CORE_FILES = (
     "model/feature_extractors.py",
     "model/common/__init__.py",
     "model/common/artifacts.py",
+    "model/common/tracking.py",
     "model/common/core.py",
     "model/common/geometry.py",
     "model/common/nominal.py",
@@ -52,6 +53,7 @@ CORE_FILES = (
     "tools/table1_nnknn_kfold.py",
     "tools/check_nnknn_core.py",
     "tests/test_nnknn_core.py",
+    "tests/test_tracking.py",
     "docs/NNKNN_CORE.md",
 )
 
