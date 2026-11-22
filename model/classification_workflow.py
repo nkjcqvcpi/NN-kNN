@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import contextlib
 import copy
 import os
 import random
 import re
-from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, ContextManager, Mapping
 
 import numpy as np
 import pandas as pd
@@ -25,6 +25,7 @@ from datasets.classification_data import (
 )
 from model.device_utils import resolve_runtime_device
 from model.feature_extractors import CIFAR10Classifier, MNISTClassifier, get_feature_extractor_from
+from model.common.tracking import NullRun
 from model.nnknn_model import default_args, train_model
 
 
@@ -274,15 +275,6 @@ def split_classification_state(
     return new_state
 
 
-def _checkpoint_path_for_run(path: str, dataset_name: str, label: str) -> str:
-    checkpoint = Path(path)
-    suffix = checkpoint.suffix or ".pth"
-    stem = checkpoint.stem if checkpoint.suffix else checkpoint.name
-    safe_dataset = _normalize_name(dataset_name)
-    safe_label = _normalize_name(label)
-    return str(checkpoint.with_name(f"{stem}_{safe_dataset}_{safe_label}{suffix}"))
-
-
 def build_image_classifier(dataset_name: str) -> nn.Module:
     normalized = _normalize_name(dataset_name)
     if normalized == "mnist":
@@ -303,17 +295,14 @@ def train_nnknn_classification_state(
     feature_extractor: nn.Module | None = None,
     checkpoint_label: str | None = None,
     clone_feature_extractor: bool = True,
+    run: Any = NullRun(),
+    resumable: bool = False,
 ) -> dict[str, Any]:
+    """Train NN-kNN on a split state. ``checkpoint_label`` and ``cfg["checkpoint_path"]`` are
+    accepted and ignored (no checkpoint files are written); ``run`` and ``resumable`` go to
+    ``train_model``, which records the training and its named states in that run."""
     _validate_classification_cfg(cfg)
     cfg_run = copy.deepcopy(dict(cfg))
-    if checkpoint_label is not None:
-        cfg_run["checkpoint_path"] = _checkpoint_path_for_run(
-            str(cfg_run.get("checkpoint_path", "checkpoints/nnknn_classification_best.pth")),
-            str(state["display_name"]),
-            checkpoint_label,
-        )
-    checkpoint = Path(str(cfg_run["checkpoint_path"]))
-    checkpoint.parent.mkdir(parents=True, exist_ok=True)
     run_feature_extractor = (
         copy.deepcopy(feature_extractor) if feature_extractor is not None and clone_feature_extractor else feature_extractor
     )
@@ -324,6 +313,8 @@ def train_nnknn_classification_state(
         state["y_val"],
         feature_extractor=run_feature_extractor,
         cfg=cfg_run,
+        run=run,
+        resumable=resumable,
     )
     result = dict(state)
     result.update(
@@ -413,6 +404,8 @@ def run_single_nnknn_classification_experiment(
     train_ratio: float = 0.8,
     standardize: bool | None = None,
     checkpoint_label: str | None = None,
+    run: Any = NullRun(),
+    resumable: bool = False,
 ) -> dict[str, Any]:
     seed_everything(run_seed)
     state = load_classification_dataset_state(dataset_name, dataset_kwargs=dataset_kwargs)
@@ -431,6 +424,8 @@ def run_single_nnknn_classification_experiment(
         cfg_run,
         feature_extractor=feature_extractor,
         checkpoint_label=checkpoint_label,
+        run=run,
+        resumable=resumable,
     )
     return evaluate_nnknn_classification_state(trained, print_metrics=False)
 
@@ -557,7 +552,21 @@ def run_classification_benchmark_methods_on_state(
     method_cfgs: Mapping[str, Mapping[str, Any]] | None = None,
     run_seed: int = 42,
     checkpoint_label_prefix: str | None = None,
+    unit_run: Callable[[Mapping[str, Any], str], ContextManager[Any]] | None = None,
+    unit_state: Callable[[Mapping[str, Any], str, str], Any] | None = None,
 ) -> dict[str, dict[str, Any]]:
+    """Run the benchmark methods on one split. ``checkpoint_label_prefix`` is accepted and ignored.
+
+    ``unit_run(state, method)`` (optional) returns a context manager per method: it yields a
+    ``tracking.Run`` that records that method (final ``accuracy`` and ``best_metric``, the
+    ``predictions`` array, and NN-kNN training through ``train_model``, resumable), or None when
+    the unit is already complete, in which case the method is skipped and has no entry in the
+    result. The unit whose method trains the shared image classifier also saves it as the named
+    state ``classifier``. When that unit is skipped, the classifier is loaded from it through
+    ``unit_state(state, method, "classifier")`` (a state dict, or None); if that gives nothing it
+    is retrained from the skipped method's seed, which keeps the RNG stream of the later methods
+    unchanged (bit for bit on CPU only).
+    """
     is_image = state.get("dataset_kind") == "image"
     requested = methods or (_IMAGE_METHODS if is_image else _SMALL_METHODS)
     canonical = [_METHOD_ALIASES.get(_normalize_name(method), _normalize_name(method)) for method in requested]
@@ -571,88 +580,136 @@ def run_classification_benchmark_methods_on_state(
     }
     results: dict[str, dict[str, Any]] = {}
     pretrained_classifier: nn.Module | None = None
+    skipped_classifier_owner = False  # a skipped method would have trained the classifier first
 
     def get_pretrained_classifier() -> nn.Module:
         nonlocal pretrained_classifier
         if pretrained_classifier is None:
+            if skipped_classifier_owner:  # train it from the seed the skipped method started with
+                seed_everything(run_seed)
             kwargs = dict(cfgs.get("convnet", {}))
             pretrained_classifier, _ = _train_torch_classifier(
                 build_image_classifier(str(state["dataset_name"])), state, **kwargs
             )
+            if skipped_classifier_owner:  # then the current method starts from its seed again
+                seed_everything(run_seed)
         return pretrained_classifier
 
     for method in canonical:
-        seed_everything(run_seed)
-        print(f"[classification benchmark] {state['display_name']} method={method}", flush=True)
-        method_cfg = dict(cfgs.get(method, {}))
-        if method in {"nnknn", "nnknn_conv_trainable", "nnknn_conv_frozen"}:
-            if nnknn_cfg is None:
-                raise ValueError("nnknn_cfg is required for NN-kNN benchmark methods.")
-            if not is_image and method != "nnknn":
-                raise ValueError(f"Method '{method}' is for image datasets.")
-            extractor = None
-            cfg_run = copy.deepcopy(dict(nnknn_cfg))
-            if is_image:
-                if method == "nnknn_conv_frozen":
-                    extractor = get_feature_extractor_from(copy.deepcopy(get_pretrained_classifier()))
-                    cfg_run["freeze_feature_extractor"] = True
-                else:
-                    extractor = build_nnknn_image_feature_extractor(str(state["dataset_name"]))
-            label = f"{checkpoint_label_prefix}_{method}" if checkpoint_label_prefix else method
-            artifact = train_nnknn_classification_state(
-                state, cfg_run, feature_extractor=extractor, checkpoint_label=label
-            )
-            artifact = evaluate_nnknn_classification_state(artifact, print_metrics=False)
-            artifact["baseline_name"] = "NN-kNN" if not is_image else method
-            results[method] = artifact
-        elif method in {"knn", "knn_pixels"}:
-            artifact = _evaluate_knn(state, **method_cfg)
-            artifact["baseline_name"] = method
-            results[method] = artifact
-        elif method == "mlp":
-            model = _MLPClassifier(int(state["X_train"][0].numel()), int(state["num_classes"]))
-            model, accuracy = _train_torch_classifier(model, state, **method_cfg)
-            predicted = _predict_torch_classifier(model, state["X_val"])
-            artifact = dict(state)
-            artifact.update(
-                {
-                    "baseline_model": model,
-                    "predictions": predicted,
-                    "accuracy": accuracy,
-                    "baseline_name": "mlp",
-                }
-            )
-            results[method] = artifact
-        elif method == "convnet":
-            model = get_pretrained_classifier()
-            X_eval = state.get("X_test", state["X_val"])
-            y_eval = state.get("y_test", state["y_val"])
-            predicted = _predict_torch_classifier(model, X_eval)
-            artifact = dict(state)
-            artifact.update(
-                {
-                    "baseline_model": model,
-                    "predictions": predicted,
-                    "accuracy": float(accuracy_score(y_eval.numpy(), predicted.numpy())),
-                    "baseline_name": "convnet",
-                }
-            )
-            results[method] = artifact
-        elif method == "knn_conv_frozen":
-            classifier = get_pretrained_classifier()
-            artifact = _evaluate_knn(
-                state,
-                features_train=_extract_conv_features(classifier, state["X_train"]),
-                features_val=_extract_conv_features(
-                    classifier, state.get("X_test", state["X_val"])
-                ),
-                **method_cfg,
-            )
-            artifact["baseline_name"] = "knn_conv_frozen"
-            results[method] = artifact
-        else:
-            raise ValueError(f"Unsupported classification benchmark method '{method}'.")
+        scope = unit_run(state, method) if unit_run is not None else contextlib.nullcontext(NullRun())
+        with scope as run:
+            if run is None:  # complete unit: skipped
+                if method in _CLASSIFIER_METHODS and pretrained_classifier is None:
+                    stored = unit_state(state, method, "classifier") if unit_state is not None else None
+                    if stored is not None:  # the classifier this unit trained, exactly (no RNG consumed)
+                        pretrained_classifier = build_image_classifier(str(state["dataset_name"]))
+                        pretrained_classifier.load_state_dict(stored)
+                        pretrained_classifier = pretrained_classifier.to(resolve_runtime_device()).eval()
+                    else:
+                        skipped_classifier_owner = True
+                continue
+            had_classifier = pretrained_classifier is not None
+            results[method] = _run_classification_method(
+                method, state, nnknn_cfg, cfgs, run_seed, run, is_image, get_pretrained_classifier)
+            _log_classification_unit(run, results[method])
+            if not had_classifier and pretrained_classifier is not None and not isinstance(run, NullRun):
+                run.save_state("classifier", pretrained_classifier.state_dict())
     return results
+
+
+_CLASSIFIER_METHODS = {"convnet", "nnknn_conv_frozen", "knn_conv_frozen"}
+
+
+def _log_classification_unit(run: Any, artifact: Mapping[str, Any]) -> None:
+    if isinstance(run, NullRun):
+        return
+    finals = {"accuracy": float(artifact["accuracy"])}
+    if artifact.get("best_metric") is not None:
+        finals["best_metric"] = float(artifact["best_metric"])
+    run.log_final(finals)
+    predictions = artifact.get("predictions")
+    if torch.is_tensor(predictions) and predictions.device.type == "cpu":
+        run.log_array("predictions", predictions.numpy())
+
+
+def _run_classification_method(
+    method: str,
+    state: Mapping[str, Any],
+    nnknn_cfg: Mapping[str, Any] | None,
+    cfgs: Mapping[str, Mapping[str, Any]],
+    run_seed: int,
+    run: Any,
+    is_image: bool,
+    get_pretrained_classifier: Callable[[], nn.Module],
+) -> dict[str, Any]:
+    seed_everything(run_seed)
+    print(f"[classification benchmark] {state['display_name']} method={method}", flush=True)
+    method_cfg = dict(cfgs.get(method, {}))
+    if method in {"nnknn", "nnknn_conv_trainable", "nnknn_conv_frozen"}:
+        if nnknn_cfg is None:
+            raise ValueError("nnknn_cfg is required for NN-kNN benchmark methods.")
+        if not is_image and method != "nnknn":
+            raise ValueError(f"Method '{method}' is for image datasets.")
+        extractor = None
+        cfg_run = copy.deepcopy(dict(nnknn_cfg))
+        if is_image:
+            if method == "nnknn_conv_frozen":
+                extractor = get_feature_extractor_from(copy.deepcopy(get_pretrained_classifier()))
+                cfg_run["freeze_feature_extractor"] = True
+            else:
+                extractor = build_nnknn_image_feature_extractor(str(state["dataset_name"]))
+        artifact = train_nnknn_classification_state(
+            state, cfg_run, feature_extractor=extractor, run=run, resumable=True
+        )
+        artifact = evaluate_nnknn_classification_state(artifact, print_metrics=False)
+        artifact["baseline_name"] = "NN-kNN" if not is_image else method
+        return artifact
+    elif method in {"knn", "knn_pixels"}:
+        artifact = _evaluate_knn(state, **method_cfg)
+        artifact["baseline_name"] = method
+        return artifact
+    elif method == "mlp":
+        model = _MLPClassifier(int(state["X_train"][0].numel()), int(state["num_classes"]))
+        model, accuracy = _train_torch_classifier(model, state, **method_cfg)
+        predicted = _predict_torch_classifier(model, state["X_val"])
+        artifact = dict(state)
+        artifact.update(
+            {
+                "baseline_model": model,
+                "predictions": predicted,
+                "accuracy": accuracy,
+                "baseline_name": "mlp",
+            }
+        )
+        return artifact
+    elif method == "convnet":
+        model = get_pretrained_classifier()
+        X_eval = state.get("X_test", state["X_val"])
+        y_eval = state.get("y_test", state["y_val"])
+        predicted = _predict_torch_classifier(model, X_eval)
+        artifact = dict(state)
+        artifact.update(
+            {
+                "baseline_model": model,
+                "predictions": predicted,
+                "accuracy": float(accuracy_score(y_eval.numpy(), predicted.numpy())),
+                "baseline_name": "convnet",
+            }
+        )
+        return artifact
+    elif method == "knn_conv_frozen":
+        classifier = get_pretrained_classifier()
+        artifact = _evaluate_knn(
+            state,
+            features_train=_extract_conv_features(classifier, state["X_train"]),
+            features_val=_extract_conv_features(
+                classifier, state.get("X_test", state["X_val"])
+            ),
+            **method_cfg,
+        )
+        artifact["baseline_name"] = "knn_conv_frozen"
+        return artifact
+    raise ValueError(f"Unsupported classification benchmark method '{method}'.")
 
 
 def summarize_classification_benchmark_runs(runs_df: pd.DataFrame, digits: int = 4) -> pd.DataFrame:
@@ -689,7 +746,13 @@ def run_repeated_classification_model_benchmarks(
     train_ratio: float = 0.8,
     standardize: bool | None = None,
     dataset_kwargs_map: Mapping[str, Mapping[str, Any]] | None = None,
+    unit_run: Callable[[Mapping[str, Any], str], ContextManager[Any]] | None = None,
+    unit_state: Callable[[Mapping[str, Any], str, str], Any] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, dict[str, list[dict[str, Any]]]]]:
+    """Repeated benchmark over datasets and splits; ``unit_run`` and ``unit_state`` as in
+    ``run_classification_benchmark_methods_on_state``; the state they get carries ``run_index``,
+    ``run_seed``, ``run_mode`` and ``requested_name`` (the dataset name as passed). Skipped
+    units have no row and no artifact here."""
     names = [dataset_names] if isinstance(dataset_names, str) else list(dataset_names)
     normalized_mode = _normalize_name(mode)
     kwargs_map = dataset_kwargs_map or {}
@@ -744,7 +807,12 @@ def run_repeated_classification_model_benchmarks(
                 methods=method_names,
                 method_cfgs=method_cfgs,
                 run_seed=run_seed,
-                checkpoint_label_prefix=f"{run_mode}_{index}",
+                unit_run=None if unit_run is None else (
+                    lambda st, method, _mode=run_mode, _name=dataset_name: unit_run(
+                        {**st, "run_mode": _mode, "requested_name": _name}, method)),
+                unit_state=None if unit_state is None else (
+                    lambda st, method, name, _mode=run_mode, _name=dataset_name: unit_state(
+                        {**st, "run_mode": _mode, "requested_name": _name}, method, name)),
             )
             for method, artifact in results.items():
                 artifacts[dataset_name].setdefault(method, []).append(artifact)
