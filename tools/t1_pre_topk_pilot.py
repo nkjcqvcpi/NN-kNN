@@ -25,6 +25,7 @@ from sklearn.preprocessing import OneHotEncoder
 from model.common.artifacts import environment_info, git_state, source_fingerprint, write_json
 from model.common.core import CoreConfig, build_model, evaluate, train_retrieval
 from model.regression_workflow import get_regression_dataset, prepare_regression_split_for_training
+from datasets.paths import datasets_root
 from model.t1.data import T1Data, make_splits
 
 
@@ -33,7 +34,7 @@ def data_for(ds, seed, splits):
         return make_splits(ds["name"], "classification", seed, **splits)
     frame = None
     if ds["name"] == "student_performance":
-        raw = pd.read_csv(REPO / "datasets/student-por.csv", sep=";")
+        raw = pd.read_csv(datasets_root() / "student-por.csv", sep=";")
         frame, y = raw.drop(columns="G3"), torch.tensor(raw.G3.to_numpy(), dtype=torch.float32)
     else:
         bundle = get_regression_dataset(ds["name"], **({**ds["generator"], "seed": seed} if "generator" in ds else {}))

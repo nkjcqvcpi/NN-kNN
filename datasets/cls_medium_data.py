@@ -2,9 +2,18 @@ import torch
 from torchvision import datasets, transforms
 import os
 
-# Use a shared dataset root (default: ./datasets)
-DATA_ROOT = os.environ.get("DATA_ROOT", "./datasets/")
-os.makedirs(DATA_ROOT, exist_ok=True)
+from .paths import datasets_root
+
+# DATA_ROOT overrides the shared NN-kNN data directory (datasets.paths); nothing
+# is created at import time.
+DATA_ROOT = os.environ.get("DATA_ROOT") or None
+
+
+def _root(root, *sub):
+    if root:
+        return root
+    return os.path.join(DATA_ROOT or str(datasets_root()), *sub)
+
 
 def compute_mean_std(dataset):
     loader = torch.utils.data.DataLoader(dataset, batch_size=1024, num_workers=2)
@@ -20,7 +29,8 @@ def compute_mean_std(dataset):
     return mean.item(), std.item()
 
 
-def MNIST(root=DATA_ROOT):
+def MNIST(root=None):
+    root = _root(root)
     initial_transform = transforms.Compose([transforms.ToTensor()])
     train_dataset = datasets.MNIST(root=root, train=True, download=True, transform=initial_transform)
     test_dataset = datasets.MNIST(root=root, train=False, download=True, transform=initial_transform)
@@ -39,7 +49,8 @@ def MNIST(root=DATA_ROOT):
     return X_train, y_train, X_test, y_test
 
 
-def CIFAR10(root=DATA_ROOT):
+def CIFAR10(root=None):
+    root = _root(root)
     initial_transform = transforms.Compose([transforms.ToTensor()])
     train_dataset = datasets.CIFAR10(root=root, train=True, download=True, transform=initial_transform)
     test_dataset = datasets.CIFAR10(root=root, train=False, download=True, transform=initial_transform)
@@ -57,7 +68,8 @@ def CIFAR10(root=DATA_ROOT):
     y_test = torch.tensor([test_dataset[i][1] for i in range(len(test_dataset))])
     return X_train, y_train, X_test, y_test
 
-def CIFAR100(root=DATA_ROOT):
+def CIFAR100(root=None):
+    root = _root(root)
     initial_transform = transforms.Compose([transforms.ToTensor()])
     train_dataset = datasets.CIFAR100(root=root, train=True, download=True, transform=initial_transform)
     test_dataset = datasets.CIFAR100(root=root, train=False, download=True, transform=initial_transform)
@@ -76,7 +88,8 @@ def CIFAR100(root=DATA_ROOT):
     return X_train, y_train, X_test, y_test
 
 
-def SVHN(root=os.path.join(DATA_ROOT, "svhn")):
+def SVHN(root=None):
+    root = _root(root, "svhn")
     initial_transform = transforms.Compose([transforms.ToTensor()])
     train_dataset = datasets.SVHN(root=root, split="train", download=True, transform=initial_transform)
     test_dataset = datasets.SVHN(root=root, split="test", download=True, transform=initial_transform)
@@ -96,10 +109,10 @@ def SVHN(root=os.path.join(DATA_ROOT, "svhn")):
 
 
 # Placeholder datasets
-def ImageNet32(root=DATA_ROOT): pass
-def TinyImageNet(root=DATA_ROOT): pass
-def CoLA(root=DATA_ROOT): pass
-def AGNews(root=DATA_ROOT): pass
+def ImageNet32(root=None): pass
+def TinyImageNet(root=None): pass
+def CoLA(root=None): pass
+def AGNews(root=None): pass
 
 def SST1():
     from datasets import load_dataset

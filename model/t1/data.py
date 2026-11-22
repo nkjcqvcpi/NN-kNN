@@ -19,13 +19,14 @@ import numpy as np
 import pandas as pd
 import hashlib
 import torch
-from pathlib import Path
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+
+from datasets.paths import datasets_root
 
 CLASSIFICATION_SETS = ("iris", "wine", "breast_cancer", "balance", "digits", "zebra", "zebra_special")
 REGRESSION_SETS = (
@@ -82,7 +83,6 @@ class T1Data:
 
 
 def _load_raw(name: str, task_type: str, seed: int) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
-    data_dir = Path(__file__).resolve().parents[2] / "datasets"
     if name.startswith(("openml_", "tabarena_")):
         import openml
         task = openml.tasks.get_task(int(name.split("_")[1]), download_splits=True) if name.startswith("tabarena_") else None
@@ -102,10 +102,10 @@ def _load_raw(name: str, task_type: str, seed: int) -> tuple[np.ndarray, np.ndar
                 protocol="OpenML official outer split; train-only inner holdout; no TabArena bagging/leaderboard equivalence")
         return frame, np.asarray(target).reshape(-1), source_meta
     if task_type == "regression" and name == "student_performance":
-        frame = pd.read_csv(data_dir / "student-por.csv", sep=";")
+        frame = pd.read_csv(datasets_root() / "student-por.csv", sep=";")
         return frame.drop(columns="G3"), frame.G3.to_numpy(), {"source": "student-por.csv", "preprocessing": "training_only_categories"}
     if task_type == "regression" and name == "body_fat":
-        frame = pd.read_csv(data_dir / "bodyfat.csv")
+        frame = pd.read_csv(datasets_root() / "bodyfat.csv")
         x = frame.drop(columns=["BodyFat", "Density"]).copy()
         x["Bmi"] = 703 * x.Weight / x.Height.pow(2)
         x["ACratio"] = x.Abdomen / x.Chest
@@ -125,7 +125,7 @@ def _load_raw(name: str, task_type: str, seed: int) -> tuple[np.ndarray, np.ndar
     from datasets.reg_data import Reg_data
     # Public remote legacy data are cached before any learned preprocessing.
     # Repeated HPO seeds/families must not refetch UCI at every fit.
-    cache = data_dir / "t1_cache" / f"{name}.npz"
+    cache = datasets_root() / "t1_cache" / f"{name}.npz"
     cacheable = name in {"abalone", "califonia_housing", "bike_sharing", "wine"}
     if cacheable and cache.exists():
         with np.load(cache, allow_pickle=False) as raw:
