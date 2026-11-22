@@ -3,7 +3,7 @@
 This checkout is `rl/` on branch `rl`: the shared NN-kNN core plus RL (T2), including NN-kNN-RL. Keep T1/T3 stage implementations on neural-cbr and LLM, and standalone NN-kNN material on main. Read docs/BRANCH_ORGANIZATION.md.
 
 - The core files listed in `tools/check_nnknn_core.py` are owned by main. Do not edit them here; make the change on main and sync it (docs/NNKNN_CORE.md). `tests/test_nnknn_core.py` fails if they drift.
-- File results and logs by T2 handoff step under `results/t2/<step>/` and `logs/t2/<step>/` (see results/README.md). Pass `--output-dir` explicitly; `results/rl/` is unfiled scratch.
+- Results and logs are not in git; they live on the experiment host and will move to the shared `NN-KNN/runs/` directory with TensorBoard logging. On disk, file them by T2 handoff step under `results/t2/<step>/` and `logs/t2/<step>/` (see `results/README.md` beside them). Pass `--output-dir` explicitly; `results/rl/` is unfiled scratch.
 
 # AGENTS.md
 

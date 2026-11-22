@@ -5,7 +5,7 @@ Branch `rl` (`rl/`): shared NN-kNN core + RL (T2). Current scope: `tools/run_rl_
 ## Where things are
 
 - Specification: Xiaomeng Ye's `T2_RL_IMPLEMENTATION_PLAN.md` in `career-2027/03-research-architecture/implementation-handoff/` (a copy is in `docs/t1_spec/`).
-- Results and logs: filed by T2 handoff step under `results/t2/<step>/` and `logs/t2/<step>/`. `results/README.md` maps each step to its campaigns, documents, and gaps.
+- Results and logs: not in git (on the experiment host; moving to the shared `NN-KNN/runs/` directory with TensorBoard logging). On disk they are filed by T2 handoff step under `results/t2/<step>/` and `logs/t2/<step>/`. `results/README.md` maps each step to its campaigns, documents, and gaps.
 - Stage evidence write-ups: `docs/T2_*.md`; aggregate interpretation: `reports/experiment_log.md`.
 - Shared core: synced from `main`; see `docs/NNKNN_CORE.md`.
 
@@ -27,4 +27,4 @@ Branch `rl` (`rl/`): shared NN-kNN core + RL (T2). Current scope: `tools/run_rl_
 
 ## History
 
-The original mixed handoff is preserved in the pre-reorganization Git bundle at `../recovery-20261009/before-repair.bundle`. See `docs/BRANCH_ORGANIZATION.md` and `docs/REORGANIZATION_MANIFEST.json` for the 2026-10-09 split, and `results/t2/PATH_MAP.json` for the 2026-10-10 results move.
+The original mixed handoff is preserved in the pre-reorganization Git bundle at `../recovery-20261009/before-repair.bundle`. See `docs/BRANCH_ORGANIZATION.md` and `docs/REORGANIZATION_MANIFEST.json` for the 2026-10-09 split, and `results/t2/PATH_MAP.json` (on disk with the results) for the 2026-10-10 results move.
