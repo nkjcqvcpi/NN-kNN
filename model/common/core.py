@@ -34,6 +34,7 @@ from model.nnknn_model import (
 )
 
 from .geometry import case_case_distance
+from .tracking import NullRun
 
 
 @dataclass
@@ -214,6 +215,9 @@ def train_retrieval(
     select_best: bool = True,
     lr_scale: float = 1.0,
     include_initial: bool = False,
+    run: Any = NullRun(),
+    resumable: bool = False,
+    log_prefix: str = "",
 ) -> TrainResult:
     """Train retrieval (biases, glocal weights, optional encoder) with LOO on the training stream.
 
@@ -222,7 +226,17 @@ def train_retrieval(
     maintenance checkpoint actually changes model state or active capacity, the
     best-state tracker restarts. No-op hooks preserve the matching best model
     and optimizer. Only executable checkpoints within this budget delay stopping.
+
+    ``run`` (a ``tracking.Run``; default ``NullRun``, which records nothing) receives
+    ``<log_prefix>train/loss``, ``val/loss``, ``val/metric``, ``case/n_active`` (and
+    ``val/loss_after_checkpoint``) at step = epoch; callers that train twice in one unit
+    pass distinct prefixes. ``resumable=True`` calls ``run.load_resume()`` before the
+    loop and writes a resume checkpoint at the end of an epoch after which training
+    continues, when ``run.checkpoint_due`` says so; a resumed call continues bit for bit
+    (CPU). It cannot be combined with ``checkpoint_hook`` (hooks keep state of their own).
     """
+    if resumable and checkpoint_hook is not None:
+        raise ValueError("resumable=True cannot be combined with a checkpoint_hook")
     device = model.cases.device
     opt = optimizer or make_optimizer(model, cfg)
     if lr_scale != 1.0:
@@ -237,15 +251,24 @@ def train_retrieval(
     Xtr, ytr = X_train.to(device), y_train.to(device)
     best = (math.inf, None, -1)
     best_optimizer = None
-    if include_initial and select_best:
+    bad, first = 0, 1
+    res = TrainResult(model, opt)
+    resume = run.load_resume() if resumable else None
+    if resume is not None:  # rebuild from the checkpoint; the RNG states are restored last
+        st = resume.state
+        model.load_state_dict(st["model"])
+        model._invalidate_case_cache()
+        opt.load_state_dict(st["optimizer"])
+        best, best_optimizer, bad = (st["best_val"], st["best_state"], st["best_epoch"]), st["best_optimizer"], st["bad"]
+        res.history, first = list(st["history"]), resume.step + 1
+        resume.restore_rng({"perm": g})
+    elif include_initial and select_best:
         # the starting state is a candidate: fine-tuning can only be kept if validation improves
         v0 = evaluate(model, X_val, y_val)
         best = (v0["loss_pre"], copy.deepcopy(model.state_dict()), 0)
         best_optimizer = copy.deepcopy(opt.state_dict())
-    bad = 0
-    res = TrainResult(model, opt)
     checkpoint_epochs = checkpoint_epochs or set()
-    for ep in range(1, epochs + 1):
+    for ep in range(first, epochs + 1):
         model.train()
         perm = torch.randperm(Xtr.size(0), generator=g)
         tot, nb = 0.0, 0
@@ -283,6 +306,11 @@ def train_retrieval(
                 val = evaluate(model, X_val, y_val)
                 rec["val_loss_after_checkpoint"] = val["loss_pre"]
         res.history.append(rec)
+        logged = {"train/loss": rec["train_loss"], "val/loss": rec["val_loss"], "val/metric": rec["val_metric"],
+                  "case/n_active": rec["n_cases"]}  # Python numbers already synced above: no new device sync
+        if "val_loss_after_checkpoint" in rec:
+            logged["val/loss_after_checkpoint"] = rec["val_loss_after_checkpoint"]
+        run.log_step(ep, {log_prefix + k: v for k, v in logged.items()})
         if val["loss_pre"] < best[0] - 1e-9:
             best = (val["loss_pre"], copy.deepcopy(model.state_dict()), ep)
             best_optimizer = copy.deepcopy(opt.state_dict()) if select_best else None
@@ -292,6 +320,10 @@ def train_retrieval(
             pending = checkpoint_hook is not None and any(ep < e <= epochs for e in checkpoint_epochs)
             if bad > cfg.patience and not pending:
                 break
+        if resumable and ep < epochs and run.checkpoint_due(ep):  # training continues after this epoch
+            run.save_resume({"model": model.state_dict(), "optimizer": opt.state_dict(), "best_val": best[0],
+                             "best_state": best[1], "best_epoch": best[2], "best_optimizer": best_optimizer,
+                             "bad": bad, "history": res.history}, step=ep, generators={"perm": g})
     res.epochs_run = ep
     if select_best and best[1] is not None:
         model.load_state_dict(best[1])

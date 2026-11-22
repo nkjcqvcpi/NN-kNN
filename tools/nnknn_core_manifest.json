@@ -3,14 +3,14 @@
   "origin_branch": "main",
   "files": {
     "model/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "model/nnknn_model.py": "630a65d89f5f1ec4ac3658b87b189d844bba6028af010a2874f4832f55a92dbf",
+    "model/nnknn_model.py": "9bb315bdd2df89f227d899bb8126debba1dfffbf2640991a5d04c9cb41f80798",
     "model/nn_cdh.py": "eba0b2fa3e8ca185add142f4abd0da3e9ba270cd228641735d8bb5282a24e61c",
     "model/device_utils.py": "ec93a83cd874f330716d8d4bf0ee51040a464a18f21d0938de6c46b8605c343a",
     "model/feature_extractors.py": "a1411f2121eb4877a9b97a2f71af401ad701a14248c1b00037a903d8e4a1e0e6",
     "model/common/__init__.py": "18233732578ba21c849d7fe8aa2b3641f539022365d44b20e463d07263fc2fab",
     "model/common/artifacts.py": "6dba0ef9f347ce46c5740035011f1a472a8b2d2ffccd87e506be193191b01bf1",
     "model/common/tracking.py": "64e3f4d1eb6061f7626219307d29e2b2291d20a4657610ed51e1d2cb2500b807",
-    "model/common/core.py": "aa6fd236c620fcb315374a81696daadfc69164eab64011202c0df249263e77f1",
+    "model/common/core.py": "802ba6798430229ea87ce0d7884b97c7f04e7179c0bedf1eb46be17ed19943c3",
     "model/common/geometry.py": "653e56af549b7d715ca04e6791b8e4f7ea63bae3bbeafd51ddb7d15470f4ba10",
     "model/common/nominal.py": "89923adf0290cf04569c424ec188b4817baffc859646680cfa14dd23597a8927",
     "model/common/outcomes.py": "72327315ed2e7afc86b12d94f76e07f7c1a86c2c8e1378c37ba70cb4f6bde2da",
@@ -26,9 +26,10 @@
     "tools/run_table1_kfold.py": "ed4ef3ff06759dd152f5b147c77ae9d572872bb7ec57744a8d4f4ce9905354a9",
     "tools/resume_table1_kfold.py": "fb203728ed258f20efdb77153c3a2a4791503c204f38dd99a523b93034f8f10a",
     "tools/table1_nnknn_kfold.py": "1eea58c4d866185f80bf1d0b7e2f8e5ed467a527528053a0171f3cf4233a1e4e",
-    "tools/check_nnknn_core.py": "7f3845baddd6f8eedbe7df57caea46e2e33891dd8c7ce2ddf6e5d0170a509941",
+    "tools/check_nnknn_core.py": "31f2eba5550c7207f935a445d5fd78d236f8bfaf091207a8fa729d6d56bc584a",
     "tests/test_nnknn_core.py": "dfe4bd0eb103af4a58e174fef692be0bbe8e2c33c50f8d9d35499d77d47e63e4",
     "tests/test_tracking.py": "b18d0417aac96b4a8896fa7881d4f3ca1db4744f9321b0393cfd548c728df59e",
+    "tests/test_core_runs.py": "a227621cb4de30e835c52dc02ffe105fd763f02c73cb57b102a8bff922703bce",
     "docs/NNKNN_CORE.md": "aab9d912b2e3325c1735e5ebeb966eb380054133f0af2e1381e3b0b334b5038f"
   }
 }
