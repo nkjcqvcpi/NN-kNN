@@ -84,7 +84,7 @@ def parse_args() -> argparse.Namespace:
         "--scikit-learn-data",
         type=Path,
         default=None,
-        help="Writable sklearn dataset cache directory. Defaults to the shared <datasets root>/scikit_learn_data (see datasets/paths.py).",
+        help="Writable sklearn dataset cache directory. Defaults to $SCIKIT_LEARN_DATA if set, else the shared <datasets root>/scikit_learn_data (see datasets/paths.py).",
     )
     return parser.parse_args()
 
@@ -96,7 +96,14 @@ def main() -> None:
         outdir = REPO_ROOT / outdir
     outdir.mkdir(parents=True, exist_ok=True)
 
-    sklearn_data = args.scikit_learn_data or (datasets_root() / "scikit_learn_data")
+    # --scikit-learn-data wins, then a SCIKIT_LEARN_DATA already set outside the
+    # tool; only then the shared data directory is needed.
+    env_sklearn = os.environ.get("SCIKIT_LEARN_DATA", "").strip()
+    sklearn_data = (
+        args.scikit_learn_data
+        or (Path(env_sklearn) if env_sklearn else None)
+        or (datasets_root() / "scikit_learn_data")
+    )
     sklearn_data.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("MPLBACKEND", "Agg")
     os.environ["SCIKIT_LEARN_DATA"] = str(sklearn_data)
