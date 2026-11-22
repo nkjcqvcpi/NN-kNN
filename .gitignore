@@ -33,8 +33,16 @@ checkpoints/regression_covid_anxious_reg.h5
 checkpoints/regression_covid_depressed_reg.h5
 checkpoints/regression_covid_lonely_reg.h5
 checkpoints/regression_covid_physical_reg.h5
-# Local mirror of T3 run directories copied from the Codex task workspace (trials, events, checkpoints).
-results/t3/*/codex_task_*/runs/
+# Results, logs and generated report files are not in git. They stay on the experiment
+# host and will move to the shared NN-KNN/runs/ directory with TensorBoard logging.
+/results/
+/logs/
+/reports/figures/
+/reports/*.csv
+/reports/*.json
+/reports/*.txt
+/reports/*.png
+/docs/experiments/*.csv
 
 .pytest_cache/
 
