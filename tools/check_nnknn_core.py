@@ -42,6 +42,7 @@ CORE_FILES = (
     "model/regression_workflow.py",
     "model/mlkr.py",
     "datasets/__init__.py",
+    "datasets/paths.py",
     "datasets/classification_data.py",
     "datasets/cls_small_data.py",
     "datasets/reg_data.py",

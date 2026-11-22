@@ -8,8 +8,8 @@ from typing import Any
 import numpy as np
 import torch
 
+from .paths import datasets_root
 
-DATA_DIR = Path(__file__).resolve().parent
 _SMALL_ALIASES = {
     "iris": "iris",
     "zebra": "zebra",
@@ -62,7 +62,7 @@ def _balance_scale() -> tuple[torch.Tensor, torch.Tensor]:
     label_map = {"L": 0, "B": 1, "R": 2}
     features: list[list[float]] = []
     labels: list[int] = []
-    with (DATA_DIR / "balance-scale.data").open(newline="") as handle:
+    with (datasets_root() / "balance-scale.data").open(newline="") as handle:
         for row in csv.reader(handle):
             labels.append(label_map[row[0]])
             features.append([float(value) for value in row[1:]])
@@ -154,7 +154,7 @@ def load_image_classification_dataset(
     from torchvision import datasets as tv_datasets
     from torchvision import transforms
 
-    root = Path(data_root) if data_root is not None else DATA_DIR
+    root = Path(data_root) if data_root is not None else datasets_root()
     to_tensor = transforms.ToTensor()
     if canonical == "mnist":
         train_set = tv_datasets.MNIST(root=str(root), train=True, download=download, transform=to_tensor)
