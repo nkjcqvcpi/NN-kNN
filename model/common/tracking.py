@@ -1,33 +1,26 @@
-"""Run tracking on TensorBoard event files (shared core; see docs/NNKNN_CORE.md, "Run tracking").
+"""Run tracking on TensorBoard event files (shared core; the rules are in docs/NNKNN_CORE.md, "Run tracking").
 
-Event files are the only record of a run; code reads results back with the reader half of this module, which needs
-only tensorboard, numpy and the standard library (the writer side imports torch). ``runs/<workstream>/<study>/
-<unit...>/`` is one run ("unit"); every process session that writes to it adds ONE event file ("segment",
-``*.s<NNN>``) there, and weights stay in its ``weights/`` folder. The exact channel (tensor summaries with plugin
-names ``nnknn.*``: ``_run/*`` session records, ``x/<tag>`` numbers, ``rec/<name>`` canonical JSON, ``arr/<name>``
-arrays) is what readers use; the display channel (float32 scalars under the tag without ``x/``, a text card) is for
-the TensorBoard UI only. ``torch.Tensor`` values raise ``TypeError``, so logging never syncs a device or uses RNG.
+``runs/<workstream>/<study>/<unit...>/`` is one run ("unit"); each process session that writes to it adds ONE event
+file (``*.s<NNN>``) there, weights stay in its ``weights/``. Readers use the exact channel (tensor summaries with
+plugin names ``nnknn.*``) and need only tensorboard, numpy and the standard library; the display channel (float32
+scalars, a text card) is for the TensorBoard UI. ``torch.Tensor`` values raise, so logging never syncs a device.
+Sessions are ordered by the number in ``_run/begin``; a resume cuts the data records after its ``_run/checkpoint``,
+a restart cuts all earlier data records; ``result_digest`` hashes what remains (without ``x/sys/*`` and weight-file
+bytes), so on CPU an interrupted and resumed run matches the uninterrupted one.
 
-Sessions are ordered by the session number in ``_run/begin``. A resumed session cuts the data records that follow
-its ``_run/checkpoint`` in earlier sessions, a restart in place cuts all earlier data records; session records are
-never cut. ``result_digest`` (in ``_run/complete``) hashes the remaining logical stream without ``x/sys/*`` and
-without weight-file bytes, so on CPU an interrupted and resumed run matches the uninterrupted one.
-
-Display after a resume (checked with ``EventAccumulator``): each session starts with a SessionLog START at step 0
-(fresh, restart) or checkpoint step + 1. TensorBoard's Python loader (``--load_fast=false``) then hides every earlier
-point at or after that step, for every tag: a re-logged tag is one continuous curve, a tag that is not logged again
-ends at the checkpoint step, a restart hides all earlier points. The Rust loader (``--load_fast=true``) ignores
-SessionLog and keeps stale points of tags that are not logged again. CLI: ``python -m model.common.tracking
-{ls|show|verify} <path>``.
+Display after a resume (checked with ``EventAccumulator``): each session writes a SessionLog START at step 0 (fresh,
+restart) or checkpoint step + 1, and TensorBoard's Python loader (``--load_fast=false``) hides every earlier point at or
+after that step: a re-logged tag is one continuous curve, a tag not logged again ends at the checkpoint step, a restart
+hides all earlier points. The Rust loader ignores SessionLog. CLI: ``python -m model.common.tracking {ls|show|verify}``.
 """
 from __future__ import annotations
 
-import contextlib
 import functools
 import hashlib
 import io
 import json
 import math
+import operator
 import os
 import random
 import re
@@ -41,7 +34,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Iterator, Mapping
+from typing import Any, Iterable, Iterator, Mapping, NamedTuple
 
 import numpy as np
 from tensorboard.backend.event_processing.event_file_loader import RawEventFileLoader  # no tensorboard: no tracking
@@ -54,7 +47,7 @@ DEFAULT_ROOT = Path(__file__).resolve().parents[3] / "runs"  # <NN-KNN>/<worktre
 WORKSTREAMS = ("core", "t1", "t2", "t3")
 SCHEMA, MAX_PATH, SMALL_ARRAY, ROW_CHUNK_ROWS, ARRAY_CHUNK_BYTES = 1, 240, 4096, 5000, 64 << 20
 P_RUN, P_EXACT, P_RECORD, P_ARRAY = "nnknn.run", "nnknn.exact", "nnknn.record", "nnknn.array"
-_COMPONENT = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._=+-]{0,63}\Z")
+_COMPONENT = re.compile(r"(?!(?i:con|prn|aux|nul|com\d|lpt\d)(\.|\Z))[A-Za-z0-9_][A-Za-z0-9._=+-]{0,63}(?<!\.)\Z")
 _TAG = re.compile(r"[A-Za-z0-9_.=+-]+(/[A-Za-z0-9_.=+-]+)*\Z")
 _EMBARGO = ("sel_fresh", "held_out")
 _ARRAY_DTYPES = {np.dtype(t) for t in ("bool", "int8", "int16", "int32", "int64", "uint8", "float16", "float32", "float64")}
@@ -86,15 +79,14 @@ def runs_root(root: str | Path | None = None) -> Path:
     env = os.environ.get(ENV_VAR, "").strip()
     path = Path(env if root is None else root).expanduser().resolve() if root is not None or env else DEFAULT_ROOT
     if not path.is_dir():
-        source = "the root argument" if root is not None else (f"${ENV_VAR}" if env else f"the default (${ENV_VAR} unset)")
-        raise FileNotFoundError(f"NN-kNN run root {path} does not exist (from {source}). Create it once per host, "
-                                f"or set {ENV_VAR} to the directory that holds the runs.")
+        raise FileNotFoundError(f"NN-kNN run root {path} does not exist: create it once per host, or set ${ENV_VAR}")
     return path
 
 
 def _check_component(part: str, what: str = "path component") -> str:
     if not isinstance(part, str) or not _COMPONENT.match(part) or any(w in part.lower() for w in _EMBARGO):
-        raise ValueError(f"invalid {what} {part!r}: use [A-Za-z0-9_][A-Za-z0-9._=+-]{{0,63}}, no embargoed names")
+        raise ValueError(f"invalid {what} {part!r}: use [A-Za-z0-9_][A-Za-z0-9._=+-]{{0,63}}, no trailing '.', "
+                         "no embargoed or Windows device names")
     return part
 
 
@@ -125,8 +117,7 @@ def _as_key(key: RunKey | str) -> RunKey:
 
 
 def unit_dir(key: RunKey | str, root: str | Path | None = None) -> Path:
-    key = _as_key(key)
-    path = runs_root(root).joinpath(key.workstream, key.study, *key.unit)
+    path = runs_root(root).joinpath((key := _as_key(key)).workstream, key.study, *key.unit)
     if any(word in str(path).lower() for word in _EMBARGO):
         raise ValueError(f"run path {path} names embargoed data")
     return path
@@ -162,8 +153,7 @@ def canonicalize(obj: Any) -> Any:
 
 
 def canonical_json(obj: Any) -> bytes:
-    return json.dumps(canonicalize(obj), sort_keys=True, separators=(",", ":"), ensure_ascii=False,
-                      allow_nan=False).encode("utf-8")
+    return json.dumps(canonicalize(obj), sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
 
 
 def payload_sha256(obj: Any) -> str:
@@ -210,18 +200,11 @@ def _value(tag: str, payload: Any, plugin: str, content: bytes = b"") -> Any:
         dtype, field = {"float64": (types_pb2.DT_DOUBLE, "double_val"), "int64": (types_pb2.DT_INT64, "int64_val"),
                         "bool": (types_pb2.DT_BOOL, "bool_val")}[payload[0]]
         tensor = tensor_pb2.TensorProto(dtype=dtype, tensor_shape=shape(), **{field: [payload[1]]})
-    meta = summary_pb2.SummaryMetadata(plugin_data=summary_pb2.SummaryMetadata.PluginData(plugin_name=plugin,
-                                                                                         content=content))
+    meta = summary_pb2.SummaryMetadata(plugin_data={"plugin_name": plugin, "content": content})
     return summary_pb2.Summary.Value(tag=tag, metadata=meta, tensor=tensor)
 
 
-@dataclass
-class _Rec:
-    tag: str
-    step: int
-    kind: str  # float64 | int64 | bool | json | rows | array
-    value: Any
-    raw: bytes
+_Rec = NamedTuple("_Rec", [("tag", str), ("step", int), ("kind", str), ("value", Any), ("raw", bytes)])  # raw: hashed
 
 
 def _decode(value: Any, step: int) -> _Rec:
@@ -238,8 +221,8 @@ def _decode(value: Any, step: int) -> _Rec:
         return _Rec(value.tag, step, kind, decode_json(t.string_val[0]), t.string_val[0])
     elif plugin == P_ARRAY:
         dtype = np.dtype(_tb_dtypes.as_dtype(t.dtype).as_numpy_dtype).newbyteorder("<")
-        arr = np.frombuffer(t.tensor_content, dtype).reshape([d.size for d in t.tensor_shape.dim]).copy()
-        return _Rec(value.tag, step, "array", arr, arr.tobytes())
+        arr = np.frombuffer(t.tensor_content, dtype).reshape([d.size for d in t.tensor_shape.dim])  # read-only view
+        return _Rec(value.tag, step, "array", arr, t.tensor_content)
     raise _Invalid(f"undecodable exact record {value.tag!r} ({plugin})")
 
 
@@ -276,7 +259,6 @@ def _result_digest(stream: list[_Rec]) -> tuple[str, int]:
 class _Segment:
     file: Path
     records: list[_Rec]
-    torn_bytes: int = 0
     damage: str | None = None
     session: int = 0
     begin: dict | None = None
@@ -288,7 +270,7 @@ class _Segment:
 
 def _read_segment(path: Path) -> _Segment:
     """One sequential pass with TensorBoard's raw loader; a torn tail (crash) is dropped, other damage reported."""
-    seg, consumed = _Segment(path, []), 0
+    seg, consumed, size = _Segment(path, []), 0, path.stat().st_size  # size first: the file may grow while read
     try:
         for raw in RawEventFileLoader(str(path)).Load():  # stops silently at the first bad record
             consumed += len(raw) + 16
@@ -299,13 +281,13 @@ def _read_segment(path: Path) -> _Segment:
     except Exception as exc:  # undecodable Event or exact record
         seg.damage = f"{path.name}: undecodable event ({exc})"
         return seg
-    if rest := path.stat().st_size - consumed:  # a crash cuts the last record short (or leaves zeros); a whole
-        with path.open("rb") as fh:                # record that fails its CRC, or a bad header CRC, is damage
-            fh.seek(consumed)
-            head = fh.read(12)
+    if (rest := size - consumed) > 0:  # a crash cuts the last record short or leaves zeros (power cut: a valid header,
+        with path.open("rb") as fh:  # then zeros); a record failing its CRC is damage
+            head = (tail := (fh.seek(consumed), fh.read(rest))[1])[:12]
         cut = len(head) < 12 or not head.strip(b"\0") or (masked_crc32c(head[:8]) == struct.unpack("<I", head[8:])[0]
-                                                         and 16 + struct.unpack("<Q", head[:8])[0] > rest)
-        seg.torn_bytes, seg.damage = (rest, None) if cut else (0, f"{path.name}: corrupt record at byte {consumed}")
+                                                         and (16 + struct.unpack("<Q", head[:8])[0] > rest
+                                                              or not tail[12:].strip(b"\0")))
+        seg.damage = None if cut else f"{path.name}: corrupt record at byte {consumed}"
     return seg
 
 
@@ -331,13 +313,12 @@ class _Unit:
     live_checkpoints: list[dict]
     info: RunInfo
     max_seq: int = 0
+    digest: str = ""
 
 
 def _logical(segments: list[_Segment], pending: Mapping | None = None) -> tuple[list[_Rec], list[dict]]:
     """Kept data records (oldest first) and live checkpoints; ``pending`` applies a next session's _run/resume."""
-    kept: list[_Rec] = []
-    live: list[dict] = []
-    pos: dict[int, int] = {}
+    kept, live, pos = [], [], {}  # data records, live checkpoints, checkpoint seq -> len(kept) at that record
 
     def cut(resume: Mapping) -> tuple[list, list]:
         idx = next((i for i, c in enumerate(live) if c["seq"] == resume.get("seq")), None)
@@ -364,7 +345,6 @@ def _event_files(path: Path) -> list[Path]:
 
 
 def _scan(path: Path) -> _Unit:
-    path = Path(path)
     unit, status, reason, kw = _Unit(path, [], [], [], None), "invalid", None, {}
     try:
         for seg in map(_read_segment, _event_files(path)):
@@ -376,6 +356,8 @@ def _scan(path: Path) -> _Unit:
                 raise _Invalid(f"{seg.file.name} does not start with _run/begin")
             if any(r.tag in _TERMINAL for r in seg.records[:-1]):
                 raise _Invalid(f"records after a terminal record in {seg.file.name}")
+            if seg.terminal is not None and seg.terminal.value.get("withdrawn"):
+                continue  # a concurrent launch that stepped back before writing anything (see open_run)
             seg.begin, seg.session = seg.records[0].value, seg.records[0].value["session"]
             unit.segments.append(seg)
         unit.segments.sort(key=lambda s: s.session)
@@ -392,8 +374,9 @@ def _scan(path: Path) -> _Unit:
             if not (path / f["relpath"]).is_file() or (path / f["relpath"]).stat().st_size != f["bytes"]:
                 raise _Invalid(f"weight file {f['relpath']} is missing or has the wrong size")
         resumes, (digest, n) = [s.records[1].value for s in unit.segments[1:]], _result_digest(unit.stream)
-        kw = {"resumed": any(not r.get("restart") for r in resumes), "restarts": sum(bool(r.get("restart")) for r in resumes),
-              "n": n}
+        unit.digest = digest
+        kept = resumes[max((i for i, r in enumerate(resumes) if r.get("restart")), default=-1) + 1:]  # after a restart
+        kw = {"resumed": bool(kept), "restarts": sum(bool(r.get("restart")) for r in resumes), "n": n}
         terminal = unit.segments[-1].terminal if unit.segments else None
         if not unit.segments:
             status, reason = "empty", "no exact records"
@@ -452,7 +435,7 @@ class RunData:
         if not self._arrays_on:
             raise TrackingError("load_run(arrays=False) does not keep arrays")
         parts = self._arrays[name]
-        return parts[0] if len(parts) == 1 else np.concatenate(parts, axis=0)
+        return parts[0].copy() if len(parts) == 1 else np.concatenate(parts, axis=0)
 
     def table(self, name: str) -> dict[str, np.ndarray]:
         cols = [k for k in self._arrays if k.startswith(name + "/") and "/" not in k[len(name) + 1:]]
@@ -464,10 +447,11 @@ class RunData:
         return {k[6:]: v for k, v in self._single.items() if k.startswith("state/")}
 
     def state_path(self, name: str) -> Path:
+        """Path of a named state's file, NOT hash-checked (run_status checks sizes only); load_state checks it."""
         return self.path / self.states()[name]["file"]["relpath"]
 
     def sessions(self) -> list[dict]:
-        return [{"session": s.session, "file": s.file.name, "begin": s.begin, "torn_bytes": s.torn_bytes,
+        return [{"session": s.session, "file": s.file.name, "begin": s.begin,
                  "resume": s.records[1].value if s.session > 1 else None,
                  "checkpoints": [r.value for r in s.records if r.tag == "_run/checkpoint"],
                  "terminal": {"tag": s.terminal.tag, **s.terminal.value} if s.terminal else None}
@@ -484,9 +468,11 @@ def load_run(path: str | Path, arrays: bool = True, allow_incomplete: bool = Fal
 
 def resolve_unit(key: RunKey | str, *, config: Mapping | None, root: str | Path | None = None) -> RunInfo | None:
     """The unit's RunInfo if it is complete, else None; ConfigMismatchError if complete with another config."""
-    info = run_status(unit_dir(key, root))
+    info = run_status(unit_dir(key := _as_key(key), root))
     if info.status != "complete":
         return None
+    if info.run_id != key.run_id:  # e.g. case aliasing on Windows
+        raise TrackingError(f"{info.path} holds run {info.run_id}, not {key.run_id}")
     if config is not None and info.config_sha256 != payload_sha256(config):
         raise ConfigMismatchError(f"{info.run_id} is complete with a different config")
     return info
@@ -519,24 +505,24 @@ def iter_runs(base: str | Path, status: set[str] | None = frozenset({"complete"}
                 yield info
 
 
-def _tree_leaves(tree: Any, path: str = "") -> Iterator[tuple[str, Any]]:
+def _tree_leaves(tree: Any, path: tuple = ()) -> Iterator[tuple[tuple, Any]]:
     if isinstance(tree, Mapping) and tree:
         for k, v in tree.items():
             if isinstance(k, bool) or not isinstance(k, (str, int)):
                 raise TypeError(f"state keys must be str or int, got {k!r}")
-            yield from _tree_leaves(v, f"{path}/{k}" if path else str(k))
+            yield from _tree_leaves(v, (*path, k))
     elif isinstance(tree, (list, tuple)) and tree:
         for i, v in enumerate(tree):
-            yield from _tree_leaves(v, f"{path}[{i}]")
+            yield from _tree_leaves(v, (*path, [i]))
     else:
         yield path, dict(tree) if isinstance(tree, Mapping) else (list(tree) if isinstance(tree, tuple) else tree)
 
 
 def state_digest(state: Any) -> str:
     """SHA-256 over canonical tensor bytes of a state tree (independent of file framing, device and torch version)."""
-    h = hashlib.sha256(b"nnknn.state.v1")
-    for path, leaf in sorted(_tree_leaves(state), key=lambda p: p[0].encode()):
-        h.update(_lp(path.encode()))
+    h = hashlib.sha256(b"nnknn.state.v2")
+    for path, leaf in sorted(((json.dumps(p).encode(), v) for p, v in _tree_leaves(state)), key=lambda p: p[0]):
+        h.update(_lp(path))
         if _is_tensor(leaf):
             t = leaf.detach().cpu().contiguous()  # sparse and quantized tensors raise here or in view()
             data = t.reshape(-1).view(sys.modules["torch"].uint8).numpy().tobytes() if t.numel() else b""
@@ -544,7 +530,7 @@ def state_digest(state: Any) -> str:
         elif leaf is None or isinstance(leaf, (bool, int, float, str, dict, list)):
             h.update(b"J" + _lp(canonical_json(leaf)))
         else:
-            raise TypeError(f"{path}: {type(leaf).__name__} is not a tensor or JSON scalar")
+            raise TypeError(f"{path.decode()}: {type(leaf).__name__} is not a tensor or JSON scalar")
     return h.hexdigest()
 
 
@@ -556,9 +542,11 @@ def _to_cpu(tree: Any) -> Any:
         return (tuple if type(tree) is tuple else list)(_to_cpu(v) for v in tree)
     if _is_tensor(tree):
         return tree.detach().cpu()
-    if tree is None or isinstance(tree, (bool, int, float, str)):
+    if isinstance(tree, np.generic):  # numpy scalars (and other subclasses below) would fail weights_only loading
+        tree = tree.item()
+    if tree is None or type(tree) in (bool, int, float, str):
         return tree
-    raise TypeError(f"{type(tree).__name__} cannot be stored in a weights file (tensors and JSON scalars only)")
+    raise TypeError(f"{type(tree).__name__} cannot be stored in a weights file (tensors and plain JSON scalars only)")
 
 
 def _replace(src: Path, dst: Path) -> None:
@@ -577,13 +565,15 @@ def _replace(src: Path, dst: Path) -> None:
         os.close(fd)
 
 
-def _write_torch(obj: Any, tmp: Path, dst: Path) -> tuple[str, int]:
+def _write_torch(obj: Any, tmp: Path, dst: Path, keep: Path | None = None) -> tuple[str, int]:
     import torch
     with tmp.open("xb") as fh:  # a file object, not a path: the zip prefix is then constant ("archive/")
         torch.save(obj, fh)
         fh.flush()
         os.fsync(fh.fileno())
     sha = _file_sha256(tmp)
+    if keep is not None and dst.exists():
+        _replace(dst, keep)
     _replace(tmp, dst)
     return sha
 
@@ -598,10 +588,7 @@ def _load_torch(path: Path, sha256: str, size: int, map_location: Any) -> Any:
 
 def load_state(run_path: str | Path, name: str, map_location: Any = "cpu", allow_incomplete: bool = False) -> Any:
     """Load a named state after checking its file's size and SHA-256 against the record."""
-    states = load_run(run_path, arrays=False, allow_incomplete=allow_incomplete).states()
-    if name not in states:
-        raise TrackingError(f"{run_path} has no state {name!r}")
-    f = states[name]["file"]
+    f = load_run(run_path, arrays=False, allow_incomplete=allow_incomplete).states()[name]["file"]
     return _load_torch(Path(run_path) / f["relpath"], f["sha256"], f["bytes"], map_location)
 
 
@@ -614,7 +601,7 @@ def capture_rng(generators: Mapping[str, Any] | None = None) -> dict:
            "torch": torch.get_rng_state(), "generators": {n: g.get_state() for n, g in (generators or {}).items()}}
     for dev in ("cuda", "xpu"):
         mod = getattr(torch, dev, None)
-        if mod is not None and mod.is_available() and getattr(mod, "is_initialized", lambda: False)():
+        if mod is not None and getattr(mod, "is_initialized", lambda: False)() and mod.is_available():
             out[dev] = mod.get_rng_state_all()
     return out
 
@@ -627,12 +614,12 @@ def restore_rng(snapshot: Mapping, generators: Mapping[str, Any] | None = None) 
     (version, mt, gauss), (key, pos, has_gauss, cached) = snapshot["python"], snapshot["numpy"]
     random.setstate((version, tuple(mt), gauss))
     np.random.set_state(("MT19937", np.array(key, dtype=np.uint32), pos, has_gauss, cached))
-    torch.set_rng_state(snapshot["torch"])
+    torch.set_rng_state(snapshot["torch"].cpu())  # .cpu(): load_resume(map_location=<device>) moved the states
     for dev in ("cuda", "xpu"):
         if dev in snapshot:
-            getattr(torch, dev).set_rng_state_all(snapshot[dev])
+            getattr(torch, dev).set_rng_state_all([s.cpu() for s in snapshot[dev]])
     for name, g in generators.items():
-        g.set_state(snapshot["generators"][name])
+        g.set_state(snapshot["generators"][name].cpu())
 
 
 @dataclass
@@ -647,26 +634,31 @@ class ResumePayload:
         restore_rng(self.rng, generators)
 
 
+def _proc_id(pid: int) -> str | None:
+    """Boot id + start ticks (Linux) or creation time (Windows) of running ``pid``; None if gone, a zombie, or unknown."""
+    if os.name == "nt":
+        import ctypes  # never os.kill on Windows: it terminates the process
+        k32, code, times = ctypes.WinDLL("kernel32"), ctypes.c_ulong(), [ctypes.c_ulonglong() for _ in range(4)]
+        k32.OpenProcess.restype = ctypes.c_void_p  # PROCESS_QUERY_LIMITED_INFORMATION is granted on all of one's
+        if not (handle := ctypes.c_void_p(k32.OpenProcess(0x1000, False, pid))).value:  # own processes
+            return None
+        ok = k32.GetExitCodeProcess(handle, ctypes.byref(code)) and code.value == 259 and k32.GetProcessTimes(
+            handle, *map(ctypes.byref, times))  # 259: STILL_ACTIVE
+        k32.CloseHandle(handle)
+        return str(times[0].value) if ok else None
+    try:
+        fields = Path(f"/proc/{pid}/stat").read_bytes().rsplit(b")", 1)[1].split()
+        boot = Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+    except OSError:
+        return None
+    return None if fields[0] in (b"Z", b"X") else f"{boot}:{fields[19].decode()}"
+
+
 def _session_alive(begin: Mapping) -> bool:
-    """True if the session ran on this host and its pid is still running (pid reuse can fool it)."""
-    if (pid := int(begin.get("pid", -1))) < 0 or begin.get("host") != socket.gethostname():
+    """True if the session ran on this host and its process (pid and start identity) still runs; see open_run."""
+    if begin.get("host") != socket.gethostname() or os.environ.get("NNKNN_IGNORE_BUSY", "").strip() == "1":
         return False
-    if os.name != "nt":
-        try:
-            os.kill(pid, 0)
-        except OSError as exc:
-            return not isinstance(exc, ProcessLookupError)
-        return True
-    import ctypes  # never os.kill on Windows: it terminates the process
-    k32, code = ctypes.WinDLL("kernel32", use_last_error=True), ctypes.c_ulong()
-    k32.OpenProcess.restype, k32.CloseHandle.argtypes = ctypes.c_void_p, (ctypes.c_void_p,)
-    k32.GetExitCodeProcess.argtypes = (ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong))
-    handle = k32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
-    if not handle:
-        return ctypes.get_last_error() == 5  # access denied: the process exists
-    alive = bool(k32.GetExitCodeProcess(handle, ctypes.byref(code))) and code.value == 259  # STILL_ACTIVE
-    k32.CloseHandle(handle)
-    return alive
+    return (pid := int(begin.get("pid", -1))) > 0 and (now := _proc_id(pid)) is not None and now == begin.get("proc_id")
 
 
 @functools.lru_cache(maxsize=4)
@@ -681,17 +673,17 @@ class Run:
     """One writing session of a unit; create it with open_run. Not thread-safe."""
 
     def __init__(self, *, key: RunKey, path: Path, writer: Any, event_file: Path, session: int, run_uuid: str,
-                 resume_from: dict | None, restarted: bool, kept: list[_Rec], max_seq: int,
-                 every_seconds: float | None, every_steps: float | None):
+                 resume_from: dict | None, restarted: bool, kept: list[_Rec], max_seq: int, cadence: tuple):
         self.key, self.run_id, self.path, self.event_file = key, key.run_id, path, event_file
         self.session, self.run_uuid, self.resumed_from, self.restarted = session, run_uuid, resume_from, restarted
         self._writer, self._fw, self._closed, self._loaded = writer, writer._get_file_writer(), False, False
         self._holding = resume_from is not None  # setup re-execution: data writes are discarded until load_resume
-        self._seq, self._every_seconds, self._every_steps = max_seq, every_seconds, int(every_steps or 0)
+        env_s, env_n = (os.environ.get(f"NNKNN_RESUME_EVERY_{unit}", "").strip() for unit in ("SECONDS", "STEPS"))
+        self._every_seconds = float(env_s) if env_s else (300.0 if cadence[0] is None else cadence[0])
+        self._seq, self._every_steps = max_seq, int(float(env_n)) if env_n else int(cadence[1] or 0)
         self._last_ckpt_step, self._last_ckpt_time = (resume_from["step"] if resume_from else -1), time.monotonic()
-        self._steps = {(r.tag, r.step) for r in kept if r.tag.startswith("x/")}
-        self._singles = {r.tag for r in kept if r.kind == "json"}
-        self._arrays = {r.tag for r in kept if r.kind == "array"}
+        self._last = {r.tag: r.step for r in kept if r.tag.startswith("x/")}  # steps increase per tag in the stream
+        self._singles, self._arrays = ({r.tag for r in kept if r.kind == kind} for kind in ("json", "array"))
         self._rows = {r.tag: [r.step + 1, r.value["first"] + len(r.value["rows"])] for r in kept if r.kind == "rows"}
 
     def _writing(self) -> bool:
@@ -722,20 +714,20 @@ class Run:
     def _numbers(self, items: list[tuple[str, str, Any]], step: int, display: bool) -> None:
         if not self._writing():
             return
-        if dup := [t for t, _, _ in items if (t, step) in self._steps]:
-            raise TrackingError(f"{dup} already logged at step {step}")
+        if dup := [t for t, _, _ in items if step <= self._last.get(t, -2**63 - 1)]:
+            raise TrackingError(f"{dup} already logged at step {step} or later (steps must increase per tag)")
         self._emit([_value(t, (kind, v), P_EXACT) for t, kind, v in items], step)
         for t, _, v in items:
-            self._steps.add((t, step))
+            self._last[t] = step
             if display:
                 self._writer.add_scalar(t[2:], float(v), step)
 
     def log_step(self, step: int, values: Mapping[str, Any]) -> None:
-        """Numbers at ``step`` (keys like ``train/loss``): exact ``x/<tag>`` and display ``<tag>``, each once."""
+        """Numbers at ``step`` (keys like ``train/loss``) as ``x/<tag>`` and display ``<tag>``; steps rise per tag."""
         items = [("x/" + _check_tag(k), *_exact(v)) for k, v in values.items()]
         if any(t.startswith("x/final/") for t, _, _ in items):
             raise ValueError("final/ tags are written by log_final")
-        self._numbers(items, int(step), display=True)
+        self._numbers(items, operator.index(step), display=True)
 
     def log_final(self, values: Mapping[str, Any]) -> None:
         """Final numbers ``x/final/<key>`` (step 0), each once per run; complete() writes their display copies."""
@@ -773,10 +765,10 @@ class Run:
             return
         if tag in self._arrays:
             raise TrackingError(f"{tag} was already logged")
+        self._arrays.add(tag)  # first: a retry after a writer error raises instead of duplicating chunks
         per = max(1, ARRAY_CHUNK_BYTES // max(1, a[0].nbytes)) if a.ndim and len(a) else 0
         for i, part in enumerate([a] if not per else [a[j:j + per] for j in range(0, len(a), per)]):
             self._emit([_value(tag, part, P_ARRAY)], i)
-        self._arrays.add(tag)
 
     def log_table(self, name: str, columns: Mapping[str, np.ndarray]) -> None:
         """Columns of equal length along axis 0, as ``arr/<name>/<column>``."""
@@ -805,25 +797,23 @@ class Run:
 
     def checkpoint_due(self, step: int) -> bool:
         """True when a resume checkpoint is due (every N steps and/or every N seconds since the last one)."""
-        if self._every_steps and step - self._last_ckpt_step >= self._every_steps:
-            return True
-        return bool(self._every_seconds and time.monotonic() - self._last_ckpt_time >= self._every_seconds)
+        return bool(self._every_steps and step - self._last_ckpt_step >= self._every_steps) or bool(
+            self._every_seconds and time.monotonic() - self._last_ckpt_time >= self._every_seconds)
 
     def save_resume(self, state: Mapping, *, step: int, generators: Mapping[str, Any] | None = None) -> int:
-        """Replace ``weights/resume/last.pt`` (state, RNG, step), then bind it with ``_run/checkpoint``; returns seq."""
+        """Write ``weights/resume/last.pt`` (state, RNG, step; old one kept as ``prev.pt``), bind it; returns seq."""
         if not self._writing():
             raise TrackingError("a resumed session must call load_resume() before save_resume()")
-        payload = {"format": "nnknn.resume/1", "run_uuid": self.run_uuid, "seq": self._seq + 1, "step": int(step),
+        step, rdir = operator.index(step), self.path / "weights" / "resume"
+        payload = {"format": "nnknn.resume/1", "run_uuid": self.run_uuid, "seq": self._seq + 1, "step": step,
                    "state": _to_cpu(dict(state)), "rng": capture_rng(generators)}
-        rdir = self.path / "weights" / "resume"
         rdir.mkdir(parents=True, exist_ok=True)
-        sha, size = _write_torch(payload, rdir / f".tmp-{uuid.uuid4().hex[:8]}.pt", rdir / "last.pt")
-        self._seq += 1
-        self._emit_json("_run/checkpoint", {"seq": self._seq, "step": int(step), "session": self.session,
-                                            "file": {"relpath": "weights/resume/last.pt", "sha256": sha, "bytes": size}},
-                        plugin=P_RUN, content=b"", step=int(step))
+        sha, size = _write_torch(payload, rdir / f".tmp-{uuid.uuid4().hex[:8]}.pt", rdir / "last.pt", rdir / "prev.pt")
+        self._seq, file = self._seq + 1, {"relpath": "weights/resume/last.pt", "sha256": sha, "bytes": size}
+        self._emit_json("_run/checkpoint", {"seq": self._seq, "step": step, "session": self.session, "file": file},
+                        P_RUN, b"", step)
         self._sync()
-        self._last_ckpt_step, self._last_ckpt_time = int(step), time.monotonic()
+        self._last_ckpt_step, self._last_ckpt_time = step, time.monotonic()
         return self._seq
 
     def load_resume(self, map_location: Any = "cpu") -> ResumePayload | None:
@@ -833,8 +823,8 @@ class Run:
         self._loaded, self._holding = True, False
         if self.resumed_from is None:
             return None
-        f = self.resumed_from["file"]
-        p = _load_torch(self.path / f["relpath"], f["sha256"], f["bytes"], map_location)
+        f = self.resumed_from["file"]  # "found": last.pt, or prev.pt after a crash before last.pt was bound
+        p = _load_torch(self.path / self.resumed_from["found"], f["sha256"], f["bytes"], map_location)
         if p.get("run_uuid") != self.run_uuid or p.get("seq") != self.resumed_from["seq"]:
             raise TrackingError("the resume checkpoint belongs to another run or checkpoint")
         return ResumePayload(p["seq"], p["step"], p["state"], p["rng"])
@@ -848,12 +838,12 @@ class Run:
         unit = _scan(self.path)
         if unit.info.status != "incomplete":
             raise TrackingError(f"cannot complete {self.run_id}: {unit.info.status} ({unit.info.reason})")
-        digest, n = _result_digest(unit.stream)
         for k, v in RunData(unit, arrays=False).final().items():
             self._writer.add_scalar("final/" + k, float(v), 0)
+        digest, n = unit.digest, unit.info.n_exact
         self._emit_json("_run/complete", {"status": "complete", "session": self.session, "sessions": len(unit.segments),
-                                          "resumed": unit.info.resumed, "restarts": unit.info.restarts, "n_exact": n,
-                                          "result_digest": digest}, plugin=P_RUN, content=b"")
+                        "resumed": unit.info.resumed, "restarts": unit.info.restarts, "n_exact": n, "result_digest": digest},
+                        P_RUN, b"")
         self._sync(close=True)
         return digest
 
@@ -861,8 +851,7 @@ class Run:
         """Write ``_run/failed``, then flush, close and fsync (no-op on a closed session)."""
         if not self._closed:
             tb = "".join(traceback.format_exception(exc))[-8000:] if isinstance(exc, BaseException) else ""
-            self._emit_json("_run/failed", {"status": "failed", "error": repr(exc)[:2000], "traceback": tb},
-                            plugin=P_RUN, content=b"")
+            self._emit_json("_run/failed", {"status": "failed", "error": repr(exc)[:2000], "traceback": tb}, P_RUN, b"")
             self._sync(close=True)
 
     def __enter__(self) -> "Run":
@@ -880,17 +869,17 @@ class Run:
         return False
 
 
-class NullRun(contextlib.nullcontext):
+class NullRun:
     """What open_run(enabled=False) returns, for tests: every Run method exists and writes nothing."""
 
     path, session, resumed_from, restarted = None, 0, None, False
-
-    def __init__(self) -> None:
-        super().__init__(self)
+    __enter__, __exit__ = (lambda self: self), (lambda self, *exc: False)
 
     def __getattr__(self, name: str) -> Any:
         if name.startswith("_") or not callable(getattr(Run, name, None)):
             raise AttributeError(name)
+        if name == "log_record":
+            return lambda record_name, obj: payload_sha256(obj)
         return lambda *args, **kwargs: False if name == "checkpoint_due" else None
 
 
@@ -899,18 +888,24 @@ def open_run(key: RunKey | str, *, config: Mapping, root: str | Path | None = No
              checkpoint_every_steps: int | None = None, repo: Path | None = None, flush_secs: int = 30) -> Run | NullRun:
     """Open the next session of a unit (fresh, resume or restart in place); the full rules are in docs/NNKNN_CORE.md.
 
-    UnitCompleteError, UnitBusyError (a cheap double-launch guard, not a lock), ConfigMismatchError unless
-    ``resume="restart"``. ``NNKNN_RESUME_EVERY_SECONDS`` / ``_STEPS`` override the cadence arguments (0: off).
+    UnitBusyError: the last unfinished session's process still runs here (a cheap guard, not a lock;
+    ``NNKNN_IGNORE_BUSY=1`` skips it), or a launch at the same moment also wrote its header (one that sees a rival
+    steps back, its segment marked withdrawn). Also UnitCompleteError, ConfigMismatchError, TrackingError.
     """
+    key = _as_key(key)
     if not enabled:
         return NullRun()
     from torch.utils.tensorboard import SummaryWriter
 
-    key, config_sha = _as_key(key), payload_sha256(config)
-    path = unit_dir(key, root)
+    path, config_sha = unit_dir(key, root), payload_sha256(config)
     if (resume := "restart" if os.environ.get("NNKNN_RESUME", "").strip() == "restart" else resume) not in ("auto", "restart"):
         raise ValueError("resume must be 'auto' or 'restart'")
+    if nest := [str(a) for a in path.parents[:len(key.unit)] if _event_files(a)] or \
+            [str(p) for p in (path.iterdir() if path.is_dir() else ()) if p.is_dir() and p.name != "weights"]:
+        raise TrackingError(f"units cannot nest: {key.run_id} would be inside or around {nest[0]}")
     prev = _scan(path)
+    if prev.segments and prev.info.run_id != key.run_id:  # e.g. case aliasing on Windows
+        raise TrackingError(f"{path} holds run {prev.info.run_id}, not {key.run_id}")
     if prev.info.status in ("complete", "invalid"):
         raise (UnitCompleteError if prev.info.status == "complete" else TrackingError)(
             f"{key.run_id} is {prev.info.status}" + (f": {prev.info.reason}" if prev.info.reason else ""))
@@ -923,10 +918,12 @@ def open_run(key: RunKey | str, *, config: Mapping, root: str | Path | None = No
             raise ConfigMismatchError(f"{key.run_id} was written with another config; pass resume='restart'")
         session, run_uuid = last.session + 1, last.begin["run_uuid"]
         ckpt = prev.live_checkpoints[-1] if prev.live_checkpoints else None
-        last_pt = path / "weights" / "resume" / "last.pt"
-        if resume != "restart" and ckpt is not None and last_pt.is_file() \
-                and _file_sha256(last_pt) == (ckpt["file"]["sha256"], ckpt["file"]["bytes"]):
-            resume_from, pending = ckpt, {"from_session": ckpt["session"], "seq": ckpt["seq"], "step": ckpt["step"]}
+        found = next((f"weights/resume/{n}" for n in ("last.pt", "prev.pt") if resume != "restart" and ckpt is not None
+                      and (f := path / "weights" / "resume" / n).is_file() and f.stat().st_size == ckpt["file"]["bytes"]
+                      and _file_sha256(f)[0] == ckpt["file"]["sha256"]), None)  # prev.pt: crash before last.pt was bound
+        if found:
+            resume_from = dict(ckpt, found=found)
+            pending = {"from_session": ckpt["session"], "seq": ckpt["seq"], "step": ckpt["step"]}
         else:
             pending = {"restart": True, "reason": "forced restart" if resume == "restart" else
                        ("no checkpoint" if ckpt is None else "checkpoint file does not match")}
@@ -935,32 +932,37 @@ def open_run(key: RunKey | str, *, config: Mapping, root: str | Path | None = No
     if len(str(longest := path / f"events.out.tfevents.{int(time.time()):010d}.{host}.{pid}.99999.s{session:03d}")) >= MAX_PATH:
         raise ValueError(f"event file path {longest} would have {len(str(longest))} characters (limit {MAX_PATH})")
     path.mkdir(parents=True, exist_ok=True)
-    before = set(_event_files(path))
-    writer = SummaryWriter(str(path), purge_step=start, flush_secs=flush_secs, filename_suffix=f".s{session:03d}")
-    event_file = next(iter(set(_event_files(path)) - before))
+    writer = SummaryWriter(str(path), flush_secs=flush_secs, filename_suffix=f".s{session:03d}")
+    event_file = Path(writer._get_file_writer().event_writer._file_name)
     commit, dirty, fingerprint = _provenance(Path(repo) if repo is not None else Path(__file__).resolve().parents[2])
     begin = {"schema": SCHEMA, "run_id": key.run_id, "workstream": key.workstream, "study": key.study,
              "unit": list(key.unit), "run_uuid": run_uuid, "session": session, "host": host, "pid": pid,
-             "argv": list(sys.argv), "started_utc": datetime.now(timezone.utc).isoformat(), "config_sha256": config_sha,
-             "git_commit": commit, "dirty": dirty, "source_fingerprint": fingerprint, "event_file": event_file.name}
+             "proc_id": _proc_id(pid), "argv": list(sys.argv), "started_utc": datetime.now(timezone.utc).isoformat(),
+             "config_sha256": config_sha, "git_commit": commit, "dirty": dirty, "source_fingerprint": fingerprint,
+             "event_file": event_file.name}
     run = Run(key=key, path=path, writer=writer, event_file=event_file, session=session, run_uuid=run_uuid, kept=kept,
               resume_from=resume_from, restarted=bool(pending and pending.get("restart")), max_seq=prev.max_seq,
-              every_seconds=float(env_s) if (env_s := os.environ.get("NNKNN_RESUME_EVERY_SECONDS", "").strip()) else
-              (300.0 if checkpoint_every_seconds is None else checkpoint_every_seconds),
-              every_steps=float(env_n) if (env_n := os.environ.get("NNKNN_RESUME_EVERY_STEPS", "").strip()) else
-              checkpoint_every_steps)
-    bundle = [_value("_run/begin", canonical_json(begin), P_RUN)]
-    if pending is not None:
-        bundle.append(_value("_run/resume", canonical_json(pending), P_RUN))
-    run._emit(bundle, start)  # one event: begin and resume are written whole or not at all
+              cadence=(checkpoint_every_seconds, checkpoint_every_steps))
+    records = [("_run/begin", begin)] + ([("_run/resume", pending)] if pending is not None else [])
+    run._emit([_value(t, canonical_json(v), P_RUN) for t, v in records], start)  # one event: whole or not at all
+    run._sync()
+    known = {s.file for s in prev.segments} | {event_file}
+    if [s for s in map(_read_segment, sorted(set(_event_files(path)) - known)) if s.records and not s.damage and
+            s.records[0].tag == "_run/begin" and s.records[0].value.get("session", 0) >= session and
+            not (s.terminal and s.terminal.value.get("withdrawn"))]:  # a concurrent launch wrote its header too
+        run._emit_json("_run/failed", {"status": "failed", "withdrawn": True, "error": "concurrent launch"}, P_RUN, b"")
+        run._sync(close=True)
+        raise UnitBusyError(f"{key.run_id}: another launch opened session {session} at the same time; this one stepped back")
+    run._fw.add_event(event_pb2.Event(session_log=event_pb2.SessionLog(status=event_pb2.SessionLog.START)), step=start)
     mode = "fresh" if pending is None else ("restart in place" if pending.get("restart") else f"resume after step {start - 1}")
     writer.add_text("card/session", f"session {session} on {host} (pid {pid}): {mode}", start)
-    run._sync()
+    wdir = path / "weights"
+    for f in [*wdir.glob(".tmp-*"), *wdir.glob("resume/.tmp-*")]:  # partial files of crashed sessions
+        f.unlink(missing_ok=True)
     if session > 1:  # named states that no kept record binds step aside, after the bundle that cut them is on disk
-        live, wdir = {r.tag[10:] for r in kept if r.tag.startswith("rec/state/")}, path / "weights"
-        for f in sorted(wdir.glob("*.pt")) if wdir.is_dir() else []:
-            stem = f.name[:-3]
-            if stem not in live and ".superseded-" not in stem and not stem.startswith(".tmp-"):
+        live = {r.tag[10:] for r in kept if r.tag.startswith("rec/state/")}
+        for f in sorted(wdir.glob("*.pt")):
+            if (stem := f.name[:-3]) not in live and ".superseded-" not in stem:
                 target = wdir / f"{stem}.superseded-s{session:03d}.pt"
                 _replace(f, target if not target.exists() else target.with_suffix(f".{uuid.uuid4().hex[:8]}.pt"))
     if resume_from is None:
@@ -971,27 +973,26 @@ def open_run(key: RunKey | str, *, config: Mapping, root: str | Path | None = No
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    if len(args) != 2 or args[0] not in ("ls", "show", "verify"):
-        print("usage: python -m model.common.tracking {ls|show|verify} <path>", file=sys.stderr)
+    if len(args) != 2 or args[0] not in ("ls", "show", "verify") or any(w in args[1].lower() for w in _EMBARGO):
+        print("usage: python -m model.common.tracking {ls|show|verify} <path> (no embargoed paths)", file=sys.stderr)
         return 2
     command, path = args[0], Path(args[1])
     if command == "ls":
         for info in iter_runs(path, status=None):
-            print(f"{info.status:<10} s{info.sessions:<3} {info.run_id}" + (f"  ({info.reason})" if info.reason else ""))
+            print(f"{info.status:<10} s{info.sessions:<3} {os.path.relpath(info.path, path)}  [{info.run_id}]"
+                  + (f"  ({info.reason})" if info.reason else ""))
         return 0
     if command == "verify":
-        problems = verify_run(path)
-        print("\n".join(problems) or "OK")
-        return 1 if problems else 0
+        print("\n".join(problems := verify_run(path)) or "OK")
+        return int(bool(problems))
     info = run_status(path)
     print(json.dumps({k: str(v) if isinstance(v, Path) else v for k, v in info.__dict__.items()}, indent=2))
     if info.status in ("invalid", "empty"):
         return 1
     data = load_run(path, allow_incomplete=True)
-    for s in data.sessions():
-        print(f"session {s['session']} {s['file']}: resume={s['resume']} end={(s['terminal'] or {}).get('tag')}")
-    print("\n".join(f"x/{tag}: {len(pts)} point(s), last {pts[-1]}" for tag, pts in sorted(data._x.items())))
-    print("records:", sorted(data._single), "row records:", sorted(data._rows), "arrays:", sorted(data._arrays))
+    print("\n".join([f"session {s['session']} {s['file']}: resume={s['resume']} end={(s['terminal'] or {}).get('tag')}"
+                     for s in data.sessions()] + [f"x/{t}: {len(p)} point(s), last {p[-1]}" for t, p in sorted(data._x.items())]
+                    + [f"records {sorted(data._single)}, row records {sorted(data._rows)}, arrays {sorted(data._arrays)}"]))
     return 0
 
 

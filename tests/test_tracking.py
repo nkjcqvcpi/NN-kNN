@@ -1,10 +1,13 @@
 """Tests for run tracking on TensorBoard event files (model/common/tracking.py; shared core, CPU only)."""
 from __future__ import annotations
 
+import enum
 import math
 import os
 import random
 import shutil
+import socket
+import struct
 import subprocess
 import sys
 import time
@@ -130,7 +133,8 @@ def test_runs_root_resolution(tmp_path, monkeypatch):
     assert not (tmp_path / "nope").exists()
 
 
-@pytest.mark.parametrize("bad", ["", ".hidden", "a/b", "x" * 65, "has space", "my_sel_fresh_set", "HELD_OUT", "weights"])
+@pytest.mark.parametrize("bad", ["", ".hidden", "a/b", "x" * 65, "has space", "my_sel_fresh_set", "HELD_OUT", "weights",
+                                 "lr=0.", "aux", "NUL.txt", "com1"])
 def test_bad_components_rejected(root, bad):
     with pytest.raises(ValueError):
         tr.RunKey("core", "study", (bad,))
@@ -242,6 +246,11 @@ def test_duplicates_rejected(root):
     run.log_step(0, {"g/a": 1})
     with pytest.raises(tr.TrackingError):
         run.log_step(0, {"g/a": 2})
+    run.log_step(5, {"g/a": 2})
+    with pytest.raises(tr.TrackingError):
+        run.log_step(4, {"g/a": 3})  # steps must increase per tag
+    with pytest.raises(TypeError):
+        run.log_step(6.0, {"g/a": 3})  # a float step is not truncated
     with pytest.raises(ValueError):
         run.log_step(1, {"final/x": 1})
     run.log_record("r", {"v": 1})
@@ -639,12 +648,13 @@ def test_pinned_tensorboard_internals(tmp_path):
     from tensorboard.backend.event_processing import event_file_loader
     from torch.utils.tensorboard import SummaryWriter
 
-    writer = SummaryWriter(str(tmp_path / "pin"), purge_step=3, filename_suffix=".s001")
+    writer = SummaryWriter(str(tmp_path / "pin"), filename_suffix=".s001")
     fw = writer._get_file_writer()
     assert all(hasattr(fw, name) for name in ("add_summary", "add_event", "flush"))
+    fw.add_event(tr.event_pb2.Event(session_log=tr.event_pb2.SessionLog(status=tr.event_pb2.SessionLog.START)), step=3)
     writer.close()
     (f,) = event_files(tmp_path / "pin")
-    assert f.name.endswith(".s001")
+    assert f.name.endswith(".s001") and Path(fw.event_writer._file_name) == f
     events = [tr.event_pb2.Event.FromString(r) for r in event_file_loader.RawEventFileLoader(str(f)).Load()]
     assert any(e.HasField("session_log") and e.step == 3 for e in events)
 
@@ -655,9 +665,206 @@ def test_cli_and_torch_free_reader(root):
         run.save_state("best", {"w": torch.ones(1)})
     path = upath(root)
     assert tr.main(["ls", str(root)]) == 0 and tr.main(["show", str(path)]) == 0 and tr.main(["verify", str(path)]) == 0
+    assert tr.main(["show", str(root / "a_held_out_set")]) == 2  # refused before anything is read
     code = "import sys, model.common.tracking as t; print(t.run_status(sys.argv[1]).status); assert 'torch' not in sys.modules"
     out = subprocess.run([sys.executable, "-c", code, str(path)], cwd=ROOT, capture_output=True, text=True)
     assert out.returncode == 0 and out.stdout.strip() == "complete", out.stderr
     out = subprocess.run([sys.executable, "-m", "model.common.tracking", "verify", str(path)], cwd=ROOT,
                          capture_output=True, text=True)
     assert out.returncode == 0 and "OK" in out.stdout, out.stderr
+
+
+# ----------------------------------------------------------------------------- review fixes (regressions)
+def test_numpy_scalars_in_states_load_back(root, dead):
+    run = op(every=1)
+    run.save_state("s", {"acc": np.float32(0.25), "w": torch.ones(1)})
+    with pytest.raises(TypeError):
+        run.save_state("e", {"k": enum.IntEnum("E", "A").A})  # weights_only loading would refuse it later
+    run.save_resume({"best": np.float64(0.5), "n": np.int64(3), "ok": np.bool_(True), "w": torch.ones(1)}, step=0)
+    crash(run)
+    run = op(every=1)
+    state = run.load_resume().state
+    assert state["best"] == 0.5 and type(state["best"]) is float and type(state["n"]) is int and state["ok"] is True
+    run.complete()
+    assert tr.load_state(upath(root), "s")["acc"] == 0.25
+
+
+def test_busy_guard_checks_process_identity(root, monkeypatch):
+    me = {"host": socket.gethostname(), "pid": os.getpid(), "proc_id": tr._proc_id(os.getpid())}
+    assert me["proc_id"] and tr._session_alive(me)
+    assert not tr._session_alive({**me, "proc_id": "reused"})  # same pid, another process (pid reuse, reboot)
+    assert not tr._session_alive({**me, "host": "elsewhere"}) and not tr._session_alive({**me, "pid": -1})
+    live = op("live")
+    monkeypatch.setenv("NNKNN_IGNORE_BUSY", "1")
+    run = op("live")  # the explicit override
+    assert run.session == 2 and run.restarted
+    crash(live)
+    run.complete()
+
+
+def test_file_growing_during_scan_reads_incomplete(root, dead, monkeypatch):
+    run = op()
+    run.log_step(0, {"a": 1.0})
+    crash(run)
+    (f,) = event_files(upath(root))
+    data, pos = f.read_bytes(), 0
+    while pos < len(data):  # find the last whole frame
+        frame = data[pos:pos + 16 + struct.unpack("<Q", data[pos:pos + 8])[0]]
+        pos += len(frame)
+
+    class Growing(tr.RawEventFileLoader):
+        def Load(self):  # the writer appends a whole record right after the reader reached EOF
+            yield from super().Load()
+            with f.open("ab") as fh:
+                fh.write(frame)
+
+    monkeypatch.setattr(tr, "RawEventFileLoader", Growing)
+    assert tr.run_status(upath(root)).status == "incomplete"
+
+
+def test_crash_before_checkpoint_record_resumes_from_prev(root, dead, monkeypatch):
+    run = op(every=1)
+    run.log_step(0, {"a": 1.0})
+    run.save_resume({"x": torch.zeros(1)}, step=0)
+    run.log_step(1, {"a": 2.0})
+    real = run._emit_json
+    monkeypatch.setattr(run, "_emit_json", lambda tag, *a: (_ for _ in ()).throw(OSError("killed"))
+                        if tag == "_run/checkpoint" else real(tag, *a))
+    with pytest.raises(OSError):
+        run.save_resume({"x": torch.ones(1)}, step=1)  # last.pt replaced, record never written
+    crash(run)
+    rdir = upath(root) / "weights" / "resume"
+    (rdir / ".tmp-dead.pt").write_bytes(b"partial")
+    run = op(every=1)
+    assert run.resumed_from["step"] == 0 and run.resumed_from["found"] == "weights/resume/prev.pt"
+    assert not (rdir / ".tmp-dead.pt").exists()  # partial files of crashed sessions are removed
+    assert torch.equal(run.load_resume().state["x"], torch.zeros(1))
+    run.log_step(1, {"a": 3.0})
+    run.complete()
+    assert tr.load_run(upath(root)).series("a") == [(0, 1.0), (1, 3.0)]
+
+
+def test_zero_filled_tail_reads_as_crash(root, dead):
+    run = op(every=1)
+    run.log_step(0, {"a": 1.0})
+    run.save_resume({}, step=0)
+    crash(run)
+    (f,) = event_files(upath(root))
+    size = struct.pack("<Q", 40)  # a power cut: the header of the next record reached the disk, its data did not
+    f.write_bytes(f.read_bytes() + size + struct.pack("<I", tr.masked_crc32c(size)) + b"\0" * 44)
+    assert tr.run_status(upath(root)).status == "incomplete"
+    run = op(every=1)
+    assert run.resumed_from["seq"] == 1
+    run.load_resume()
+    run.complete()
+
+
+def test_concurrent_launch_steps_back(root, dead, monkeypatch):
+    first, real, calls = op(), tr._scan, []
+
+    def late(path):  # the second launch scanned before the first one's header reached the file
+        calls.append(path)
+        return real(path.parent / "missing") if len(calls) == 1 else real(path)
+
+    monkeypatch.setattr(tr, "_scan", late)
+    with pytest.raises(tr.UnitBusyError):
+        op()
+    monkeypatch.setattr(tr, "_scan", real)
+    first.log_step(0, {"a": 1.0})
+    first.complete()
+    info = tr.run_status(upath(root))
+    assert info.status == "complete" and info.sessions == 1 and len(event_files(upath(root))) == 2
+
+
+def test_nesting_and_aliased_run_ids_refused(root):
+    with op("a"):
+        pass
+    with pytest.raises(tr.TrackingError):
+        tr.open_run(tr.RunKey("core", "study", ("a", "b")), config=CFG)
+    with tr.open_run(tr.RunKey("core", "study", ("p", "q")), config=CFG):
+        pass
+    with pytest.raises(tr.TrackingError):
+        tr.open_run(tr.RunKey("core", "study", ("p",)), config=CFG)
+    shutil.copytree(upath(root, "a"), upath(root, "alias"))  # what case aliasing on Windows produces
+    with pytest.raises(tr.TrackingError):
+        op("alias")
+    with pytest.raises(tr.TrackingError):
+        tr.resolve_unit(key("alias"), config=CFG)
+
+
+def test_restart_after_resume_and_resume_after_restart(root, dead, monkeypatch):
+    from torch.utils.tensorboard import SummaryWriter
+
+    run = op(every=1)
+    run.log_step(0, {"a": 1.0})
+    run.save_resume({}, step=0)
+    run.log_step(1, {"a": 2.0})
+    crash(run)
+    run = op(every=1)
+    run.log_record("setup", {"v": 1})
+    crash(run)  # dies in the setup phase of a resume
+    run = op(every=1)
+    assert run.resumed_from["seq"] == 1
+    run.load_resume()
+    run.log_step(1, {"a": 3.0})
+    crash(run)
+    assert tr.run_status(upath(root)).resumed
+    monkeypatch.setenv("NNKNN_RESUME", "restart")
+    run = op(every=1)
+    run.load_resume()
+    run.log_step(0, {"a": 10.0})
+    run.save_resume({}, step=0)
+    crash(run)
+    info = tr.run_status(upath(root))
+    assert not info.resumed and info.restarts == 1  # the restart cut the earlier resume
+    monkeypatch.delenv("NNKNN_RESUME")
+    SummaryWriter(str(upath(root))).close()  # a header-only segment in the middle is ignored
+    run = op(every=1)
+    assert run.session == 5 and run.resumed_from["seq"] == 2
+    run.load_resume()
+    run.log_step(1, {"a": 11.0})
+    run.complete()
+    data = tr.load_run(upath(root))
+    assert data.series("a") == [(0, 10.0), (1, 11.0)] and data.info.resumed and data.info.restarts == 1
+
+
+def test_restore_rng_brings_states_back_to_cpu(root, dead):
+    run = op(every=1)
+    run.save_resume({}, step=0)
+    expected = torch.rand(2)
+    crash(run)
+    run = op(every=1)
+    payload = run.load_resume()
+
+    class OnDevice:  # what load_resume(map_location=<device>) leaves in the snapshot
+        def __init__(self, t):
+            self.t = t
+
+        def cpu(self):
+            return self.t
+
+    payload.rng["torch"] = OnDevice(payload.rng["torch"])
+    payload.restore_rng()
+    assert torch.equal(torch.rand(2), expected)
+    run.complete()
+
+
+def test_small_fixes(root, monkeypatch, capsys):
+    t = torch.ones(1)
+    assert tr.state_digest({"a/b": t}) != tr.state_digest({"a": {"b": t}})
+    assert len({tr.state_digest({0: t}), tr.state_digest({"0": t}), tr.state_digest([t])}) == 3
+    null = tr.open_run(key("n"), config=CFG, enabled=False)
+    assert null.log_record("r", {"a": 1}) == tr.payload_sha256({"a": 1})
+    with pytest.raises(ValueError):
+        tr.open_run(tr.RunKey("core", "s", ("bad name",)), config=CFG, enabled=False)
+    monkeypatch.setattr(tr, "ARRAY_CHUNK_BYTES", 24)
+    run, calls = op(), []
+    real = run._emit
+    monkeypatch.setattr(run, "_emit", lambda values, step=0: real(values, step) if calls.append(step) or len(calls) != 2
+                        else (_ for _ in ()).throw(OSError("writer died")))
+    with pytest.raises(OSError):
+        run.log_array("big", np.zeros((10, 3)))
+    with pytest.raises(tr.TrackingError):
+        run.log_array("big", np.zeros((10, 3)))  # a retry raises instead of appending duplicate chunks
+    run.fail("test")
+    assert tr.main(["ls", str(root)]) == 0 and "[core/study/u1]" in capsys.readouterr().out
