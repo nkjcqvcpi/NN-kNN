@@ -230,10 +230,13 @@ def train_retrieval(
     ``run`` (a ``tracking.Run``; default ``NullRun``, which records nothing) receives
     ``<log_prefix>train/loss``, ``val/loss``, ``val/metric``, ``case/n_active`` (and
     ``val/loss_after_checkpoint``) at step = epoch; callers that train twice in one unit
-    pass distinct prefixes. ``resumable=True`` calls ``run.load_resume()`` before the
-    loop and writes a resume checkpoint at the end of an epoch after which training
-    continues, when ``run.checkpoint_due`` says so; a resumed call continues bit for bit
-    (CPU). It cannot be combined with ``checkpoint_hook`` (hooks keep state of their own).
+    pass distinct prefixes (prepended as given, so end one with ``/``, e.g. ``"ft/"``).
+    ``resumable=True`` calls ``run.load_resume()`` before the loop and writes a resume
+    checkpoint at the end of an epoch after which training continues, when
+    ``run.checkpoint_due`` says so; a resumed call continues bit for bit (CPU). Only one
+    resumable call per session is possible (``load_resume`` may be called once), so a unit
+    that trains twice passes ``resumable=True`` to at most one of the calls. It cannot be
+    combined with ``checkpoint_hook`` (hooks keep state of their own).
     """
     if resumable and checkpoint_hook is not None:
         raise ValueError("resumable=True cannot be combined with a checkpoint_hook")
@@ -261,6 +264,7 @@ def train_retrieval(
         opt.load_state_dict(st["optimizer"])
         best, best_optimizer, bad = (st["best_val"], st["best_state"], st["best_epoch"]), st["best_optimizer"], st["bad"]
         res.history, first = list(st["history"]), resume.step + 1
+        model.case_default_bias = st["case_default_bias"]  # a plain attribute, not in state_dict
         resume.restore_rng({"perm": g})
     elif include_initial and select_best:
         # the starting state is a candidate: fine-tuning can only be kept if validation improves
@@ -323,7 +327,8 @@ def train_retrieval(
         if resumable and ep < epochs and run.checkpoint_due(ep):  # training continues after this epoch
             run.save_resume({"model": model.state_dict(), "optimizer": opt.state_dict(), "best_val": best[0],
                              "best_state": best[1], "best_epoch": best[2], "best_optimizer": best_optimizer,
-                             "bad": bad, "history": res.history}, step=ep, generators={"perm": g})
+                             "bad": bad, "history": res.history, "case_default_bias": model.case_default_bias},
+                            step=ep, generators={"perm": g})
     res.epochs_run = ep
     if select_best and best[1] is not None:
         model.load_state_dict(best[1])

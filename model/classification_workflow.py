@@ -553,6 +553,7 @@ def run_classification_benchmark_methods_on_state(
     run_seed: int = 42,
     checkpoint_label_prefix: str | None = None,
     unit_run: Callable[[Mapping[str, Any], str], ContextManager[Any]] | None = None,
+    unit_state: Callable[[Mapping[str, Any], str, str], Any] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Run the benchmark methods on one split. ``checkpoint_label_prefix`` is accepted and ignored.
 
@@ -560,8 +561,11 @@ def run_classification_benchmark_methods_on_state(
     ``tracking.Run`` that records that method (final ``accuracy`` and ``best_metric``, the
     ``predictions`` array, and NN-kNN training through ``train_model``, resumable), or None when
     the unit is already complete, in which case the method is skipped and has no entry in the
-    result. Skipping a method that trains the shared image classifier keeps the RNG stream of
-    the later methods unchanged.
+    result. The unit whose method trains the shared image classifier also saves it as the named
+    state ``classifier``. When that unit is skipped, the classifier is loaded from it through
+    ``unit_state(state, method, "classifier")`` (a state dict, or None); if that gives nothing it
+    is retrained from the skipped method's seed, which keeps the RNG stream of the later methods
+    unchanged (bit for bit on CPU only).
     """
     is_image = state.get("dataset_kind") == "image"
     requested = methods or (_IMAGE_METHODS if is_image else _SMALL_METHODS)
@@ -596,11 +600,20 @@ def run_classification_benchmark_methods_on_state(
         with scope as run:
             if run is None:  # complete unit: skipped
                 if method in _CLASSIFIER_METHODS and pretrained_classifier is None:
-                    skipped_classifier_owner = True
+                    stored = unit_state(state, method, "classifier") if unit_state is not None else None
+                    if stored is not None:  # the classifier this unit trained, exactly (no RNG consumed)
+                        pretrained_classifier = build_image_classifier(str(state["dataset_name"]))
+                        pretrained_classifier.load_state_dict(stored)
+                        pretrained_classifier = pretrained_classifier.to(resolve_runtime_device()).eval()
+                    else:
+                        skipped_classifier_owner = True
                 continue
+            had_classifier = pretrained_classifier is not None
             results[method] = _run_classification_method(
                 method, state, nnknn_cfg, cfgs, run_seed, run, is_image, get_pretrained_classifier)
             _log_classification_unit(run, results[method])
+            if not had_classifier and pretrained_classifier is not None and not isinstance(run, NullRun):
+                run.save_state("classifier", pretrained_classifier.state_dict())
     return results
 
 
@@ -734,9 +747,10 @@ def run_repeated_classification_model_benchmarks(
     standardize: bool | None = None,
     dataset_kwargs_map: Mapping[str, Mapping[str, Any]] | None = None,
     unit_run: Callable[[Mapping[str, Any], str], ContextManager[Any]] | None = None,
+    unit_state: Callable[[Mapping[str, Any], str, str], Any] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, dict[str, list[dict[str, Any]]]]]:
-    """Repeated benchmark over datasets and splits; ``unit_run`` as in
-    ``run_classification_benchmark_methods_on_state``; the state it gets carries ``run_index``,
+    """Repeated benchmark over datasets and splits; ``unit_run`` and ``unit_state`` as in
+    ``run_classification_benchmark_methods_on_state``; the state they get carries ``run_index``,
     ``run_seed``, ``run_mode`` and ``requested_name`` (the dataset name as passed). Skipped
     units have no row and no artifact here."""
     names = [dataset_names] if isinstance(dataset_names, str) else list(dataset_names)
@@ -796,6 +810,9 @@ def run_repeated_classification_model_benchmarks(
                 unit_run=None if unit_run is None else (
                     lambda st, method, _mode=run_mode, _name=dataset_name: unit_run(
                         {**st, "run_mode": _mode, "requested_name": _name}, method)),
+                unit_state=None if unit_state is None else (
+                    lambda st, method, name, _mode=run_mode, _name=dataset_name: unit_state(
+                        {**st, "run_mode": _mode, "requested_name": _name}, method, name)),
             )
             for method, artifact in results.items():
                 artifacts[dataset_name].setdefault(method, []).append(artifact)

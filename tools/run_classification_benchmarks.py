@@ -27,8 +27,8 @@ from model.classification_workflow import (  # noqa: E402
     run_repeated_classification_model_benchmarks,
     summarize_classification_benchmark_runs,
 )
-from model.common.tracking import RunKey, load_run, open_run, unit_dir  # noqa: E402
-from tools.table1_nnknn_kfold import plain_config, unit_component, unit_scope  # noqa: E402
+from model.common.tracking import RunKey, load_run, load_state, open_run, unit_dir  # noqa: E402
+from tools.table1_nnknn_kfold import plain_config, record_frame, unit_component, unit_scope, utc_stamp  # noqa: E402
 
 IMAGE_NAMES = {"mnist", "cifar10", "cifar-10", "cifar_10", "svhn"}
 
@@ -44,6 +44,7 @@ def run_benchmarks(
     *,
     study: str,
     methods: list[str] | None = None,
+    method_cfgs: Mapping[str, Mapping[str, Any]] | None = None,
     mode: str = "holdout",
     runs: int = 5,
     seed: int = 42,
@@ -51,20 +52,34 @@ def run_benchmarks(
     root: Any = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, list[dict[str, Any]]]:
     """Run (or resume) a study; returns the summary and per-run tables, both read from the event
-    files of the units, and the unit log (``run_id``, ``path``, ``source``) in sweep order."""
+    files of the units, and the unit log (``run_id``, ``path``, ``source``) in sweep order.
+    ``method_cfgs`` are the per-method baseline settings of the workflow (for example
+    ``{"convnet": {"epochs": 5}}``); they are part of every unit's config."""
     unit_log: list[dict[str, Any]] = []
     keys: list[tuple[RunKey, str]] = []
+
+    def unit_key(state: Mapping[str, Any], method: str) -> RunKey:
+        return RunKey("core", study, (unit_component(state["display_name"]), unit_component(method),
+                                      f"{state['run_mode']}-{int(state['run_index'])}"))
+
+    def unit_state(state: Mapping[str, Any], method: str, name: str) -> Any:
+        """A named state of a complete unit (the shared image classifier), or None."""
+        data = load_run(unit_dir(unit_key(state, method), root), arrays=False)
+        return load_state(data.path, name) if name in data.states() else None
 
     @contextlib.contextmanager
     def unit_run(state: Mapping[str, Any], method: str) -> Iterator[Any]:
         name, index, run_mode = str(state["requested_name"]), int(state["run_index"]), str(state["run_mode"])
-        key = RunKey("core", study, (unit_component(state["display_name"]), unit_component(method), f"{run_mode}-{index}"))
+        key = unit_key(state, method)
         config = {
             "kind": "classification_benchmark", "dataset": str(state["display_name"]), "method": method,
             "mode": run_mode, "requested_mode": mode, "run_index": index, "run_seed": int(state["run_seed"]),
-            "num_runs": runs, "base_seed": seed,
+            # a k-fold split depends on the fold count and the split seed; a holdout or official split only on
+            # run_seed, so a study can later be extended with more runs
+            **({"num_runs": runs, "base_seed": seed} if run_mode == "kfold" else {}),
             "nnknn_cfg": plain_config(cfg) if method.startswith("nnknn") else None,
             "dataset_kwargs": plain_config(dict((dataset_kwargs_map or {}).get(name, {}) or {})),
+            **({"method_cfgs": plain_config(dict(method_cfgs))} if method_cfgs else {}),
         }
         keys.append((key, run_mode))
         with unit_scope(key, config, root=root, log=unit_log) as run:
@@ -75,11 +90,13 @@ def run_benchmarks(
         datasets,
         cfg,
         methods=methods,
+        method_cfgs=method_cfgs,
         num_runs=runs,
         mode=mode,
         base_seed=seed,
         dataset_kwargs_map=dataset_kwargs_map,
         unit_run=unit_run,
+        unit_state=unit_state,
     )
     rows = []
     for key, run_mode in keys:  # the per-run table, read back from the event files
@@ -100,15 +117,17 @@ def record_summary_report(
     units: list[dict[str, Any]],
     root: Any = None,
 ) -> Path:
-    """Record the tables in ``runs/core/<study>/_reports/summary/<timestamp>``: row records
-    ``summary`` and ``runs``, the record ``manifest`` and ``units`` (run id and result digest)."""
+    """Record the tables in ``runs/core/<study>/_reports/summary/<timestamp>`` (UTC): row records
+    ``summary`` and ``runs`` (column order in ``columns/summary`` and ``columns/runs``; read them back
+    with ``tools.table1_nnknn_kfold.read_frame``), the record ``manifest`` and ``units`` (run id and
+    result digest)."""
     bound = [{"run_id": u["run_id"], "result_digest": load_run(u["path"], arrays=False).info.result_digest}
              for u in units]
-    key = RunKey("core", study, ("_reports", "summary", datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")))
+    key = RunKey("core", study, ("_reports", "summary", utc_stamp()))
     manifest = plain_config(dict(manifest))
     with open_run(key, config={"kind": "classification_report", "manifest": manifest, "units": bound}, root=root) as run:
-        run.log_records("summary", summary.to_dict("records"))
-        run.log_records("runs", runs_df.to_dict("records"))
+        record_frame(run, "summary", summary)
+        record_frame(run, "runs", runs_df)
         run.log_record("manifest", manifest)
         run.log_record("units", bound)
     return unit_dir(key, root)

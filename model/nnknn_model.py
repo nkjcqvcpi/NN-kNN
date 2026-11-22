@@ -1,4 +1,5 @@
 import copy
+from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -1495,6 +1496,20 @@ def classification_class_mass_loss(
     probabilities = probabilities / probabilities.sum(dim=1, keepdim=True).clamp_min(float(eps))
     return F.nll_loss(probabilities.log(), targets.long())
 
+def _state_dict_on_cpu(module: nn.Module) -> OrderedDict:
+    """Exact copy of ``module.state_dict()`` on the CPU, with the version metadata ``load_state_dict`` reads.
+
+    Best states are kept this way so that they cost no accelerator memory (the case buffers are part of the
+    state); loading one back copies the same values onto the module's device. Consumes no RNG.
+    """
+    sd = module.state_dict()
+    out = OrderedDict((k, v.detach().to("cpu", copy=True) if torch.is_tensor(v) else copy.deepcopy(v))
+                      for k, v in sd.items())
+    if getattr(sd, "_metadata", None) is not None:
+        out._metadata = copy.deepcopy(sd._metadata)
+    return out
+
+
 def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg, *, run=NullRun(), resumable=False): # , glocal_fw_set_num=glocal_fw_set_num
     """
     Train an NN-kNN model using the provided train/validation split.
@@ -1919,6 +1934,7 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg, *, run=N
             "patience_counter": patience_counter, "metric_for_model_select": metric_for_model_select,
             "requires_grad": {n: bool(p.requires_grad) for n, p in model.named_parameters()},
             "case_normalizer": model.case_normalizer, "adapt_enabled": bool(model.adapt_enabled),
+            "case_default_bias": model.case_default_bias,  # a plain attribute, not in state_dict
         }, step=step)
 
 
@@ -1970,6 +1986,7 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg, *, run=N
         for n, p in model.named_parameters():
             p.requires_grad_(st["requires_grad"][n])
         model.case_normalizer, model.adapt_enabled = st["case_normalizer"], st["adapt_enabled"]
+        model.case_default_bias = st["case_default_bias"]  # drawn from the RNG at construction unless set manually
         best_state, best_val_loss, best_val_metric = st["best_state"], st["best_val_loss"], st["best_val_metric"]
         best_epoch, patience_counter = st["best_epoch"], st["patience_counter"]
         metric_for_model_select = st["metric_for_model_select"]
@@ -2032,7 +2049,7 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg, *, run=N
             best_val_metric = val_metric
             best_epoch = epoch
             metric_for_model_select = val_metric
-            best_state = copy.deepcopy(model.state_dict())
+            best_state = _state_dict_on_cpu(model)
             print(f"[Stage1] New best (epoch {epoch+1}) Val Metric: {val_metric:.4f} | Val Loss: {val_loss:.4f} — kept in memory")
             patience_counter = 0
         else:
@@ -2130,7 +2147,7 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg, *, run=N
                 best_val_metric = val_metric
                 best_epoch = epoch
                 metric_for_model_select = val_metric
-                best_state = copy.deepcopy(model.state_dict())
+                best_state = _state_dict_on_cpu(model)
                 print(f"[Stage2] New best (epoch {epoch+1}) Val Metric: {val_metric:.4f} | Val Loss: {val_loss:.4f} — kept in memory")
                 patience_counter = 0
             else:

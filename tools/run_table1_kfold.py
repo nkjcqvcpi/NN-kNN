@@ -7,7 +7,6 @@ recorded in the report unit ``runs/core/<study>/_reports/table1/<timestamp>``.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 from pathlib import Path
 import sys
 
@@ -19,6 +18,7 @@ from tools.table1_nnknn_kfold import (  # noqa: E402
     build_table1_transposed_df,
     record_table1_report,
     run_table1_kfold,
+    utc_stamp,
 )
 
 
@@ -70,7 +70,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> Path:
     args = parse_args(argv)
-    study = args.study or f"table1_kfold_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    study = args.study or f"table1_kfold_{utc_stamp('%Y%m%d_%H%M%S')}"  # UTC
 
     print("Starting Table 1 k-fold sweep", flush=True)
     print(f"Study: runs/core/{study}", flush=True)

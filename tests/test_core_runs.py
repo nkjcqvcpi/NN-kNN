@@ -5,10 +5,13 @@ uninterrupted one bit for bit (result_digest and the state digests of the named 
 """
 from __future__ import annotations
 
+import math
 import os
+import random
 
 os.environ.setdefault("NNKNN_DEVICE", "cpu")
 
+import numpy as np
 import pytest
 import torch
 
@@ -68,15 +71,17 @@ def sd_digest(model):
 
 # ---------------------------------------------------------------- train_retrieval
 
-def _retrieval(task, run=None, **kw):
+def _retrieval(task, run=None, patience=100, epochs=8, bias_seed=None, **kw):
     torch.manual_seed(0)
     X = torch.randn(40, 4)
     y = torch.randint(0, 3, (40,)) if task == "classification" else X @ torch.tensor([1.0, -1.0, 0.5, 0.0])
     Xv = torch.randn(16, 4)
     yv = torch.randint(0, 3, (16,)) if task == "classification" else Xv @ torch.tensor([1.0, -1.0, 0.5, 0.0])
-    cfg = CoreConfig(task_type=task, representation="mlp", mlp_dims=(8,), mlp_dropout=0.2, top_k=4, epochs=8,
-                     patience=100, batch_size=8, seed=0)
+    cfg = CoreConfig(task_type=task, representation="mlp", mlp_dims=(8,), mlp_dropout=0.2, top_k=4, epochs=epochs,
+                     patience=patience, batch_size=8, seed=0)
     model = build_model(X, y, cfg, 3 if task == "classification" else None)
+    if bias_seed is not None:  # a setup that left case_default_bias different (the checkpoint must restore it)
+        model.case_default_bias += bias_seed
     extra = {} if run is None else {"run": run, "resumable": True}
     res = train_retrieval(model, X, y, Xv, yv, cfg, **extra, **kw)
     return res
@@ -115,6 +120,39 @@ def test_train_retrieval_resumed_equals_uninterrupted(root, crash_at, task, kw):
     assert a.info.result_digest == b.info.result_digest
     assert a.states()["final"]["state_sha256"] == b.states()["final"]["state_sha256"] == sd_digest(_retrieval(task, **kw).model)
     assert b.info.sessions == 2 and b.info.resumed
+    assert res.history == ref.history and res.epochs_run == ref.epochs_run and res.best_epoch == ref.best_epoch
+
+
+def _first_bad_epoch(history):
+    """First epoch without improvement (patience counter 1) after which training continues, or None."""
+    best = math.inf
+    for rec in history[:-1]:
+        if rec["val_loss"] < best - 1e-9:
+            best = rec["val_loss"]
+        else:
+            return rec["epoch"]
+    return None
+
+
+def test_train_retrieval_resume_keeps_the_patience_counter_and_the_case_bias(root, crash_at):
+    """Crash right after a checkpoint taken while the patience counter is above 0; resume with another case bias."""
+    kw = dict(patience=2, epochs=30)
+    plain = _retrieval("regression", **kw)
+    with open_unit("pat-ref", every=1) as run:
+        ref = _retrieval("regression", run=run, **kw)
+    assert ref.history == plain.history
+    bad_ep = _first_bad_epoch(plain.history)
+    assert bad_ep is not None
+    crash_at(bad_ep + 1)  # the checkpoint of epoch bad_ep holds bad >= 1
+    with pytest.raises(Crash), open_unit("pat-cut", every=1) as run:
+        _retrieval("regression", run=run, **kw)
+    with open_unit("pat-cut", every=1) as run:
+        assert run.resumed_from["step"] == bad_ep
+        res = _retrieval("regression", run=run, bias_seed=0.5, **kw)
+    assert res.history == ref.history and res.epochs_run == ref.epochs_run
+    assert sd_digest(res.model) == sd_digest(ref.model) and res.model.case_default_bias == ref.model.case_default_bias
+    a, b = (tr.load_run(root / "core" / "s2" / n) for n in ("pat-ref", "pat-cut"))
+    assert a.info.result_digest == b.info.result_digest
 
 
 def test_train_retrieval_resumable_rejects_a_checkpoint_hook():
@@ -137,7 +175,7 @@ def _train_model_cfg(task):
     return cfg
 
 
-def _train(task, run=None, cfg_updates=None):
+def _train(task, run=None, cfg_updates=None, setup_seed=None, nan_val=False, random_val=False):
     torch.manual_seed(0)
     X, Xv = torch.randn(48, 5), torch.randn(16, 5)
     if task == "classification":
@@ -145,6 +183,14 @@ def _train(task, run=None, cfg_updates=None):
     else:
         w = torch.tensor([1.0, -2.0, 0.5, 0.0, 1.5])
         y, yv = X @ w, Xv @ w
+        if nan_val:
+            yv[0] = math.nan  # every validation loss and R2 is NaN
+        if random_val:
+            yv = 3 * torch.randn(16)  # unrelated to X: the validation loss goes up and down
+    if setup_seed is not None:  # the RNG state the model is built from (case_default_bias, initial weights)
+        torch.manual_seed(setup_seed)
+        np.random.seed(setup_seed)
+        random.seed(setup_seed)
     cfg = _train_model_cfg(task)
     cfg.update(cfg_updates or {})
     extra = {} if run is None else {"run": run, "resumable": True}
@@ -214,11 +260,54 @@ def test_train_model_early_stop_resumes_too(root, crash_at):
     assert a.info.result_digest == b.info.result_digest and sd_digest(cut) == sd_digest(ref)
 
 
+def test_train_model_resume_keeps_the_patience_counter_and_the_case_bias(root, crash_at):
+    """Patience 2: crash after a checkpoint taken while patience_counter > 0. The model's case_default_bias
+    is drawn from the RNG (bias_manual_set=False) and the resumed session builds it from another RNG state."""
+    upd = {"patience": 2, "training_epochs": 12, "bias_manual_set": False}
+    with open_unit("regression-pat", every=1) as run:
+        m_ref, ref = _train("regression", run=run, cfg_updates=upd, setup_seed=1, random_val=True)
+    m_plain, plain = _train("regression", cfg_updates=upd, setup_seed=1, random_val=True)
+    assert m_ref == m_plain and sd_digest(ref) == sd_digest(plain)
+    _, other = _train("regression", cfg_updates=dict(upd, training_epochs=0), setup_seed=2, random_val=True)
+    assert other.case_default_bias != ref.case_default_bias  # the setup really differs
+    data = tr.load_run(root / "core" / "s2" / "regression-pat")
+    points = [(step, loss, stage) for (step, loss), (_, stage) in zip(data.series("val/loss"), data.series("train/stage"))]
+    best, crash = {}, None
+    for (step, loss, stage), nxt in zip(points, points[1:]):  # first epoch without improvement in a stage that goes on
+        if loss < best.get(stage, math.inf):
+            best[stage] = loss
+        elif nxt[2] == stage:
+            crash = step + 1
+            break
+    assert crash is not None
+    crash_at(crash)
+    with pytest.raises(Crash), open_unit("regression-pat2", every=1) as run:
+        _train("regression", run=run, cfg_updates=upd, setup_seed=1, random_val=True)
+    with open_unit("regression-pat2", every=1) as run:
+        assert run.resumed_from["step"] == crash - 1
+        m_cut, cut = _train("regression", run=run, cfg_updates=upd, setup_seed=2, random_val=True)
+    b = tr.load_run(root / "core" / "s2" / "regression-pat2")
+    assert m_cut == m_ref and sd_digest(cut) == sd_digest(ref) and cut.case_default_bias == ref.case_default_bias
+    assert data.info.result_digest == b.info.result_digest
+
+
+def test_train_model_with_nan_validation_completes_its_run(root):
+    """A diverged unit (NaN val loss, so NaN best-state meta) must complete, not fail in save_state."""
+    with open_unit("regression-nan") as run:
+        m, model = _train("regression", run=run, nan_val=True)
+    assert math.isnan(m)
+    data = tr.load_run(root / "core" / "s2" / "regression-nan")
+    assert data.info.status == "complete"
+    assert math.isnan(data.states()["best_retrieval"]["meta"]["val_loss"])
+    assert set(data.states()) == {"best_retrieval", "best_adapter", "final"}
+
+
 # ---------------------------------------------------------------- workflows and tools
 
 def test_classification_tool_records_units_skips_complete_ones_and_matches_the_workflow(root, capsys):
     from model.classification_workflow import make_classification_cfg, run_repeated_classification_model_benchmarks
     from tools.run_classification_benchmarks import record_summary_report, run_benchmarks
+    from tools.table1_nnknn_kfold import read_frame
 
     cfg = make_classification_cfg({"training_epochs": 3, "batch_size": 16})
     kw = dict(methods=["nnknn", "knn", "mlp"], runs=2, seed=3)
@@ -237,9 +326,40 @@ def test_classification_tool_records_units_skips_complete_ones_and_matches_the_w
     report = record_summary_report(summary, runs_df, study="cls", manifest={"x": 1}, units=log2)
     rep = tr.load_run(report)
     assert rep.records("summary") == summary.to_dict("records")
+    assert read_frame(rep, "runs").equals(runs_df) and list(read_frame(rep, "summary").columns) == list(summary.columns)
     assert [u["result_digest"] for u in rep.record("units")] == [tr.run_status(u["path"]).result_digest for u in log2]
     with pytest.raises(tr.ConfigMismatchError):
         run_benchmarks(["iris"], make_classification_cfg({"training_epochs": 4, "batch_size": 16}), study="cls", **kw)
+    _, runs3, log3 = run_benchmarks(["iris"], cfg, study="cls", **dict(kw, runs=3))  # a holdout study grows
+    assert [u["source"] for u in log3] == ["complete"] * 6 + ["fresh"] * 3
+    assert runs3.iloc[:6].equals(runs_df)
+
+
+def test_image_units_reuse_the_classifier_stored_by_a_skipped_unit(root, monkeypatch):
+    from datasets.paths import datasets_root
+    import model.classification_workflow as cw
+    from model.classification_workflow import make_classification_cfg
+    from tools.run_classification_benchmarks import run_benchmarks
+
+    if not (datasets_root() / "MNIST" / "raw" / "train-images-idx3-ubyte").is_file():
+        pytest.skip("MNIST is not in the datasets directory")
+    cfg = make_classification_cfg({"training_epochs": 1, "batch_size": 16})
+    common = dict(runs=1, seed=4, method_cfgs={"convnet": {"epochs": 2, "batch_size": 32}},
+                  dataset_kwargs_map={"mnist": {"max_train_samples": 120, "max_eval_samples": 40, "download": False}})
+    methods = ["nnknn_conv_frozen", "convnet", "knn_conv_frozen"]
+    _, ref, _ = run_benchmarks(["mnist"], cfg, study="imgref", methods=methods, **common)
+    owner = root / "core" / "imgref" / "mnist" / "nnknn_conv_frozen" / "official-1"
+    assert set(tr.load_run(owner).states()) == {"best_retrieval", "final", "classifier"}
+
+    run_benchmarks(["mnist"], cfg, study="imgcut", methods=methods[:1], **common)
+    calls, train = [], cw._train_torch_classifier
+    monkeypatch.setattr(cw, "_train_torch_classifier", lambda *a, **k: calls.append(1) or train(*a, **k))
+    _, cut, log = run_benchmarks(["mnist"], cfg, study="imgcut", methods=methods, **common)
+    assert [u["source"] for u in log] == ["complete", "fresh", "fresh"] and calls == []  # loaded, not retrained
+    assert cut.to_dict("records") == ref.to_dict("records")
+    for method in methods[1:]:
+        a, b = (tr.load_run(root / "core" / s / "mnist" / method / "official-1") for s in ("imgref", "imgcut"))
+        assert np.array_equal(a.array("predictions"), b.array("predictions"))
 
 
 def test_table1_study_skips_complete_units_resumes_incomplete_ones_and_reports(root, monkeypatch):
@@ -256,11 +376,22 @@ def test_table1_study_skips_complete_units_resumes_incomplete_ones_and_reports(r
     assert set(data.states()) == {"best_retrieval", "best_adapter", "final"}
     assert len(data.records("rows")) == 2 and "rmse_post_raw" in data.final()
 
+    plain_summary, plain_runs, _ = run_table1_kfold(["diabets"], **kw)  # untracked: same columns, same order
+    assert list(runs_df.columns) == list(plain_runs.columns) and list(summary.columns) == list(plain_summary.columns)
+    baseline_rows = runs_df["source"] == "baseline"
+    assert runs_df[baseline_rows].equals(plain_runs[baseline_rows])
+
     log2: list = []  # everything complete: nothing trains, the tables are read back unchanged
     summary2, runs2, art2 = run_table1_kfold(["diabets"], study="t1ref", unit_log=log2, **kw)
     assert {u["source"] for u in log2} == {"complete"}
     assert runs2.equals(runs_df) and summary2.equals(summary)
-    assert torch.equal(art2["nnknn"]["diabets"]["softmax"][0]["model"].biases, art["nnknn"]["diabets"]["softmax"][0]["model"].biases)
+    fresh, skipped = art["nnknn"]["diabets"]["softmax"][0], art2["nnknn"]["diabets"]["softmax"][0]
+    assert "model" not in skipped  # not rebuilt unless asked
+    for k in ("rmse_pre_raw", "rmse_post_raw", "rmse_pre_model_space", "rmse_post_model_space", "best_metric"):
+        assert skipped[k] == fresh[k]
+    assert all(torch.equal(skipped[k], fresh[k]) for k in ("y_pred_pre_z", "y_pred_post_z"))
+    _, _, art3 = run_table1_kfold(["diabets"], study="t1ref", run_baselines=False, rebuild_skipped=True, **kw)
+    assert torch.equal(art3["nnknn"]["diabets"]["softmax"][0]["model"].biases, fresh["model"].biases.cpu())
 
     monkeypatch.setenv("NNKNN_RESUME_EVERY_STEPS", "1")  # crash the third NN-kNN unit in stage 2
     calls = {"n": 0}
@@ -287,4 +418,5 @@ def test_table1_study_skips_complete_units_resumes_incomplete_ones_and_reports(r
     report = record_table1_report(summary, runs_df, study="t1ref", metadata={"note": "test"}, units=log)
     tables = read_table1_report(report)
     assert tables["summary_long"]["rmse_raw_table"].tolist() == summary["rmse_raw_table"].tolist()
-    assert len(tables["transposed"]) == len(set(summary["entry_label"]))
+    assert list(tables["runs_long"].columns) == list(runs_df.columns) and tables["summary_long"].equals(summary)
+    assert len(tables["transposed"]) == len(set(summary["entry_label"])) and tables["transposed"].columns[0] == "Model"

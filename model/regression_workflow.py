@@ -1526,6 +1526,8 @@ def run_nnknn_regression_workflow(
     include_pre_post: bool = False,
     show_plots: bool = False,
     print_metrics: bool = True,
+    run: Any = NullRun(),
+    resumable: bool = False,
 ) -> dict[str, Any]:
     """Purpose: execute the NN-kNN dataset -> split -> train -> eval flow used by the notebook.
 
@@ -1546,6 +1548,8 @@ def run_nnknn_regression_workflow(
         include_pre_post: When True, also computes pre/post adaptation metrics.
         show_plots: When True, evaluation helpers render figures.
         print_metrics: When True, evaluation helpers print RMSE summaries.
+        run, resumable: Passed to `train_model` through `train_nnknn_regression_state`
+            (default `NullRun`: nothing is recorded).
 
     Output:
         A complete workflow state ready for notebook use or repeated-run aggregation.
@@ -1579,6 +1583,8 @@ def run_nnknn_regression_workflow(
         cfg_run,
         feature_extractor=feature_extractor,
         checkpoint_label=checkpoint_label,
+        run=run,
+        resumable=resumable,
     )
     state.update(
         {
@@ -1620,8 +1626,11 @@ def run_single_nnknn_regression_experiment(
     glocal_init_from_true: bool = False,
     glocal_init_alpha: float = 1.0,
     checkpoint_label: str | None = None,
+    run: Any = NullRun(),
+    resumable: bool = False,
 ) -> dict[str, Any]:
-    """Purpose: single-run NN-kNN entry point built on the shared workflow helpers."""
+    """Purpose: single-run NN-kNN entry point built on the shared workflow helpers (`run` and
+    `resumable` as in `run_nnknn_regression_workflow`)."""
     return run_nnknn_regression_workflow(
         dataset_name,
         cfg,
@@ -1639,6 +1648,8 @@ def run_single_nnknn_regression_experiment(
         include_pre_post=False,
         show_plots=False,
         print_metrics=False,
+        run=run,
+        resumable=resumable,
     )
 
 
