@@ -1,4 +1,4 @@
-"""Run tracking at the shared-core call sites (train_retrieval, train_model; CPU).
+"""Run tracking at the shared-core call sites (train_retrieval, train_model, workflows, benchmark tools; CPU).
 
 A real run must not change what is computed, and an interrupted and resumed training must equal the
 uninterrupted one bit for bit (result_digest and the state digests of the named states).
@@ -212,3 +212,79 @@ def test_train_model_early_stop_resumes_too(root, crash_at):
         m_cut, cut = _train("regression", run=run, cfg_updates=upd)
     a, b = (tr.load_run(root / "core" / "s2" / u) for u in ("regression-es", "regression-es2"))
     assert a.info.result_digest == b.info.result_digest and sd_digest(cut) == sd_digest(ref)
+
+
+# ---------------------------------------------------------------- workflows and tools
+
+def test_classification_tool_records_units_skips_complete_ones_and_matches_the_workflow(root, capsys):
+    from model.classification_workflow import make_classification_cfg, run_repeated_classification_model_benchmarks
+    from tools.run_classification_benchmarks import record_summary_report, run_benchmarks
+
+    cfg = make_classification_cfg({"training_epochs": 3, "batch_size": 16})
+    kw = dict(methods=["nnknn", "knn", "mlp"], runs=2, seed=3)
+    summary, runs_df, log = run_benchmarks(["iris"], cfg, study="cls", **kw)
+    assert [u["source"] for u in log] == ["fresh"] * 6
+    _, plain_runs, _ = run_repeated_classification_model_benchmarks(["iris"], cfg, methods=kw["methods"], num_runs=2, base_seed=3)
+    assert runs_df.to_dict("records") == plain_runs.to_dict("records")
+    unit = root / "core" / "cls" / "iris" / "nnknn" / "holdout-1"
+    data = tr.load_run(unit)
+    assert set(data.states()) == {"best_retrieval", "final"} and len(data.series("val/acc")) == 3
+    assert data.array("predictions").shape == (30,)
+
+    summary2, runs2, log2 = run_benchmarks(["iris"], cfg, study="cls", **kw)
+    assert [u["source"] for u in log2] == ["complete"] * 6
+    assert runs2.equals(runs_df) and summary2.equals(summary)
+    report = record_summary_report(summary, runs_df, study="cls", manifest={"x": 1}, units=log2)
+    rep = tr.load_run(report)
+    assert rep.records("summary") == summary.to_dict("records")
+    assert [u["result_digest"] for u in rep.record("units")] == [tr.run_status(u["path"]).result_digest for u in log2]
+    with pytest.raises(tr.ConfigMismatchError):
+        run_benchmarks(["iris"], make_classification_cfg({"training_epochs": 4, "batch_size": 16}), study="cls", **kw)
+
+
+def test_table1_study_skips_complete_units_resumes_incomplete_ones_and_reports(root, monkeypatch):
+    from tools.table1_nnknn_kfold import read_table1_report, record_table1_report, run_table1_kfold
+
+    kw = dict(num_folds=2, base_seed=5, nnknn_base_cfg={"training_epochs": 3, "patience": 100},
+              baseline_method_cfgs={"mlp": {"epochs": 2}, "mlkr_knn": {"max_iter": 3}})
+    log: list = []
+    summary, runs_df, art = run_table1_kfold(["diabets"], study="t1ref", unit_log=log, **kw)
+    assert len(log) == 2 * 4 + 2 * 3 and {u["source"] for u in log} == {"fresh"}
+    assert len(runs_df) == 2 * 4 * 2 + 2 * 3
+    unit = root / "core" / "t1ref" / "diabets" / "softmax" / "f1"
+    data = tr.load_run(unit)
+    assert set(data.states()) == {"best_retrieval", "best_adapter", "final"}
+    assert len(data.records("rows")) == 2 and "rmse_post_raw" in data.final()
+
+    log2: list = []  # everything complete: nothing trains, the tables are read back unchanged
+    summary2, runs2, art2 = run_table1_kfold(["diabets"], study="t1ref", unit_log=log2, **kw)
+    assert {u["source"] for u in log2} == {"complete"}
+    assert runs2.equals(runs_df) and summary2.equals(summary)
+    assert torch.equal(art2["nnknn"]["diabets"]["softmax"][0]["model"].biases, art["nnknn"]["diabets"]["softmax"][0]["model"].biases)
+
+    monkeypatch.setenv("NNKNN_RESUME_EVERY_STEPS", "1")  # crash the third NN-kNN unit in stage 2
+    calls = {"n": 0}
+    plain_log_step = tr.Run.log_step
+
+    def crash_third(self, step, values):
+        calls["n"] += step == 0
+        if calls["n"] == 3 and step == 4 and not calls.get("done"):
+            calls["done"] = True
+            raise Crash("interrupted")
+        return plain_log_step(self, step, values)
+
+    monkeypatch.setattr(tr.Run, "log_step", crash_third)
+    with pytest.raises(Crash):
+        run_table1_kfold(["diabets"], study="t1cut", run_baselines=False, **kw)
+    log3: list = []
+    summary3, runs3, _ = run_table1_kfold(["diabets"], study="t1cut", run_baselines=False, unit_log=log3, **kw)
+    assert [u["source"] for u in log3] == ["complete", "complete", "resumed"] + ["fresh"] * 5
+    nn = runs_df[runs_df["source"] == "nnknn"].reset_index(drop=True)
+    assert runs3.to_dict("records") == nn[list(runs3.columns)].to_dict("records")
+    for u_ref, u_cut in zip(log[:8], log3):
+        assert tr.run_status(u_ref["path"]).result_digest == tr.run_status(u_cut["path"]).result_digest
+
+    report = record_table1_report(summary, runs_df, study="t1ref", metadata={"note": "test"}, units=log)
+    tables = read_table1_report(report)
+    assert tables["summary_long"]["rmse_raw_table"].tolist() == summary["rmse_raw_table"].tolist()
+    assert len(tables["transposed"]) == len(set(summary["entry_label"]))
