@@ -2,12 +2,14 @@
 #
 #   powershell -File tools\t1_launch.ps1 -Configs p1_retention_synthetic,p2_reuse -MaxParallel 8
 #
-# Each (config, dataset) pair is one job: tools\t1_run.py <cfg> --only-dataset <ds>.
+# Each (config, dataset) pair is one job: tools\t1_run.py <cfg> --only-dataset <ds> [--study <Study>].
+# With -Study the runs are recorded as units under NN-KNN\runs\t1\<Study>\ (tools\t1_run.py --study).
 # Logs: logs\t1\<experiment>__<dataset>.log ; queue status: logs\t1\queue_status.txt
 param(
     [string[]]$Configs,
     [string[]]$Datasets = @(),
-    [int]$MaxParallel = 8
+    [int]$MaxParallel = 8,
+    [string]$Study = ''
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -30,7 +32,9 @@ $status = 'logs\t1\queue_status.txt'
 foreach ($j in $jobs) {
     while (($running | Where-Object { -not $_.HasExited }).Count -ge $MaxParallel) { Start-Sleep -Seconds 5 }
     $log = "logs\t1\$($j.exp)__$($j.ds).log"
-    $p = Start-Process -FilePath $py -ArgumentList @('tools\t1_run.py', $j.cfg, '--only-dataset', $j.ds) -RedirectStandardOutput $log -RedirectStandardError "$log.err" -NoNewWindow -PassThru
+    $argv = @('tools\t1_run.py', $j.cfg, '--only-dataset', $j.ds)
+    if ($Study) { $argv += @('--study', $Study) }
+    $p = Start-Process -FilePath $py -ArgumentList $argv -RedirectStandardOutput $log -RedirectStandardError "$log.err" -NoNewWindow -PassThru
     $running += $p
     "$(Get-Date -Format s) started $($j.exp)/$($j.ds) pid=$($p.Id)" | Add-Content $status
 }

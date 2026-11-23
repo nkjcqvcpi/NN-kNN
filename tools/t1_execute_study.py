@@ -21,7 +21,7 @@ from tools.t1_grid_search import nnknn_core_settings
 from tools.t1_run import load_config
 
 
-def execute(config, dataset, seed, out):
+def execute(config, dataset, seed, out, study=None):
     log = out / "logs" / f"{config.stem}__{dataset['task_type']}__{dataset['name']}__s{seed}.log"
     receipt = log.with_suffix(".json")
     if receipt.exists():
@@ -31,7 +31,8 @@ def execute(config, dataset, seed, out):
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("w", encoding="utf-8") as f:
         run = subprocess.run([sys.executable, str(REPO / "tools/t1_run.py"), str(config),
-            "--only-dataset", dataset["name"], "--seeds", str(seed), "--out", str(out / "experiments")],
+            "--only-dataset", dataset["name"], "--seeds", str(seed), "--out", str(out / "experiments"),
+            *(["--study", study] if study else [])],
             cwd=REPO, stdout=f, stderr=subprocess.STDOUT)
     result = dict(config=str(config), dataset=dataset, seed=seed, exit_code=run.returncode, log=str(log))
     write_json(receipt, result)
@@ -46,7 +47,14 @@ def main():
     parser.add_argument("--groups", nargs="*")
     parser.add_argument("--only-dataset", nargs="*")
     parser.add_argument("--plan-only", action="store_true")
+    parser.add_argument("--study", help="passed to tools/t1_run.py: record the runs as units under NN-KNN/runs/t1/<study>/")
     args = parser.parse_args()
+    if args.study:
+        from model.t1.records import check_study
+        try:
+            check_study(args.study)
+        except (FileNotFoundError, ValueError) as exc:
+            parser.error(f"--study: {exc}")
     grid = Path(args.grid_output)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -123,7 +131,7 @@ def main():
         return
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
-        future_map = {pool.submit(execute, config, ds, seed, out): name for name, config, ds, seed in groups}
+        future_map = {pool.submit(execute, config, ds, seed, out, args.study): name for name, config, ds, seed in groups}
         for future in concurrent.futures.as_completed(future_map):
             result = future.result()
             results.append(result)

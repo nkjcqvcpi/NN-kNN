@@ -7,7 +7,18 @@ removal_retraining, sync, mcb, revise.
 Every run writes, under ``results/t1/<experiment>/<dataset>/<condition>/s<seed>/``:
 run_manifest.json, metrics.json, history.json, case_statistics.jsonl,
 case_maintenance.jsonl, retrieval_events.jsonl (test stream, pre/final predictions),
-and appends one row to ``results/t1/<experiment>/runs__<dataset>.jsonl``.
+checkpoint.pt and the type's extra files, and appends one row to
+``results/t1/<experiment>/runs__<dataset>.jsonl``.
+
+With ``--study S`` every run is instead recorded as one unit
+``NN-KNN/runs/t1/S/<experiment>/<dataset>/<condition>/s<seed>/`` (``model.t1.records``): records
+``manifest``, ``metrics`` (and ``final/*`` numbers), ``history`` (and its curves), ``case_statistics``,
+``case_maintenance``, ``retrieval_events``, ``row`` and one record per extra JSON file; weights as named
+states (``checkpoint`` and the type's ``.pt`` files, e.g. ``M0``, ``initial``, ``starting_checkpoint``;
+legacy_reference also ``best_retrieval``/``best_adapter``/``final`` from ``train_model``). None of the per-run
+files above, no shard row and no ``legacy_best.pth``/``starting_checkpoint_s<seed>.pt`` is written then; the
+source snapshot zip and ``data_snapshot_s<seed>.pt`` (inputs, not training data) stay under ``--out``. A unit
+that is already complete with the same config is not written again (another config raises).
 
 Values required by the plan that remain unresolved PI decisions must be given
 explicitly in the config; ``null`` or ``"..."`` aborts the run.
@@ -46,7 +57,9 @@ from model.t1.retention import RetentionConfig  # noqa: E402
 from model.t1.reuse import ReuseConfig, calibrate_temperature, evaluate_reuse, evaluate_regression_reuse, reuse_logits, train_classification_adapter, train_regression_adapter  # noqa: E402
 from model.t1.revise import flagging_ablation  # noqa: E402
 from model.t1.sync import SyncConfig, train_synchronized  # noqa: E402
+from model.t1 import records  # noqa: E402
 from model.common.nominal import encoded_queries  # noqa: E402
+from model.common.tracking import open_run, resolve_unit  # noqa: E402
 
 
 # --------------------------------------------------------------------------- config
@@ -451,9 +464,57 @@ def append_row(shard: Path, row: dict[str, Any]) -> None:
         os.close(lock)
 
 
+class FileSink:
+    """Per-run outputs as files under ``run_dir`` plus the shard row (the behaviour without ``--study``)."""
+
+    def __init__(self, runner: "Runner", run_dir: Path, dataset_key: str) -> None:
+        self.runner, self.run_dir, self.dataset_key = runner, run_dir, dataset_key
+
+    def json(self, name: str, obj: Any) -> None:
+        write_json(self.run_dir / name, obj)
+
+    def jsonl(self, name: str, rows: list) -> None:
+        write_jsonl(self.run_dir / name, rows)
+
+    def torch(self, name: str, obj: Any) -> None:
+        torch.save(to_cpu(obj), self.run_dir / name)
+
+    def row(self, row: dict) -> None:
+        # one shard per dataset; parallel jobs (one per dataset and seed) share it, so append under a lock
+        append_row(self.runner.out / f"runs__{self.dataset_key}.jsonl", row)
+
+
+class RunSink:
+    """The same outputs recorded into an open run unit (``--study``); see the module docstring."""
+
+    RECORD = {"run_manifest.json": "manifest", "history.json": "history"}
+
+    def __init__(self, run: Any) -> None:
+        self.run = run
+
+    def json(self, name: str, obj: Any) -> None:
+        if name == "metrics.json":
+            self.run.log_record("metrics", records.ordered(obj))
+            self.run.log_final(records.numeric(obj))
+            return
+        self.run.log_record(self.RECORD.get(name, name.removesuffix(".json")), records.ordered(obj))
+        if name == "history.json":
+            records.log_curves(self.run, obj)
+
+    def jsonl(self, name: str, rows: list) -> None:
+        self.run.log_records(name.removesuffix(".jsonl"), [records.ordered(r) for r in rows])
+
+    def torch(self, name: str, obj: Any) -> None:
+        self.run.save_state(name.removesuffix(".pt"), records.storable(to_cpu(obj)))
+
+    def row(self, row: dict) -> None:
+        self.run.log_record("row", records.ordered(row))
+
+
 class Runner:
-    def __init__(self, cfg: dict[str, Any], out_root: Path) -> None:
+    def __init__(self, cfg: dict[str, Any], out_root: Path, study: str | None = None) -> None:
         self.cfg = cfg
+        self.study = study
         self.exp = cfg["experiment"]
         self.out = out_root / self.exp
         self.out.mkdir(parents=True, exist_ok=True)
@@ -500,10 +561,35 @@ class Runner:
     def arms(self):
         return self.cfg.get("arms") or [None]
 
-    def finish(self, *, ds, seed, cond_label, cond, data, model, store, archive, metrics, history, events, components, budgets, maintenance, model_desc, extra_files=None, prediction_adapter=None, binary_files=None, optimizer=None, adapter_optimizer_state=None, optimizer_checkpoint_epoch=None):
+    def unit_key(self, ds, cond_label, seed):
+        return records.key(self.study, self.exp, self.dataset_key(ds), cond_label, f"s{seed}")
+
+    def run_config(self, ds, seed, cond):
+        return {"experiment": self.exp, "dataset": ds, "seed": seed, "condition": cond, "config": self.cfg}
+
+    def recorded(self, key, run_cfg) -> bool:
+        """True (and say so) when the unit is complete with this config; ConfigMismatchError for another config."""
+        info = resolve_unit(key, config=records.jsonable(run_cfg))
+        if info is not None:
+            print(f"[recorded] {key.run_id} is complete; not written again", flush=True)
+        return info is not None
+
+    def finish(self, *, ds, seed, cond_label, cond, run=None, **kw):
+        """Write one run's outputs: files and a shard row, or (``--study``) one unit, opened here unless ``run`` is given."""
+        if self.study is None:
+            return self._finish(FileSink(self, self.out / self.dataset_key(ds) / cond_label / f"s{seed}", self.dataset_key(ds)),
+                                ds=ds, seed=seed, cond_label=cond_label, cond=cond, **kw)
+        if run is not None:
+            return self._finish(RunSink(run), ds=ds, seed=seed, cond_label=cond_label, cond=cond, **kw)
+        key, run_cfg = self.unit_key(ds, cond_label, seed), self.run_config(ds, seed, cond)
+        if self.recorded(key, run_cfg):
+            return
+        with open_run(key, config=records.jsonable(run_cfg)) as unit:
+            self._finish(RunSink(unit), ds=ds, seed=seed, cond_label=cond_label, cond=cond, **kw)
+
+    def _finish(self, sink, *, ds, seed, cond_label, cond, data, model, store, archive, metrics, history, events, components, budgets, maintenance, model_desc, extra_files=None, prediction_adapter=None, binary_files=None, optimizer=None, adapter_optimizer_state=None, optimizer_checkpoint_epoch=None):
         dataset_key = self.dataset_key(ds)
-        run_dir = self.out / dataset_key / cond_label / f"s{seed}"
-        run_cfg = {"experiment": self.exp, "dataset": ds, "seed": seed, "condition": cond, "config": self.cfg}
+        run_cfg = self.run_config(ds, seed, cond)
         run_id = f"{self.exp}-{dataset_key}-{cond_label}-s{seed}-{config_id(run_cfg)[:8]}"
         man = build_manifest(
             run_id=run_id, repo=REPO, cfg=run_cfg, data_desc=data.describe(), components=components, budgets=budgets,
@@ -514,14 +600,14 @@ class Runner:
         man["run"]["source_snapshot"] = str(self.source_path)
         man["run"]["device"] = str(model.cases.device)
         man["run"]["deterministic"] = torch.are_deterministic_algorithms_enabled()
-        write_json(run_dir / "run_manifest.json", man)
-        write_json(run_dir / "metrics.json", metrics)
-        write_json(run_dir / "history.json", history)
-        write_jsonl(run_dir / "case_statistics.jsonl", [] if store is None else case_statistics_rows(model, store, archive or CaseArchive()))
-        write_jsonl(run_dir / "case_maintenance.jsonl", events or [])
-        write_jsonl(run_dir / "retrieval_events.jsonl", retrieval_events(model, data.X_test, data.y_test, stream="test", run_id=run_id, adapter=prediction_adapter, query_nominal=encoded_queries(prediction_adapter, data, "test")))
+        sink.json("run_manifest.json", man)
+        sink.json("metrics.json", metrics)
+        sink.json("history.json", history)
+        sink.jsonl("case_statistics.jsonl", [] if store is None else case_statistics_rows(model, store, archive or CaseArchive()))
+        sink.jsonl("case_maintenance.jsonl", events or [])
+        sink.jsonl("retrieval_events.jsonl", retrieval_events(model, data.X_test, data.y_test, stream="test", run_id=run_id, adapter=prediction_adapter, query_nominal=encoded_queries(prediction_adapter, data, "test")))
         # CPU tensors only, so accelerator runs reload anywhere (a no-op on CPU).
-        torch.save(to_cpu({"model_state": model.state_dict(), "active_case_count": model.case_count(),
+        sink.torch("checkpoint.pt", {"model_state": model.state_dict(), "active_case_count": model.case_count(),
                     "case_statistics": None if store is None else store.state_dict(),
                     "archive": None if archive is None else archive.state_dict(),
                     "adapter_state": None if prediction_adapter is None else prediction_adapter.state_dict(),
@@ -531,9 +617,10 @@ class Runner:
                     "requires_grad": {n: p.requires_grad for n, p in model.named_parameters()},
                     "adapter_requires_grad": None if prediction_adapter is None else
                         {n: p.requires_grad for n, p in prediction_adapter.named_parameters()},
-                    "model_description": model_desc}), run_dir / "checkpoint.pt")
+                    "model_description": model_desc})
         data_path = self.out / dataset_key / f"data_snapshot_s{seed}.pt"
         if not data_path.exists():
+            data_path.parent.mkdir(parents=True, exist_ok=True)  # recorded runs create no run directory
             snapshot = {name: getattr(data, name) for name in
                         ("X_train", "y_train", "X_val", "y_val", "X_test", "y_test",
                          "X_maint", "y_maint", "y_scale", "meta", "nominal_train", "nominal_val", "nominal_test", "nominal_maint")}
@@ -541,14 +628,13 @@ class Runner:
                              for name in ("case_truth", "test_groups")})
             torch.save(to_cpu(snapshot), data_path)
         for name, obj in (extra_files or {}).items():
-            write_json(run_dir / name, obj)
+            sink.json(name, obj)
         if getattr(prediction_adapter, "nominal_schema", None) is not None:
-            write_json(run_dir / "adapter_nominal_schema.json", prediction_adapter.nominal_schema.state_dict())
+            sink.json("adapter_nominal_schema.json", prediction_adapter.nominal_schema.state_dict())
         for name, obj in (binary_files or {}).items():
-            torch.save(to_cpu(obj), run_dir / name)
+            sink.torch(name, obj)
         row = {"run_id": run_id, "experiment": self.exp, "dataset": dataset_key, "dataset_name": ds["name"], "task_type": data.task_type, "seed": seed, "condition": cond_label, **{k: v for k, v in cond.items() if not isinstance(v, (dict, list))}, **{k: v for k, v in metrics.items() if not isinstance(v, (dict, list))}}
-        # one shard per dataset; parallel jobs (one per dataset and seed) share it, so append under a lock
-        append_row(self.out / f"runs__{dataset_key}.jsonl", row)
+        sink.row(row)
         keys = ("test_accuracy_pre", "test_accuracy_post", "test_rmse_pre", "test_accuracy_rare", "n_cases")
         print(f"[done] {run_id} " + " ".join(f"{k}={metrics[k]:.4f}" for k in keys if isinstance(metrics.get(k), (int, float))), flush=True)
 
@@ -556,8 +642,6 @@ class Runner:
 
     def run_legacy_reference(self, ds, seed):
         """Phase 0: the maintained NN-kNN trainer (current behavior) on the same splits."""
-        from model.nnknn_model import train_model
-
         data = self.data_for(ds, seed)
         if data.task_type == "classification":
             from model.classification_workflow import make_classification_cfg
@@ -567,17 +651,32 @@ class Runner:
             from model.regression_workflow import make_regression_cfg
 
             lcfg = make_regression_cfg({**self.cfg["legacy"].get("overrides", {}), **self.cfg["legacy"]["regression_overrides"]})
-        run_dir = self.out / ds["name"] / "legacy" / f"s{seed}"
-        run_dir.mkdir(parents=True, exist_ok=True)
-        lcfg["checkpoint_path"] = str(run_dir / "legacy_best.pth")
+        cond = {"variant": "maintained_train_model"}
+        if self.study is None:
+            run_dir = self.out / ds["name"] / "legacy" / f"s{seed}"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            lcfg["checkpoint_path"] = str(run_dir / "legacy_best.pth")
+            return self._legacy_reference(ds, seed, data, lcfg, cond, None)
+        # recorded: train_model writes no checkpoint file; it records its curves and best/final states into the
+        # unit and can resume an interrupted training from the unit's resume checkpoint
+        key, run_cfg = self.unit_key(ds, "legacy", seed), self.run_config(ds, seed, cond)
+        if self.recorded(key, run_cfg):
+            return None
+        with open_run(key, config=records.jsonable(run_cfg)) as run:
+            self._legacy_reference(ds, seed, data, lcfg, cond, run)
+
+    def _legacy_reference(self, ds, seed, data, lcfg, cond, run):
+        from model.nnknn_model import train_model
+
         torch.manual_seed(seed)
         np.random.seed(seed)
         t0 = time.time()
-        _, _, model = train_model(data.X_train, data.y_train, data.X_val, data.y_val, None, lcfg)
+        tracking = {} if run is None else {"run": run, "resumable": True}
+        _, _, model = train_model(data.X_train, data.y_train, data.X_val, data.y_val, None, lcfg, **tracking)
         m = test_metrics(model, data)
         m["train_seconds"] = time.time() - t0
         m["n_cases"] = model.case_count()
-        self.finish(ds=ds, seed=seed, cond_label="legacy", cond={"variant": "maintained_train_model"}, data=data, model=model, store=None, archive=None, metrics=m, history=[], events=[],
+        self.finish(ds=ds, seed=seed, cond_label="legacy", cond=cond, run=run, data=data, model=model, store=None, archive=None, metrics=m, history=[], events=[],
                     components={"retrieve": "maintained core", "reuse_or_adapter": "off", "revise": "off", "retain": "none (full memory)", "mcb": "off", "component_synchronization": "off"},
                     budgets={"case_capacity": model.case_count(), "training_epochs_max": lcfg.get("training_epochs")}, maintenance={"policy": "none"}, model_desc={"baseline_or_nnknn_variant": "legacy maintained train_model", "cfg": lcfg})
 
@@ -823,10 +922,15 @@ class Runner:
 
         data = self.data_for(ds, seed)
         base, cc, tr = self.trained_core(data, seed)
-        initial = self.out / ds["name"] / f"starting_checkpoint_s{seed}.pt"
-        initial.parent.mkdir(parents=True, exist_ok=True)
-        torch.save(to_cpu({"model_state": base.state_dict(), "optimizer_state": tr.optimizer.state_dict(),
-                           "core": cc.__dict__}), initial)
+        starting = {"model_state": base.state_dict(), "optimizer_state": tr.optimizer.state_dict(), "core": cc.__dict__}
+        if self.study is None:
+            initial = self.out / ds["name"] / f"starting_checkpoint_s{seed}.pt"
+            initial.parent.mkdir(parents=True, exist_ok=True)
+            torch.save(to_cpu(starting), initial)
+            starting_files = {}
+        else:  # recorded: every treatment unit keeps the starting weights as its named state starting_checkpoint
+            initial = "weights/starting_checkpoint.pt"
+            starting_files = {"starting_checkpoint.pt": starting}
         budget = self.cfg["retraining"]
         for kspec in self.cfg["K"]:
             K = resolve_K(kspec, base.case_count())
@@ -895,7 +999,8 @@ class Runner:
                                          "allowed_loss_increase": rcfg.allowed_loss_increase},
                             model_desc={"core": cc.__dict__},
                             extra_files={"maintenance_summary.json": res["summary"],
-                                         "maintenance_scoring_trace.json": res.get("scoring_trace", [])})
+                                         "maintenance_scoring_trace.json": res.get("scoring_trace", [])},
+                            binary_files=starting_files)
 
     def run_sync(self, ds, seed):
         for cond in self.cfg["conditions"]:
@@ -1123,14 +1228,22 @@ def main() -> None:
     ap.add_argument("--out", default=str(REPO / "results" / "t1_pi20260920"))
     ap.add_argument("--only-dataset", default=None)
     ap.add_argument("--seeds", type=int, nargs="*", default=None)
+    ap.add_argument("--study", default=None,
+                    help="record every run as a unit under NN-KNN/runs/t1/<study>/<experiment>/ (or $NNKNN_RUNS) "
+                         "instead of writing per-run files and shard rows; off by default")
     args = ap.parse_args()
+    if args.study is not None:
+        try:  # the run root and the study name, before any data is loaded
+            records.check_study(args.study)
+        except (FileNotFoundError, ValueError) as exc:
+            ap.error(f"--study: {exc}")
     if os.environ.get("NNKNN_DETERMINISTIC") == "1":
         os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")  # required by deterministic cuBLAS
         torch.use_deterministic_algorithms(True)
     cfg = load_config(Path(args.config))
     if args.seeds is not None:
         cfg["seeds"] = args.seeds
-    runner = Runner(cfg, Path(args.out))
+    runner = Runner(cfg, Path(args.out), **({} if args.study is None else {"study": args.study}))
     fn = getattr(runner, f"run_{cfg['type']}")
     seeds = args.seeds if args.seeds else cfg["seeds"]
     for ds in cfg["datasets"]:
