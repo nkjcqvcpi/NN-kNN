@@ -111,8 +111,10 @@ def test_crashed_run_fails_after_the_settle_window(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError), contextlib.redirect_stdout(io.StringIO()):
         runner.run_encoder_ablation(cfg["datasets"][0], 40)
     root = tmp_path / "runs" / "t1" / STUDY / EXP
-    assert audit_units(root, settle_seconds=3600)["ok"]  # recent: may still be writing
-    report = audit_units(root, settle_seconds=0)
+    # "now" from the file system's own clock: an NFS server's mtimes can run minutes ahead of time.time()
+    written = max(f.stat().st_mtime for f in root.rglob("events.out.tfevents.*"))
+    assert audit_units(root, settle_seconds=3600, now=written)["ok"]  # recent: may still be writing
+    report = audit_units(root, settle_seconds=0, now=written + 1)
     assert not report["ok"] and [i["status"] for i in report["incomplete_run_dirs"]] == ["failed"]
 
 
