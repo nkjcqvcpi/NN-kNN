@@ -5,6 +5,7 @@ import copy
 import os
 import random
 import re
+from pathlib import Path
 from typing import Any, Callable, ContextManager, Mapping, MutableMapping
 
 import matplotlib.pyplot as plt
@@ -16,7 +17,7 @@ from sklearn.model_selection import KFold
 
 from datasets.reg_data import DATATYPES, Reg_data, standardize_tensor
 from model.device_utils import resolve_runtime_device
-from model.common.tracking import NullRun
+from model.common.tracking import NullRun, RunData
 from model.nnknn_model import default_args, train_model
 
 
@@ -703,6 +704,24 @@ def _normalize_benchmark_method(method: str) -> str:
     return _BASELINE_METHOD_ALIASES[method_normalized]
 
 
+def _checkpoint_path_for_run(
+    checkpoint_path: str,
+    *,
+    dataset_name: str,
+    run_label: str,
+) -> str:
+    """Purpose: create unique checkpoint filenames for repeated experiments."""
+    base = Path(checkpoint_path)
+    parent = base.parent if str(base.parent) not in {"", "."} else Path("checkpoints")
+    parent.mkdir(parents=True, exist_ok=True)
+
+    safe_dataset = re.sub(r"[^A-Za-z0-9._-]+", "_", dataset_name)
+    safe_label = re.sub(r"[^A-Za-z0-9._-]+", "_", run_label)
+    suffix = base.suffix or ".pth"
+    stem = base.stem if base.suffix else base.name
+    return str(parent / f"{stem}_{safe_dataset}_{safe_label}{suffix}")
+
+
 def _model_device(model: torch.nn.Module) -> torch.device:
     """Purpose: infer the device currently used by a trained model."""
     try:
@@ -897,17 +916,25 @@ def train_nnknn_regression_state(
 
     Input:
         state: Workflow state containing `X_train`, `X_val`, `y_train_norm`, and `y_val_norm`.
-        cfg: Training config (`checkpoint_path` is accepted and ignored).
+        cfg: Training config.
         feature_extractor: Optional feature extractor passed to `train_model`.
-        checkpoint_label: Accepted and ignored (no checkpoint files are written).
+        checkpoint_label: Optional suffix used to create a unique checkpoint path.
         clone_feature_extractor: When True, deep-copies the feature extractor per run.
-        run, resumable: Passed to `train_model`, which records the training and its named
-            states in `run` (default `NullRun`: nothing is recorded).
+        run, resumable: Passed to `train_model` (default `NullRun`: nothing is recorded and
+            `train_model` writes its checkpoint files). With a real run the training, its named
+            states and weights go to the run, no checkpoint file is written and
+            `checkpoint_label` is not used.
 
     Output:
         A new workflow state containing the trained model, best metric, and runtime config.
     """
     cfg_run = copy.deepcopy(dict(cfg))
+    if checkpoint_label is not None and isinstance(run, NullRun):
+        cfg_run["checkpoint_path"] = _checkpoint_path_for_run(
+            cfg_run.get("checkpoint_path", "nnknn_regression_best.pth"),
+            dataset_name=state.get("display_name", "dataset"),
+            run_label=checkpoint_label,
+        )
 
     run_feature_extractor = (
         _clone_feature_extractor(feature_extractor) if clone_feature_extractor else feature_extractor
@@ -1543,13 +1570,13 @@ def run_nnknn_regression_workflow(
         standardize: `True`, `False`, or `"auto"` to standardize only real datasets.
         glocal_init_from_true: Whether to initialize glocal weights from true regime weights.
         glocal_init_alpha: Strength of that glocal-weight initialization blend.
-        checkpoint_label: Accepted and ignored (no checkpoint files are written).
+        checkpoint_label: Optional suffix used to create a unique checkpoint file.
         include_eval: When True, computes post-adaptation metrics after training.
         include_pre_post: When True, also computes pre/post adaptation metrics.
         show_plots: When True, evaluation helpers render figures.
         print_metrics: When True, evaluation helpers print RMSE summaries.
         run, resumable: Passed to `train_model` through `train_nnknn_regression_state`
-            (default `NullRun`: nothing is recorded).
+            (default `NullRun`: nothing is recorded, checkpoint files as before).
 
     Output:
         A complete workflow state ready for notebook use or repeated-run aggregation.
@@ -1782,14 +1809,17 @@ def run_regression_benchmark_methods_on_state(
         methods: Benchmark methods to run. Defaults to every supported method.
         method_cfgs: Optional per-method kwargs, keyed by method name.
         run_seed: Seed used to make each method deterministic on this split.
-        checkpoint_label_prefix: Accepted and ignored.
+        checkpoint_label_prefix: Optional prefix for per-run NN-kNN checkpoint files.
         glocal_init_from_true: Whether to initialize glocal weights from true regime weights.
         glocal_init_alpha: Strength of that glocal-weight initialization blend.
-        unit_run: Optional `unit_run(state, method)` returning a context manager per method that
-            yields a `tracking.Run` recording that method (`rec/row`, the run record of
+        unit_run: Optional, off by default (then everything is as before run tracking). A
+            `unit_run(state, method)` returns a context manager per method that yields either a
+            `tracking.Run` to record that method in (`rec/row`, the run record of
             `_build_run_record`; finals `rmse_raw`, `rmse_model_space`, `rmse_z`, `best_metric`;
-            array `y_pred_z`; NN-kNN training through `train_model`, resumable), or None when the
-            unit is complete: that method is then skipped and has no entry in the result.
+            array `y_pred_z`; NN-kNN training through `train_model`, resumable, without checkpoint
+            files), or the `tracking.RunData` of the method's complete unit: the method is then not
+            rerun and its entry is the recorded values (`recorded_unit` = the unit path, no model),
+            so the caller's rows and summaries are the same as when it ran.
 
     Output:
         A dictionary mapping canonical method names to method-specific workflow artifacts.
@@ -1810,14 +1840,32 @@ def run_regression_benchmark_methods_on_state(
     for method in canonical_methods:
         scope = unit_run(state, method) if unit_run is not None else contextlib.nullcontext(NullRun())
         with scope as run:
-            if run is None:  # complete unit: skipped (every method starts from its own seed)
+            if isinstance(run, RunData):  # complete unit: not rerun (every method starts from its own seed)
+                results[method] = _recorded_regression_artifact(run)
                 continue
+            checkpoint_label = None
+            if checkpoint_label_prefix is not None and isinstance(run, NullRun):
+                checkpoint_label = f"{checkpoint_label_prefix}_{method}"
             results[method] = _run_regression_method(
                 method, state, nnknn_cfg, normalized_method_cfgs, feature_extractor=feature_extractor,
-                run_seed=run_seed, run=run, glocal_init_from_true=glocal_init_from_true,
-                glocal_init_alpha=glocal_init_alpha)
+                run_seed=run_seed, run=run, checkpoint_label=checkpoint_label,
+                glocal_init_from_true=glocal_init_from_true, glocal_init_alpha=glocal_init_alpha)
             _log_regression_unit(run, method, state, results[method])
     return results
+
+
+def _recorded_regression_artifact(data: RunData) -> dict[str, Any]:
+    """The values a complete unit recorded, as the artifact fields `_build_run_record` reads."""
+    row = data.record("row")
+    return {
+        "baseline_name": row["method_label"],
+        "best_metric": row["best_metric"],
+        "standardized_targets": row["standardized_targets"],
+        "rmse_model_space": row["rmse_model_space"],
+        "rmse_raw": row["rmse_raw"],
+        "rmse_z": row["rmse_z"],
+        "recorded_unit": str(data.path),
+    }
 
 
 def _log_regression_unit(run: Any, method: str, state: Mapping[str, Any], artifact: Mapping[str, Any]) -> None:
@@ -1843,6 +1891,7 @@ def _run_regression_method(
     feature_extractor: Any,
     run_seed: int,
     run: Any,
+    checkpoint_label: str | None,
     glocal_init_from_true: bool,
     glocal_init_alpha: float,
 ) -> dict[str, Any]:
@@ -1877,8 +1926,9 @@ def _run_regression_method(
             base_state,
             cfg_run,
             feature_extractor=feature_extractor,
+            checkpoint_label=checkpoint_label,
             run=run,
-            resumable=True,
+            resumable=not isinstance(run, NullRun),
         )
         artifact = evaluate_nnknn_regression_state(
             artifact,
@@ -1937,8 +1987,9 @@ def run_repeated_regression_model_benchmarks(
         dataset_kwargs_map: Optional per-dataset loader/builder arguments.
         glocal_init_from_true: Whether to initialize glocal weights from true synthetic weights.
         glocal_init_alpha: Strength of that glocal-weight initialization blend.
-        unit_run: As in `run_regression_benchmark_methods_on_state` (skipped units have no row
-            and no artifact in the result).
+        unit_run: As in `run_regression_benchmark_methods_on_state`; a complete unit's row is
+            built from its recorded values, so `summary_df` and `runs_df` do not depend on which
+            units ran in this call.
 
     Output:
         A tuple of `(summary_df, run_df, artifacts)` where artifacts are nested as
@@ -2092,8 +2143,7 @@ def run_repeated_regression_model_benchmarks(
                     )
 
     runs_df = pd.DataFrame(run_records)
-    # every unit skipped (unit_run): no rows here, the caller reads them from the event files
-    summary_df = summarize_regression_benchmark_runs(runs_df) if run_records else pd.DataFrame()
+    summary_df = summarize_regression_benchmark_runs(runs_df)
     return summary_df, runs_df, artifacts
 
 

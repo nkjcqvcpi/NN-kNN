@@ -1543,10 +1543,14 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg, *, run=N
         X_val: Validation feature tensor.
         y_val: Validation labels.
         cfg: Configuration object or dict with training hyperparameters.
-            ``cfg["checkpoint_path"]`` is accepted and ignored (deprecated): best states are
-            kept in memory and no file is written outside ``run``.
+            Without a run (the default), the best states go through checkpoint files as
+            before run tracking existed: ``cfg["checkpoint_path"]`` (``nnknn_tmp.pth`` when
+            unset) gets the final state, ``<stem>_retr.pth`` the best stage-1 state and
+            ``<stem>_cdh.pth`` the best stage-2 state (Table 1 and older callers rely on them).
         run: ``tracking.Run`` that records the training (default ``NullRun``: nothing is
-            recorded and the result is the same). Per epoch it logs ``val/loss``,
+            recorded and the checkpoint files above are written). With a real run no file is
+            written outside it, best states stay in memory, and the numbers are the same.
+            Per epoch it logs ``val/loss``,
             ``val/acc`` (classification) or ``val/r2``, and ``train/stage`` at step = global
             epoch (stage-1 epochs, then stage-2 epochs continuing that count); it saves the
             named states ``best_retrieval`` (end of stage 1), ``best_adapter`` (end of stage 2,
@@ -1935,8 +1939,18 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg, *, run=N
 
 
     # -------------------------
-    # Setup (best states stay in memory; cfg["checkpoint_path"] is ignored)
+    # Setup + checkpoints (checkpoint files only without a run; a run keeps best states in memory)
     # -------------------------
+    record = not isinstance(run, NullRun)
+    if not record:
+        checkpoint_path = cfg.get("checkpoint_path", default_args["checkpoint_path"]) or "nnknn_tmp.pth"
+        if checkpoint_path.endswith(".pth"):
+            retr_ckpt = checkpoint_path.replace(".pth", "_retr.pth")
+            cdh_ckpt  = checkpoint_path.replace(".pth", "_cdh.pth")
+        else:
+            retr_ckpt = checkpoint_path + "_retr.pth"
+            cdh_ckpt  = checkpoint_path + "_cdh.pth"
+
     patience = cfg.get("patience", default_args.get("patience", 20))
     training_epochs = cfg.get("training_epochs", default_args["training_epochs"])
     eps_sigma_multiplier = cfg.get("eps_sigma_multiplier", 0.1)
@@ -1994,7 +2008,7 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg, *, run=N
     best_val_metric = -float("inf")
     patience_counter = 0
     best_epoch = 0
-    best_state = None  # in-memory copy of the best state of the current stage
+    best_state = None  # in-memory copy of the best state of the current stage (with a run)
     s1_epochs = 0  # stage-1 epochs run; stage-2 steps continue from this count
     stage, start_epoch = 1, 0
 
@@ -2072,22 +2086,29 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg, *, run=N
             best_val_metric = val_metric
             best_epoch = epoch
             metric_for_model_select = val_metric
-            best_state = _state_dict_on_cpu(model)
-            print(f"[Stage1] New best (epoch {epoch+1}) Val Metric: {val_metric:.4f} | Val Loss: {val_loss:.4f} — kept in memory")
+            if record:
+                best_state = _state_dict_on_cpu(model)
+                print(f"[Stage1] New best (epoch {epoch+1}) Val Metric: {val_metric:.4f} | Val Loss: {val_loss:.4f} — kept in memory")
+            else:
+                torch.save(model.state_dict(), retr_ckpt)
+                print(f"[Stage1] New best (epoch {epoch+1}) Val Metric: {val_metric:.4f} | Val Loss: {val_loss:.4f} — saved: {retr_ckpt}")
             patience_counter = 0
         else:
             patience_counter += 1
             print(f"[Stage1] No improv. Best so far: {best_val_loss:.4f} (epoch {best_epoch+1})")
             if patience_counter > patience:
                 print("[Stage1] Patience exceeded. Restoring best retrieval model.")
-                model.load_state_dict(best_state)
+                model.load_state_dict(best_state if record else torch.load(retr_ckpt))
                 break
         if resumable and epoch < training_epochs - 1 and run.checkpoint_due(epoch):  # stage 1 continues
             _save_resume(1, epoch, epoch)
 
     if stage == 1:
         # Restore best retrieval model before stage 2
-        if best_state is not None:
+        if not record:
+            if os.path.exists(retr_ckpt):
+                model.load_state_dict(torch.load(retr_ckpt))
+        elif best_state is not None:
             model.load_state_dict(best_state)
             run.save_state("best_retrieval", best_state, step=best_epoch,
                            meta={"val_loss": best_val_loss, "val_metric": best_val_metric})
@@ -2098,6 +2119,9 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg, *, run=N
     # ==========================================================
     if adapter is None or len(adapter_params) == 0:
         print("\n[Stage 2] Skipped: adapter not enabled.")
+        if not record:
+            # final save
+            torch.save(model.state_dict(), checkpoint_path)
     else:
         if stage == 1:
             print(f"\n[Stage 2] Adapter-only training for up to {training_epochs} epochs (patience={patience})")
@@ -2170,25 +2194,35 @@ def train_model(X_train, y_train, X_val, y_val, feature_extractor, cfg, *, run=N
                 best_val_metric = val_metric
                 best_epoch = epoch
                 metric_for_model_select = val_metric
-                best_state = _state_dict_on_cpu(model)
-                print(f"[Stage2] New best (epoch {epoch+1}) Val Metric: {val_metric:.4f} | Val Loss: {val_loss:.4f} — kept in memory")
+                if record:
+                    best_state = _state_dict_on_cpu(model)
+                    print(f"[Stage2] New best (epoch {epoch+1}) Val Metric: {val_metric:.4f} | Val Loss: {val_loss:.4f} — kept in memory")
+                else:
+                    torch.save(model.state_dict(), cdh_ckpt)
+                    print(f"[Stage2] New best (epoch {epoch+1}) Val Metric: {val_metric:.4f} | Val Loss: {val_loss:.4f} — saved: {cdh_ckpt}")
                 patience_counter = 0
             else:
                 patience_counter += 1
                 print(f"[Stage2] No improv. Best so far: {best_val_loss:.4f} (epoch {best_epoch+1})")
                 if patience_counter > patience:
                     print("[Stage2] Patience exceeded. Restoring best adapter model.")
-                    model.load_state_dict(best_state)
+                    model.load_state_dict(best_state if record else torch.load(cdh_ckpt))
                     break
             if resumable and epoch < training_epochs - 1 and run.checkpoint_due(s1_epochs + epoch):  # stage 2 continues
                 _save_resume(2, epoch, s1_epochs + epoch)
 
-        if best_state is not None:
+        if not record:
+            if os.path.exists(cdh_ckpt):
+                model.load_state_dict(torch.load(cdh_ckpt))
+
+            # final save
+            torch.save(model.state_dict(), checkpoint_path)
+        elif best_state is not None:
             model.load_state_dict(best_state)
             run.save_state("best_adapter", best_state, step=s1_epochs + best_epoch,
                            meta={"val_loss": best_val_loss, "val_metric": best_val_metric})
 
-    # final state (where checkpoint_path used to be written)
+    # final state (the run's counterpart of the checkpoint_path file)
     run.save_state("final", model.state_dict())
 
 

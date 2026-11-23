@@ -1,10 +1,12 @@
 """Run tracking at the shared-core call sites (train_retrieval, train_model, workflows, benchmark tools; CPU).
 
 A real run must not change what is computed, and an interrupted and resumed training must equal the
-uninterrupted one bit for bit (result_digest and the state digests of the named states).
+uninterrupted one bit for bit (result_digest and the state digests of the named states). Without a run
+everything stays as before run tracking (checkpoint files, summary files). Table 1 has no run tracking.
 """
 from __future__ import annotations
 
+import contextlib
 import math
 import os
 import random
@@ -32,6 +34,12 @@ def root(tmp_path, monkeypatch):
     for name in ("NNKNN_RESUME", "NNKNN_RESUME_EVERY_SECONDS", "NNKNN_RESUME_EVERY_STEPS"):
         monkeypatch.delenv(name, raising=False)
     return runs
+
+
+@pytest.fixture(autouse=True)
+def work_in_tmp(tmp_path, monkeypatch):
+    """Without a run, train_model and the workflows write checkpoint files relative to the working directory."""
+    monkeypatch.chdir(tmp_path)
 
 
 @pytest.fixture(autouse=True)
@@ -199,13 +207,16 @@ def _train(task, run=None, cfg_updates=None, setup_seed=None, nan_val=False, ran
 
 
 @pytest.mark.parametrize("task", ["classification", "regression"])
-def test_train_model_with_a_run_computes_the_same_and_keeps_named_states(root, task, tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)  # nothing may be written outside the run
-    before = set(tmp_path.iterdir())
-    m0, plain = _train(task)
+def test_train_model_with_a_run_computes_the_same_and_keeps_named_states(root, task, tmp_path):
+    m0, plain = _train(task)  # no run: the checkpoint files of cfg["checkpoint_path"] (default nnknn_tmp.pth)
+    files = {"nnknn_tmp.pth", "nnknn_tmp_retr.pth"} | ({"nnknn_tmp_cdh.pth"} if task == "regression" else set())
+    assert {p.name for p in tmp_path.glob("*.pth")} == files
+    saved = torch.load(tmp_path / "nnknn_tmp.pth")
+    assert saved.keys() == plain.state_dict().keys() and all(torch.equal(saved[k], v) for k, v in plain.state_dict().items())
+    before = {p: p.stat().st_mtime_ns for p in tmp_path.iterdir()}
     with open_unit(f"{task}-tm") as run:
         m1, tracked = _train(task, run=run)
-    assert set(tmp_path.iterdir()) == before
+    assert {p: p.stat().st_mtime_ns for p in tmp_path.iterdir()} == before  # nothing written outside the run
     assert m0 == m1 and sd_digest(plain) == sd_digest(tracked)
     data = tr.load_run(root / "core" / "s2" / f"{task}-tm")
     states = data.states()
@@ -365,119 +376,124 @@ def test_train_model_with_nan_validation_completes_its_run(root):
 
 # ---------------------------------------------------------------- workflows and tools
 
-def test_classification_tool_records_units_skips_complete_ones_and_matches_the_workflow(root, capsys):
-    from model.classification_workflow import make_classification_cfg, run_repeated_classification_model_benchmarks
-    from tools.run_classification_benchmarks import record_summary_report, run_benchmarks
-    from tools.table1_nnknn_kfold import read_frame
+def _summary_folder(parent):
+    (folder,) = parent.iterdir()
+    return folder
 
-    cfg = make_classification_cfg({"training_epochs": 3, "batch_size": 16})
-    kw = dict(methods=["nnknn", "knn", "mlp"], runs=2, seed=3)
-    summary, runs_df, log = run_benchmarks(["iris"], cfg, study="cls", **kw)
-    assert [u["source"] for u in log] == ["fresh"] * 6
-    _, plain_runs, _ = run_repeated_classification_model_benchmarks(["iris"], cfg, methods=kw["methods"], num_runs=2, base_seed=3)
-    assert runs_df.to_dict("records") == plain_runs.to_dict("records")
+
+def test_classification_cli_summary_files_are_unchanged_and_a_study_also_records_units(root, tmp_path, capsys):
+    import json
+
+    from tools.run_classification_benchmarks import main
+
+    args = ["iris", "--methods", "nnknn", "knn", "mlp", "--runs", "2", "--epochs", "3", "--batch-size", "16",
+            "--seed", "3"]
+    main(args + ["--output-dir", str(tmp_path / "plain")])
+    plain = _summary_folder(tmp_path / "plain")
+    assert sorted(p.name for p in plain.iterdir()) == ["manifest.json", "runs.csv", "summary.csv"]
+    ckpt = sorted(p.name for p in (tmp_path / "checkpoints").iterdir())  # as before run tracking
+    assert ckpt == sorted(f"nnknn_classification_best_iris_holdout_{i}_nnknn{s}.pth" for i in (1, 2) for s in ("", "_retr"))
+    ckpt_state = {p: p.stat().st_mtime_ns for p in (tmp_path / "checkpoints").iterdir()}
+    capsys.readouterr()
+
+    main(args + ["--output-dir", str(tmp_path / "s1"), "--study", "cls"])  # records the units
+    assert capsys.readouterr().out.count(": fresh") == 6
+    main(args + ["--output-dir", str(tmp_path / "s2"), "--study", "cls"])  # every unit complete: nothing trains
+    assert capsys.readouterr().out.count(": complete") == 6
+    assert {p: p.stat().st_mtime_ns for p in (tmp_path / "checkpoints").iterdir()} == ckpt_state
+    manifest = json.loads((plain / "manifest.json").read_text())
+    for d in ("s1", "s2"):
+        folder = _summary_folder(tmp_path / d)
+        for name in ("summary.csv", "runs.csv"):
+            assert (folder / name).read_bytes() == (plain / name).read_bytes()
+        other = json.loads((folder / "manifest.json").read_text())
+        assert other.pop("study") == "cls" and other.pop("created_at_utc") and other == {
+            k: v for k, v in manifest.items() if k != "created_at_utc"}
+
     unit = root / "core" / "cls" / "iris" / "nnknn" / "holdout-1"
     data = tr.load_run(unit)
     assert set(data.states()) == {"best_retrieval", "final"} and len(data.series("val/acc")) == 3
     assert data.array("predictions").shape == (30,)
-
-    summary2, runs2, log2 = run_benchmarks(["iris"], cfg, study="cls", **kw)
-    assert [u["source"] for u in log2] == ["complete"] * 6
-    assert runs2.equals(runs_df) and summary2.equals(summary)
-    report = record_summary_report(summary, runs_df, study="cls", manifest={"x": 1}, units=log2)
-    rep = tr.load_run(report)
-    assert rep.records("summary") == summary.to_dict("records")
-    assert read_frame(rep, "runs").equals(runs_df) and list(read_frame(rep, "summary").columns) == list(summary.columns)
-    assert [u["result_digest"] for u in rep.record("units")] == [tr.run_status(u["path"]).result_digest for u in log2]
     with pytest.raises(tr.ConfigMismatchError):
-        run_benchmarks(["iris"], make_classification_cfg({"training_epochs": 4, "batch_size": 16}), study="cls", **kw)
-    _, runs3, log3 = run_benchmarks(["iris"], cfg, study="cls", **dict(kw, runs=3))  # a holdout study grows
-    assert [u["source"] for u in log3] == ["complete"] * 6 + ["fresh"] * 3
-    assert runs3.iloc[:6].equals(runs_df)
+        main(["iris", "--methods", "nnknn", "--runs", "2", "--epochs", "4", "--batch-size", "16", "--seed", "3",
+              "--output-dir", str(tmp_path / "bad"), "--study", "cls"])
+    capsys.readouterr()
+    main(args[:6] + ["3"] + args[7:] + ["--output-dir", str(tmp_path / "s3"), "--study", "cls"])  # a holdout study grows
+    out = capsys.readouterr().out
+    assert out.count(": complete") == 6 and out.count(": fresh") == 3
+    grown = (_summary_folder(tmp_path / "s3") / "runs.csv").read_text().splitlines()
+    assert grown[:7] == (plain / "runs.csv").read_text().splitlines()
 
 
-def test_image_units_reuse_the_classifier_stored_by_a_skipped_unit(root, monkeypatch):
+def test_image_units_reuse_the_classifier_stored_by_a_complete_unit(root, monkeypatch):
     from datasets.paths import datasets_root
     import model.classification_workflow as cw
-    from model.classification_workflow import make_classification_cfg
-    from tools.run_classification_benchmarks import run_benchmarks
+    from model.classification_workflow import make_classification_cfg, run_repeated_classification_model_benchmarks
+    from tools.run_classification_benchmarks import study_unit_run
 
     if not (datasets_root() / "MNIST" / "raw" / "train-images-idx3-ubyte").is_file():
         pytest.skip("MNIST is not in the datasets directory")
     cfg = make_classification_cfg({"training_epochs": 1, "batch_size": 16})
-    common = dict(runs=1, seed=4, method_cfgs={"convnet": {"epochs": 2, "batch_size": 32}},
+    common = dict(method_cfgs={"convnet": {"epochs": 2, "batch_size": 32}},
                   dataset_kwargs_map={"mnist": {"max_train_samples": 120, "max_eval_samples": 40, "download": False}})
+
+    def bench(study, methods):
+        log: list = []
+        unit_run = None if study is None else study_unit_run(study, cfg, mode="holdout", runs=1, seed=4, log=log, **common)
+        _, runs_df, art = run_repeated_classification_model_benchmarks(["mnist"], cfg, methods=methods, num_runs=1,
+                                                                       base_seed=4, unit_run=unit_run, **common)
+        return runs_df, art, log
+
     methods = ["nnknn_conv_frozen", "convnet", "knn_conv_frozen"]
-    _, ref, _ = run_benchmarks(["mnist"], cfg, study="imgref", methods=methods, **common)
+    plain, _, _ = bench(None, methods)
+    ref, _, _ = bench("imgref", methods)
+    assert ref.equals(plain)
     owner = root / "core" / "imgref" / "mnist" / "nnknn_conv_frozen" / "official-1"
     assert set(tr.load_run(owner).states()) == {"best_retrieval", "final", "classifier"}
 
-    run_benchmarks(["mnist"], cfg, study="imgcut", methods=methods[:1], **common)
+    bench("imgcut", methods[:1])
     calls, train = [], cw._train_torch_classifier
     monkeypatch.setattr(cw, "_train_torch_classifier", lambda *a, **k: calls.append(1) or train(*a, **k))
-    _, cut, log = run_benchmarks(["mnist"], cfg, study="imgcut", methods=methods, **common)
+    cut, art, log = bench("imgcut", methods)
     assert [u["source"] for u in log] == ["complete", "fresh", "fresh"] and calls == []  # loaded, not retrained
-    assert cut.to_dict("records") == ref.to_dict("records")
+    recorded = art["mnist"]["nnknn_conv_frozen"][0]["recorded_unit"]
+    assert cut.equals(plain) and recorded == str(root / "core" / "imgcut" / "mnist" / "nnknn_conv_frozen" / "official-1")
     for method in methods[1:]:
         a, b = (tr.load_run(root / "core" / s / "mnist" / method / "official-1") for s in ("imgref", "imgcut"))
         assert np.array_equal(a.array("predictions"), b.array("predictions"))
 
 
-def test_table1_study_skips_complete_units_resumes_incomplete_ones_and_reports(root, monkeypatch):
-    from tools.table1_nnknn_kfold import read_table1_report, record_table1_report, run_table1_kfold
+def test_regression_benchmark_units_are_opt_in_and_complete_units_give_the_same_rows(root, tmp_path):
+    from model.regression_workflow import make_regression_cfg, run_repeated_regression_model_benchmarks
 
-    kw = dict(num_folds=2, base_seed=5, nnknn_base_cfg={"training_epochs": 3, "patience": 100},
-              baseline_method_cfgs={"mlp": {"epochs": 2}, "mlkr_knn": {"max_iter": 3}})
-    log: list = []
-    summary, runs_df, art = run_table1_kfold(["diabets"], study="t1ref", unit_log=log, **kw)
-    assert len(log) == 2 * 4 + 2 * 3 and {u["source"] for u in log} == {"fresh"}
-    assert len(runs_df) == 2 * 4 * 2 + 2 * 3
-    unit = root / "core" / "t1ref" / "diabets" / "softmax" / "f1"
-    data = tr.load_run(unit)
-    assert set(data.states()) == {"best_retrieval", "best_adapter", "final"}
-    assert len(data.records("rows")) == 2 and "rmse_post_raw" in data.final()
+    cfg = make_regression_cfg({"task_type": "regression", "training_epochs": 2, "top_k": 8, "batch_size": 16,
+                               "checkpoint_path": "reg.pth"})
+    kw = dict(methods=["nnknn", "knn_x", "mlp"], method_cfgs={"mlp": {"epochs": 3}}, num_runs=2, mode="kfold",
+              base_seed=7, dataset_kwargs_map={"linear_regression": {"n": 80, "d": 5}})
+    plain_summary, plain_runs, _ = run_repeated_regression_model_benchmarks(["linear_regression"], cfg, **kw)
+    ckpt = {p.name: p.stat().st_mtime_ns for p in (tmp_path / "checkpoints").iterdir()}  # as before run tracking
+    assert sorted(ckpt) == sorted(f"reg_linear_regression_fold_{i}_nnknn{s}.pth" for i in (1, 2) for s in ("", "_retr"))
 
-    plain_summary, plain_runs, _ = run_table1_kfold(["diabets"], **kw)  # untracked: same columns, same order
-    assert list(runs_df.columns) == list(plain_runs.columns) and list(summary.columns) == list(plain_summary.columns)
-    baseline_rows = runs_df["source"] == "baseline"
-    assert runs_df[baseline_rows].equals(plain_runs[baseline_rows])
+    sources: list = []
 
-    log2: list = []  # everything complete: nothing trains, the tables are read back unchanged
-    summary2, runs2, art2 = run_table1_kfold(["diabets"], study="t1ref", unit_log=log2, **kw)
-    assert {u["source"] for u in log2} == {"complete"}
-    assert runs2.equals(runs_df) and summary2.equals(summary)
-    fresh, skipped = art["nnknn"]["diabets"]["softmax"][0], art2["nnknn"]["diabets"]["softmax"][0]
-    assert "model" not in skipped  # not rebuilt unless asked
-    for k in ("rmse_pre_raw", "rmse_post_raw", "rmse_pre_model_space", "rmse_post_model_space", "best_metric"):
-        assert skipped[k] == fresh[k]
-    assert all(torch.equal(skipped[k], fresh[k]) for k in ("y_pred_pre_z", "y_pred_post_z"))
-    _, _, art3 = run_table1_kfold(["diabets"], study="t1ref", run_baselines=False, rebuild_skipped=True, **kw)
-    assert torch.equal(art3["nnknn"]["diabets"]["softmax"][0]["model"].biases, fresh["model"].biases.cpu())
+    @contextlib.contextmanager
+    def unit_run(state, method):
+        key, config = tr.RunKey("core", "reg", (method, f"f{state['fold']}")), {"method": method}
+        if tr.resolve_unit(key, config=config) is not None:
+            sources.append("complete")
+            yield tr.load_run(tr.unit_dir(key))
+            return
+        with tr.open_run(key, config=config) as run:
+            sources.append("fresh")
+            yield run
 
-    monkeypatch.setenv("NNKNN_RESUME_EVERY_STEPS", "1")  # crash the third NN-kNN unit in stage 2
-    calls = {"n": 0}
-    plain_log_step = tr.Run.log_step
-
-    def crash_third(self, step, values):
-        calls["n"] += step == 0
-        if calls["n"] == 3 and step == 4 and not calls.get("done"):
-            calls["done"] = True
-            raise Crash("interrupted")
-        return plain_log_step(self, step, values)
-
-    monkeypatch.setattr(tr.Run, "log_step", crash_third)
-    with pytest.raises(Crash):
-        run_table1_kfold(["diabets"], study="t1cut", run_baselines=False, **kw)
-    log3: list = []
-    summary3, runs3, _ = run_table1_kfold(["diabets"], study="t1cut", run_baselines=False, unit_log=log3, **kw)
-    assert [u["source"] for u in log3] == ["complete", "complete", "resumed"] + ["fresh"] * 5
-    nn = runs_df[runs_df["source"] == "nnknn"].reset_index(drop=True)
-    assert runs3.to_dict("records") == nn[list(runs3.columns)].to_dict("records")
-    for u_ref, u_cut in zip(log[:8], log3):
-        assert tr.run_status(u_ref["path"]).result_digest == tr.run_status(u_cut["path"]).result_digest
-
-    report = record_table1_report(summary, runs_df, study="t1ref", metadata={"note": "test"}, units=log)
-    tables = read_table1_report(report)
-    assert tables["summary_long"]["rmse_raw_table"].tolist() == summary["rmse_raw_table"].tolist()
-    assert list(tables["runs_long"].columns) == list(runs_df.columns) and tables["summary_long"].equals(summary)
-    assert len(tables["transposed"]) == len(set(summary["entry_label"])) and tables["transposed"].columns[0] == "Model"
+    first = run_repeated_regression_model_benchmarks(["linear_regression"], cfg, unit_run=unit_run, **kw)
+    second = run_repeated_regression_model_benchmarks(["linear_regression"], cfg, unit_run=unit_run, **kw)
+    assert sources == ["fresh"] * 6 + ["complete"] * 6
+    for summary, runs_df, _ in (first, second):
+        assert runs_df.to_dict("records") == plain_runs.to_dict("records")
+        assert summary.to_dict("records") == plain_summary.to_dict("records")
+    assert {p.name: p.stat().st_mtime_ns for p in (tmp_path / "checkpoints").iterdir()} == ckpt
+    data = tr.load_run(root / "core" / "reg" / "nnknn" / "f1")
+    assert "final" in data.states() and data.record("row") == first[1].to_dict("records")[0]
+    assert second[2]["linear_regression"]["nnknn"][0]["recorded_unit"] == str(data.path)

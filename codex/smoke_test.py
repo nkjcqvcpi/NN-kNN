@@ -41,10 +41,13 @@ def run_import_smoke() -> None:
 def run_training_smoke() -> None:
     from model.regression_workflow import make_regression_cfg, run_single_nnknn_regression_experiment
 
+    Path("checkpoints").mkdir(parents=True, exist_ok=True)
+
     cfg = make_regression_cfg(
         {
             "task_type": "regression",
             "training_epochs": 1,
+            "checkpoint_path": "checkpoints/tmp_codex_smoke.pth",
             "batch_size": 32,
             "top_k": 8,
             "bias_manual_set": True,
@@ -60,6 +63,7 @@ def run_training_smoke() -> None:
         dataset_seed=0,
         split_seed=0,
         standardize=False,
+        checkpoint_label="codex_smoke",
     )
 
     rmse_raw = float(state["rmse_raw"])
@@ -72,9 +76,11 @@ def run_training_smoke() -> None:
 def run_classification_smoke() -> None:
     from model.classification_workflow import make_classification_cfg, run_single_nnknn_classification_experiment
 
+    Path("checkpoints").mkdir(parents=True, exist_ok=True)
     cfg = make_classification_cfg(
         {
             "training_epochs": 1,
+            "checkpoint_path": "checkpoints/tmp_codex_classification_smoke.pth",
             "batch_size": 32,
             "top_k": 3,
             "explanation_mode": True,
@@ -86,6 +92,7 @@ def run_classification_smoke() -> None:
         cfg,
         run_seed=0,
         split_seed=0,
+        checkpoint_label="codex_smoke",
     )
     probabilities = state["class_probabilities"]
     if not torch.allclose(probabilities.sum(dim=1), torch.ones(probabilities.size(0)), atol=1e-5):
