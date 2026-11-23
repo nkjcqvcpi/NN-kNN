@@ -14,6 +14,14 @@ Its --out must be new, empty or an earlier evaluate output of the same grid.
 NNKNN_DETERMINISTIC=1 turns on ``torch.use_deterministic_algorithms`` in workers
 (and sets CUBLAS_WORKSPACE_CONFIG as tools/t1_run.py); an output directory is
 resumed only under the setting it was started with.
+
+``--study S`` (both forms) records every trial as a run unit
+``NN-KNN/runs/t1/S/<task>/<family>/<stage>/<candidate>/s<seed>/`` instead of its trial directory: record
+``trial`` (the receipt row), ``final/*`` numbers, arrays ``validation_prediction``/``validation_target`` (and on
+the test stream ``test_prediction``/``test_target``), named states ``model`` (a joblib model as its bytes) and ``data``.
+A complete unit is reused like a receipt; a failed trial is marked failed in its unit (no failure.json) and
+refitted on the next run. The job and grid summaries (shortlist, selection, completed, evaluation, results,
+progress, study.json with ``"study": S``, training.log) are written as before.
 """
 from __future__ import annotations
 
@@ -45,6 +53,8 @@ import yaml
 from sklearn.metrics import accuracy_score, log_loss, mean_squared_error, roc_auc_score
 from model.common.artifacts import config_id, environment_info, git_state, source_fingerprint, write_json
 from model.common.core import CoreConfig, build_model, train_retrieval
+from model.common.tracking import open_run, resolve_unit, load_run
+from model.t1 import records
 from model.t1.data import make_splits
 
 
@@ -233,13 +243,104 @@ def compact_row(row):
     return {**row, "dataset": info}
 
 
-def run_trial(job, family, cid, params, stage, data, seed, epochs, patience, source, test=False):
-    """One receipt-backed fit of candidate ``cid``; an existing receipt is reused. ``data(seed)`` gives the splits."""
+class TrialFiles:
+    """A trial's outputs as files in its trial directory (without ``--study``)."""
+
+    def __init__(self, path):
+        self.path = path
+
+    def predictions(self, name, prediction, target):
+        torch.save(dict(prediction=torch.as_tensor(prediction), target=target), self.path / f"{name}_predictions.pt")
+
+    def data(self, obj):
+        torch.save(obj, self.path / "data.pt")
+
+    def model(self, model, family, info):
+        if family in {"knn", "catboost"}:
+            joblib.dump(model, self.path / "model.joblib")
+        else:
+            torch.save(dict(model_state=model.state_dict(), info=info), self.path / "model.pt")
+
+    def receipt(self, row):
+        write_json(self.path / "receipt.json", row)
+
+    def failure(self, failure, exc):
+        write_json(self.path / "failure.json", failure)
+
+
+class TrialUnit:
+    """The same outputs recorded into the trial's run unit (``--study``)."""
+
+    def __init__(self, run):
+        self.run = run
+
+    def predictions(self, name, prediction, target):
+        self.run.log_array(f"{name}_prediction", torch.as_tensor(prediction).numpy())
+        self.run.log_array(f"{name}_target", torch.as_tensor(target).numpy())
+
+    def data(self, obj):
+        self.run.save_state("data", records.storable(obj))
+
+    def model(self, model, family, info):
+        if family in {"knn", "catboost"}:
+            import io
+            buffer = io.BytesIO()
+            joblib.dump(model, buffer)
+            blob = np.frombuffer(buffer.getvalue(), dtype=np.uint8).copy()
+            self.run.save_state("model", {"format": "joblib", "bytes": torch.from_numpy(blob)})
+        else:
+            self.run.save_state("model", records.storable(dict(model_state=model.state_dict(), info=info)))
+
+    def receipt(self, row):
+        final = {k: v for k, v in row.items() if k in ("validation_error", "validation_loss")}
+        final.update({f"validation/{k}": v for k, v in (row.get("validation_metrics") or {}).items()})
+        final.update({f"test/{k}": v for k, v in (row.get("test_metrics") or {}).items()})
+        self.run.log_final(records.numeric(final))
+        self.run.log_record("trial", records.ordered(row))
+
+    def failure(self, failure, exc):
+        self.run.fail(exc)
+
+
+def trial_model(path):
+    """The fitted model of a recorded trial unit: a joblib model, or the ``{model_state, info}`` dict of a torch one."""
+    from model.common.tracking import load_state
+    state = load_state(path, "model")
+    if isinstance(state, dict) and state.get("format") == "joblib":
+        import io
+        return joblib.load(io.BytesIO(state["bytes"].numpy().tobytes()))
+    return state
+
+
+def run_trial(job, family, cid, params, stage, data, seed, epochs, patience, source, test=False, study=None):
+    """One receipt-backed fit of candidate ``cid``; an existing receipt is reused. ``data(seed)`` gives the splits.
+
+    With ``study`` the trial is the run unit ``t1/<study>/<task>/<family>/<stage>/<cid>/s<seed>`` instead
+    (task and family are the job directory's names); a complete unit is reused like a receipt.
+    """
+    if study is not None:
+        key = records.key(study, Path(job).parent.name, Path(job).name, stage, cid, f"s{seed}")
+        config = dict(kind="t1_grid_trial", task=Path(job).parent.name, family=family, candidate_id=cid,
+                      parameters=records.jsonable(params), stage=stage, seed=seed, epochs=epochs, patience=patience,
+                      test=test)
+        info = resolve_unit(key, config=config)
+        if info is not None:
+            return compact_row(records.unordered(load_run(info.path, arrays=False).record("trial")))
+        run = open_run(key, config=config)
+        row = fit_trial(TrialUnit(run), family, cid, params, stage, data, seed, epochs, patience, source, test)
+        if row["status"] == "completed":
+            run.complete()
+        return row
     path = Path(job) / stage / cid / f"s{seed}"
     path.mkdir(parents=True, exist_ok=True)
     receipt = path / "receipt.json"
     if receipt.exists():
         return compact_row(json.loads(receipt.read_text()))
+    return fit_trial(TrialFiles(path), family, cid, params, stage, data, seed, epochs, patience, source, test)
+
+
+def fit_trial(out, family, cid, params, stage, data, seed, epochs, patience, source, test):
+    """Fit, evaluate and write one trial through ``out`` (TrialFiles or TrialUnit); returns its row or failure."""
     started = time.perf_counter()
     try:
         full = data(seed)
@@ -264,24 +365,21 @@ def run_trial(job, family, cid, params, stage, data, seed, epochs, patience, sou
             row["training_case_count"] = len(full.y_train)
             row["active_case_count"] = model.case_count() if family == "nnknn" else len(full.y_train) if family == "knn" else None
             row["test_metrics"] = numeric_metrics(pred, full.y_test.numpy(), full.task_type, full.y_scale)
-            torch.save(dict(prediction=torch.as_tensor(pred), target=full.y_test), path / "test_predictions.pt")
-            torch.save(tensorize(dataclasses.asdict(full)), path / "data.pt")
-            if family in {"knn", "catboost"}:
-                joblib.dump(model, path / "model.joblib")
-            else:
-                torch.save(dict(model_state=model.state_dict(), info=info), path / "model.pt")
-        torch.save(dict(prediction=torch.as_tensor(val_prediction), target=full.y_val), path / "validation_predictions.pt")
-        write_json(receipt, row)
+            out.predictions("test", pred, full.y_test)
+            out.data(tensorize(dataclasses.asdict(full)))
+            out.model(model, family, info)
+        out.predictions("validation", val_prediction, full.y_val)
+        out.receipt(row)
         print(json.dumps(dict(stage=stage, seed=seed, candidate=cid, error=row["validation_error"])), flush=True)
         return row
-    except Exception:
+    except Exception as exc:
         failure = dict(status="failed", stage=stage, candidate_id=cid, seed=seed, error=traceback.format_exc())
-        write_json(path / "failure.json", failure)
+        out.failure(failure, exc)
         print(failure["error"], flush=True)
         return failure
 
 
-def dataset_family(study, ds, family, out):
+def dataset_family(study, ds, family, out, run_study=None):
     out = Path(out)
     job = out / task_key(ds) / family
     job.mkdir(parents=True, exist_ok=True)
@@ -297,7 +395,8 @@ def dataset_family(study, ds, family, out):
     data = split_loader(study, ds)
     with (job / "training.log").open("a", encoding="utf-8") as log, contextlib.redirect_stdout(log):
         def trial(stage, cid, seed, epochs, patience, test=False):
-            return run_trial(job, family, cid, grid[cid], stage, data, seed, epochs, patience, study["source_sha256"], test)
+            return run_trial(job, family, cid, grid[cid], stage, data, seed, epochs, patience, study["source_sha256"], test,
+                             study=run_study)
         for cid in grid:
             for seed in study["development_seeds"]:
                 rows.append(trial("screen", cid, seed, study["screen_epochs"], study["screen_patience"]))
@@ -324,7 +423,7 @@ def dataset_family(study, ds, family, out):
         return result
 
 
-def evaluate_family(grid_dir, study, ds, family, seeds, out):
+def evaluate_family(grid_dir, study, ds, family, seeds, out, run_study=None):
     """Re-fit one task's frozen grid winner on ``seeds`` through the grid's evaluation stage.
 
     The winner comes from the grid's selection.json and must be a candidate of the
@@ -350,13 +449,22 @@ def evaluate_family(grid_dir, study, ds, family, seeds, out):
     data = split_loader(study, ds)
     with (job / "training.log").open("a", encoding="utf-8") as log, contextlib.redirect_stdout(log):
         evaluations = [run_trial(job, family, winner, grid[winner], "evaluation", data, seed, study["refit_epochs"],
-                                 study["refit_patience"], study["source_sha256"], test=True) for seed in seeds]
+                                 study["refit_patience"], study["source_sha256"], test=True, study=run_study)
+                       for seed in seeds]
     complete = all(r["status"] == "completed" for r in evaluations)
     result = dict(dataset=ds, family=family, status="completed" if complete else "partial", winner=winner,
         parameters=grid[winner], selection=str(selection_path), development_seeds=selection["development_seeds"],
         grid_source_sha256=study["grid_source_sha256"], source_sha256=study["source_sha256"], evaluation=evaluations)
     write_json(summary, result)
     return result
+
+
+def check_run_study(parser, run_study):
+    if run_study is not None:
+        try:  # the run root and the study name, before any trial runs
+            records.check_study(run_study)
+        except (FileNotFoundError, ValueError) as exc:
+            parser.error(f"--study: {exc}")
 
 
 def baseline_environment():
@@ -402,7 +510,9 @@ def evaluate_main(argv):
     parser.add_argument("--out", required=True)
     parser.add_argument("--datasets", nargs="+", help="task keys <task_type>__<name>; default: every grid task")
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--study", help="record every trial as a run unit under NN-KNN/runs/t1/<study>/")
     args = parser.parse_args(argv)
+    check_run_study(parser, args.study)
     grid, out = Path(args.grid).resolve(), Path(args.out).resolve()
     if out == grid or grid in out.parents:
         raise ValueError("--out must lie outside the grid directory")
@@ -429,17 +539,19 @@ def evaluate_main(argv):
             raise ValueError("Source or grid changed; use a fresh output directory")
         if any(i["deterministic_algorithms"] != deterministic for i in record["invocations"]):
             raise ValueError("NNKNN_DETERMINISTIC differs from earlier invocations; use a fresh output directory")
+        if record.get("study") != args.study:
+            raise ValueError(f"--study differs from earlier invocations ({record.get('study')!r}); resume with the same one")
         record["invocations"].append(invocation)
     else:
         record = dict(grid=str(grid), grid_configuration_id=frozen["configuration_id"],
             grid_source_sha256=frozen["source_sha256"], source_sha256=source, environment=baseline_environment(),
             git=git_state(REPO), test_based_selection=False, selection_source="grid selection.json, frozen",
-            invocations=[invocation])
+            invocations=[invocation], **({"study": args.study} if args.study else {}))
         write_source_zip(out / "source.zip")
     write_json(record_path, record)
     study.update(source_sha256=source, grid_source_sha256=frozen["source_sha256"])
     tasks = [(datasets[key], fam) for key in keys for fam in families]
-    run_jobs(lambda pool, ds, fam: pool.submit(evaluate_family, str(grid), study, ds, fam, args.seeds, str(out)),
+    run_jobs(lambda pool, ds, fam: pool.submit(evaluate_family, str(grid), study, ds, fam, args.seeds, str(out), args.study),
              tasks, out, args.workers, skipped=("no_selection",))
 
 
@@ -453,7 +565,9 @@ def main(argv=None):
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--only-dataset")
     parser.add_argument("--only-family")
+    parser.add_argument("--study", help="record every trial as a run unit under NN-KNN/runs/t1/<study>/")
     args = parser.parse_args(argv)
+    check_run_study(parser, args.study)
     study = yaml.safe_load(Path(args.config).read_text())
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -461,22 +575,25 @@ def main(argv=None):
     frozen = out / "study.json"
     # Recorded only when on, so default study.json files are unchanged; a resume may not switch it.
     deterministic = dict(deterministic_algorithms=True) if deterministic_requested() else {}
+    recorded = {"study": args.study} if args.study else {}  # like deterministic: absent by default
     if frozen.exists():
         old = json.loads(frozen.read_text())
         if old["source_sha256"] != source or old["configuration_id"] != config_id(study):
             raise ValueError("Source or configuration changed; use a fresh output directory")
         if old.get("deterministic_algorithms", False) != bool(deterministic):
             raise ValueError("NNKNN_DETERMINISTIC differs from the grid's study.json; resume with the same setting")
+        if old.get("study") != args.study:
+            raise ValueError(f"--study differs from the grid's study.json ({old.get('study')!r}); resume with the same one")
     else:
         write_json(frozen, dict(configuration=study, configuration_id=config_id(study), source_sha256=source,
             environment=baseline_environment(), git=git_state(REPO), test_based_selection=False,
-            expected_jobs=len(study["datasets"])*len(study["families"]), **deterministic))
+            expected_jobs=len(study["datasets"])*len(study["families"]), **deterministic, **recorded))
         write_source_zip(out / "source.zip")
     study["source_sha256"] = source
     tasks = [(ds, fam) for ds in study["datasets"] for fam in study["families"]
              if (not args.only_dataset or ds["name"] == args.only_dataset)
              and (not args.only_family or fam == args.only_family)]
-    run_jobs(lambda pool, ds, fam: pool.submit(dataset_family, study, ds, fam, str(out)), tasks, out, args.workers)
+    run_jobs(lambda pool, ds, fam: pool.submit(dataset_family, study, ds, fam, str(out), args.study), tasks, out, args.workers)
 
 
 if __name__ == "__main__":
