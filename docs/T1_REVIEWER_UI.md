@@ -11,20 +11,17 @@ participants, not a completed study or a generalization benchmark.
 Start with an empty output directory:
 
 ```powershell
-.venv\Scripts\python.exe tools/t1_reviewer_ui.py --out <empty-session-directory>
+.venv\Scripts\python.exe tools/t1_reviewer_ui.py --out <empty-session-directory> --study S
 ```
 
 The console and `server.json` provide the dynamically allocated local URL.
-The output directory holds an immutable source ZIP and manifest, M0 and each
-subsequent version's actual model/Adam/targets/statistics/interventions, the
-rendered data JSON, and the current version pointer. Existing sessions are
-preserved by rejecting nonempty destinations. Loading/replaying these artifacts
-uses safe tensor checkpoints; interactive restart/resume is not yet implemented.
-With `--study S` the session is recorded as the run unit `NN-KNN/runs/t1/S/reviewer/<directory name>/`
-instead: every version's state is a named state `v<NNNN>-<stage>` and its rendered data the record
-`view/v<NNNN>`, the control model the state `MC`, and the trainings' curves are logged; the source ZIP,
-manifest, `latest.json` and `server.json` stay in the output directory. The unit is complete when the server
-is stopped with Ctrl+C (`docs/T1_RUN_RECORDS.md`).
+`--study S` is required: the session is recorded as the run unit `NN-KNN/runs/t1/S/reviewer/<directory name>/`.
+Every version's actual model/Adam/targets/statistics/interventions is the named state `v<NNNN>-<stage>` and its
+rendered data the record `view/v<NNNN>`, the control model the state `MC`, and the trainings' curves are logged.
+The output directory holds only the immutable source ZIP and manifest, `latest.json` (the current version's state
+name) and `server.json`. Existing sessions are preserved by rejecting nonempty destinations. Loading/replaying
+these states uses safe tensor checkpoints (`RunData.load_state`); interactive restart/resume is not yet
+implemented. The unit is complete when the server is stopped with Ctrl+C (`docs/T1_RUN_RECORDS.md`).
 The server binds only `127.0.0.1`. Version checks prevent stale edits, and a local
 session token plus Host/Origin validation prevents unrelated pages from issuing
 review actions. This is not a multi-user or publicly hosted application.
