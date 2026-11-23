@@ -213,10 +213,11 @@ def test_train_model_with_a_run_computes_the_same_and_keeps_named_states(root, t
     assert {p.name for p in tmp_path.glob("*.pth")} == files
     saved = torch.load(tmp_path / "nnknn_tmp.pth")
     assert saved.keys() == plain.state_dict().keys() and all(torch.equal(saved[k], v) for k, v in plain.state_dict().items())
-    before = {p: p.stat().st_mtime_ns for p in tmp_path.iterdir()}
+    outside = lambda: {p: p.stat().st_mtime_ns for p in tmp_path.rglob("*") if root not in (p, *p.parents)}  # noqa: E731
+    before = outside()
     with open_unit(f"{task}-tm") as run:
         m1, tracked = _train(task, run=run)
-    assert {p: p.stat().st_mtime_ns for p in tmp_path.iterdir()} == before  # nothing written outside the run
+    assert outside() == before  # nothing written outside the run
     assert m0 == m1 and sd_digest(plain) == sd_digest(tracked)
     data = tr.load_run(root / "core" / "s2" / f"{task}-tm")
     states = data.states()
