@@ -4,10 +4,11 @@ version = "0.1.0"
 description = "NN-kNN: shared environment for the main, rl, llm and neural-cbr worktrees"
 requires-python = ">=3.14,<3.15"
 dependencies = [
-    # core numerics / ML (Intel Arc XPU build of PyTorch)
-    "torch",
-    "torchvision",
-    "triton-xpu",
+    # core numerics / ML. Windows (g234): Intel Arc XPU build of PyTorch.
+    # Linux x86_64 (r760): the standard PyPI build of the same version (CUDA 13.2).
+    "torch==2.15.0",
+    "torchvision==0.29.2",
+    "triton-xpu; sys_platform == 'win32'",
     "numpy",
     "scipy",
     "pandas",
@@ -45,11 +46,14 @@ url = "https://download.pytorch.org/whl/xpu"
 explicit = true
 
 [tool.uv.sources]
-torch = { index = "pytorch-xpu" }
-torchvision = { index = "pytorch-xpu" }
-triton-xpu = { index = "pytorch-xpu" }
+torch = [{ index = "pytorch-xpu", marker = "sys_platform == 'win32'" }]
+torchvision = [{ index = "pytorch-xpu", marker = "sys_platform == 'win32'" }]
+triton-xpu = [{ index = "pytorch-xpu", marker = "sys_platform == 'win32'" }]
 
 [tool.uv]
 package = false
 default-groups = ["dev"]
-environments = ["sys_platform == 'win32' and platform_machine == 'AMD64'"]
+environments = [
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
