@@ -1,4 +1,10 @@
-"""Small paired mask ablation, retaining an identical nearest-neighbor bias initializer."""
+"""Small paired mask ablation, retaining an identical nearest-neighbor bias initializer.
+
+With ``--study S`` every fit is recorded as the run unit ``NN-KNN/runs/t1/S/<dataset>/s<seed>/<masked|all_cases>/``
+(record ``result`` = the run record, ``history`` curves, ``final/*`` numbers, named state ``model``) instead of
+``runs/<dataset>/s<seed>/*.json`` and ``runs.json``; a complete unit is read back instead of refitted. The summary,
+figure and manifest are written as before.
+"""
 from __future__ import annotations
 
 import argparse
@@ -27,6 +33,8 @@ from model.common.core import CoreConfig, build_model, evaluate, train_retrieval
 from model.regression_workflow import get_regression_dataset, prepare_regression_split_for_training
 from datasets.paths import datasets_root
 from model.t1.data import T1Data, make_splits
+from model.t1 import records
+from model.common.tracking import load_run, open_run, resolve_unit
 
 
 def data_for(ds, seed, splits):
@@ -171,7 +179,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--config", default="configs/t1/pre_topk_pilot_20261030.yaml")
     ap.add_argument("--out", default="results/t1/p6_confirmation_revision/pre_topk_pilot_20261030")
+    ap.add_argument("--study", help="record every fit as a run unit under NN-KNN/runs/t1/<study>/")
     args = ap.parse_args()
+    if args.study is not None:
+        try:
+            records.check_study(args.study)
+        except (FileNotFoundError, ValueError) as exc:
+            ap.error(f"--study: {exc}")
     study = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -189,6 +203,17 @@ def main():
             initial = None
             for masked in [True, False]:
                 cfg = CoreConfig(task_type=ds["task_type"], seed=seed, pre_topk_mask=masked, **study["core"])
+                key = None if args.study is None else records.key(args.study, ds["name"], f"s{seed}",
+                                                                  "masked" if masked else "all_cases")
+                unit_cfg = records.jsonable({"kind": "t1_pre_topk_pilot", "dataset": ds, "seed": seed, "masked": masked,
+                                             "core": study["core"], "splits": study["splits"]})
+                if key is not None and (info := resolve_unit(key, config=unit_cfg)) is not None:
+                    row = records.unordered(load_run(info.path, arrays=False).record("result"))
+                    initial = initial or row["initial_state_sha256"]
+                    assert row["initial_state_sha256"] == initial, "Paired initialization mismatch"
+                    rows.append(row)
+                    print(f"{ds['name']} seed={seed} masked={masked} recorded in {key.run_id}", flush=True)
+                    continue
                 model = build_model(data.X_train, data.y_train, cfg, data.num_classes)
                 digest = state_digest(model)
                 if initial is None:
@@ -217,9 +242,18 @@ def main():
                        "test_prediction": prediction, "test_target": data.y_test.cpu().tolist(), "history": trained.history}
                 if data.y_scale is not None:
                     row["test_rmse_original_units"] = error * data.y_scale[1]
-                write_json(out / "runs" / ds["name"] / f"s{seed}" / ("masked.json" if masked else "all_cases.json"), row)
                 rows.append(row)
-                write_json(out / "runs.json", rows)
+                if key is None:
+                    write_json(out / "runs" / ds["name"] / f"s{seed}" / ("masked.json" if masked else "all_cases.json"), row)
+                    write_json(out / "runs.json", rows)
+                else:
+                    with open_run(key, config=unit_cfg) as run:
+                        run.log_record("history", records.ordered(trained.history))
+                        records.log_curves(run, trained.history, "core")
+                        run.log_final(records.numeric({k: row[k] for k in ("test_error", "validation_loss", "best_epoch",
+                                                                            "epochs_run")}))
+                        run.save_state("model", records.storable(model.state_dict()))
+                        run.log_record("result", records.ordered(row))
                 print(f"{ds['name']} seed={seed} masked={masked} error={error:.6f} "
                       f"best_epoch={trained.best_epoch} bias_init_k={cfg.bias_init_k}", flush=True)
     summarize(study, rows, out, args.config)
