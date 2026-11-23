@@ -6,6 +6,9 @@ candidate pools. All NN distances and training losses use the maintained core.
 `tools/t3_need_matching.py` actually optimizes256 shared diagonal feature weights
 with Adam; it freezes case biases,per-case weights,raw cases and representation.
 It learns provided-source-passage identity,not answer or downstream utility.
+With `--study S` each seed is recorded as the run unit `NN-KNN/runs/t3/S/s<seed>/`
+(TensorBoard curves,training events,seed summary,weights) instead of `s<seed>/`;
+see `HANDOFF.md`,"2026-11-22: run tracking". The numbers are the same.
 No public dev annotation trains or selects the model; no global promotion occurs.
 
 128 fitting and64 tuning SQuAD train questions use article-disjoint groups and
