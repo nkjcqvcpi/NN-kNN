@@ -5,7 +5,6 @@ import csv
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 import json
-import hashlib
 from pathlib import Path
 import random
 import time
@@ -22,6 +21,7 @@ import torch.optim as optim
 from datasets.rl_tasks import get_rl_task_spec
 from model.cnn_encoders import NATURE_CNN_FEATURE_DIM, NatureCNNEncoder
 from model.nnknn_model import GlocalFeatureWeight, NN_KNN_Model, normalize_cases
+from model.t2 import runs as t2runs
 from model.rl_workflow import (
     ObservationSpec,
     _build_early_stopping_tracker,
@@ -3069,8 +3069,17 @@ def train_nnknn_rl(
     output_dir: str | Path | None = None,
     device: str | torch.device | None = None,
     progress: bool = True,
+    run: Any = None,
+    resumable: bool = False,
 ) -> dict[str, Any]:
-    """Train a selectable actor with a selectable value critic and GAE advantages."""
+    """Train a selectable actor with a selectable value critic and GAE advantages.
+
+    ``run`` and ``resumable`` as in ``train_dqn`` (model/t2/runs.py): with an open tracking run every per-run file
+    (metric CSVs, event JSONs, summary, checkpoint and the retention / case-audit snapshots) becomes a record or
+    named state of the run and no file is written. ``resumable=True`` checkpoints at episode boundaries right
+    after a policy update (no pending rollout): actor and critic with their case stores and insertion steps,
+    target critic, optimizers, quality ledger, maintenance counters, best state, rows, RNG and action sampler.
+    """
 
     spec = get_rl_task_spec(task_name)
     cfg = config or make_nnknn_rl_config(spec.default_profile)
@@ -3115,16 +3124,21 @@ def train_nnknn_rl(
             case_lr=cfg.case_learning_rate,
         )
 
-    run_dir = Path(output_dir) if output_dir is not None else make_nnknn_rl_output_dir(spec.name)
-    run_dir.mkdir(parents=True, exist_ok=True)
+    if t2runs.is_recording(run):
+        out = t2runs.RunOutput(run, None, resumable=resumable)
+        run_dir = out.dir
+    else:
+        run_dir = Path(output_dir) if output_dir is not None else make_nnknn_rl_output_dir(spec.name)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        out = t2runs.RunOutput(None, run_dir, resumable=resumable)
     checkpoint_path = run_dir / "checkpoint.pt"
     created_at = datetime.now(timezone.utc)
 
-    training_rows: list[dict[str, Any]] = []
-    loss_rows: list[dict[str, Any]] = []
-    eval_rows: list[dict[str, Any]] = []
-    critic_holdout_rows: list[dict[str, Any]] = []
-    maintenance_rows: list[dict[str, Any]] = []
+    training_rows = out.rows("training_metrics.csv")
+    loss_rows = out.rows("loss_metrics.csv")
+    eval_rows = out.rows("eval_metrics.csv")
+    critic_holdout_rows = out.rows("critic_holdout_metrics.csv")
+    maintenance_rows = out.rows("case_maintenance.csv")
     best_eval: dict[str, Any] | None = None
     best_eval_step: int | None = None
     best_actor_state: dict[str, Any] | None = None
@@ -3133,7 +3147,7 @@ def train_nnknn_rl(
     best_optimizer_states = None
     best_quality_state = None
     from model.t2.quality import QualityLedger
-    quality_ledger=QualityLedger(str(run_dir.resolve())) if cfg.case_quality_tracking else None
+    quality_ledger=QualityLedger(str(run_dir.resolve()) if not out.recording else out.where()) if cfg.case_quality_tracking else None
     actor_cases_pruned = 0
     actor_cases_replaced = 0
     critic_cases_pruned = 0
@@ -3145,8 +3159,13 @@ def train_nnknn_rl(
     critic_target_syncs = 1 if target_value_model is not None else 0
     critic_update_batches = 0
     last_maintenance_bucket = 0
-    optimizer_alignment_rows: list[dict[str,Any]] = []
-    retention_events: list[dict[str,Any]] = []
+    # event lists of the JSON files written at the end (recorded as row records when that file is written)
+    optimizer_alignment_rows: list[dict[str,Any]] = (out.rows('case_optimizer_events.json/events',ordered=False)
+        if cfg.case_optimizer_maintenance=='preserve_by_id' else [])
+    retention_events: list[dict[str,Any]] = (out.rows('case_retention_events.json/events',ordered=False)
+        if cfg.case_retention_keep_fraction is not None else [])
+    case_audit_events: list[dict[str,Any]] = (out.rows('case_audit_events.json/events',ordered=False)
+        if cfg.case_audit_queries_per_batch else [])
     last_retention_bucket=0
 
     def total_cases_pruned() -> int:
@@ -3246,13 +3265,12 @@ def train_nnknn_rl(
                     if not len(raw['queries']) or model.case_entries<=1:
                         event.update(skipped=True,reason='no actual ready-policy reference or insufficient active cases')
                         retention_events.append(event);continue
-                    snapshot_dir=run_dir/'retention_states';snapshot_dir.mkdir(exist_ok=True)
-                    snapshot=snapshot_dir/f'{role}_step_{completed_step}.pt'
-                    torch.save(dict(actor_state=_model_state(actor),critic_state=_copy_state_dict_to_cpu(value_network),
+                    snapshot,snapshot_sha256=out.save_snapshot(f'retention_states/{role}_step_{completed_step}.pt',
+                        dict(actor_state=_model_state(actor),critic_state=_copy_state_dict_to_cpu(value_network),
                         target_state=_copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None,
                         optimizer_states=dict(actor_or_joint=_optimizer_state_snapshot(actor_optimizer),critic=_optimizer_state_snapshot(critic_optimizer)),
-                        config=cfg.to_dict(),obs_dim=obs_dim,action_dim=action_dim),snapshot)
-                    event.update(snapshot=str(snapshot),snapshot_sha256=hashlib.sha256(snapshot.read_bytes()).hexdigest())
+                        config=cfg.to_dict(),obs_dim=obs_dim,action_dim=action_dim),once=False)
+                    event.update(snapshot=out.where(snapshot),snapshot_sha256=snapshot_sha256)
                     fields={k:v for k,v in raw.items() if k not in {'batch_query_indices','advantage_source'}}
                     reference=TrainingReference(**fields)
                     old_ids=_case_store_ids(model)
@@ -3327,6 +3345,8 @@ def train_nnknn_rl(
             **metrics,
         }
         critic_holdout_rows.append(row)
+        out.curve(completed_step, {"holdout/critic_mse": row.get("critic_holdout_mse"),
+                                   "holdout/critic_explained_variance": row.get("critic_holdout_explained_variance")})
         if progress:
             print(
                 "[nnknn-rl][critic-holdout] "
@@ -3351,27 +3371,84 @@ def train_nnknn_rl(
     early_stopping = _build_early_stopping_tracker(cfg, spec)
     actual_timesteps = 0
     episode_policy_readiness: list[bool] = []
-    case_audit_events: list[dict[str,Any]] = []
     def collect_case_audit(event):
         step=event['global_step']
-        audit_dir=run_dir/'case_audit_states'
-        audit_dir.mkdir(exist_ok=True)
         event.setdefault('phase','independent_post_batch_mc')
-        snapshot=audit_dir/f"{event['phase']}_step_{step}.pt"
-        if not snapshot.exists():
-            torch.save(dict(actor_state=_model_state(actor),critic_state=_copy_state_dict_to_cpu(value_network),
+        snapshot,snapshot_sha256=out.save_snapshot(f"case_audit_states/{event['phase']}_step_{step}.pt",
+            lambda:dict(actor_state=_model_state(actor),critic_state=_copy_state_dict_to_cpu(value_network),
                 target_state=_copy_state_dict_to_cpu(target_value_model) if target_value_model is not None else None,
-                config=cfg.to_dict(),obs_dim=obs_dim,action_dim=action_dim),snapshot)
-        event['snapshot']=str(snapshot)
+                config=cfg.to_dict(),obs_dim=obs_dim,action_dim=action_dim))
+        event['snapshot']=out.where(snapshot)
         if quality_ledger is not None:
-            event['snapshot_sha256']=hashlib.sha256(snapshot.read_bytes()).hexdigest()
+            event['snapshot_sha256']=snapshot_sha256
             namespace=f"{event['role']}:{event['stream']}:{step}:{event['query_index']}:{event.get('diagnostic_seed','training')}"
             model=actor if event['role']=='actor' else value_network
             quality_ledger.apply(event,event_id=namespace,active_ids=_case_store_ids(model).cpu().tolist())
         case_audit_events.append(event)
 
+    start_step = 0
+
+    def resume_state() -> dict[str, Any]:
+        return {
+            "actor": _model_state(actor),
+            "actor_case_step_inserted": dict(getattr(actor, "case_step_inserted", {})),
+            "critic": value_network.state_dict(),
+            "target": None if target_value_model is None else target_value_model.state_dict(),
+            "actor_optimizer": actor_optimizer.state_dict(),
+            "critic_optimizer": None if critic_optimizer is None else critic_optimizer.state_dict(),
+            "quality": None if quality_ledger is None else quality_ledger.state_dict(),
+            "action_space_rng": t2runs.space_rng_state(env.action_space),
+            "counters": dict(actor_cases_pruned=actor_cases_pruned, actor_cases_replaced=actor_cases_replaced,
+                             critic_cases_pruned=critic_cases_pruned, critic_cases_replaced=critic_cases_replaced,
+                             critic_label_updates=critic_label_updates,
+                             critic_label_update_samples=critic_label_update_samples,
+                             partial_rollout_segments=partial_rollout_segments,
+                             partial_rollout_samples=partial_rollout_samples, critic_target_syncs=critic_target_syncs,
+                             critic_update_batches=critic_update_batches, last_maintenance_bucket=last_maintenance_bucket,
+                             last_retention_bucket=last_retention_bucket, episode_index=episode_index,
+                             actual_timesteps=actual_timesteps),
+            "best": dict(eval=best_eval, step=best_eval_step, actor=best_actor_state, critic=best_critic_state,
+                         target=best_target_state, optimizers=best_optimizer_states, quality=best_quality_state),
+            "early_stopping": t2runs.tracker_state(early_stopping),
+        }
+
+    payload = out.load_resume()
+    if payload is not None:
+        saved = payload.state
+        _load_model_state(actor, saved["actor"])
+        if hasattr(actor, "case_step_inserted"):
+            actor.case_step_inserted = {int(k): int(v) for k, v in saved["actor_case_step_inserted"].items()}
+        value_network.load_state_dict(saved["critic"])
+        if target_value_model is not None:
+            # as load_nnknn_rl_checkpoint: detach the shared raw bank before restore, then realign
+            target_value_model.nnknn_model._buffers['cases'] = target_value_model.nnknn_model.cases.detach().clone()
+            target_value_model.load_state_dict(saved["target"])
+            _align_nnknn_target_case_store(value_network, target_value_model)
+        actor_optimizer.load_state_dict(saved["actor_optimizer"])
+        if critic_optimizer is not None:
+            critic_optimizer.load_state_dict(saved["critic_optimizer"])
+        if quality_ledger is not None:
+            quality_ledger = QualityLedger.from_state_dict(saved["quality"])
+        c = saved["counters"]
+        actor_cases_pruned, actor_cases_replaced = c["actor_cases_pruned"], c["actor_cases_replaced"]
+        critic_cases_pruned, critic_cases_replaced = c["critic_cases_pruned"], c["critic_cases_replaced"]
+        critic_label_updates, critic_label_update_samples = c["critic_label_updates"], c["critic_label_update_samples"]
+        partial_rollout_segments, partial_rollout_samples = c["partial_rollout_segments"], c["partial_rollout_samples"]
+        critic_target_syncs, critic_update_batches = c["critic_target_syncs"], c["critic_update_batches"]
+        last_maintenance_bucket, last_retention_bucket = c["last_maintenance_bucket"], c["last_retention_bucket"]
+        episode_index, actual_timesteps = c["episode_index"], c["actual_timesteps"]
+        b = saved["best"]
+        best_eval, best_eval_step, best_actor_state = b["eval"], b["step"], b["actor"]
+        best_critic_state, best_target_state = b["critic"], b["target"]
+        best_optimizer_states, best_quality_state = b["optimizers"], b["quality"]
+        t2runs.load_tracker_state(early_stopping, saved["early_stopping"])
+        start_step = payload.step  # checkpoints: an episode just ended, its batch was trained, the env was reset
+        obs, _ = env.reset(seed=cfg.seed + episode_index)
+        t2runs.set_space_rng_state(env.action_space, saved["action_space_rng"])
+        payload.restore_rng()
+
     try:
-        for global_step in range(cfg.total_timesteps):
+        for global_step in range(start_step, cfg.total_timesteps):
             stop_requested = False
             # uint8 for image tasks: a rollout batch holds every frame of the
             # pending episodes until `_train_actor_critic_batch` consumes it.
@@ -3444,6 +3521,10 @@ def train_nnknn_rl(
                         )
                         loss_rows.append(loss_row)
                         latest_loss = float(loss_row["loss"])
+                        out.curve(completed_step, {"train/loss": latest_loss,
+                                                   "train/actor_loss": loss_row.get("actor_loss"),
+                                                   "train/critic_loss": loss_row.get("critic_loss"),
+                                                   "train/entropy": loss_row.get("entropy")})
                     pending_update_episodes = []
 
                 stats = _actor_case_bias_stats(actor)
@@ -3473,6 +3554,9 @@ def train_nnknn_rl(
                         **stats,
                     }
                 )
+                out.curve(completed_step, {"episode/return": episode_return, "episode/length": episode_length,
+                                           "episode/case_entries": _actor_case_entries(actor),
+                                           "episode/exploration_epsilon": exploration_epsilon})
                 if progress and (episode_index <= 5 or episode_index % 10 == 0):
                     print(
                         "[nnknn-rl] "
@@ -3507,6 +3591,8 @@ def train_nnknn_rl(
                         "case_entries": _actor_case_entries(actor),
                     }
                     eval_rows.append(eval_row)
+                    out.curve(completed_step, {"eval/mean_return": eval_row["mean_return"],
+                                               "eval/std_return": eval_row["std_return"]})
                     if best_eval is None or eval_metrics["mean_return"] > best_eval["mean_return"]:
                         best_eval = eval_metrics
                         best_eval_step = completed_step
@@ -3570,6 +3656,8 @@ def train_nnknn_rl(
                     "case_entries": _actor_case_entries(actor),
                 }
                 eval_rows.append(eval_row)
+                out.curve(completed_step, {"eval/mean_return": eval_row["mean_return"],
+                                           "eval/std_return": eval_row["std_return"]})
                 if best_eval is None or eval_metrics["mean_return"] > best_eval["mean_return"]:
                     best_eval = eval_metrics
                     best_eval_step = completed_step
@@ -3594,6 +3682,9 @@ def train_nnknn_rl(
                             flush=True,
                         )
                     break
+
+            if episode_done and not pending_update_episodes and out.checkpoint_due(completed_step):
+                out.save_resume(resume_state(), step=completed_step)
 
         if episode_observations:
             partial_rollout = {
@@ -3734,10 +3825,10 @@ def train_nnknn_rl(
         "latest_critic_holdout": critic_holdout_rows[-1] if critic_holdout_rows else None,
         "passed": passed,
     }
-    torch.save(checkpoint, checkpoint_path)
+    checkpoint_path = out.save_checkpoint("checkpoint.pt", checkpoint)
 
-    _write_json(
-        run_dir / "config.json",
+    out.write_json(
+        "config.json",
         {
             "created_at_utc": created_at.isoformat(),
             "algorithm": ALGORITHM_NAME,
@@ -3749,24 +3840,24 @@ def train_nnknn_rl(
             "runtime": runtime_env_fingerprint(),
         },
     )
-    _write_csv(run_dir / "training_metrics.csv", training_rows)
-    _write_csv(run_dir / "loss_metrics.csv", loss_rows)
-    _write_csv(run_dir / "eval_metrics.csv", eval_rows)
-    _write_csv(run_dir / "critic_holdout_metrics.csv", critic_holdout_rows)
+    out.write_csv("training_metrics.csv", training_rows)
+    out.write_csv("loss_metrics.csv", loss_rows)
+    out.write_csv("eval_metrics.csv", eval_rows)
+    out.write_csv("critic_holdout_metrics.csv", critic_holdout_rows)
     if cfg.case_optimizer_maintenance=='preserve_by_id':
-        _write_json(run_dir/'case_optimizer_events.json',dict(events=optimizer_alignment_rows,
+        out.write_json('case_optimizer_events.json',dict(events=optimizer_alignment_rows,
             scalar_step_semantics='global_per_parameter_including_new_rows'))
     if cfg.case_audit_queries_per_batch:
-        _write_json(run_dir/'case_audit_events.json',dict(events=case_audit_events,
+        out.write_json('case_audit_events.json',dict(events=case_audit_events,
             role_streams='training_gae, actor_policy_surrogate and optional independent_mc kept separate'))
     if quality_ledger is not None:
-        _write_json(run_dir/'case_quality_selected.json',quality_ledger.state_dict())
+        out.write_json('case_quality_selected.json',quality_ledger.state_dict())
     if cfg.case_retention_keep_fraction is not None:
-        _write_json(run_dir/'case_retention_events.json',dict(events=retention_events,
+        out.write_json('case_retention_events.json',dict(events=retention_events,
             selection='current training batch, post-gradient/insertion/prune, before target sync; no diagnostic selection'))
-    _write_csv(run_dir / "case_maintenance.csv", maintenance_rows)
-    _write_csv(run_dir / "final_eval_episodes.csv", selected_eval["episode_metrics"])
-    _write_csv(run_dir / "last_eval_episodes.csv", last_eval["episode_metrics"])
+    out.write_csv("case_maintenance.csv", maintenance_rows)
+    out.write_csv("final_eval_episodes.csv", selected_eval["episode_metrics"])
+    out.write_csv("last_eval_episodes.csv", last_eval["episode_metrics"])
     summary = {
         "task": spec.name,
         "env_id": spec.env_id,
@@ -3851,33 +3942,35 @@ def train_nnknn_rl(
         "critic_target_value_syncs": critic_target_syncs,
         "critic_holdout_evaluations": len(critic_holdout_rows),
         "latest_critic_holdout": critic_holdout_rows[-1] if critic_holdout_rows else None,
-        "checkpoint_path": str(checkpoint_path),
-        "run_dir": str(run_dir),
+        "checkpoint_path": out.where(checkpoint_path),
+        "run_dir": out.where(),
     }
-    _write_json(run_dir / "summary.json", summary)
-    _write_json(
-        run_dir / "manifest.json",
-        {
-            "created_at_utc": created_at.isoformat(),
-            "algorithm": ALGORITHM_NAME,
-            "task": spec.name,
-            "env_id": spec.env_id,
-            "profile": cfg.profile,
-            "outputs": [
-                "config.json",
-                "training_metrics.csv",
-                "loss_metrics.csv",
-                "eval_metrics.csv",
-                "critic_holdout_metrics.csv",
-                "case_maintenance.csv",
-                "final_eval_episodes.csv",
-                "last_eval_episodes.csv",
-                "summary.json",
-                "manifest.json",
-                "checkpoint.pt",
-            ],
-        },
-    )
+    out.write_json("summary.json", summary)
+    out.finish(t2runs.headline(summary))
+    if not out.recording:
+        _write_json(
+            run_dir / "manifest.json",
+            {
+                "created_at_utc": created_at.isoformat(),
+                "algorithm": ALGORITHM_NAME,
+                "task": spec.name,
+                "env_id": spec.env_id,
+                "profile": cfg.profile,
+                "outputs": [
+                    "config.json",
+                    "training_metrics.csv",
+                    "loss_metrics.csv",
+                    "eval_metrics.csv",
+                    "critic_holdout_metrics.csv",
+                    "case_maintenance.csv",
+                    "final_eval_episodes.csv",
+                    "last_eval_episodes.csv",
+                    "summary.json",
+                    "manifest.json",
+                    "checkpoint.pt",
+                ],
+            },
+        )
     if progress:
         print(
             "[nnknn-rl] finished "
@@ -3913,8 +4006,9 @@ def load_nnknn_rl_checkpoint(
     restore_optimizers: bool = False,
 ) -> dict[str, Any]:
     run_device = _resolve_device_arg(device)
-    checkpoint_path = Path(checkpoint_path)
-    checkpoint = torch.load(checkpoint_path, map_location=run_device, weights_only=True)
+    checkpoint_path, checkpoint = t2runs.checkpoint_source(checkpoint_path)  # a run unit: its checkpoint state
+    if checkpoint is None:
+        checkpoint = torch.load(checkpoint_path, map_location=run_device, weights_only=True)
     algorithm = checkpoint.get("algorithm")
     if algorithm != ALGORITHM_NAME:
         raise ValueError(
