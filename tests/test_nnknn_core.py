@@ -156,6 +156,42 @@ def test_eval_feature_cache_follows_the_extractor_weights():
         assert torch.equal(model(q)[0], rebuilt(q)[0])
 
 
+def test_eval_feature_cache_is_not_fooled_by_a_new_extractor_at_the_same_address():
+    """A replaced extractor whose tensors sit at the old addresses with equal version counts (memory reuse)
+    still refreshes the cache: the key compares the tensors by identity, not only address and version."""
+    import copy
+    import itertools
+
+    from model.common.core import CoreConfig, build_model
+
+    torch.manual_seed(0)
+    X, y = torch.randn(30, 5), torch.randint(0, 3, (30,))
+    model = build_model(X, y, CoreConfig(task_type="classification", representation="mlp", top_k=4), 3)
+    model.eval()
+    rows = torch.arange(30)
+    old = model.feature_extractor
+    new = copy.deepcopy(old)
+    tensors = lambda m: itertools.chain(m.parameters(), m.buffers())  # noqa: E731
+    with torch.no_grad():
+        for n, o in zip(tensors(new), tensors(old)):
+            n.set_(o.untyped_storage(), o.storage_offset(), o.size(), o.stride())
+            while n._version < o._version:
+                n.add_(0)
+            while o._version < n._version:
+                o.add_(0)
+        start = model._extract_features(rows).clone()
+        model.feature_extractor = new
+        for n in tensors(new):
+            version = n._version
+            alias = torch.empty(0, dtype=n.dtype).set_(n.untyped_storage(), n.storage_offset(), n.size(), n.stride())
+            alias.mul_(1.5)  # new values at the same address; the alias has its own version counter
+            assert n._version == version
+        assert all(n.data_ptr() == o.data_ptr() and n._version == o._version
+                   for n, o in zip(tensors(new), tensors(old)))
+        moved = model._extract_features(rows)
+        assert not torch.equal(moved, start) and torch.equal(moved, new(model.cases))
+
+
 def test_build_model_puts_every_module_on_the_case_device_and_keeps_cpu_adam_default():
     from model.common.core import CoreConfig, build_model, make_optimizer
 

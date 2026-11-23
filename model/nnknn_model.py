@@ -729,9 +729,15 @@ class NN_KNN_Model(nn.Module):
         of the feature extractor, each by storage and in-place version counter. ``load_state_dict``, optimizer
         steps, ``.to()`` and other in-place writes all change it, so cached features never outlive the weights
         they were computed with (a model rebuilt from a saved state predicts exactly like this one). Writes
-        through ``.data`` bypass the version counter: call ``_invalidate_case_cache()`` after those."""
+        through ``.data`` bypass the version counter: call ``_invalidate_case_cache()`` after those. The key holds
+        the tensors themselves (compared by identity), so a replaced tensor that reuses a freed address with an
+        equal version count is not mistaken for the old one."""
         tensors = (self.cases, *self.feature_extractor.parameters(), *self.feature_extractor.buffers())
-        return tuple((t.data_ptr(), t._version) for t in tensors)
+        return tuple((t, t.data_ptr(), t._version) for t in tensors)
+
+    @staticmethod
+    def _same_case_feature_key(a: tuple, b: tuple) -> bool:
+        return len(a) == len(b) and all(x[0] is y[0] and x[1] == y[1] and x[2] == y[2] for x, y in zip(a, b))
 
     def _rebuild_class_to_cases(self) -> None:
         self.class_to_cases = {}
@@ -942,7 +948,7 @@ class NN_KNN_Model(nn.Module):
                 key = self._case_feature_key()
                 stored = getattr(self, "_cached_features_key", None)
                 if self.cached_features is not None and (stored is None or stored[1] is not self.cached_features
-                                                         or stored[0] != key):
+                                                         or not self._same_case_feature_key(stored[0], key)):
                     self._invalidate_case_cache()
                 if self.cached_features is None:
                     # Initialize cache on the first evaluation pass
