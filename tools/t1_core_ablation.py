@@ -45,8 +45,8 @@ from model.common.artifacts import config_id, environment_info, source_fingerpri
 from model.common.core import CoreConfig, build_model, evaluate, train_retrieval
 from model.common.tracking import load_run, open_run, resolve_unit
 from model.t1 import records
-from tools.t1_grid_search import (apply_determinism, compact_row, nnknn_core_settings, numeric_metrics,
-                                  prediction, split_loader, task_key)
+from tools.t1_grid_search import (apply_determinism, compact_row, data_definition, nnknn_core_settings, numeric_metrics,
+                                  prediction, split_loader, task_key, trial_runtime)
 
 CORE_FIELDS = {f.name for f in dataclasses.fields(CoreConfig)}
 
@@ -143,11 +143,14 @@ def fit_variant(settings, data, seed):
 def run_trial(job, variant, settings, data, seed, source, study=None):
     """One receipt-backed fit of a variant on one seed; with ``study`` the run unit
     ``t1/<study>/<task>/<variant>/s<seed>`` instead (record ``trial``, arrays ``test_prediction``/``test_target``,
-    named state ``model``), reused like a receipt when complete."""
+    named state ``model``), reused like a receipt when complete with the same config (settings, data definition,
+    source and runtime; another config raises ConfigMismatchError)."""
     if study is not None:
         key = records.key(study, Path(job).parent.name, Path(job).name, f"s{seed}")
+        # the data definition, source and runtime belong to the config: a unit is reused only for the same fit
         config = dict(kind="t1_core_ablation_trial", task=Path(job).parent.name, variant=variant,
-                      settings=records.jsonable(settings), seed=seed)
+                      settings=records.jsonable(settings), seed=seed, data=data_definition(data), source_sha256=source,
+                      runtime=trial_runtime())
         info = resolve_unit(key, config=config)
         if info is not None:
             return records.unordered(load_run(info.path, arrays=False).record("trial"))
@@ -334,6 +337,13 @@ def main(argv=None):
         except (FileNotFoundError, ValueError) as exc:
             parser.error(f"--study: {exc}")
     study = load_study(args.config)
+    if args.study is not None:
+        seed = f"s{max(study['evaluation_seeds'], key=lambda s: len(str(s)))}"
+        try:  # every trial unit's event file path fits, before any trial runs
+            records.check_unit_paths(args.study, [(task_key(ds), v["name"], seed) for ds in study["datasets"]
+                                                  for v in study["variants"]])
+        except ValueError as exc:
+            parser.error(f"--study: {exc}")
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     if args.summarize_only:

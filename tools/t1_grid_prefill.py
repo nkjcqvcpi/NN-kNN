@@ -156,18 +156,21 @@ def fit_trial(repo, study, ds, family, out, stage, cid, seed, test, run_study=No
     return row["status"]
 
 
-def receipt(job, stage, cid, seed, run_study=None):
+def receipt(job, stage, cid, seed, run_study=None, config=None):
     """A trial's receipt row, or None; one that does not parse (its writer was killed mid-write) is an error.
 
-    With ``run_study``, the ``trial`` record of the trial's run unit when it is complete, else None.
+    With ``run_study``, the ``trial`` record of the trial's run unit when it is complete with ``config`` (the
+    grid's ``trial_config``), else None; a unit complete with another config raises ConfigMismatchError.
     """
     if run_study is not None:
-        from model.common.tracking import load_run, run_status
-        from model.t1.records import trial_unit, unordered
-        path = trial_unit(run_study, Path(job).parent.name, Path(job).name, stage, cid, seed)
-        if run_status(path).status != "complete":
+        from model.common.tracking import load_run, resolve_unit
+        from model.t1.records import key, unordered
+        if config is None:
+            raise ValueError("reading a recorded trial needs its config")
+        info = resolve_unit(key(run_study, Path(job).parent.name, Path(job).name, stage, cid, f"s{seed}"), config=config)
+        if info is None:
             return None
-        return unordered(load_run(path, arrays=False).record("trial"))
+        return unordered(load_run(info.path, arrays=False).record("trial"))
     path = job / stage / cid / f"s{seed}" / "receipt.json"
     if not path.exists():
         return None
@@ -201,8 +204,19 @@ def next_trials(gs, study, out, ds, family, running=(), run_study=None):
     seeds = study["development_seeds"]
     grid = {gs.config_id(p): p for p in gs.expand_grid(study["grids"][family])}
 
+    data = gs.split_loader(study, ds) if run_study is not None else None  # lazy: only its data definition is used
+
+    def config(stage, cid, seed):
+        if run_study is None:
+            return None
+        epochs, patience = ((study["screen_epochs"], study["screen_patience"]) if stage == "screen"
+                            else (study["refit_epochs"], study["refit_patience"]))
+        return gs.trial_config(job, family, cid, grid[cid], stage, data, seed, epochs, patience, study["source_sha256"],
+                               stage == "evaluation", torch_threads=study["torch_threads"])
+
     def receipts(stage, trials):
-        return [None if (stage, *t) in running else receipt(job, stage, *t, run_study=run_study) for t in trials]
+        return [None if (stage, *t) in running else receipt(job, stage, *t, run_study=run_study, config=config(stage, *t))
+                for t in trials]
 
     screen = [(cid, s) for cid in grid for s in seeds]
     rows = receipts("screen", screen)

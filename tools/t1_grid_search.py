@@ -19,7 +19,8 @@ resumed only under the setting it was started with.
 ``NN-KNN/runs/t1/S/<task>/<family>/<stage>/<candidate>/s<seed>/`` instead of its trial directory: record
 ``trial`` (the receipt row), ``final/*`` numbers, arrays ``validation_prediction``/``validation_target`` (and on
 the test stream ``test_prediction``/``test_target``), named states ``model`` (a joblib model as its bytes) and ``data``.
-A complete unit is reused like a receipt; a failed trial is marked failed in its unit (no failure.json) and
+A unit complete with the same trial config (see ``trial_config``: data definition, source and runtime included) is
+reused like a receipt, one complete with another config raises ConfigMismatchError; a failed trial is marked failed in its unit (no failure.json) and
 refitted on the next run. The job and grid summaries (shortlist, selection, completed, evaluation, results,
 progress, study.json with ``"study": S``, training.log) are written as before.
 """
@@ -204,14 +205,34 @@ def dataset_splits(study, ds):
 
 
 def split_loader(study, ds):
-    """Memoized seed -> split bundle of one dataset entry."""
+    """Memoized seed -> split bundle of one dataset entry.
+
+    The loader carries its data definition (``definition``: the dataset entry and the make_splits options), which
+    a recorded trial puts into its unit config, so that a unit is only reused for the same data.
+    """
     cache = {}
     splits = dataset_splits(study, ds)
     def data(seed):
         if seed not in cache:
             cache[seed] = make_splits(ds["name"], ds["task_type"], seed, **splits)
         return cache[seed]
+    data.definition = {"dataset": dict(ds), "splits": splits}
     return data
+
+
+def data_definition(data):
+    """The data definition a recorded trial needs (see split_loader); a loader without one cannot be recorded."""
+    definition = getattr(data, "definition", None)
+    if definition is None:
+        raise ValueError("a recorded trial needs a split_loader data loader (its dataset entry and splits)")
+    return records.jsonable(definition)
+
+
+def trial_runtime(torch_threads=None):
+    """Settings outside the trial's parameters that can change its numbers: torch threads (this process's, unless
+    given) and deterministic kernels."""
+    return {"torch_threads": torch.get_num_threads() if torch_threads is None else int(torch_threads),
+            "deterministic_algorithms": deterministic_requested()}
 
 
 def deterministic_requested():
@@ -312,17 +333,25 @@ def trial_model(path):
     return state
 
 
+def trial_config(job, family, cid, params, stage, data, seed, epochs, patience, source, test=False, torch_threads=None):
+    """Config of a recorded trial unit: everything its numbers depend on. The data definition (dataset entry and
+    splits), the source fingerprint and the runtime settings are part of it, so a study shared by several grids or
+    evaluate runs reuses a trial only when it would be fitted exactly the same way (else ConfigMismatchError)."""
+    return dict(kind="t1_grid_trial", task=Path(job).parent.name, family=family, candidate_id=cid,
+                parameters=records.jsonable(params), stage=stage, seed=seed, epochs=epochs, patience=patience,
+                test=test, data=data_definition(data), source_sha256=source, runtime=trial_runtime(torch_threads))
+
+
 def run_trial(job, family, cid, params, stage, data, seed, epochs, patience, source, test=False, study=None):
     """One receipt-backed fit of candidate ``cid``; an existing receipt is reused. ``data(seed)`` gives the splits.
 
     With ``study`` the trial is the run unit ``t1/<study>/<task>/<family>/<stage>/<cid>/s<seed>`` instead
-    (task and family are the job directory's names); a complete unit is reused like a receipt.
+    (task and family are the job directory's names); a unit complete with the same ``trial_config`` is reused like a
+    receipt (another config raises ConfigMismatchError).
     """
     if study is not None:
         key = records.key(study, Path(job).parent.name, Path(job).name, stage, cid, f"s{seed}")
-        config = dict(kind="t1_grid_trial", task=Path(job).parent.name, family=family, candidate_id=cid,
-                      parameters=records.jsonable(params), stage=stage, seed=seed, epochs=epochs, patience=patience,
-                      test=test)
+        config = trial_config(job, family, cid, params, stage, data, seed, epochs, patience, source, test)
         info = resolve_unit(key, config=config)
         if info is not None:
             return compact_row(records.unordered(load_run(info.path, arrays=False).record("trial")))
@@ -467,6 +496,17 @@ def check_run_study(parser, run_study):
             parser.error(f"--study: {exc}")
 
 
+def check_trial_paths(parser, run_study, tasks, seeds):
+    """Refuse, before any trial runs, a study whose deepest trial unit (stage ``evaluation``, a 16-character
+    candidate id, the longest seed) would have too long an event file path."""
+    if run_study is not None and tasks and seeds:
+        seed = f"s{max(seeds, key=lambda s: len(str(s)))}"
+        try:
+            records.check_unit_paths(run_study, [(task_key(ds), fam, "evaluation", "0" * 16, seed) for ds, fam in tasks])
+        except ValueError as exc:
+            parser.error(f"--study: {exc}")
+
+
 def baseline_environment():
     return {**environment_info(), "baseline_packages": {
         p: importlib.metadata.version(p) for p in ("catboost", "openml", "tabm", "scikit-learn")}}
@@ -523,6 +563,8 @@ def evaluate_main(argv):
     unknown = sorted(set(keys) - set(datasets)) + sorted(set(families) - set(study["families"]))
     if unknown:
         raise ValueError(f"Not in the grid's frozen study: {unknown}")
+    tasks = [(datasets[key], fam) for key in keys for fam in families]
+    check_trial_paths(parser, args.study, tasks, args.seeds)
     record_path = out / "evaluate.json"
     # Receipts found under --out are reused unchecked, so only an evaluate output of this grid may be resumed.
     if not record_path.exists() and out.is_dir() and any(out.iterdir()):
@@ -550,7 +592,6 @@ def evaluate_main(argv):
         write_source_zip(out / "source.zip")
     write_json(record_path, record)
     study.update(source_sha256=source, grid_source_sha256=frozen["source_sha256"])
-    tasks = [(datasets[key], fam) for key in keys for fam in families]
     run_jobs(lambda pool, ds, fam: pool.submit(evaluate_family, str(grid), study, ds, fam, args.seeds, str(out), args.study),
              tasks, out, args.workers, skipped=("no_selection",))
 
@@ -569,6 +610,10 @@ def main(argv=None):
     args = parser.parse_args(argv)
     check_run_study(parser, args.study)
     study = yaml.safe_load(Path(args.config).read_text())
+    tasks = [(ds, fam) for ds in study["datasets"] for fam in study["families"]
+             if (not args.only_dataset or ds["name"] == args.only_dataset)
+             and (not args.only_family or fam == args.only_family)]
+    check_trial_paths(parser, args.study, tasks, [*study["development_seeds"], *study["evaluation_seeds"]])
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     source = source_fingerprint(REPO)
@@ -590,9 +635,6 @@ def main(argv=None):
             expected_jobs=len(study["datasets"])*len(study["families"]), **deterministic, **recorded))
         write_source_zip(out / "source.zip")
     study["source_sha256"] = source
-    tasks = [(ds, fam) for ds in study["datasets"] for fam in study["families"]
-             if (not args.only_dataset or ds["name"] == args.only_dataset)
-             and (not args.only_family or fam == args.only_family)]
     run_jobs(lambda pool, ds, fam: pool.submit(dataset_family, study, ds, fam, str(out), args.study), tasks, out, args.workers)
 
 

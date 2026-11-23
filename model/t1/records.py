@@ -60,6 +60,24 @@ def key(study: str, *parts: Any) -> RunKey:
     return RunKey(WORKSTREAM, study, tuple(unit_component(p) for p in parts))
 
 
+def event_path_length(study: str, *parts: Any, root: Any = None) -> int:
+    """Length of the longest event file path ``open_run`` can create for the unit ``parts`` (a 7-digit pid,
+    session 001); it refuses to open a unit whose path reaches ``tracking.MAX_PATH``."""
+    import socket
+    name = f"events.out.tfevents.{'0' * 10}.{socket.gethostname()}.{'0' * 7}.99999.s001"
+    return len(str(unit_dir(key(study, *parts), root) / name))
+
+
+def check_unit_paths(study: str, units: Any, root: Any = None) -> None:
+    """ValueError, before any training, when one of ``units`` (tuples of unit parts) would have an event file path
+    too long for the tracking module (Windows MAX_PATH)."""
+    from model.common.tracking import MAX_PATH
+    for parts in units:
+        if (n := event_path_length(study, *parts, root=root)) >= MAX_PATH:
+            raise ValueError(f"unit {'/'.join(map(str, parts))} of study {study!r} would have event file paths of {n} "
+                             f"characters (limit {MAX_PATH}); use a shorter study name or run root")
+
+
 # ----------------------------------------------------------------------------- values
 
 

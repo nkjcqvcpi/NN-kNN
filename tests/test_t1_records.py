@@ -103,6 +103,12 @@ def same(a, b):
 # ----------------------------------------------------------------------------- helpers
 
 
+def loader(fn, name="tiny", task_type="classification", **splits):
+    """``fn`` as a grid data loader that carries a data definition, like ``t1_grid_search.split_loader``."""
+    fn.definition = {"dataset": {"name": name, "task_type": task_type}, "splits": {"test_frac": .2, **splits}}
+    return fn
+
+
 def test_unit_component_keeps_valid_names_and_hashes_others():
     assert records.unit_component("alternating_rr__kappa=10") == "alternating_rr__kappa=10"
     for name in ("a b/c", "x" * 80, "nul", "tuned::F", "x.held_out.y"):
@@ -293,10 +299,10 @@ def test_grid_trial_units_reuse_and_failures(tmp_path, monkeypatch):
     params = {"n_neighbors": 3, "weights": "uniform"}
     with contextlib.redirect_stdout(io.StringIO()):
         old = search.run_trial(job_files, "knn", "c1", params, "evaluation", lambda s: data, 30, 1, 1, "src", test=True)
-        new = search.run_trial(job_units, "knn", "c1", params, "evaluation", lambda s: data, 30, 1, 1, "src", test=True,
-                               study="g")
-        again = search.run_trial(job_units, "knn", "c1", params, "evaluation", lambda s: None, 30, 1, 1, "src", test=True,
-                                 study="g")
+        new = search.run_trial(job_units, "knn", "c1", params, "evaluation", loader(lambda s: data), 30, 1, 1, "src",
+                               test=True, study="g")
+        again = search.run_trial(job_units, "knn", "c1", params, "evaluation", loader(lambda s: None), 30, 1, 1, "src",
+                                 test=True, study="g")
     assert same(old, new) and json.dumps(again) == json.dumps(new)
     assert not job_units.exists()
     unit = records.trial_unit("g", "classification__tiny", "knn", "evaluation", "c1", 30)
@@ -311,6 +317,7 @@ def test_grid_trial_units_reuse_and_failures(tmp_path, monkeypatch):
     assert all(np.array_equal(a, b) for a, b in zip(saved_predictions(unit),
                                                      saved_predictions(job_files / "evaluation/c1/s30/test_predictions.pt")))
 
+    @loader
     def broken(seed):
         raise RuntimeError("no data")
     with contextlib.redirect_stdout(io.StringIO()):
@@ -318,7 +325,8 @@ def test_grid_trial_units_reuse_and_failures(tmp_path, monkeypatch):
         assert failed["status"] == "failed"
         bad = records.trial_unit("g", "classification__tiny", "knn", "screen", "c2", 20)
         assert tr.run_status(bad).status == "failed"
-        refit = search.run_trial(job_units, "knn", "c2", params, "screen", lambda s: data, 20, 1, 1, "src", study="g")
+        refit = search.run_trial(job_units, "knn", "c2", params, "screen", loader(lambda s: data), 20, 1, 1, "src",
+                                 study="g")
     assert refit["status"] == "completed" and tr.run_status(bad).status == "complete"
 
 
@@ -331,10 +339,16 @@ def test_grid_prefill_reads_trial_units(tmp_path, monkeypatch):
     y = x[:, 0] * .5
     data = T1Data("tiny", "regression", x[:6], y[:6], x[6:9], y[6:9], x[9:], y[9:])
     job = tmp_path / "grid/regression__tiny/knn"
-    assert receipt(job, "screen", "c", 20, run_study="g") is None
+    load = loader(lambda s: data, task_type="regression")
+    config = search.trial_config(job, "knn", "c", {"n_neighbors": 2}, "screen", load, 20, 1, 1, "src")
+    assert receipt(job, "screen", "c", 20, run_study="g", config=config) is None
     with contextlib.redirect_stdout(io.StringIO()):
-        row = search.run_trial(job, "knn", "c", {"n_neighbors": 2}, "screen", lambda s: data, 20, 1, 1, "src", study="g")
-    assert json.dumps(receipt(job, "screen", "c", 20, run_study="g")) == json.dumps(row)
+        row = search.run_trial(job, "knn", "c", {"n_neighbors": 2}, "screen", load, 20, 1, 1, "src", study="g")
+    assert json.dumps(receipt(job, "screen", "c", 20, run_study="g", config=config)) == json.dumps(row)
+    other = search.trial_config(job, "knn", "c", {"n_neighbors": 2}, "screen",
+                                loader(lambda s: data, task_type="regression", val_frac=.3), 20, 1, 1, "src")
+    with pytest.raises(tr.ConfigMismatchError):  # a unit fitted on other splits is not this grid's trial
+        receipt(job, "screen", "c", 20, run_study="g", config=other)
 
 
 def test_core_ablation_trial_unit_matches_receipt(tmp_path, monkeypatch):
@@ -345,8 +359,10 @@ def test_core_ablation_trial_unit_matches_receipt(tmp_path, monkeypatch):
     settings = dict(epochs=2, patience=2, batch_size=4, top_k=3, bias_init_k=3)
     with contextlib.redirect_stdout(io.StringIO()):
         old = abl.run_trial(tmp_path / "out/regression__tiny/base", "base", settings, lambda s: data, 30, "src")
-        new = abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings, lambda s: data, 30, "src", "abl")
-        again = abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings, lambda s: None, 30, "src", "abl")
+        load = loader(lambda s: data, task_type="regression")
+        new = abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings, load, 30, "src", "abl")
+        again = abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings, loader(lambda s: None, task_type="regression"),
+                              30, "src", "abl")
     assert old["status"] == new["status"] == "completed" and same(old, new) and json.dumps(again) == json.dumps(new)
     unit = tr.unit_dir(records.key("abl", "regression__tiny", "base", "s30"))
     run = tr.load_run(unit)
@@ -388,3 +404,85 @@ def test_frozen_confirmation_configs_name_their_selection_files():
     for path in paths:
         sources = yaml.safe_load(path.read_text(encoding="utf-8"))["core_selection_source"]
         assert sources and all(isinstance(v, str) and v.endswith("selection.json") for v in sources.values()), path
+
+
+# ----------------------------------------------------------------------------- unit identity (review fixes)
+
+
+def deep_root(tmp_path):
+    """A run root so deep that every unit's event file path is over the tracking limit."""
+    need = max(0, 200 - len(str(tmp_path)))  # a root of about 200 characters (directories stay under 248)
+    root = tmp_path.joinpath(*(["d" * 50] * (need // 51)), "e" * max(1, need % 51), "runs")
+    root.mkdir(parents=True)
+    return root
+
+
+def test_grid_trials_are_reused_only_for_the_same_data(tmp_path, monkeypatch):
+    import tools.t1_grid_search as search
+    (tmp_path / "runs").mkdir()
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
+    data = tiny_data({"name": "tiny", "task_type": "classification"}, 1)
+    job = tmp_path / "grid/classification__tiny/knn"
+    params = {"n_neighbors": 3}
+    with contextlib.redirect_stdout(io.StringIO()):
+        row = search.run_trial(job, "knn", "c", params, "screen", loader(lambda s: data), 20, 1, 1, "src", study="g")
+        assert json.dumps(search.run_trial(job, "knn", "c", params, "screen", loader(lambda s: None), 20, 1, 1, "src",
+                                           study="g")) == json.dumps(row)
+        for changed in (dict(data=loader(lambda s: data, test_frac=.4)), dict(data=loader(lambda s: data, name="other")),
+                        dict(source="other source")):
+            args = {"data": loader(lambda s: data), "source": "src", **changed}
+            with pytest.raises(tr.ConfigMismatchError):
+                search.run_trial(job, "knn", "c", params, "screen", args["data"], 20, 1, 1, args["source"], study="g")
+        with pytest.raises(ValueError, match="data loader"):  # a loader without its definition cannot be recorded
+            search.run_trial(job, "knn", "c", params, "screen", lambda s: data, 20, 1, 1, "src", study="g")
+    assert search.split_loader({"splits": {"test_frac": .2}}, {"name": "iris", "task_type": "classification",
+                                                               "max_train": 50}).definition == \
+        {"dataset": {"name": "iris", "task_type": "classification", "max_train": 50},
+         "splits": {"test_frac": .2, "max_train": 50}}
+
+
+def test_two_grids_on_one_study_do_not_share_trials(tmp_path, monkeypatch, request):
+    """gridB (other splits) on gridA's study refuses gridA's trials; on a study of its own it fits them."""
+    import concurrent.futures
+    import yaml
+    import tools.t1_grid_search as search
+    threads = torch.get_num_threads()
+    request.addfinalizer(lambda: torch.set_num_threads(threads))
+    monkeypatch.delenv("NNKNN_DETERMINISTIC", raising=False)
+    (tmp_path / "runs").mkdir()
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
+    monkeypatch.setattr(search, "ProcessPoolExecutor", concurrent.futures.ThreadPoolExecutor)
+    study = dict(development_seeds=[20], evaluation_seeds=[30], screen_epochs=2, screen_patience=1, refit_epochs=2,
+                 refit_patience=1, finalists=1, torch_threads=1, splits=dict(test_frac=.2, val_frac=.2),
+                 families=["knn"], datasets=[dict(name="iris", task_type="classification")],
+                 grids=dict(knn=dict(n_neighbors=[3, 5], weights=["uniform"], p=[2])))
+    for name, test_frac in (("A", .2), ("B", .4)):
+        (tmp_path / f"grid{name}.yaml").write_text(yaml.safe_dump({**study, "splits": dict(test_frac=test_frac, val_frac=.2)}))
+    with contextlib.redirect_stdout(io.StringIO()):
+        search.main([str(tmp_path / "gridA.yaml"), "--out", str(tmp_path / "A"), "--workers", "1", "--study", "G"])
+        with pytest.raises(SystemExit):
+            search.main([str(tmp_path / "gridB.yaml"), "--out", str(tmp_path / "B"), "--workers", "1", "--study", "G"])
+        search.main([str(tmp_path / "gridB.yaml"), "--out", str(tmp_path / "B2"), "--workers", "1", "--study", "G2"])
+    assert "ConfigMismatchError" in (tmp_path / "B/results.json").read_text()
+    assert not (tmp_path / "B/classification__iris/knn/selection.json").exists()
+    a, b2 = (json.loads((tmp_path / d / "classification__iris/knn/completed.json").read_text()) for d in ("A", "B2"))
+    assert a["status"] == b2["status"] == "completed"
+    assert a["evaluation"][0]["dataset"] != b2["evaluation"][0]["dataset"]  # B2 was fitted on its own splits
+    monkeypatch.setenv("NNKNN_RUNS", str(deep_root(tmp_path)))
+    with pytest.raises(SystemExit), contextlib.redirect_stderr(io.StringIO()):  # unit paths too long: refused at once
+        search.main([str(tmp_path / "gridA.yaml"), "--out", str(tmp_path / "C"), "--workers", "1", "--study", "G"])
+    assert not (tmp_path / "C").exists()
+
+
+def test_core_ablation_trials_are_reused_only_for_the_same_data(tmp_path, monkeypatch):
+    import tools.t1_core_ablation as abl
+    (tmp_path / "runs").mkdir()
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
+    data = tiny_data({"task_type": "regression", "name": "tiny"}, 3)
+    settings = dict(epochs=2, patience=2, batch_size=4, top_k=3, bias_init_k=3)
+    job = tmp_path / "u/regression__tiny/base"
+    with contextlib.redirect_stdout(io.StringIO()):
+        assert abl.run_trial(job, "base", settings, loader(lambda s: data, task_type="regression"), 30, "src",
+                             "abl")["status"] == "completed"
+        with pytest.raises(tr.ConfigMismatchError):
+            abl.run_trial(job, "base", settings, loader(lambda s: data, task_type="regression", val_frac=.5), 30, "src", "abl")
