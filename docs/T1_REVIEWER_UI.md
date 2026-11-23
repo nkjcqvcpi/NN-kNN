@@ -20,6 +20,11 @@ subsequent version's actual model/Adam/targets/statistics/interventions, the
 rendered data JSON, and the current version pointer. Existing sessions are
 preserved by rejecting nonempty destinations. Loading/replaying these artifacts
 uses safe tensor checkpoints; interactive restart/resume is not yet implemented.
+With `--study S` the session is recorded as the run unit `NN-KNN/runs/t1/S/reviewer/<directory name>/`
+instead: every version's state is a named state `v<NNNN>-<stage>` and its rendered data the record
+`view/v<NNNN>`, the control model the state `MC`, and the trainings' curves are logged; the source ZIP,
+manifest, `latest.json` and `server.json` stay in the output directory. The unit is complete when the server
+is stopped with Ctrl+C (`docs/T1_RUN_RECORDS.md`).
 The server binds only `127.0.0.1`. Version checks prevent stale edits, and a local
 session token plus Host/Origin validation prevents unrelated pages from issuing
 review actions. This is not a multi-user or publicly hosted application.

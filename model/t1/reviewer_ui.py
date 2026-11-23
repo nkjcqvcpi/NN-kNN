@@ -2,6 +2,12 @@
 
 This is engineering preparation, not participant evidence. Displayed predictions,
 case activations and C/H statistics share one frozen retrieval computation.
+
+With a run (``tools/t1_reviewer_ui.py --study``) every version state is the named state
+``v<NNNN>-<stage>`` of the session's unit and its view the record ``view/v<NNNN>`` (instead of
+``v<NNNN>-<stage>/checkpoint.pt`` and ``view.json``), the control model is the state ``MC`` (instead of
+``MC.pt``), and the trainings log their curves (``m0/``, ``m2/``, ``mc/``); the session manifest, source
+snapshot and ``latest.json`` stay files.
 """
 from __future__ import annotations
 
@@ -34,11 +40,11 @@ def common_knowledge_data():
 
 
 class ReviewerSession:
-    def __init__(self, output: Path, *, seed=11, epochs=30):
+    def __init__(self, output: Path, *, seed=11, epochs=30, run=None):
         if output.exists() and any(output.iterdir()):
             raise ValueError("use an empty output directory to preserve previous sessions")
         output.mkdir(parents=True, exist_ok=True)
-        self.output = output
+        self.output, self.run = output, run
         repo = Path(__file__).resolve().parents[2]
         fingerprint = source_fingerprint(repo)
         with zipfile.ZipFile(output / "source_snapshot.zip", "w", zipfile.ZIP_DEFLATED) as bundle:
@@ -62,7 +68,8 @@ class ReviewerSession:
         self.model = build_model(self.X, self.targets, self.cfg, 2)
         self.validation = self.queries.clone()
         self.validation[:, 2] = torch.tensor([.1, .9] * 4)
-        trained = train_retrieval(self.model, self.X, self.targets, self.validation, self.query_targets, self.cfg)
+        trained = train_retrieval(self.model, self.X, self.targets, self.validation, self.query_targets, self.cfg,
+                                  **self._tracking("m0/"))
         self.optimizer = trained.optimizer
         self.m0 = copy.deepcopy(self.model)
         self.m0_optimizer = clone_optimizer(self.optimizer, self.m0, self.cfg)
@@ -128,17 +135,28 @@ class ReviewerSession:
                 "actions": self.actions, "controlled_result": self.controlled_result,
                 "retraining": self.retraining, "study_status": "工程演示，尚未开展参与者研究"}
 
+    def _tracking(self, prefix):
+        return {} if self.run is None else {"run": self.run, "log_prefix": prefix}
+
     def _save(self, stage):
-        folder = self.output / f"v{self.version:04d}-{stage}"
-        folder.mkdir()
-        torch.save({"model_state": self.model.state_dict(), "active_case_count": self.model.case_count(),
+        name = f"v{self.version:04d}-{stage}"
+        state = {"model_state": self.model.state_dict(), "active_case_count": self.model.case_count(),
                     "optimizer_state": self.optimizer.state_dict(), "interventions": self.log.state_dict(),
                     "statistics": self.store.state_dict(), "training_targets": self.targets,
                     "X_train": self.X, "X_queries": self.queries, "y_queries": self.query_targets,
-                    "core": self.cfg.__dict__}, folder / "checkpoint.pt")
-        (folder / "view.json").write_text(json.dumps(self.snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
-        (self.output / "latest.json").write_text(json.dumps({"version": self.version, "stage": stage,
-            "folder": folder.name}, indent=2), encoding="utf-8")
+                    "core": self.cfg.__dict__}
+        if self.run is not None:
+            from .records import ordered, storable
+            self.run.save_state(name, storable(state))
+            self.run.log_record(f"view/v{self.version:04d}", ordered(self.snapshot))
+            latest = {"version": self.version, "stage": stage, "state": name, "run": self.run.run_id}
+        else:
+            folder = self.output / name
+            folder.mkdir()
+            torch.save(state, folder / "checkpoint.pt")
+            (folder / "view.json").write_text(json.dumps(self.snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+            latest = {"version": self.version, "stage": stage, "folder": folder.name}
+        (self.output / "latest.json").write_text(json.dumps(latest, indent=2), encoding="utf-8")
 
     def act(self, request):
         if self.retraining is not None:
@@ -244,16 +262,21 @@ class ReviewerSession:
         cfg.patience = epochs
         with torch.random.fork_rng():
             result = train_retrieval(model, self.X, self.targets, self.validation, self.query_targets,
-                                    cfg, epochs=epochs, optimizer=opt, select_best=False, lr_scale=.1)
+                                    cfg, epochs=epochs, optimizer=opt, select_best=False, lr_scale=.1, **self._tracking("m2/"))
         with torch.random.fork_rng():
             ctr = train_retrieval(control, self.X, self.m0_targets, self.validation, self.query_targets,
-                                 cfg, epochs=epochs, optimizer=copt, select_best=False, lr_scale=.1)
+                                 cfg, epochs=epochs, optimizer=copt, select_best=False, lr_scale=.1, **self._tracking("mc/"))
         with frozen_evaluation(control):
             r = control.retrieve(self.queries, exclude_identical=False)
             _, prediction, _ = final_prediction(control, self.queries, r)
-        torch.save({"model_state": control.state_dict(), "active_case_count": control.case_count(),
-                    "optimizer_state": ctr.optimizer.state_dict(), "history": ctr.history,
-                    "training_targets": self.m0_targets}, self.output / "MC.pt")
+        mc = {"model_state": control.state_dict(), "active_case_count": control.case_count(),
+              "optimizer_state": ctr.optimizer.state_dict(), "history": ctr.history,
+              "training_targets": self.m0_targets}
+        if self.run is not None:
+            from .records import storable
+            self.run.save_state("MC", storable(mc))
+        else:
+            torch.save(mc, self.output / "MC.pt")
         self.model, self.optimizer = model, result.optimizer
         self.retraining = {"epochs": epochs, "lr_scale": .1, "selection": "fixed final epoch",
                            "M2_history": result.history, "MC_history": ctr.history,

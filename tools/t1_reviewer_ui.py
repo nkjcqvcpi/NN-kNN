@@ -13,6 +13,8 @@ sys.path.insert(0, str(REPO))
 os.environ.setdefault("NNKNN_DEVICE", "cpu")
 import torch
 from model.t1.reviewer_ui import ReviewerSession
+from model.t1 import records
+from model.common.tracking import NullRun, open_run
 
 HTML = """<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>案例审阅工作台</title><style>
@@ -100,17 +102,35 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--seed", type=int, default=11)
+    parser.add_argument("--study", help="record the session as the run unit NN-KNN/runs/t1/<study>/reviewer/<out name>/ "
+                                        "(version states, views, training curves) instead of version folders")
     args = parser.parse_args()
     torch.set_num_threads(1)
-    session = ReviewerSession(args.out, seed=args.seed)
-    server = HTTPServer(("127.0.0.1", args.port), make_handler(session, secrets.token_hex(24)))
-    ready = {"url": f"http://127.0.0.1:{server.server_port}", "pid": os.getpid(), "output": str(args.out.resolve())}
-    (args.out / "server.json").write_text(json.dumps(ready, indent=2), encoding="utf-8")
-    print(json.dumps(ready), flush=True)
+    run = NullRun()
+    if args.study is not None:
+        try:
+            records.check_study(args.study)
+            key = records.key(args.study, "reviewer", args.out.resolve().name)
+        except (FileNotFoundError, ValueError) as exc:
+            parser.error(f"--study: {exc}")
+        run = open_run(key, config={"kind": "t1_reviewer_session", "seed": args.seed, "output": args.out.resolve().name})
     try:
-        server.serve_forever()
-    finally:
-        server.server_close()
+        session = ReviewerSession(args.out, seed=args.seed, run=None if args.study is None else run)
+        server = HTTPServer(("127.0.0.1", args.port), make_handler(session, secrets.token_hex(24)))
+        ready = {"url": f"http://127.0.0.1:{server.server_port}", "pid": os.getpid(), "output": str(args.out.resolve())}
+        (args.out / "server.json").write_text(json.dumps(ready, indent=2), encoding="utf-8")
+        print(json.dumps(ready), flush=True)
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:  # the normal way to end a session; a recorded one is then complete
+            if args.study is None:
+                raise
+        finally:
+            server.server_close()
+    except BaseException as exc:
+        run.fail(exc)
+        raise
+    run.complete()
 
 
 if __name__ == "__main__":
