@@ -20,7 +20,8 @@ Branch `neural-cbr` (`neural-cbr/`): shared NN-kNN core + T1. Current scope: `to
 
 - Every T1 entry point that trains (`t1_run` with its drivers `t1_parallel`, `t1_execute_study`, `t1_launch.ps1`; `t1_grid_search` and `t1_grid_prefill`; `t1_core_ablation`; the two pilots; the reviewer UI) takes `--study S` and then records each run as one unit through `model/common/tracking.py` instead of writing per-run files; without `--study` the files are written as before. The legacy reference passes `run=` to `train_model` (no `legacy_best.pth`). Helpers and readers: `model/t1/records.py`.
 - The readers (`t1_summarize`, `t1_encoder_report`, `t1_schedule_search`, `t1_block_accept`, `t1_freeze`, `t1_cbm_diagnostics`, `t1_confirm_report`, `t1_confirm_audit`) take a run-unit tree as well as the legacy result directories; their output files are unchanged and byte-identical for the same runs.
-- The selections that 43 configs read from grid `selection.json` files are inlined (`core_selection_source.*.selection`; `grid_winners` in the core-ablation config); see `docs/T1_RUN_RECORDS.md`.
+- A unit is reused only with the same config: grid and core-ablation trials hold their data definition (dataset entry and splits), source fingerprint and runtime, so grids or evaluate runs sharing a study never take each other's trials; `t1_run` units leave out the `seeds` list, so a study started per seed (`t1_parallel`, `t1_execute_study`) resumes with a plain `t1_run`, and a changed config stops the job before training. Unit paths too long for Windows are refused before training (see `docs/T1_RUN_RECORDS.md`).
+- The configs keep naming their grid `selection.json` by path, as frozen (`confirm_final_20261013/` is byte-identical to its freeze); only the core-ablation config carries `grid_winners`.
 - Tests: `tests/test_t1_records.py`.
 
 ## History

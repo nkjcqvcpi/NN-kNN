@@ -37,6 +37,28 @@ grid, ablation or pilot trial is then read back instead of refitted); a complete
 `ConfigMismatchError`; a failed or interrupted unit restarts in place. Only the legacy reference (`train_model`)
 resumes inside its training; the other T1 units are written when the run finishes.
 
+What a unit's config holds, and so when a unit is reused:
+
+- `tools/t1_run.py`: the run config (experiment, dataset entry, seed, condition, resolved config) without the
+  config's `seeds` list, which `--seeds` rewrites. A study started one job per seed (`t1_parallel`,
+  `t1_execute_study`) therefore resumes with a plain `t1_run` or `t1_launch.ps1`, and the reverse. The manifest,
+  the row and the run id still use the full config, so rows and numbers are unchanged. Before each dataset and
+  seed trains, the complete units of that experiment, dataset and seed are checked against the current config
+  (their condition aside): a changed config stops the job before any training, not after it. Units whose work
+  is already complete are skipped only when their condition is reached (after its training) except for the
+  legacy reference, which is checked before its data is loaded.
+- Grid trials (`t1_grid_search`, `evaluate`, `t1_grid_prefill`): task, family, candidate id and parameters, stage,
+  seed, epochs, patience, test flag, the data definition (the dataset entry and its make_splits options, carried
+  by `split_loader`), the source fingerprint and the runtime (`torch_threads`, deterministic kernels). Two grids
+  or evaluate runs that share a study reuse a trial only when it would be fitted the same way; a trial fitted on
+  other splits or another dataset entry raises `ConfigMismatchError` (the job fails, nothing is reused).
+- Core ablation trials: task, variant, resolved settings, seed, data definition, source fingerprint, runtime.
+
+Unit paths: the tracking module refuses an event file path of 240 characters or more. `t1_grid_search` and
+`t1_core_ablation` check every unit path of the job before any trial runs. `t1_run` refuses a study whose paths
+are too long even for a one-character condition label, and warns when a 48-character label (the longest kept
+before hashing) would be too long, since the labels are only known when each condition is reached.
+
 ## Readers (input side only; outputs unchanged)
 
 Each reader takes either the legacy result directory, read as before, or the run-unit tree of the same runs:
@@ -54,13 +76,10 @@ Each reader takes either the legacy result directory, read as before, or the run
 - `tools/t1_confirm_audit.py <unit tree>`: unit status, row rebuilt from `manifest` + `metrics` against the
   `row` record, unit path, fingerprints and (with `--logs`) the `[done]` lines; `--repair` applies to shards only.
 
-## Selections inlined in the configs
+## Selections
 
-The 43 T1 configs that named a grid `selection.json` (the 2026-10-09 full grid and the 2026-10-13 transfer grid)
-now carry the selection itself under `core_selection_source` (`selection`, plus `legacy_path` and `sha256` as
-provenance); `configs/t1/core_ablation_20261027.yaml` carries `grid_winners`, which `tools/t1_core_ablation.py`
-uses instead of reading the grid. The trained values (`core_by_dataset`) did not change; no config reads a file
-under `results/`. The ten transfer selections were no longer on g234: their entries hold the parameters of
-`core_by_dataset` and a note. `tools/t1_schedule_search.py prepare` and `tools/t1_freeze.py` now write the
-selection into the configs they generate. The frozen confirmation configs therefore no longer match the sha256
-values in the freeze record of 2026-10-13 (git history keeps the frozen bytes).
+The configs keep naming their grid `selection.json` by path under `core_selection_source`, as frozen (the
+pre-registered `configs/t1/confirm_final_20261013/` configs are byte-identical to their 2026-10-13 freeze; no run
+path reads that entry, only `tools/t1_freeze.py` as provenance). Only `configs/t1/core_ablation_20261027.yaml`
+carries `grid_winners` (copied from the grid's selection files), which `tools/t1_core_ablation.py` uses instead of
+reading the grid; without it the tool reads `<grid>/<task>/nnknn/selection.json` as before.
