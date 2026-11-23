@@ -88,17 +88,7 @@ core_by_dataset:
     lr_glocal: 0.01
     lr_feature: 0.001
 core_selection_source:
-  classification__tabarena_363681:
-    legacy_path: results\t1\p6_confirmation_revision\grid_transfer_20261013\classification__tabarena_363681\nnknn\selection.json
-    selection:
-      candidate_id: e447bf3607f00eef
-      parameters:
-        representation: raw
-        top_k: 10
-        lr_case: 0.01
-        glocal_fw_set_num: 4
-        tau: 1.0
-    note: selection.json is no longer on g234; parameters are core_by_dataset without the grid's derived batch_size, lr_glocal and lr_feature, candidate_id is config_id(parameters)
+  classification__tabarena_363681: results\t1\p6_confirmation_revision\grid_transfer_20261013\classification__tabarena_363681\nnknn\selection.json
 conditions:
 - schedule: joint_rr
   joint_objective: summed

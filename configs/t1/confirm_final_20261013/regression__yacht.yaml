@@ -105,22 +105,7 @@ core_by_dataset:
     lr_glocal: 0.01
     lr_feature: 0.001
 core_selection_source:
-  regression__yacht:
-    legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__yacht\nnknn\selection.json
-    sha256: 4510bb3fccd343aacee29756e61828683eecf5ebec6e771c155489fea3ba8928
-    selection:
-      candidate_id: 442364a5bdcf9305
-      parameters:
-        representation: raw
-        top_k: 3
-        lr_case: 0.01
-        glocal_fw_set_num: 1
-        tau: 1.0
-      development_seeds:
-      - 20
-      - 21
-      test_stream_used: false
-      source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+  regression__yacht: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__yacht\nnknn\selection.json
 conditions:
 - schedule: joint_rr
   joint_objective: summed

@@ -117,13 +117,8 @@ def matched_reference(f: dict, task_type: str) -> dict:
     return ref
 
 
-def selection_source(path: Path, sel: dict) -> dict:
-    """``core_selection_source`` entry: the grid selection copied into the config (path and sha256 as provenance)."""
-    return {"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "selection": sel}
-
-
 def task_config(template: dict, ds: dict, core: dict, f: dict, fg: dict, seeds: list[int], experiment: str,
-                base: str, core_source: dict | str) -> dict:
+                base: str, core_source: str) -> dict:
     cfg = {k: copy.deepcopy(v) for k, v in template.items() if k not in ("conditions", "condition_grid", "datasets",
                                                                           "core_by_dataset", "core_selection_source")}
     key = f"{ds['task_type']}__{ds['name']}"
@@ -190,19 +185,18 @@ def main() -> None:
         key = f"{d['task_type']}__{d['name']}"
         tt, win = tuned[d["name"]]
         f, fg = spec_for(win, dicts, tt), spec_for(fg_name, dicts, tt)
-        src = legacy_sources.get(key) or args.legacy_cores  # the inlined selection entry of the tuning config
+        src = legacy_sources.get(key, {}).get("selection", args.legacy_cores)
         cfg = task_config(template, dict(d), legacy["core_by_dataset"][key], f, fg, seeds_for(key), args.experiment, base, src)
         emitted[key] = cfg
         selections[key] = {"F": win, "F_is_frozen_reuse": bool(f.get("reuse")), "group": "legacy_tuned"}
     for name, tt in (("car", "regression"), ("wine", "regression")):  # addendum 2: confirmation only
         key = f"{tt}__{name}"
-        sel_path = Path(args.legacy_grid) / key / "nnknn" / "selection.json"
-        sel = json.loads(sel_path.read_text())
+        sel = json.loads((Path(args.legacy_grid) / key / "nnknn" / "selection.json").read_text())
         assert not sel["test_stream_used"]
         fg = spec_for(fg_name, dicts, tt)
         ds = {"name": name, "task_type": tt, **({"qualified": True} if name == "wine" else {})}
         emitted[key] = task_config(template, ds, nnknn_core_settings(sel["parameters"]), fg, None, seeds_for(key), args.experiment,
-                                   base, selection_source(sel_path, sel))
+                                   base, str(Path(args.legacy_grid) / key / "nnknn" / "selection.json"))
         selections[key] = {"F": fg_name, "group": "legacy_untuned_global"}
     for t in prereg["tasks"]["primary_transfer"]:
         key = f"{t['task_type']}__{t['name']}"
@@ -215,7 +209,7 @@ def main() -> None:
         fg = spec_for(fg_name, dicts, t["task_type"])
         ds = {"name": t["name"], "task_type": t["task_type"], "display": t.get("display"), "max_train": t["max_train"]}
         emitted[key] = task_config(template, ds, nnknn_core_settings(sel["parameters"]), fg, None, seeds_for(key), args.experiment,
-                                   base, selection_source(sel_path, sel))
+                                   base, str(sel_path))
         selections[key] = {"F": fg_name, "group": "transfer"}
     hashes = {}
     for key, cfg in emitted.items():

@@ -135,8 +135,7 @@ def prepare(args) -> None:
         if sel["test_stream_used"]:
             raise SystemExit(f"{key}: test-based selection is prohibited")
         core_by_dataset[key] = nnknn_core_settings(sel["parameters"])
-        # the selection itself is copied into the config, so the config does not depend on the grid's files
-        sources[key] = {"path": str(path), "selection": sel, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        sources[key] = {"selection": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
     if args.experiment:
         template["experiment"] = args.experiment
     template["core_by_dataset"] = core_by_dataset

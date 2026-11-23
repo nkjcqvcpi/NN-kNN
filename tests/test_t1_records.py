@@ -380,20 +380,11 @@ def test_reviewer_session_records_version_states(tmp_path, monkeypatch):
     assert not list((tmp_path / "session").glob("v0000*")) and data.series("m0/train/loss")
 
 
-def test_no_t1_config_reads_legacy_selection_files():
-    """The selections are inlined: a selection.json path survives only as provenance, and every inlined
-    selection agrees with the core settings the config trains with."""
+def test_frozen_confirmation_configs_name_their_selection_files():
+    """The pre-registered confirm_final_20261013 configs stay as frozen: each names its grid selection.json by path."""
     import yaml
-    for path in Path("configs/t1").rglob("*.yaml"):
-        text = path.read_text(encoding="utf-8")
-        for line in text.splitlines():
-            if "selection.json" in line:
-                assert line.strip().startswith(("legacy_path:", "note:", "selection_source:", "#")), (path, line)
-        cfg = yaml.safe_load(text)
-        sources = cfg.get("core_selection_source") or {}
-        entries = sources.get("files", {}) if "files" in sources else {k: v for k, v in sources.items() if k != "grid"}
-        for task, entry in entries.items():
-            params = entry["selection"]["parameters"]
-            core = (cfg.get("core_by_dataset") or {}).get(task)
-            if core is not None:
-                assert all(core[k] == v for k, v in params.items()), (path, task)
+    paths = sorted(Path("configs/t1/confirm_final_20261013").glob("*.yaml"))
+    assert len(paths) == 30
+    for path in paths:
+        sources = yaml.safe_load(path.read_text(encoding="utf-8"))["core_selection_source"]
+        assert sources and all(isinstance(v, str) and v.endswith("selection.json") for v in sources.values()), path

@@ -173,260 +173,52 @@ core_selection_source:
   grid: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009
   files:
     classification__iris:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__iris\nnknn\selection.json
-      selection:
-        candidate_id: 9f6524b68be0b6e7
-        parameters:
-          representation: raw
-          top_k: 3
-          lr_case: 0.01
-          glocal_fw_set_num: 4
-          tau: 1.0
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__iris\nnknn\selection.json
       sha256: f60a237029364ad31fa663489e1b51cb2d1ab6b6fadf5204236a26265ab353cd
     classification__wine:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__wine\nnknn\selection.json
-      selection:
-        candidate_id: 804048d94537e789
-        parameters:
-          representation: mlp
-          top_k: 3
-          lr_case: 0.01
-          glocal_fw_set_num: 4
-          tau: 1.0
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__wine\nnknn\selection.json
       sha256: 6fbdb6d8b93a591cf0385b494a0e52405ef386650451d6be131a09e783f2e6bd
     classification__breast_cancer:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__breast_cancer\nnknn\selection.json
-      selection:
-        candidate_id: 442364a5bdcf9305
-        parameters:
-          representation: raw
-          top_k: 3
-          lr_case: 0.01
-          glocal_fw_set_num: 1
-          tau: 1.0
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__breast_cancer\nnknn\selection.json
       sha256: 4510bb3fccd343aacee29756e61828683eecf5ebec6e771c155489fea3ba8928
     classification__balance:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__balance\nnknn\selection.json
-      selection:
-        candidate_id: 44e9fa6324bade1d
-        parameters:
-          representation: mlp
-          top_k: 10
-          lr_case: 0.01
-          glocal_fw_set_num: 1
-          tau: 0.5
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__balance\nnknn\selection.json
       sha256: 62b9937fe17e16d9ee7f4297d30f68b755e1195f9e1ed8dc75db8ff441955cac
     classification__digits:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__digits\nnknn\selection.json
-      selection:
-        candidate_id: aa075cee4e3123a2
-        parameters:
-          representation: raw
-          top_k: 10
-          lr_case: 0.01
-          glocal_fw_set_num: 4
-          tau: 0.5
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__digits\nnknn\selection.json
       sha256: 9dd33cb5215df41a78d8fa6e4ea7dcdce7fe3a38bdb9b7589d663461f181aa5e
     classification__zebra:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__zebra\nnknn\selection.json
-      selection:
-        candidate_id: 08dfe959a43b1837
-        parameters:
-          representation: raw
-          top_k: 3
-          lr_case: 0.01
-          glocal_fw_set_num: 4
-          tau: 0.5
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__zebra\nnknn\selection.json
       sha256: 1de89d470956621c5a9b389111ed8f33690c8d9ae25514a75b27c41084da2b03
     classification__zebra_special:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__zebra_special\nnknn\selection.json
-      selection:
-        candidate_id: ce9562187fd7d8b9
-        parameters:
-          representation: raw
-          top_k: 10
-          lr_case: 0.01
-          glocal_fw_set_num: 1
-          tau: 0.5
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__zebra_special\nnknn\selection.json
       sha256: 62bf06b8d9854a9e74226135483cf55ddea2104723268915b66980b80766f0aa
     classification__tabarena_363614:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__tabarena_363614\nnknn\selection.json
-      selection:
-        candidate_id: 79be138421623dcf
-        parameters:
-          representation: mlp
-          top_k: 10
-          lr_case: 0.01
-          glocal_fw_set_num: 4
-          tau: 0.5
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__tabarena_363614\nnknn\selection.json
       sha256: eb846082e57c41e9c5f2470a587c181e4443622cd1062a8639cb2b9a4cfb8b57
     classification__tabarena_363626:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__tabarena_363626\nnknn\selection.json
-      selection:
-        candidate_id: 247e106f78401d72
-        parameters:
-          representation: raw
-          top_k: 10
-          lr_case: 0.001
-          glocal_fw_set_num: 4
-          tau: 0.5
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__tabarena_363626\nnknn\selection.json
       sha256: ff5626f54ff8f14e0142320a24b22dda087535b8fb6862074c25a3759cccd90c
     regression__energy_efficiency:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__energy_efficiency\nnknn\selection.json
-      selection:
-        candidate_id: ce9562187fd7d8b9
-        parameters:
-          representation: raw
-          top_k: 10
-          lr_case: 0.01
-          glocal_fw_set_num: 1
-          tau: 0.5
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__energy_efficiency\nnknn\selection.json
       sha256: 62bf06b8d9854a9e74226135483cf55ddea2104723268915b66980b80766f0aa
     regression__yacht:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__yacht\nnknn\selection.json
-      selection:
-        candidate_id: 442364a5bdcf9305
-        parameters:
-          representation: raw
-          top_k: 3
-          lr_case: 0.01
-          glocal_fw_set_num: 1
-          tau: 1.0
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__yacht\nnknn\selection.json
       sha256: 4510bb3fccd343aacee29756e61828683eecf5ebec6e771c155489fea3ba8928
     regression__airfoil:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__airfoil\nnknn\selection.json
-      selection:
-        candidate_id: 0a343ea25204a673
-        parameters:
-          representation: mlp
-          top_k: 10
-          lr_case: 0.01
-          glocal_fw_set_num: 4
-          tau: 1.0
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__airfoil\nnknn\selection.json
       sha256: e77b9b896b70161ae012068e922959b37d2c7fc1ec5361f98a5e4ae785690884
     regression__student_performance:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__student_performance\nnknn\selection.json
-      selection:
-        candidate_id: e447bf3607f00eef
-        parameters:
-          representation: raw
-          top_k: 10
-          lr_case: 0.01
-          glocal_fw_set_num: 4
-          tau: 1.0
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__student_performance\nnknn\selection.json
       sha256: dfcd16262828a5b985bc84a2dc715d63fb52b12ec4cd52b7da0f2da63cc7d6b4
     regression__abalone:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__abalone\nnknn\selection.json
-      selection:
-        candidate_id: 79be138421623dcf
-        parameters:
-          representation: mlp
-          top_k: 10
-          lr_case: 0.01
-          glocal_fw_set_num: 4
-          tau: 0.5
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__abalone\nnknn\selection.json
       sha256: eb846082e57c41e9c5f2470a587c181e4443622cd1062a8639cb2b9a4cfb8b57
     regression__tabarena_363625:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__tabarena_363625\nnknn\selection.json
-      selection:
-        candidate_id: 0a343ea25204a673
-        parameters:
-          representation: mlp
-          top_k: 10
-          lr_case: 0.01
-          glocal_fw_set_num: 4
-          tau: 1.0
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__tabarena_363625\nnknn\selection.json
       sha256: e77b9b896b70161ae012068e922959b37d2c7fc1ec5361f98a5e4ae785690884
     regression__tabarena_363675:
-      legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__tabarena_363675\nnknn\selection.json
-      selection:
-        candidate_id: e447bf3607f00eef
-        parameters:
-          representation: raw
-          top_k: 10
-          lr_case: 0.01
-          glocal_fw_set_num: 4
-          tau: 1.0
-        development_seeds:
-        - 20
-        - 21
-        test_stream_used: false
-        source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+      selection: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__tabarena_363675\nnknn\selection.json
       sha256: dfcd16262828a5b985bc84a2dc715d63fb52b12ec4cd52b7da0f2da63cc7d6b4
 sync:
   s_task: 0.5

@@ -87,22 +87,7 @@ core_by_dataset:
     lr_glocal: 0.001
     lr_feature: 0.0001
 core_selection_source:
-  classification__tabarena_363626:
-    legacy_path: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__tabarena_363626\nnknn\selection.json
-    sha256: ff5626f54ff8f14e0142320a24b22dda087535b8fb6862074c25a3759cccd90c
-    selection:
-      candidate_id: 247e106f78401d72
-      parameters:
-        representation: raw
-        top_k: 10
-        lr_case: 0.001
-        glocal_fw_set_num: 4
-        tau: 0.5
-      development_seeds:
-      - 20
-      - 21
-      test_stream_used: false
-      source_sha256: ec45b8952f21ae4f4804891be3474629cad874b62f3d6f28fe243d13c818f9d4
+  classification__tabarena_363626: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\classification__tabarena_363626\nnknn\selection.json
 conditions:
 - schedule: joint_rr
   joint_objective: separated
