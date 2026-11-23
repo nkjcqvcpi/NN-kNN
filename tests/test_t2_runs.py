@@ -11,6 +11,7 @@ import json
 import os
 import subprocess
 import sys
+import types
 from pathlib import Path
 
 os.environ.setdefault("NNKNN_DEVICE", "cpu")
@@ -144,7 +145,19 @@ def assert_same_files(run_dir: Path, unit: Path):
 
 
 def logical_stream(unit):
-    return [(r.tag, r.step, r.raw) for r in tr._scan(unit).stream if not r.tag.startswith("rec/state/")]
+    """The unit's logical stream without state bindings and the wall-clock ``x/sys/*`` values."""
+    return [(r.tag, r.step, r.raw) for r in tr._scan(unit).stream
+            if not r.tag.startswith(("rec/state/", "x/sys/"))]
+
+
+QUALITY_IDENTITY = ("namespace", "events", "last_snapshot_sha256")
+
+
+def quality_numbers(state):
+    """A quality-ledger state without its path/serialisation identities (namespace, event digests, snapshot
+    hashes): the rows' C/H/Q/exposure and provenance steps, and the event ids."""
+    return {"event_ids": sorted(state["events"]), "semantics": state["semantics"],
+            "rows": [{k: v for k, v in row.items() if k not in QUALITY_IDENTITY} for row in state["rows"]]}
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
@@ -188,6 +201,14 @@ def test_nnknn_with_every_per_run_file(root, tmp_path):
     assert any(k.startswith("retention_states.") for k in states)
     assert any(k.startswith("case_audit_states.") for k in states)
     files = t2runs.RunFiles(whole)
+    # the quality ledger: only its identities (namespace, event digests, snapshot hashes) differ between modes
+    plain_ckpt = torch.load(tmp_path / "plain" / "checkpoint.pt", map_location="cpu", weights_only=False)
+    unit_ckpt = tr.load_state(whole, "checkpoint")
+    plain_ledger = json.loads((tmp_path / "plain" / "case_quality_selected.json").read_text(encoding="utf-8"))
+    assert plain_ledger["rows"] and plain_ledger["namespace"] != "."
+    assert (quality_numbers(plain_ckpt["selected_case_quality_state"])
+            == quality_numbers(unit_ckpt["selected_case_quality_state"]))
+    assert quality_numbers(plain_ledger) == quality_numbers(files.json("case_quality_selected.json"))
     for event in files.json("case_audit_events.json")["events"]:  # snapshots recorded relative to the unit
         assert event["snapshot"].startswith("weights/case_audit_states.")
         path = Path(files.resolve(event["snapshot"]))
@@ -425,3 +446,41 @@ def test_role_pilot_study_matches_the_run_folder_records(root, tmp_path, monkeyp
             for k in ("run_dir", "training_seconds", "checkpoint_sha256"):
                 r.pop(k)
     assert normalize(manifests["dirs"]) == normalize(manifests["units"])
+
+
+def test_resume_cadence_follows_the_task(root, monkeypatch):
+    """Image (ALE) tasks checkpoint every IMAGE_RESUME_EVERY_SECONDS (their checkpoints hold the replay buffer),
+    flat tasks at the core default; an explicit value and NNKNN_RESUME_EVERY_SECONDS still win."""
+    assert t2runs.resume_every_seconds("cartpole") is None
+    assert t2runs.resume_every_seconds("pong") == t2runs.IMAGE_RESUME_EVERY_SECONDS == 1800.0
+    assert t2runs.resume_every_seconds("no-such-task") is None and t2runs.resume_every_seconds(None) is None
+    monkeypatch.delenv("NNKNN_RESUME_EVERY_SECONDS")
+    seen = {}
+    for name, task, every in (("flat", "cartpole", "auto"), ("image", "pong", "auto"), ("given", "pong", 42.0)):
+        with t2runs.study_unit("cadence", (name,), t2runs.unit_config("dqn", task, {}, "cpu"),
+                               checkpoint_every_seconds=every) as (source, run):
+            assert source == "fresh"
+            seen[name] = run._every_seconds
+            run.load_resume()
+    assert seen == {"flat": 300.0, "image": 1800.0, "given": 42.0}
+    monkeypatch.setenv("NNKNN_RESUME_EVERY_SECONDS", "7")
+    with t2runs.study_unit("cadence", ("env",), t2runs.unit_config("dqn", "pong", {}, "cpu")) as (_, run):
+        assert run._every_seconds == 7.0
+        run.load_resume()
+
+
+@pytest.mark.parametrize("name", ["dqn", "ppo", "nnknn"])
+def test_train_seconds_add_up_over_sessions(root, monkeypatch, name):
+    """x/sys/train_seconds sums the sessions: with a clock that ticks once per reading, an interrupted and resumed
+    unit reports what the uninterrupted one does (the killed session counts up to the checkpoint resumed from)."""
+    ticks = iter(range(1, 10 ** 6))
+    monkeypatch.setattr(t2runs, "time", types.SimpleNamespace(perf_counter=lambda: float(next(ticks))))
+    train, task, cfg = CASES[name]
+    whole, _, _ = record(name, train, task, cfg, study="whole")
+    resumed, _, was_resumed = record(name, train, task, cfg, study="cut", crash_after=2)
+    assert was_resumed
+    n_ckpt = len(tr.load_run(whole).sessions()[0]["checkpoints"])
+    assert n_ckpt > 2
+    assert t2runs.RunFiles(whole).train_seconds() == float(n_ckpt + 1)  # one tick per checkpoint and at finish
+    assert t2runs.RunFiles(resumed).train_seconds() == t2runs.RunFiles(whole).train_seconds()
+    assert len(tr.load_run(resumed).series("sys/train_seconds")) == 1
