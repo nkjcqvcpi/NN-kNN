@@ -141,8 +141,8 @@ def _rl_unit(study: str, mode: str, name: str, task: str, cfg, train, load) -> d
     def go(run):
         trained["state"] = train(task, cfg, progress=False, run=run, resumable=True)
 
-    files = t2runs.run_training(study, ("smoke", mode, name), t2runs.unit_config(f"smoke_{mode}", task, cfg.to_dict(),
-                                                                                 None), go, label=f"smoke-{mode}")
+    files = t2runs.run_training(study, ("smoke", mode, name), t2runs.unit_config(f"smoke_{mode}", task, cfg.to_dict()),
+                                 go, label=f"smoke-{mode}")
     if "state" in trained:
         return {**trained["state"], "run_dir": files.path, "checkpoint_path": files.checkpoint_path()}
     loaded = load(files.path)

@@ -1,6 +1,7 @@
 """Harvest the p17 capacity CPU replication into a table + manifest.
 
-Reads only run units of NN-KNN/runs (model/t2/runs.py): every complete unit under
+Reads only run units of NN-KNN/runs (model/t2/runs.py): RUNS_FOLDER must be inside
+the run root (NN-KNN/runs or $NNKNN_RUNS); every complete unit under
 RUNS_FOLDER (searched recursively, e.g. runs/t2/<study>/nnknn_rl/cartpole) is one
 run; its config.json and summary.json come from the unit's records and
 (capacity, seed) from the nested config.config. The legacy run directories under
@@ -42,8 +43,17 @@ CUDA_REF = {
     2000: dict(n=5, mean=480.12, sd=15.96, per=[455.90, 484.10, 474.60, 498.20, 487.80]),
 }
 
-from model.common.tracking import iter_runs
+from model.common.tracking import iter_runs, runs_root
 from model.t2.runs import RunFiles
+
+try:  # read only from the run root (NN-KNN/runs or $NNKNN_RUNS), never a copy elsewhere
+    _root = runs_root()
+except FileNotFoundError as exc:
+    sys.exit(str(exc))
+from pathlib import Path
+if not Path(OUT).resolve().is_relative_to(_root):
+    sys.exit("RUNS_FOLDER %s is outside the run root %s: the harvest reads only run units under NN-KNN/runs "
+             "($NNKNN_RUNS)" % (OUT, _root))
 
 runs = []
 for info in sorted(iter_runs(OUT), key=lambda i: str(i.path)):

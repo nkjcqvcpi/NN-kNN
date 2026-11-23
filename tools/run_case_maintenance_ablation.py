@@ -7,8 +7,9 @@ Ablates:
 4. Cold-Start Grace Period: Time-window tenure protection against infant mortality of new states.
 5. Combined Architecture: In-Place Overwrite + Diversity Admission + Grace Period.
 
-Every training is a run unit runs/t2/<study>/<output folder name>/mech_<mechanism>_s<seed> (``--study`` is required);
-a complete unit is read back before any training, never trained again. The raw CSV and the report are built from the
+Every training is a run unit runs/t2/<study>/rl_case_maintenance/mech_<mechanism>_s<seed> (``--study`` is required;
+the battery name is fixed, so ``--output-dir`` does not change which unit a training is); a complete unit is read
+back before any training, never trained again. The raw CSV and the report are built from the
 units only and go to ``--output-dir`` (default ``<worktree>/results/t2/s06_case_memory_mechanisms/rl_case_maintenance``).
 """
 
@@ -31,6 +32,7 @@ from model.nnknn_rl_workflow import make_nnknn_rl_config, train_nnknn_rl
 from model.t2 import runs as t2runs
 
 DEFAULT_OUTPUT_DIR = ROOT_DIR / "results" / "t2" / "s06_case_memory_mechanisms" / "rl_case_maintenance"
+BATTERY = "rl_case_maintenance"  # unit path component: fixed, independent of --output-dir
 
 
 def run_mechanism_ablation_battery(
@@ -98,10 +100,10 @@ def run_mechanism_ablation_battery(
             }
 
             cfg = make_nnknn_rl_config("fast", **overrides)
-            # one run unit runs/t2/<study>/<output folder>/<run name>; a complete unit is read, not trained again
+            # one run unit runs/t2/<study>/rl_case_maintenance/<run name>; a complete unit is read, not trained again
             files = t2runs.run_training(
-                study, (output_dir.name, run_name),
-                t2runs.unit_config("nnknn_rl", "cartpole", cfg.to_dict(), device, profile="fast"),
+                study, (BATTERY, run_name),
+                t2runs.unit_config("nnknn_rl", "cartpole", cfg.to_dict(), profile="fast"),
                 lambda run, cfg=cfg: train_nnknn_rl("cartpole", cfg, device=device, progress=False, run=run,
                                                     resumable=True),
                 label="rl-case-maintenance")
@@ -186,7 +188,7 @@ def main() -> None:
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--study", required=True,
-                        help="Required: every training is the run unit runs/t2/<study>/<output folder>/<run name>; "
+                        help="Required: every training is the run unit runs/t2/<study>/rl_case_maintenance/<run name>; "
                              "rerunning skips complete units (no training) and resumes interrupted ones.")
     args = parser.parse_args()
     try:

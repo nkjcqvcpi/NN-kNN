@@ -57,6 +57,27 @@ def is_unit(path: str | Path) -> bool:
     return p.is_dir() and any("tfevents" in f.name for f in p.iterdir() if f.is_file())
 
 
+def require_unit_in_runs_root(path: str | Path, what: str = "") -> Path:
+    """``path`` resolved, if it is a run unit inside the run root (``tracking.runs_root``: ``$NNKNN_RUNS`` or
+    NN-KNN/runs); otherwise SystemExit with the reason. Summary readers read only from ``runs/`` (owner's rule O2),
+    so a unit copied elsewhere (e.g. into results/) is refused."""
+    from model.common.tracking import runs_root
+
+    label = f"{what}: " if what else ""
+    p = Path(path)
+    try:
+        root = runs_root()
+    except FileNotFoundError as exc:
+        raise SystemExit(f"{label}{exc}")
+    resolved = p.resolve()
+    if not resolved.is_relative_to(root):
+        raise SystemExit(f"{label}{p} is outside the run root {root}: summaries read only run units under "
+                         "NN-KNN/runs ($NNKNN_RUNS)")
+    if not is_unit(resolved):
+        raise SystemExit(f"{label}{p} is not a run unit (summaries read only run units of NN-KNN/runs)")
+    return resolved
+
+
 def ordered_row(row: Mapping[str, Any]) -> list[list[Any]]:
     return [[str(k), v] for k, v in row.items()]
 
@@ -438,10 +459,13 @@ def check_study(study: str, root: Any = None) -> None:
     unit_dir(RunKey("t2", study, ("check",)), root)
 
 
-def unit_config(algorithm: str, task: str, config: Mapping[str, Any], device: Any, **extra: Any) -> dict[str, Any]:
-    """The ``rec/config`` of an RL training unit (what makes two runs the same run)."""
-    return {"kind": "rl_training", "algorithm": algorithm, "task": task, "config": dict(config),
-            "device": None if device is None else str(device), **extra}
+def unit_config(algorithm: str, task: str, config: Mapping[str, Any], **extra: Any) -> dict[str, Any]:
+    """The ``rec/config`` of an RL training unit (what makes two runs the same run). The device is not part of a
+    unit's identity (owner's rule O5, docs/NNKNN_CORE.md): it is provenance, in the session header and in the
+    unit's ``config.json`` record, never in ``rec/config``."""
+    if "device" in extra:
+        raise ValueError("the device is not part of a unit's identity; do not put it in the unit config")
+    return {"kind": "rl_training", "algorithm": algorithm, "task": task, "config": dict(config), **extra}
 
 
 def resume_every_seconds(task: Any) -> float | None:
@@ -517,7 +541,7 @@ def record_training(args: Any, algorithm: str, cfg: Any, train: Any) -> tuple[di
     """The training step of tools/run_rl_*.py: the run unit ``runs/t2/<study>/<algorithm>/<task>/seed<N>`` (or
     ``--unit``); a complete unit is read back, not trained again. Returns (summary, checkpoint file)."""
     parts = unit_parts(args.unit) if args.unit else (algorithm, unit_component(args.task), f"seed{cfg.seed}")
-    config = unit_config(algorithm, args.task, cfg.to_dict(), args.device)
+    config = unit_config(algorithm, args.task, cfg.to_dict())
     files = run_training(args.study, parts, config,
                          lambda run: train(args.task, cfg, device=args.device, progress=not args.quiet,
                                            run=run, resumable=True), label=algorithm)
@@ -534,8 +558,7 @@ def record_evaluation(args: Any, algorithm: str, load: Any, evaluate: Any, optio
     if not args.checkpoint:
         raise SystemExit("--checkpoint is required with --eval-only")
     source = Path(args.checkpoint)
-    if not is_unit(source):
-        raise SystemExit(f"--checkpoint {source}: not a run unit (evaluation reads only run units of NN-KNN/runs)")
+    require_unit_in_runs_root(source, "--checkpoint")
     files = RunFiles(source)
     loaded = load(source, device=args.device)
     cfg = loaded["config"]
@@ -546,7 +569,7 @@ def record_evaluation(args: Any, algorithm: str, load: Any, evaluate: Any, optio
     checkpoint_sha256 = files.data.states()["checkpoint"]["state_sha256"]
     config = {"kind": "rl_evaluation", "algorithm": algorithm, "task": task_name,
               "checkpoint_state_sha256": checkpoint_sha256, "episodes": int(episodes), "eval_seed": int(eval_seed),
-              "device": None if args.device is None else str(args.device), **extra}
+              **extra}  # the device is provenance, not identity (O5)
     parts = unit_parts(args.unit) if args.unit else (
         "eval", algorithm, unit_component(task_name), f"{checkpoint_sha256[:12]}_seed{eval_seed}_ep{episodes}")
     from model.common.tracking import RunKey, load_unit, open_run

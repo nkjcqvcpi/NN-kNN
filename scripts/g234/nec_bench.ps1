@@ -1,6 +1,8 @@
-# Recording is mandatory (2026-11-22): every run is a unit of NN-KNN\runs\t2\$STUDY\ (--study);
-# rerunning a launch skips a complete unit before any training and resumes an interrupted one, so this
-# driver no longer scans or deletes run folders under results/.
+# Recording is mandatory (2026-11-22): every run is a unit of NN-KNN\runs\t2\$STUDY\ (--study).
+# Deliberate exception to "never retrain" (O4): this is a timing measurement, not a result. Each pass uses a
+# fresh timestamped study, so it trains identical configs again on purpose (a complete unit would be read back,
+# not timed). Its units are not results; do not summarise them. The timings include the recording overhead
+# (event files, resume checkpoints), so they are not directly comparable with the earlier p17/p18/p19 timings.
 $ErrorActionPreference='Continue'
 Set-Location 'C:\Users\Administrator\NN-KNN\rl'
 $PY='C:\Users\Administrator\NN-KNN\.venv\Scripts\python.exe'   # the shared uv venv

@@ -11,6 +11,8 @@
 # Recording is mandatory (2026-11-22): every run is a unit of NN-KNN\runs\t2\$STUDY\ (--study);
 # rerunning a launch skips a complete unit before any training and resumes an interrupted one, so this
 # driver no longer scans or deletes run folders under results/.
+# Study p20_ale_pong_cpu is shared with ale_driver3 (this driver continues its campaign with the same configs);
+# ale_driver.ps1 (v1) and ale_driver2.ps1 (v2) have their own studies.
 $ErrorActionPreference='Continue'
 Set-Location 'C:\Users\Administrator\NN-KNN\rl'
 $PY='C:\Users\Administrator\NN-KNN\.venv\Scripts\python.exe'   # the shared uv venv
@@ -18,7 +20,7 @@ $LOG='logs/g234/p20_driver4.log'
 function Say($m){ Add-Content -Path $LOG -Value ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'),$m) }
 $env:PYTHONUNBUFFERED='1'; $env:MPLBACKEND='Agg'; $env:NNKNN_DEVICE='cpu'
 $env:OMP_NUM_THREADS='2'; $env:MKL_NUM_THREADS='2'
-$STUDY='p20_ale_pong'; $STEPS=500000; $MAXCONC=8
+$STUDY='p20_ale_pong_cpu'; $STEPS=500000; $MAXCONC=8
 $DQN = @('--buffer-size','100000','--learning-rate','1e-4','--target-network-frequency','1000',
          '--train-frequency','4','--exploration-fraction','0.1','--learning-starts','20000')
 $plan=@()

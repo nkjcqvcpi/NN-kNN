@@ -5,8 +5,9 @@ Executes:
 2. Battery 2: Capacity Scaling on Acrobot (harder task with non-saturated headroom) across capacities.
 3. Generates publication-ready markdown report and CSV data.
 
-Every training is a run unit runs/t2/<study>/<battery>/<run name> (``--study`` is required); a complete unit is read
-back before any training, never trained again. The raw CSVs and the report are built from the units only and go to
+Every training is a run unit runs/t2/<study>/<battery>/<run name>, battery ``cartpole_mcb`` or ``acrobot_capacity``
+(fixed sub-folder names: ``--output-dir`` does not change which unit a training is; ``--study`` is required); a
+complete unit is read back before any training, never trained again. The raw CSVs and the report are built from the units only and go to
 ``--output-dir`` (default ``<worktree>/results/t2/s06_case_memory_mechanisms/rl_mcb_campaign``).
 """
 
@@ -71,7 +72,7 @@ def run_single_experiment(
     cfg = make_nnknn_rl_config(profile, **overrides)
     files = t2runs.run_training(
         study, (output_dir.name, run_name),
-        t2runs.unit_config("nnknn_rl", task, cfg.to_dict(), device, profile=profile),
+        t2runs.unit_config("nnknn_rl", task, cfg.to_dict(), profile=profile),
         lambda run: train_nnknn_rl(task, cfg, device=device, progress=False, run=run, resumable=True),
         label="rl-mcb")
     summary, elapsed, run_dir = files.json("summary.json"), files.train_seconds() or float("nan"), files.path

@@ -6,6 +6,8 @@
 # Recording is mandatory (2026-11-22): every run is a unit of NN-KNN\runs\t2\$STUDY\ (--study);
 # rerunning a launch skips a complete unit before any training and resumes an interrupted one, so this
 # driver no longer scans or deletes run folders under results/.
+# Study p20_ale_pong_v1 is this driver's alone: its DQN config (no Atari extras) differs from ale_driver2-4, so
+# relaunching another driver over these units would stop with ConfigMismatchError.
 $ErrorActionPreference='Continue'
 Set-Location 'C:\Users\Administrator\NN-KNN\rl'
 $PY='C:\Users\Administrator\NN-KNN\.venv\Scripts\python.exe'   # the shared uv venv
@@ -14,7 +16,7 @@ function Say($m){ Add-Content -Path $LOG -Value ("[{0}] {1}" -f (Get-Date -Forma
 $env:NNKNN_DEVICE='xpu'; $env:PYTHONUNBUFFERED='1'; $env:MPLBACKEND='Agg'
 $env:OMP_NUM_THREADS='2'; $env:MKL_NUM_THREADS='2'   # leave the cores to p16 NEC
 
-$STUDY='p20_ale_pong'
+$STUDY='p20_ale_pong_v1'   # its own study: DQN without the Atari extras (driver2-4 use them)
 $MAXCONC = 3
 $STEPS = 500000
 

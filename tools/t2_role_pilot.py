@@ -123,7 +123,7 @@ def main():
             run.log_records('role_audit/events',events)
             run.log_record('role_audit',dict(independent_mc=holdout,training_seconds=train_seconds))
         files=t2runs.run_training(args.study,t2runs.unit_parts(label),
-            t2runs.unit_config('nnknn_rl',task,cfg.to_dict(),'cpu',tool='t2_role_pilot'),train_and_audit,label='t2-role-pilot')
+            t2runs.unit_config('nnknn_rl',task,cfg.to_dict(),tool='t2_role_pilot'),train_and_audit,label='t2-role-pilot')
         audit=files.data.record('role_audit')
         # training time over all sessions of the unit (audit['training_seconds'] is the last session's)
         summary,holdout,train_seconds=files.json('summary.json'),audit['independent_mc'],files.train_seconds()

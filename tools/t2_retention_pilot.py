@@ -25,7 +25,8 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source',type=Path,required=True)
-    parser.add_argument('--runs',type=Path,required=True,help='JSON with runs/run_dir entries')
+    parser.add_argument('--runs',type=Path,required=True,help='JSON with a runs (or roles) list of run_dir entries, '
+        'e.g. a t2_role_pilot manifest')
     parser.add_argument('--output',type=Path,default=None,help='Folder of the manifest (made; must not exist); default '
         '<worktree>/results/t2/retention_pilot_<UTC timestamp>.')
     parser.add_argument('--study',required=True,help='Required: each condition is the run unit '
@@ -43,7 +44,7 @@ def main():
     from model.t2.audit import evaluation,policy_output
     from model.common.artifacts import source_fingerprint
     from model.common.tracking import RunKey,load_unit,open_run
-    from model.t2.runs import RunFiles,check_study,is_unit,unit_component
+    from model.t2.runs import RunFiles,check_study,require_unit_in_runs_root,unit_component
     try:check_study(args.study)
     except (FileNotFoundError,ValueError) as exc:parser.error(f'--study: {exc}')
     if args.output is None:
@@ -164,10 +165,12 @@ def main():
         run.save_rng('rng_after')  # the global RNG state a later condition starts from
         print(f"{condition}: {len(old_ids)} -> {result['actual_capacity']}; replayed {len(result['trials'])} candidates",flush=True)
 
-    for run_record in json.loads(args.runs.read_text())['runs']:
+    runs_data=json.loads(args.runs.read_text())
+    run_records=runs_data['runs'] if 'runs' in runs_data else runs_data.get('roles')  # a runs list, or a t2_role_pilot manifest's roles
+    if run_records is None:parser.error(f"--runs {args.runs}: no 'runs' or 'roles' list")
+    for run_record in run_records:
         run=Path(run_record['run_dir'])
-        if not is_unit(run):
-            raise SystemExit(f'{run}: not a run unit (the pilot reads only run units of NN-KNN/runs)')
+        require_unit_in_runs_root(run,'--runs')  # only run units under NN-KNN/runs ($NNKNN_RUNS)
         # run unit: hash-checked weights/checkpoint.pt, events from the records, snapshots relative to the unit
         files=RunFiles(run)
         checkpoint=files.checkpoint_path()

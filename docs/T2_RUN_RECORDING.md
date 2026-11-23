@@ -25,12 +25,14 @@ tests are `tests/test_t2_runs.py`.
   `files/eval_summary.json` (what `eval_summary.json` held, without `created_at_utc`), row record
   `files/eval_episodes.csv` and `x/final/*`. A complete evaluation unit is read back, not evaluated again.
 - `tools/run_rl_mcb_and_capacity_experiments.py --study S`: `runs/t2/S/<cartpole_mcb|acrobot_capacity>/<run name>`.
-- `tools/run_case_maintenance_ablation.py --study S`: `runs/t2/S/<output folder name>/mech_<mechanism>_s<seed>`.
+- `tools/run_case_maintenance_ablation.py --study S`: `runs/t2/S/rl_case_maintenance/mech_<mechanism>_s<seed>`.
+  In both batteries the folder under the study is a fixed name: `--output-dir` (where the CSVs and the report go)
+  does not change which unit a training is, so a rerun with another `--output-dir` reads the units back.
 - `tools/run_cartpole_all_variants.py --study S`: `runs/t2/S/cartpole_all_variants_<profile>/<variant>`.
 - `tools/t2_role_pilot.py --study S`: `runs/t2/S/<task>/<role>__<target>__<optimizer>[__labels_<mode>]/s<seed>`; the
   same unit also holds the role audit (named state `role_audit_state`, records `role_audit` and `role_audit/events`).
-- `tools/t2_retention_pilot.py --study S --runs <manifest>`: reads only run units (every `run_dir` of the manifest)
-  and records each condition as `runs/t2/S/retention/<checkpoint state sha256[:12]>/<condition>`: named state
+- `tools/t2_retention_pilot.py --study S --runs <manifest>`: reads only run units (every `run_dir` of the manifest's
+  `runs` list, or of the `roles` list of a `t2_role_pilot.py` manifest, which can be passed as is) and records each condition as `runs/t2/S/retention/<checkpoint state sha256[:12]>/<condition>`: named state
   `states` (the former `states.pt`), record `result` (the former `result.json`) and named state `rng_after`. Two
   roles of the same task and seed no longer collide (the old pilot stopped with FileExistsError on the second).
 - `codex/smoke_test.py --mode {train,classification,rl,nec,nnknn_rl} --study S` (required except for `imports`):
@@ -39,8 +41,15 @@ tests are `tests/test_t2_runs.py`.
   the unit (weights loaded, summary and rows from the records).
 - Launch drivers: `scripts/g234/*.ps1|*.cmd` and `scripts/r760/*.sh` pass `--study` (and `--unit` where needed),
   run in the g234 `rl` worktree with the shared venv, and no longer scan or delete run folders under `results/`
-  (a relaunch skips complete units by itself). Timing passes and device benchmarks use a fresh study per pass,
-  because a complete unit would be read back, not timed.
+  (a relaunch skips complete units by itself). The ALE drivers have one study per campaign:
+  `ale_driver.ps1` `p20_ale_pong_v1` (DQN without the Atari extras), `ale_driver2.ps1` `p20_ale_pong_v2` (DQN on
+  xpu), `ale_driver3.ps1` and `ale_driver4.ps1` share `p20_ale_pong_cpu` (driver 4 continues driver 3 with the same
+  configs). So a driver can be relaunched over its own units, never over another campaign's.
+- Deliberate exception to O4: the timing passes (`timing_pass{,2}.ps1`) and device benchmarks (`dqn_bench.ps1`,
+  `nec_bench.ps1`) use a fresh timestamped study per pass and so train identical configs again on purpose, because
+  a complete unit would be read back, not timed. They measure throughput and produce no results; do not summarise
+  their units. Their timings include the recording overhead (event files, resume checkpoints), so they are not
+  directly comparable with the earlier p17/p18/p19 timing files.
 
 ## Never retrain (O4)
 
@@ -58,18 +67,28 @@ reseeds (`seed_everything(cfg.seed)`) and the role audit runs inside its unit. P
   audit records and events, and the manifest equal an uninterrupted pilot (the result digest itself differs only
   through the role_audit record's wall-clock `training_seconds`).
 - `test_retention_pilot_partly_rerun_equals_uninterrupted`: crash in the third condition; the rerun recomputes
-  only the missing conditions, and every condition's `result` (without `selection_seconds`) and named states,
-  `rng_after` included, equal an uninterrupted pilot.
+  only the missing conditions, and every condition's `result` (without `selection_seconds`) and its named state
+  `states` equal an uninterrupted pilot. The pilot never seeds the global RNG and its numbers do not depend on it
+  (an independent check ran two separate processes: every `result` and `states` was equal, `rng_after` differed).
+  So `rng_after` is not reproducible between processes; restoring it makes a rerun continue from the state the
+  skipped condition left, which is what an uninterrupted pilot in the same process would see (the test starts
+  every call from the same RNG state, and there `rng_after` is equal too).
 - `test_run_rl_tool_requires_a_study_records_a_unit_and_never_retrains_it` and
   `test_battery_rows_from_units_and_a_complete_unit_is_read_back`: a complete unit is read back; the trainer (and
   for `--eval-only` the evaluator) is not called.
 
-Resume files (`weights/resume/last.pt`, `prev.pt`) are kept after a unit completes (O5); device stays part of
-`rec/config` as before.
+Resume files (`weights/resume/last.pt`, `prev.pt`) are kept after a unit completes (O5). The device is not part of
+a unit's identity (O5, as in `docs/NNKNN_CORE.md`): it is in no T2 `rec/config` (`t2runs.unit_config` refuses a
+`device` key; the `--eval-only`, sweep and role-pilot configs carry none). It is recorded as provenance: the core
+session header holds the device, and the unit's `config.json` record holds the device the run used. A unit started
+on one device is read back, or resumed, on another (resume is bit-exact only on the same device, see below); to
+keep two devices apart, use separate studies or `--unit` names (the device benchmarks do). Configs recorded before
+this change (2026-11-23) held `"device"` and no longer match: rerunning such a study raises `ConfigMismatchError`.
 
 ## Where the generated files go
 
-Summary, report and plotting scripts read only run units and write under `<worktree>/results/` (git-ignored); file
+Summary, report and plotting scripts read only run units inside the run root (`NN-KNN/runs` or `$NNKNN_RUNS`;
+a unit copied elsewhere, e.g. into `results/`, is refused, as is a `--eval-only --checkpoint` outside it) and write under `<worktree>/results/` (git-ignored); file
 names, formats and columns are unchanged. Hand-written reports stay in `reports/` (in git); no script writes there.
 
 | script | reads | default output |

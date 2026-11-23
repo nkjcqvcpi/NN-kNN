@@ -388,8 +388,7 @@ def main() -> None:
                 args.study, (f"cartpole_all_variants_{args.profile}", name),
                 {"kind": "rl_training", "tool": "run_cartpole_all_variants", "variant": name,
                  "profile": args.profile, "seed": args.seed, "eval_episodes": args.eval_episodes,
-                 "total_timesteps": args.total_timesteps, "case_capacity": args.case_capacity,
-                 "device": args.device},
+                 "total_timesteps": args.total_timesteps, "case_capacity": args.case_capacity},
                 lambda run: train_fn(run=run, resumable=True), label="cartpole-variants")
             state = {"summary": files.json("summary.json"), "config": files.json("config.json")["config"]}
             run_dir, elapsed = files.path, files.train_seconds() or float("nan")

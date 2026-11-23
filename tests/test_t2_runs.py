@@ -10,6 +10,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import os
+import shutil
 import subprocess
 import sys
 import types
@@ -336,11 +337,16 @@ def test_phase4_report_reads_only_run_units(root, tmp_path):
     kwargs = dict(task="CartPole-v1", threshold=50.0, ylim=(0.0, 525.0), prefix="p", order=order)
     for png in (rep.plot_per_method(data, outdir, **kwargs), rep.plot_means(data, outdir, **kwargs)):
         assert Path(png).read_bytes()[:4] == b"\x89PNG"
-    legacy = tmp_path / "legacy"
+    legacy = root / "t2" / "phase4" / "legacy"
     legacy.mkdir()
     (legacy / "summary.json").write_text("{}", encoding="utf-8")
     with pytest.raises(SystemExit, match="not a run unit"):
         rep.load_runs({"dqn": {"0": str(legacy)}})
+    copied = tmp_path / "results" / "copy"  # a unit copied out of the run root is not read (O2)
+    shutil.copytree(manifest["dqn"]["0"], copied)
+    assert t2runs.is_unit(copied)
+    with pytest.raises(SystemExit, match="outside the run root"):
+        rep.load_runs({"dqn": {"0": str(copied)}})
 
 
 def printed(text):
@@ -370,6 +376,12 @@ def test_run_rl_tool_requires_a_study_records_a_unit_and_never_retrains_it(root,
     assert tr.run_status(unit).status == "complete" and tr.run_status(unit).sessions == 1
     assert "complete, not rerun" in second and "fresh" in first
     assert printed(first) == printed(second)
+    # the device is not part of the unit's identity (O5): without --device (NNKNN_DEVICE) it is the same unit
+    no_device = [a for i, a in enumerate(argv) if a != "--device" and argv[i - 1] != "--device"]
+    monkeypatch.setattr(sys, "argv", no_device + ["--study", "tool"])
+    run_rl_dqn.main()
+    assert "complete, not rerun" in capsys.readouterr().out and not calls
+    assert "device" not in tr.load_run(unit).config
     assert sorted(p.name for p in (root / "t2" / "tool").iterdir()) == ["dqn"]
 
     # eval-only evaluates the unit's weights and records the evaluation as a unit; a rerun reads it back
@@ -390,6 +402,36 @@ def test_run_rl_tool_requires_a_study_records_a_unit_and_never_retrains_it(root,
                                       str(t2runs.RunFiles(unit).checkpoint_path()), "--study", "tool"])
     with pytest.raises(SystemExit, match="not a run unit"):
         run_rl_dqn.main()
+    outside = root.parent / "elsewhere" / "seed2"  # a unit outside the run root is refused
+    shutil.copytree(unit, outside)
+    monkeypatch.setattr(sys, "argv", ["run_rl_dqn.py", "--eval-only", "--checkpoint", str(outside), "--study", "tool"])
+    with pytest.raises(SystemExit, match="outside the run root"):
+        run_rl_dqn.main()
+
+
+def test_unit_config_has_no_device():
+    """O5: the device is provenance, never part of a unit config."""
+    assert "device" not in t2runs.unit_config("dqn", "cartpole", {"seed": 1}, profile="fast")
+    with pytest.raises(ValueError, match="device"):
+        t2runs.unit_config("dqn", "cartpole", {}, device="cpu")
+
+
+def test_case_maintenance_unit_path_does_not_depend_on_output_dir(root, tmp_path, monkeypatch):
+    sys.path.insert(0, str(ROOT / "tools"))
+    import run_case_maintenance_ablation as cma
+
+    seen = []
+
+    def fake(study, parts, config, train, **kw):
+        seen.append((study, tuple(parts), config))
+        raise Crash("stop before training")
+
+    monkeypatch.setattr(cma.t2runs, "run_training", fake)
+    for out in ("a", "b"):
+        with pytest.raises(Crash):
+            cma.run_mechanism_ablation_battery(tmp_path / out, seeds=[0], study="cm")
+    assert seen[0] == seen[1] and seen[0][1] == ("rl_case_maintenance", "mech_vanilla_s0")
+    assert "device" not in seen[0][2]
 
 
 def test_run_rl_tool_checks_the_study_before_training(tmp_path, monkeypatch):
@@ -546,9 +588,8 @@ def test_retention_pilot_partly_rerun_equals_uninterrupted(root, tmp_path, monke
                                       "--audit-queries-per-batch", "2", "--quality-tracking", "--output", str(tmp_path / "roles"),
                                       "--study", "src"])
     role_pilot.main()
-    runs_json = tmp_path / "roles" / "manifest.json"
-    manifest = json.loads(runs_json.read_text(encoding="utf-8"))
-    runs_json.write_text(json.dumps({"runs": manifest["roles"]}), encoding="utf-8")
+    runs_json = tmp_path / "roles" / "manifest.json"  # a t2_role_pilot manifest ("roles") is a valid --runs input
+    assert "roles" in json.loads(runs_json.read_text(encoding="utf-8"))
 
     start_rng = tr.capture_rng()
 
@@ -591,7 +632,7 @@ def test_harvest_p17_reads_only_run_units(root, tmp_path):
         def cfg(cap=cap):
             return make_nnknn_rl_config("smoke", seed=8, total_timesteps=200, case_capacity=cap)
         record(f"cap{cap}", train_nnknn_rl, "cartpole", cfg, study="p17",
-               config=t2runs.unit_config("nnknn_rl", "cartpole", cfg().to_dict(), "cpu"))
+               config=t2runs.unit_config("nnknn_rl", "cartpole", cfg().to_dict()))
     legacy = root / "t2" / "p17" / "legacy_run_dir"
     legacy.mkdir()
     (legacy / "summary.json").write_text("{}", encoding="utf-8")
@@ -605,6 +646,11 @@ def test_harvest_p17_reads_only_run_units(root, tmp_path):
         assert r["seconds"] == t2runs.RunFiles(r["run_dir"]).train_seconds()
     proc = subprocess.run([sys.executable, str(ROOT / "scripts" / "harvest_p17.py")], capture_output=True, text=True)
     assert proc.returncode != 0 and "RUNS_FOLDER" in proc.stderr
+    copied = tmp_path / "copied_p17"  # units copied out of the run root are not read (O2)
+    shutil.copytree(root / "t2" / "p17", copied)
+    proc = subprocess.run([sys.executable, str(ROOT / "scripts" / "harvest_p17.py"), str(copied), str(tmp_path / "m2.json")],
+                          capture_output=True, text=True, env={**os.environ, "PYTHONWARNINGS": "ignore"})
+    assert proc.returncode != 0 and "outside the run root" in proc.stderr and not (tmp_path / "m2.json").exists()
 
 
 def test_resume_cadence_follows_the_task(root, monkeypatch):
@@ -616,14 +662,14 @@ def test_resume_cadence_follows_the_task(root, monkeypatch):
     monkeypatch.delenv("NNKNN_RESUME_EVERY_SECONDS")
     seen = {}
     for name, task, every in (("flat", "cartpole", "auto"), ("image", "pong", "auto"), ("given", "pong", 42.0)):
-        with t2runs.study_unit("cadence", (name,), t2runs.unit_config("dqn", task, {}, "cpu"),
+        with t2runs.study_unit("cadence", (name,), t2runs.unit_config("dqn", task, {}),
                                checkpoint_every_seconds=every) as (source, run):
             assert source == "fresh"
             seen[name] = run._every_seconds
             run.load_resume()
     assert seen == {"flat": 300.0, "image": 1800.0, "given": 42.0}
     monkeypatch.setenv("NNKNN_RESUME_EVERY_SECONDS", "7")
-    with t2runs.study_unit("cadence", ("env",), t2runs.unit_config("dqn", "pong", {}, "cpu")) as (_, run):
+    with t2runs.study_unit("cadence", ("env",), t2runs.unit_config("dqn", "pong", {})) as (_, run):
         assert run._every_seconds == 7.0
         run.load_resume()
 

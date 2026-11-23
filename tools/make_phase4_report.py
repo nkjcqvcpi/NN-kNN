@@ -33,7 +33,7 @@ import sys
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
-from model.t2.runs import RunFiles, is_unit  # noqa: E402
+from model.t2.runs import RunFiles, require_unit_in_runs_root  # noqa: E402
 
 DEFAULT_OUTDIR = ROOT_DIR / "results" / "figures"
 
@@ -83,11 +83,8 @@ def load_runs(manifest: dict) -> dict:
         data[method] = {}
         for seed, run_dir in sorted(seeds.items(), key=lambda kv: int(kv[0])):
             d = Path(run_dir)
-            if not is_unit(d):
-                raise SystemExit(
-                    f"{method} seed {seed}: {d} is not a run unit. The report reads only run units of "
-                    "NN-KNN/runs (they are not in git; run this where they exist)."
-                )
+            # only run units under the run root (NN-KNN/runs or $NNKNN_RUNS; not in git: run this where they exist)
+            require_unit_in_runs_root(d, f"{method} seed {seed}")
             files = RunFiles(d)  # the two files, rebuilt from the unit's records
             summary, evals = files.json("summary.json"), files.frame("eval_metrics.csv")
             data[method][int(seed)] = {"summary": summary, "evals": evals, "dir": str(d)}
