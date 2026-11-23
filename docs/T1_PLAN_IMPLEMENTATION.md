@@ -73,10 +73,10 @@ has been established.
 ## Validation commands
 
 ```powershell
-.venv\Scripts\python.exe -m pytest tests -q --basetemp <new-workspace-temp-path>
-.venv\Scripts\python.exe tools\t1_run.py configs\t1\alignment_candidates_small.yaml --out results\t1_pi20260920\verification_20261002
-.venv\Scripts\python.exe tools\t1_run.py configs\t1\alignment_adapted_candidates.yaml --out results\t1_pi20260920\verification_20261002
-.venv\Scripts\python.exe tools\t1_run.py configs\t1\alignment_digits.yaml --out results\t1_pi20260920\verification_20261002
+.venv\Scripts\python.exe -m pytest tests -q
+.venv\Scripts\python.exe tools\t1_run.py configs\t1\alignment_candidates_small.yaml --study S
+.venv\Scripts\python.exe tools\t1_run.py configs\t1\alignment_adapted_candidates.yaml --study S
+.venv\Scripts\python.exe tools\t1_run.py configs\t1\alignment_digits.yaml --study S
 ```
 
 See `T1_ALIGNMENT_STATUS.md` for the reviewed scope and outstanding gaps.

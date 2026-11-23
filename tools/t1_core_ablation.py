@@ -9,14 +9,15 @@ every variant on the grid's evaluation seeds so that the test errors are compara
 rows of the same grid. Exploratory and descriptive: nothing here selects or changes F.
 
 Usage:
-  .venv/Scripts/python.exe -u tools/t1_core_ablation.py configs/t1/core_ablation_20261027.yaml --study S \
-      --out results/t1/p6_confirmation_revision/core_ablation_20261027 --workers 12
-  .venv/Scripts/python.exe tools/t1_core_ablation.py <config> --study S --out <dir> --summarize-only
+  .venv/Scripts/python.exe -u tools/t1_core_ablation.py configs/t1/core_ablation_20261027.yaml --study S --workers 12
+  .venv/Scripts/python.exe tools/t1_core_ablation.py <config> --study S --summarize-only
 
 ``--study S`` is required: every (task, variant, seed) trial is recorded as the run unit
 ``NN-KNN/runs/t1/S/<task>/<variant>/s<seed>/`` (record ``trial``, ``history`` and its curves, ``final/*`` numbers,
 arrays ``test_prediction``/``test_target``, named state ``model``); a complete trial is read back, never refitted.
-``--out`` holds the job summaries (``completed.json``/``partial.json``), ``summary.*``, ``study.json`` and the logs.
+The summary reads every trial row from those units (and the baselines' rows from the grid's trial units).
+``--out`` (default ``<worktree>/results/t1/S/core_ablation``) holds ``summary.*``, ``study.json``, the logs and per
+job a done marker (``completed.json``/``partial.json``: status, settings and which seeds completed, no numbers).
 The variants start from the config's inlined ``grid_winners`` (else the grid's selection.json).
 """
 from __future__ import annotations
@@ -43,7 +44,7 @@ import yaml
 
 from model.common.artifacts import config_id, environment_info, source_fingerprint, write_json
 from model.common.core import CoreConfig, build_model, evaluate, train_retrieval
-from model.common.tracking import load_run, open_run, resolve_unit
+from model.common.tracking import load_run, open_run, resolve_unit, run_status, unit_dir
 from model.t1 import records
 from tools.t1_grid_search import (apply_determinism, compact_row, data_definition, nnknn_core_settings, numeric_metrics,
                                   prediction, split_loader, task_key, trial_runtime)
@@ -68,16 +69,28 @@ def grid_winner(study, ds):
 
 
 def baseline_rows(grid_dir, ds, seeds):
-    """Mean test error of each baseline family's frozen winner on ``seeds`` (same splits as this ablation)."""
+    """Mean test error of each baseline family's frozen winner on ``seeds`` (same splits as this ablation).
+
+    The grid's completed.json only says which evaluation trials to take; each test error is read from the trial's
+    run unit (``records.trial_row``) in the run study the grid recorded. A grid that recorded no run study gives no
+    baselines (a warning), since its numbers are not in run units."""
     out = {}
-    for fam in ("nnknn", "knn", "catboost", "mlp", "tabm"):
-        p = Path(grid_dir) / task_key(ds) / fam / "completed.json"
-        if not p.exists():
-            continue
-        rows = [r for r in json.loads(p.read_text())["evaluation"] if r.get("status") == "completed" and r["seed"] in seeds]
+    families = [(fam, Path(grid_dir) / task_key(ds) / fam / "completed.json") for fam in ("nnknn", "knn", "catboost", "mlp", "tabm")]
+    families = [(fam, p) for fam, p in families if p.exists()]
+    if not families:
+        return out
+    try:
+        study = records.grid_study(grid_dir)
+    except SystemExit as exc:
+        print(f"[warning] no baselines for {task_key(ds)}: {exc}", file=sys.stderr, flush=True)
+        return out
+    for fam, p in families:
+        done = json.loads(p.read_text())
+        rows = [records.trial_row(study, task_key(ds), fam, r, done.get("winner"))
+                for r in done["evaluation"] if r.get("status") == "completed" and r["seed"] in seeds]
         errs = {r["seed"]: test_error(r["test_metrics"]) for r in rows}
         if errs:
-            out[fam] = dict(per_seed=errs, mean=float(np.mean(list(errs.values()))), parameters=json.loads(p.read_text())["parameters"])
+            out[fam] = dict(per_seed=errs, mean=float(np.mean(list(errs.values()))), parameters=done["parameters"])
     return out
 
 
@@ -140,6 +153,27 @@ def fit_variant(settings, data, seed):
     return model, cc, tr
 
 
+def trial_key(study, task, variant, seed):
+    """Run key of one ablation trial: ``t1/<study>/<task>/<variant>/s<seed>``."""
+    return records.key(study, task, variant, f"s{seed}")
+
+
+def trial_rows(run_study, task, variant, seeds, settings=None):
+    """The ``trial`` records of the complete units of ``variant`` on ``seeds`` (seed order); seeds without a complete
+    unit are left out. With ``settings``, a unit recorded with other resolved settings raises SystemExit (the
+    config changed since it was fitted)."""
+    out = []
+    for seed in seeds:
+        info = run_status(unit_dir(trial_key(run_study, task, variant, seed)))
+        if info.status != "complete":
+            continue
+        data = load_run(info.path, arrays=False)
+        if settings is not None and (data.config or {}).get("settings") != records.jsonable(settings):
+            raise SystemExit(f"{info.path} was fitted with other settings than {variant} now resolves to")
+        out.append(records.unordered(data.record("trial")))
+    return out
+
+
 def run_trial(job, variant, settings, data, seed, source, *, study):
     """One fit of a variant on one seed, recorded as the run unit ``t1/<study>/<task>/<variant>/s<seed>`` (record
     ``trial``, arrays ``test_prediction``/``test_target``, named state ``model``). A unit complete with the same
@@ -147,7 +181,7 @@ def run_trial(job, variant, settings, data, seed, source, *, study):
     raises ConfigMismatchError."""
     if not study:
         raise TypeError("run_trial needs a study: every core ablation trial is recorded as a run unit")
-    key = records.key(study, Path(job).parent.name, Path(job).name, f"s{seed}")
+    key = trial_key(study, Path(job).parent.name, Path(job).name, seed)
     # the data definition, source and runtime belong to the config: a unit is reused only for the same fit
     config = dict(kind="t1_core_ablation_trial", task=Path(job).parent.name, variant=variant,
                   settings=records.jsonable(settings), seed=seed, data=data_definition(data), source_sha256=source,
@@ -213,8 +247,10 @@ def task_variant(study, ds, variant, out, run_study):
     with (job / "training.log").open("a", encoding="utf-8") as log, contextlib.redirect_stdout(log):
         rows = [run_trial(job, variant["name"], settings, data, seed, study["source_sha256"], study=run_study)
                 for seed in study["evaluation_seeds"]]
+    # a done marker: the trial rows themselves are only in the trial units (summarize reads them there)
     result = dict(task=task_key(ds), variant=variant["name"], override=variant.get("override") or {}, base_parameters=base,
-                  settings=settings, status="completed" if all(r["status"] == "completed" for r in rows) else "partial", rows=rows)
+                  settings=settings, status="completed" if all(r["status"] == "completed" for r in rows) else "partial",
+                  trials=[records.pointer(r) for r in rows])
     write_json(done if result["status"] == "completed" else job / "partial.json", result)
     return result
 
@@ -241,7 +277,9 @@ def gmean_ratio(a, b):
     return float(math.exp(np.mean([math.log((x + eps) / (y + eps)) for x, y in pairs])))
 
 
-def summarize(study, out):
+def summarize(study, out, run_study):
+    """Summary of every variant's complete trial units in ``run_study`` (``trial_rows``) against the grid's
+    baselines (``baseline_rows``); writes summary.md/csv/json into ``out``."""
     out = Path(out)
     seeds = study["evaluation_seeds"]
     tasks = {}
@@ -258,14 +296,10 @@ def summarize(study, out):
         base_rows = None
         results = {}
         for v in keep:
-            p = out / key / v["name"] / "completed.json"
-            if not p.exists():
-                p = out / key / v["name"] / "partial.json"
-            if not p.exists():
-                continue
-            r = json.loads(p.read_text())
-            rows = [x for x in r["rows"] if x["status"] == "completed"]
-            results[v["name"]] = (r, rows)
+            rows = [x for x in trial_rows(run_study, key, v["name"], seeds, resolve_variant(grid_winner(study, ds), v, study))
+                    if x["status"] == "completed"]
+            if rows:
+                results[v["name"]] = (v, rows)
         if "base" in results:
             base_rows = {x["seed"]: x["test_error"] for x in results["base"][1]}
         bl = baseline_rows(study["grid"], ds, seeds)
@@ -311,7 +345,7 @@ def summarize(study, out):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("config")
-    parser.add_argument("--out", required=True)
+    parser.add_argument("--out", help="summaries, logs and job markers (default: <worktree>/results/t1/<study>/core_ablation)")
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--only-dataset", help="dataset name, e.g. zebra")
     parser.add_argument("--only-variant", nargs="+")
@@ -331,10 +365,12 @@ def main(argv=None):
                                               for v in study["variants"]])
     except ValueError as exc:
         parser.error(f"--study: {exc}")
-    out = Path(args.out)
+    out = Path(args.out) if args.out else records.results_dir(records.unit_tree(args.study)) / "core_ablation"
+    if (out / "study.json").exists() and (recorded := json.loads((out / "study.json").read_text()).get("study")) != args.study:
+        parser.error(f"--study {args.study!r} differs from the study {recorded!r} that {out / 'study.json'} records")
     out.mkdir(parents=True, exist_ok=True)
     if args.summarize_only:
-        summarize(study, out)
+        summarize(study, out, args.study)
         print(f"summary written to {out / 'summary.md'}")
         return 0
     write_json(out / "study.json", dict(configuration=study, environment=environment_info(), study=args.study))
@@ -366,7 +402,7 @@ def main(argv=None):
             finished += 1
             print(json.dumps(dict(done=finished, of=len(jobs), task=task_key(ds), variant=v["name"], status=status)), flush=True)
             write_json(out / "progress.json", dict(expected_jobs=len(jobs), finished_jobs=finished, failures=failures))
-    summarize(study, out)
+    summarize(study, out, args.study)
     print(f"summary written to {out / 'summary.md'}", flush=True)
     return 0 if not failures else 1
 

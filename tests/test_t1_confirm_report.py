@@ -641,3 +641,22 @@ def test_log_loss_and_macro_f1_on_churn_and_mic(tmp_path, monkeypatch):
     assert "| churn | kNN | 0.2945 (10) | not recorded | not recorded |" in md
     assert f"- churn kNN macro-F1 {missing} (seeds {', '.join(map(str, SEEDS))})" in md
     assert "- log_loss_T: adapted neural-CBR arms' test_nll_post_T" in md
+
+
+def test_baselines_are_read_only_from_recorded_trial_units(tmp_path, monkeypatch):
+    """A grid output that recorded no run study is refused (its numbers are not in run units); a job summary entry
+    whose trial unit is missing is refused too."""
+    from tools.t1_confirm_report import load_baselines
+    grid = tmp_path / "grid"
+    job = grid / "regression__yacht" / "catboost"
+    job.mkdir(parents=True)
+    entry = {"status": "completed", "stage": "evaluation", "candidate_id": "c", "seed": 40}
+    (job / "completed.json").write_text(json.dumps({"status": "completed", "evaluation": [entry]}))
+    task = Task("regression__yacht", "yacht", "regression", "legacy", False, (40,))
+    (tmp_path / "runs").mkdir()
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
+    with pytest.raises(SystemExit, match="names no run study"):
+        load_baselines(Evidence(), [grid], [task], ["catboost"])
+    (grid / "study.json").write_text(json.dumps({"study": "nostudy"}))
+    with pytest.raises(SystemExit, match="not readable as a complete unit"):
+        load_baselines(Evidence(), [grid], [task], ["catboost"])

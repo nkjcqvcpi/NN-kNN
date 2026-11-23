@@ -42,7 +42,7 @@ matches accepted training and final capacity, while adaptive candidate search
 still costs more computation.
 
 ```powershell
-.venv\Scripts\python.exe tools/t1_run.py configs/t1/alignment_adapted_retraining.yaml --out <isolated-output-directory>
+.venv\Scripts\python.exe tools/t1_run.py configs/t1/alignment_adapted_retraining.yaml --study S --out <isolated-input-directory>
 ```
 
 The initial configuration is an exploratory 18-training-case Iris pilot, three

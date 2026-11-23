@@ -2,8 +2,13 @@
 
     python tools/t1_confirm_report.py --prereg configs/t1/prereg_20261013.json --prereg-sha256 <hex>
         --runs <run-unit trees NN-KNN/runs/t1/<study>/<experiment>...> --baselines <grid or evaluate output dirs...>
-        --final <arm::name of F> --out <dir> [--groups legacy transfer] [--final-map <json>]
+        --final <arm::name of F> [--out <dir>] [--groups legacy transfer] [--final-map <json>]
         [--expect-fingerprints <json | pattern=prefix[,prefix...]>...]
+
+Every number is read from run units: the neural-CBR condition units of --runs, and for the baselines the grid's
+evaluation trial units (a grid or evaluate output's completed.json/evaluation.json only names which trials to take;
+an output that recorded no run study is refused). --out defaults to
+``<worktree>/results/t1/<study>/<experiment>/confirm_report`` of the first --runs tree.
 
 Error is 1 - accuracy (adapted output; pre-adaptation for retrieval-only rows) or
 train-standardized RMSE on the test stream. Per task the effect is the mean over
@@ -49,7 +54,8 @@ from scipy import optimize, stats
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from model.common.tracking import load_run  # noqa: E402  (numpy and tensorboard only)
-from model.t1.records import condition_units, record as read_record, require_unit_tree, rows as read_rows, trial_unit  # noqa: E402
+from model.t1.records import (condition_units, grid_study, record as read_record, require_unit_tree, results_dir,  # noqa: E402
+                              rows as read_rows, trial_row, trial_unit)
 
 ALPHA = 0.05  # Holm family-wise level over {E1, E2, E3a, E3b}
 BH_Q = 0.10  # Benjamini-Hochberg level for secondary analyses
@@ -413,9 +419,14 @@ def check_devices(ev: Evidence, tasks: list[Task], cond: Conditions, allow_mixed
 
 
 def load_baselines(ev: Evidence, dirs: list[Path], tasks: list[Task], families: list[str]) -> None:
+    """Baseline test errors of each grid or evaluate output in ``dirs``: its completed.json/evaluation.json entries
+    say which evaluation trials (candidate, seed) to take, and every value is read from that trial's run unit in the
+    study the output recorded (``records.grid_study``, ``records.trial_row``). An output that recorded no study is
+    refused."""
     files, skipped, bad_seed, sources = [], 0, [], {}
     for d in dirs:
         found = 0
+        study = grid_study(d)
         for t in tasks:
             for fam in families:
                 for name in ("completed.json", "evaluation.json"):
@@ -425,7 +436,12 @@ def load_baselines(ev: Evidence, dirs: list[Path], tasks: list[Task], families: 
                     found += 1
                     files.append(str(path))
                     data = json.loads(path.read_text(encoding="utf-8"))
-                    for e in data if isinstance(data, list) else data.get("evaluation", []):
+                    winner = None if isinstance(data, list) else data.get("winner")
+                    for entry in data if isinstance(data, list) else data.get("evaluation", []):
+                        if entry.get("status", "completed") != "completed":
+                            skipped += 1
+                            continue
+                        e = trial_row(study, t.key, fam, entry, winner)
                         if e.get("status", "completed") != "completed" or "test_metrics" not in e:
                             skipped += 1
                             continue
@@ -616,6 +632,9 @@ def load_extra_metrics(ev: Evidence, tasks: list[Task], cond: Conditions, famili
                     try:
                         y, p = saved_predictions(path)
                         rec.update(f1_record(y, p, 1.0 - baseline_error(found[0][0], t.task_type), ev.n_test.get((t.key, s))))
+                    except KeyError:  # the trial unit saved no test predictions
+                        rec.update(macro_f1=None, macro_f1_source=None,
+                                   macro_f1_note="not recorded: no grid trial unit with test predictions")
                     except Exception as exc:  # torch missing or an unreadable file: descriptive output, keep the reason
                         rec.update(macro_f1=None, macro_f1_note=f"not recorded: unreadable trial unit "
                                                                  f"({type(exc).__name__}: {exc})")
@@ -1128,7 +1147,8 @@ def main(argv: list[str] | None = None) -> dict:
     ap.add_argument("--final-map", help="JSON {task key: condition id} for tasks whose F has another id")
     ap.add_argument("--retrieval-only", help="default: <F's arm>::retrieval_only")
     ap.add_argument("--default", help="alternating default at F's budget; default: <F's arm>::alternating_default")
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--out", help="output directory (default: <worktree>/results/t1/<study>/<experiment>/confirm_report "
+                                   "of the first --runs tree)")
     ap.add_argument("--groups", nargs="+", default=["legacy", "transfer"])
     ap.add_argument("--small-tasks", nargs="*", default=[], help="small-task names/keys, or a .json list")
     ap.add_argument("--n-test", help="fallback JSON {task key or name: n_test or {seed: n_test}}")
@@ -1188,7 +1208,7 @@ def main(argv: list[str] | None = None) -> dict:
     }
     report = clean(report)
     md = render_md(report)  # before writing anything, so a rendering error leaves no half-written report
-    out = Path(args.out)
+    out = Path(args.out) if args.out else results_dir(args.runs[0]) / "confirm_report"
     out.mkdir(parents=True, exist_ok=True)
     (out / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     (out / "report.md").write_text(md, encoding="utf-8")

@@ -18,8 +18,9 @@ The console and `server.json` provide the dynamically allocated local URL.
 `--study S` is required: the session is recorded as the run unit `NN-KNN/runs/t1/S/reviewer/<directory name>/`.
 Every version's actual model/Adam/targets/statistics/interventions is the named state `v<NNNN>-<stage>` and its
 rendered data the record `view/v<NNNN>`, the control model the state `MC`, and the trainings' curves are logged.
-The output directory holds only the immutable source ZIP and manifest, `latest.json` (the current version's state
-name) and `server.json`. Existing sessions are preserved by rejecting nonempty destinations. Loading/replaying
+The session's run metadata (seed, epochs, data version, injected label-error ids, rule, source fingerprint,
+environment) is the unit record `session_manifest`. The output directory holds only the immutable source ZIP,
+`latest.json` (the current version's state name) and `server.json`. Existing sessions are preserved by rejecting nonempty destinations. Loading/replaying
 these states uses safe tensor checkpoints (`RunData.load_state`); interactive restart/resume is not yet
 implemented. The unit is complete when the server is stopped with Ctrl+C (`docs/T1_RUN_RECORDS.md`).
 The server binds only `127.0.0.1`. Version checks prevent stale edits, and a local

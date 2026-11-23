@@ -105,9 +105,13 @@ def units_from_files(src, runs, study="fx", experiment=None):
 
 
 def trial_units_from_files(grid, runs, study="grid"):
-    """Record the ``test_predictions.pt`` of a synthetic grid or evaluate output (test fixtures in the old layout) as
-    its grid trial units and name the study in its ``study.json``/``evaluate.json``, as a recording grid does.
-    Trials already recorded are kept, so the conversion may be repeated."""
+    """Record a synthetic grid or evaluate output (a test fixture in the old layout: full trial rows in
+    ``<task>/<family>/completed.json`` or ``evaluation.json``, test predictions in
+    ``<task>/<family>/<stage>/<candidate>/s<seed>/test_predictions.pt``) as its grid trial units, as a recording grid
+    does: each row becomes the unit's ``trial`` record (candidate ``w`` and stage ``evaluation`` where the row names
+    none), its predictions the unit's arrays, and the job summary keeps only ``records.pointer`` entries. The study is
+    named in the output's ``study.json``/``evaluate.json``. Rows already converted are kept, so the conversion may be
+    repeated."""
     import json
 
     import numpy as np
@@ -115,17 +119,35 @@ def trial_units_from_files(grid, runs, study="grid"):
 
     grid, runs = Path(grid), Path(runs)
     runs.mkdir(parents=True, exist_ok=True)
+    units = {}  # unit parts -> {"row": trial row, "predictions": path}
+    for summary in sorted([*grid.glob("*/*/completed.json"), *grid.glob("*/*/evaluation.json")]):
+        task, family = summary.parent.parent.name, summary.parent.name
+        data = json.loads(summary.read_text(encoding="utf-8"))
+        entries = data if isinstance(data, list) else data.get("evaluation", [])
+        for i, e in enumerate(entries):
+            if "test_metrics" not in e and "validation_metrics" not in e:
+                continue  # already a pointer
+            row = {**e, "stage": e.get("stage", "evaluation"),
+                   "candidate_id": e.get("candidate_id", None if isinstance(data, list) else data.get("winner")) or "w"}
+            units[task, family, row["stage"], row["candidate_id"], f"s{row['seed']}"] = {"row": row}
+            entries[i] = records.pointer(row)
+        summary.write_text(json.dumps(data), encoding="utf-8")
     for path in sorted(grid.glob("*/*/*/*/s*/test_predictions.pt")):
-        seed_dir = path.parent
-        cid, stage, family, task = seed_dir.parent.name, seed_dir.parent.parent.name, \
-            seed_dir.parent.parent.parent.name, seed_dir.parent.parent.parent.parent.name
-        key = records.key(study, task, family, stage, cid, seed_dir.name)
+        d = path.parent
+        parts = (d.parent.parent.parent.parent.name, d.parent.parent.parent.name, d.parent.parent.name, d.parent.name,
+                 d.name)
+        units.setdefault(parts, {})["predictions"] = path
+    for parts, unit in units.items():
+        key = records.key(study, *parts)
         if tr.run_status(tr.unit_dir(key, runs)).status == "complete":
             continue
-        saved = torch.load(path, weights_only=True)
-        with tr.open_run(key, config={"fixture": str(path.relative_to(grid))}, root=runs) as run:
-            run.log_array("test_prediction", np.asarray(saved["prediction"].numpy()))
-            run.log_array("test_target", np.asarray(saved["target"].numpy()))
+        with tr.open_run(key, config={"fixture": "/".join(parts)}, root=runs) as run:
+            if "predictions" in unit:
+                saved = torch.load(unit["predictions"], weights_only=True)
+                run.log_array("test_prediction", np.asarray(saved["prediction"].numpy()))
+                run.log_array("test_target", np.asarray(saved["target"].numpy()))
+            if "row" in unit:
+                run.log_record("trial", records.ordered(unit["row"]))
     names = [n for n in ("study.json", "evaluate.json") if (grid / n).is_file()] or ["study.json"]
     for name in names:
         record = json.loads((grid / name).read_text(encoding="utf-8")) if (grid / name).is_file() else {}

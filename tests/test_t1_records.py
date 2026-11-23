@@ -406,6 +406,10 @@ def test_reviewer_session_records_version_states(tmp_path, monkeypatch):
     assert list(data.states()) == ["v0000-M0"] and records.record(data, "view/v0000") == recorded.snapshot
     assert not list((tmp_path / "session").glob("v0000*")) and data.series("m0/train/loss")
     assert json.loads((tmp_path / "session/latest.json").read_text())["state"] == "v0000-M0"
+    # the session's run metadata is a unit record, not a file in the session directory
+    manifest = records.record(data, "session_manifest")
+    assert manifest["seed"] == 11 and manifest["injected_label_error_case_ids"] == [4, 5]
+    assert not (tmp_path / "session/session_manifest.json").exists()
 
 
 def test_frozen_confirmation_configs_name_their_selection_files():
@@ -479,7 +483,9 @@ def test_two_grids_on_one_study_do_not_share_trials(tmp_path, monkeypatch, reque
     assert not (tmp_path / "B/classification__iris/knn/selection.json").exists()
     a, b2 = (json.loads((tmp_path / d / "classification__iris/knn/completed.json").read_text()) for d in ("A", "B2"))
     assert a["status"] == b2["status"] == "completed"
-    assert a["evaluation"][0]["dataset"] != b2["evaluation"][0]["dataset"]  # B2 was fitted on its own splits
+    ra, rb = (records.trial_row(records.grid_study(tmp_path / d), "classification__iris", "knn", j["evaluation"][0])
+              for d, j in (("A", a), ("B2", b2)))
+    assert ra["dataset"] != rb["dataset"]  # B2 was fitted on its own splits
     monkeypatch.setenv("NNKNN_RUNS", str(deep_root(tmp_path)))
     with pytest.raises(SystemExit), contextlib.redirect_stderr(io.StringIO()):  # unit paths too long: refused at once
         search.main([str(tmp_path / "gridA.yaml"), "--out", str(tmp_path / "C"), "--workers", "1", "--study", "G"])
@@ -499,6 +505,64 @@ def test_core_ablation_trials_are_reused_only_for_the_same_data(tmp_path, monkey
         with pytest.raises(tr.ConfigMismatchError):
             abl.run_trial(job, "base", settings, loader(lambda s: data, task_type="regression", val_frac=.5), 30, "src",
                           study="abl")
+
+
+def test_core_ablation_summary_reads_only_run_units(tmp_path, monkeypatch, request):
+    """The ablation summary takes every variant row from its trial units and every baseline row from the grid's
+    trial units: with the job files gone it is unchanged, and a rerun trains nothing."""
+    import concurrent.futures
+    import yaml
+    import tools.t1_core_ablation as abl
+    import tools.t1_grid_search as search
+    threads = torch.get_num_threads()
+    request.addfinalizer(lambda: torch.set_num_threads(threads))
+    monkeypatch.delenv("NNKNN_DETERMINISTIC", raising=False)
+    (tmp_path / "runs").mkdir()
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
+    for module in (search, abl):
+        monkeypatch.setattr(module, "ProcessPoolExecutor", concurrent.futures.ThreadPoolExecutor)
+    ds = dict(name="iris", task_type="classification", max_train=40)
+    splits = dict(test_frac=.2, val_frac=.2)
+    grid_cfg = dict(development_seeds=[20], evaluation_seeds=[30, 31], screen_epochs=2, screen_patience=1,
+                    refit_epochs=2, refit_patience=1, finalists=1, torch_threads=1, splits=splits, families=["knn"],
+                    datasets=[ds], grids=dict(knn=dict(n_neighbors=[3], weights=["uniform"], p=[2])))
+    (tmp_path / "grid.yaml").write_text(yaml.safe_dump(grid_cfg))
+    winner = dict(representation="raw", top_k=3, lr_case=0.01, glocal_fw_set_num=1, tau=0.5)
+    abl_cfg = dict(grid=str(tmp_path / "grid"), evaluation_seeds=[30, 31], epochs=2, patience=1, torch_threads=1,
+                   splits=splits, datasets=[ds], grid_winners={"classification__iris": {"parameters": winner}},
+                   variants=[dict(name="base", override={}), dict(name="k5", override=dict(top_k=5)),
+                             dict(name="same", override=dict(top_k=3))])
+    (tmp_path / "abl.yaml").write_text(yaml.safe_dump(abl_cfg))
+    out = tmp_path / "abl"
+    with contextlib.redirect_stdout(io.StringIO()):
+        search.main([str(tmp_path / "grid.yaml"), "--out", str(tmp_path / "grid"), "--workers", "1", "--study", "G"])
+        assert abl.main([str(tmp_path / "abl.yaml"), "--study", "A", "--out", str(out), "--workers", "1"]) == 0
+    first = {n: (out / n).read_bytes() for n in ("summary.md", "summary.csv", "summary.json")}
+    summary = json.loads(first["summary.json"])["tasks"]["classification__iris"]
+    assert set(summary["variants"]) == {"base", "k5"} and summary["variants"]["base"]["aliases"] == ["same"]
+    assert summary["variants"]["base"]["n"] == 2 and set(summary["baselines"]) == {"knn"}
+    done = json.loads((out / "classification__iris/base/completed.json").read_text())
+    assert done["trials"] == [{"status": "completed", "variant": "base", "seed": s} for s in (30, 31)]
+    assert "rows" not in done  # a done marker: the trial rows are only in the units
+    # the summary is rebuilt from the units alone (no job files), and nothing is trained again
+    for p in out.rglob("*.json"):
+        if p.parent != out:
+            p.unlink()
+    for n in first:
+        (out / n).unlink()
+    monkeypatch.setattr(abl, "fit_variant", lambda *a: pytest.fail("a complete trial unit was trained again"))
+    with contextlib.redirect_stdout(io.StringIO()):
+        abl.main([str(tmp_path / "abl.yaml"), "--study", "A", "--out", str(out), "--summarize-only"])
+        assert {n: (out / n).read_bytes() for n in first} == first
+        assert abl.main([str(tmp_path / "abl.yaml"), "--study", "A", "--out", str(out), "--workers", "1"]) == 0
+    assert {n: (out / n).read_bytes() for n in first} == first
+    with pytest.raises(SystemExit), contextlib.redirect_stderr(io.StringIO()):  # out records study A
+        abl.main([str(tmp_path / "abl.yaml"), "--study", "B", "--out", str(out), "--summarize-only"])
+    # the baseline errors are the grid's trial units' numbers
+    grid_done = json.loads((tmp_path / "grid/classification__iris/knn/completed.json").read_text())
+    errs = [abl.test_error(records.trial_row("G", "classification__iris", "knn", e)["test_metrics"])
+            for e in grid_done["evaluation"]]
+    assert summary["baselines"]["knn"] == pytest.approx(float(np.mean(errs)))
 
 
 def legacy_config(tmp_path, seeds=(0, 1), epochs=3):

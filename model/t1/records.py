@@ -365,3 +365,41 @@ def unit_tree(study: str, *parts: Any, root: Any = None) -> Path:
 def trial_unit(study: str, task: str, family: str, stage: str, cid: str, seed: int, root: Any = None) -> Path:
     """Unit directory of one ``tools/t1_grid_search.py`` trial."""
     return unit_dir(key(study, task, family, stage, cid, f"s{seed}"), root)
+
+
+# Fields of a trial row that a grid or ablation job summary (completed.json, evaluation.json, partial.json) keeps:
+# which trial it is and whether it completed. The trial's numbers live only in its unit (record ``trial``).
+POINTER_FIELDS = ("status", "stage", "candidate_id", "variant", "seed")
+
+
+def pointer(row: dict) -> dict:
+    """The job-summary entry of a trial row: ``POINTER_FIELDS`` only."""
+    return {k: row[k] for k in POINTER_FIELDS if k in row}
+
+
+def grid_study(out: Any) -> str:
+    """The run study a ``tools/t1_grid_search.py`` grid or ``evaluate`` output recorded its trials into (``"study"``
+    in its ``study.json`` or ``evaluate.json``); SystemExit for an output that recorded none (its numbers are not in
+    run units, and summaries read only run units)."""
+    import json
+    out = Path(out)
+    for name in ("study.json", "evaluate.json"):
+        if (out / name).is_file() and (study := json.loads((out / name).read_text(encoding="utf-8")).get("study")):
+            return str(study)
+    raise SystemExit(f"{out} names no run study in study.json or evaluate.json: its trials were not recorded as run "
+                     f"units, and summaries read only run units")
+
+
+def trial_row(study: str, task: str, family: str, entry: dict, winner: Any = None, root: Any = None) -> dict:
+    """The ``trial`` record of the grid trial unit that a job-summary entry (``pointer`` fields, or a full row of an
+    older summary) names: stage ``entry["stage"]`` (default ``evaluation``), candidate ``entry["candidate_id"]``
+    (default ``winner``), seed ``entry["seed"]``. SystemExit when that unit is not complete."""
+    cid = entry.get("candidate_id", winner)
+    if cid is None:
+        raise SystemExit(f"{task}/{family} seed {entry.get('seed')}: the job summary names no candidate")
+    path = trial_unit(study, task, family, str(entry.get("stage", "evaluation")), str(cid), int(entry["seed"]), root)
+    try:
+        data = load_run(path, arrays=False)
+    except Exception as exc:  # missing, incomplete or unreadable: its numbers cannot be read
+        raise SystemExit(f"grid trial unit {path} is not readable as a complete unit ({exc})") from exc
+    return unordered(data.record("trial"))

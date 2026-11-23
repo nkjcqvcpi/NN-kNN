@@ -111,3 +111,20 @@ def test_split_mode_pools_classification_and_regression_cells(tmp_path):
                                      reference="tuned::ref", rule=["err", "pertask"], seeds=SEEDS, feasibility_pre=None, prereg=None))
     assert out["after_vs_before"]["n_tasks"] == 6 and out["after_vs_before"]["adopt"]
     assert set(out["block_conditions_selected_held_out"]) == {"tuned::new__kappa10", "tuned::new"}
+
+
+def test_outputs_default_to_the_results_folder(tmp_path, monkeypatch):
+    """Without --out the generated JSON goes under <worktree>/results/ (here a stand-in), named after the command."""
+    import json
+    import sys
+    from model.t1 import records
+    from tools import t1_block_accept
+    rng = np.random.default_rng(3)
+    pool = stage(tmp_path, "pool", {"ref": .30, "inc": .25}, rng)
+    monkeypatch.setattr(records, "RESULTS", tmp_path / "results")
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
+    monkeypatch.setattr(sys, "argv", ["t1_block_accept.py", "rules", "--pool", str(pool), "--reference", "tuned::ref",
+                                      "--seeds", *map(str, SEEDS)])
+    t1_block_accept.main()
+    out = tmp_path / "results/t1/fx/pool/block_accept_rules.json"
+    assert json.loads(out.read_text())["decision"]

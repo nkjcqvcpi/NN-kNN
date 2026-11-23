@@ -13,6 +13,10 @@ Selection reads only ``val_*`` metrics; test metrics of development seeds are ig
 except by ``loso``, the pre-registration's declared inner held-out use of them
 (docs/T1_PREREG_20261013.md, H6). With ``--prereg``, rows of evaluation, retired or
 reserved seeds are refused.
+
+``select``/``loso``/``report`` read run-unit trees (``NN-KNN/runs/t1/<study>/<experiment>``); without ``--out``
+they write under ``<worktree>/results/t1/<study>/<experiment>/`` of the first tree (``selection/``, ``loso.json``,
+``test_report/``).
 """
 from __future__ import annotations
 
@@ -28,7 +32,7 @@ from scipy import stats
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
-from model.t1.records import experiment_rows  # noqa: E402
+from model.t1.records import experiment_rows, results_dir  # noqa: E402
 from tools.t1_grid_search import nnknn_core_settings  # noqa: E402
 from tools.t1_run import load_config  # noqa: E402
 from tools.t1_seed_audit import FORBIDDEN_ROLES, load_prereg, seed_roles  # noqa: E402
@@ -580,6 +584,9 @@ def report(args) -> None:
     print("\n".join(md))
 
 
+DEFAULT_OUT = {"select": "selection", "loso": "loso.json", "report": "test_report"}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -590,7 +597,8 @@ def main() -> None:
     p.add_argument("--experiment", help="experiment name of the generated config")
     s = sub.add_parser("select")
     s.add_argument("exp_dir", nargs="+", help="one or more stage experiment directories (same seeds)")
-    s.add_argument("--out", required=True)
+    s.add_argument("--out", help="output directory (default: <worktree>/results/t1/<study>/<experiment>/selection of the "
+                                 "first exp_dir)")
     s.add_argument("--finalists", type=int, default=3)
     s.add_argument("--reference", action="append", help="condition id always confirmed, e.g. tuned::alternating_default")
     s.add_argument("--stage-config", action="append", help="every stage config whose conditions may be finalists")
@@ -615,13 +623,17 @@ def main() -> None:
     o.add_argument("--challengers", nargs="+", help="compare mode: condition ids; nothing is selected")
     o.add_argument("--prereg")
     o.add_argument("--exclude-condition", action="append")
-    o.add_argument("--out", required=True, help="output JSON")
+    o.add_argument("--out", help="output JSON (default: <worktree>/results/t1/<study>/<experiment>/loso.json of the first "
+                                 "exp_dir)")
     r = sub.add_parser("report")
     r.add_argument("exp_dir", nargs="+")
     r.add_argument("--selection", required=True)
-    r.add_argument("--out", required=True)
+    r.add_argument("--out", help="output directory (default: <worktree>/results/t1/<study>/<experiment>/test_report of the "
+                                 "first exp_dir)")
     r.add_argument("--baseline", default="tuned::alternating_default", help="condition for relative columns")
     args = ap.parse_args()
+    if args.cmd in DEFAULT_OUT and args.out is None:  # generated summaries go under <worktree>/results/
+        args.out = str(results_dir(args.exp_dir[0]) / DEFAULT_OUT[args.cmd])
     {"prepare": prepare, "select": select, "loso": loso, "report": report}[args.cmd](args)
 
 

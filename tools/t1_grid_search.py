@@ -22,7 +22,9 @@ the test stream ``test_prediction``/``test_target``), named states ``model`` (a 
 A unit complete with the same trial config (see ``trial_config``: data definition, source and runtime included) is
 read back and never fitted again, one complete with another config raises ConfigMismatchError; a failed trial is
 marked failed in its unit and refitted on the next run. ``DIR`` holds the job and grid summaries (shortlist,
-selection, completed, evaluation, results, progress, study.json with ``"study": S``, training.log).
+selection, completed, evaluation, results, progress, study.json with ``"study": S``, training.log). The
+``evaluation`` entries of completed.json and evaluation.json only name their trials (``records.pointer``: status,
+stage, candidate id, seed); every number is read from the trial unit (``records.trial_row``).
 """
 from __future__ import annotations
 
@@ -381,10 +383,7 @@ def dataset_family(study, ds, family, out, run_study):
     job = out / task_key(ds) / family
     job.mkdir(parents=True, exist_ok=True)
     if (job / "completed.json").exists():
-        done = json.loads((job / "completed.json").read_text())
-        if "evaluation" in done:
-            done["evaluation"] = [compact_row(r) for r in done["evaluation"]]
-        return done
+        return json.loads((job / "completed.json").read_text())
     apply_determinism()
     torch.set_num_threads(study["torch_threads"])
     grid = {config_id(p): p for p in expand_grid(study["grids"][family])}
@@ -415,7 +414,8 @@ def dataset_family(study, ds, family, out, run_study):
         complete = all(r["status"] == "completed" for r in rows + final_rows + evaluations)
         result = dict(dataset=ds, family=family, status="completed" if complete else "partial",
             winner=winner, parameters=grid[winner], screen_successes=sum(r["status"] == "completed" for r in rows),
-            screen_expected=len(grid)*len(study["development_seeds"]), evaluation=evaluations)
+            screen_expected=len(grid)*len(study["development_seeds"]),
+            evaluation=[records.pointer(r) for r in evaluations])  # the numbers are in the trial units only
         write_json(job / ("completed.json" if result["status"] == "completed" else "failed.json"), result)
         return result
 
@@ -425,7 +425,8 @@ def evaluate_family(grid_dir, study, ds, family, seeds, out, run_study):
 
     The winner comes from the grid's selection.json and must be a candidate of the
     frozen grid; nothing is screened, refitted or ranked. Seeds already evaluated in
-    ``out`` stay in evaluation.json, whose entries match completed.json's.
+    ``out`` stay in evaluation.json, whose entries (``records.pointer``: status, stage, candidate, seed) name the
+    trial units, as completed.json's do.
     """
     key = task_key(ds)
     selection_path = Path(grid_dir) / key / family / "selection.json"
@@ -451,7 +452,8 @@ def evaluate_family(grid_dir, study, ds, family, seeds, out, run_study):
     complete = all(r["status"] == "completed" for r in evaluations)
     result = dict(dataset=ds, family=family, status="completed" if complete else "partial", winner=winner,
         parameters=grid[winner], selection=str(selection_path), development_seeds=selection["development_seeds"],
-        grid_source_sha256=study["grid_source_sha256"], source_sha256=study["source_sha256"], evaluation=evaluations)
+        grid_source_sha256=study["grid_source_sha256"], source_sha256=study["source_sha256"],
+        evaluation=[records.pointer(r) for r in evaluations])
     write_json(summary, result)
     return result
 

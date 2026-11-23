@@ -26,10 +26,10 @@ original name is always in the unit's config and records.
 | `tools/t1_run.py CONFIG --study S` (also through `tools/t1_parallel.py --study S`, `tools/t1_execute_study.py --study S`, `tools/t1_launch.ps1 -Study S`) | run: `t1/S/<experiment>/<dataset key>/<condition>/s<seed>`; stage: `t1/S/<experiment>/<dataset key>/_<stage>/s<seed>` | run: `manifest`, `metrics` (+ `final/<metric>`), `history` (+ curves `<section>/<field>`), `case_statistics`, `case_maintenance`, `retrieval_events`, `row`, one record per extra JSON part (`maintenance_summary`, `maintenance_scoring_trace`, `calibration_protocol`, `capacity_match_*`, `interventions`, `matched_random_summary`, `adapter_nominal_schema`); stage: `history` (+ `core/*` curves) | run: `checkpoint`; the type's parts (`M0`, `M1`, `M2`, `MC`, `intervention_state`, `initial`, `matched_full`, `matched_random`, `calibration_snapshots`, `before_capacity_match`, `starting_checkpoint`); legacy reference also `best_retrieval`, `best_adapter`, `final` from `train_model` (which resumes an interrupted training); `rng`, `ids`. Stage: `objects`, `rng`, `ids`, a readable state dict per model (`model`, `adapter`) |
 | `tools/t1_grid_search.py CONFIG --study S --out D` and `... evaluate ... --study S --out D2` | `t1/S/<task>/<family>/<stage>/<candidate>/s<seed>` | `trial` (the receipt row), `final/validation_error`, `final/validation/*`, `final/test/*`, arrays `validation_prediction`, `validation_target`, `test_prediction`, `test_target` | `model` (torch: `{model_state, info}`; kNN/CatBoost: `{format: "joblib", bytes}`, load with `t1_grid_search.trial_model`), `data` |
 | `tools/t1_grid_prefill.py` | the grid's trial units (the grid's `study.json` must hold `"study"`; grids without one are refused) | as the grid | as the grid |
-| `tools/t1_core_ablation.py CONFIG --study S --out D` | `t1/S/<task>/<variant>/s<seed>` | `trial`, `history` (+ `core/*`), `final/*`, arrays `test_prediction`, `test_target` | `model` (`{model_state, core}`) |
+| `tools/t1_core_ablation.py CONFIG --study S [--out D]` | `t1/S/<task>/<variant>/s<seed>` | `trial`, `history` (+ `core/*`), `final/*`, arrays `test_prediction`, `test_target` | `model` (`{model_state, core}`) |
 | `tools/t1_pre_topk_pilot.py --study S` | `t1/S/<dataset>/s<seed>/<masked or all_cases>` | `result`, `history` (+ `core/*`), `final/*` | `model` |
 | `tools/t1_mask_joint_pilot.py --study S` | run: `t1/S/<dataset>/s<seed>/mask<m>_frozen<f>`; stage: `t1/S/<dataset>/s<seed>/pretrain_mask<m>` | `result`, `history` (+ `sync/*`), `pretrain_history` (+ `core/*`), `final/selected/*`, `final/baseline/*` | `retriever`, `adapter` of the selected checkpoint, `rng`, `ids`; stage: `objects`, `rng`, `ids`, `base` |
-| `tools/t1_reviewer_ui.py --out D --study S` | `t1/S/reviewer/<name of D>` (one per session; complete when the server stops with Ctrl+C) | `view/v<NNNN>` per version, curves `m0/*`, `m2/*`, `mc/*` | `v<NNNN>-<stage>` per version, `MC` (`latest.json` in D names the current state) |
+| `tools/t1_reviewer_ui.py --out D --study S` | `t1/S/reviewer/<name of D>` (one per session; complete when the server stops with Ctrl+C) | `session_manifest` (seed, epochs, data version, injected label errors, rule, source, environment), `view/v<NNNN>` per version, curves `m0/*`, `m2/*`, `mc/*` | `v<NNNN>-<stage>` per version, `MC` (`latest.json` in D names the current state) |
 | `codex/smoke_test.py --mode train|classification --study S` (copied from main) | `core/S/smoke/<mode>` | see main's `docs/NNKNN_CORE.md` | |
 
 Without `--study` every entry point stops with an argparse error (exit code 2); `Runner(cfg, out, study)`,
@@ -39,10 +39,18 @@ Without `--study` every entry point stops with an argparse error (exit code 2); 
 `legacy_best*.pth`, `starting_checkpoint_s<seed>.pt`, `receipt.json`, `failure.json`, `*_predictions.pt`,
 `model.pt`/`model.joblib`/`data.pt`, the pilots' `runs/` and `runs.json`, the reviewer's version folders and `MC.pt`).
 What stays a file is not run data: job logs and receipts of `t1_parallel`/`t1_execute_study`, `training.log`, the
-grid's and the ablation's job summaries (`shortlist.json`, `selection.json`, `completed.json`, `partial.json`,
-`evaluation.json`, `results.json`, `progress.json`, `study.json`/`evaluate.json` with `"study": S`), and
+grid's and the ablation's job files (`shortlist.json`, `selection.json`, `completed.json`, `partial.json`,
+`evaluation.json`, `results.json`, `progress.json`, `aliases.json`, `study.json`/`evaluate.json` with
+`"study": S`), the reviewer's `source_snapshot.zip`, `latest.json` and `server.json` (server plumbing), and
 `t1_run --out` (default `results/t1_pi20260920`), which holds only the inputs: the source snapshot zip and
-`<dataset>/data_snapshot_s<seed>.pt`.
+`<dataset>/data_snapshot_s<seed>.pt`. The job files hold the selection and the job status, not trial numbers: the
+`evaluation` entries of a grid's `completed.json`/`evaluation.json` and the `trials` entries of an ablation job's
+`completed.json`/`partial.json` only name their trials (`records.pointer`: status, stage, candidate id or variant,
+seed); every number is read from the trial unit (`records.trial_row` for grid trials).
+
+Tests on Windows: `tests/conftest.py` gives pytest a short temp root (`%TEMP%\nk<random>`, or below
+`NNKNN_TEST_TMP`) when `--basetemp` is not given, since pytest's default root
+(`%TEMP%\pytest-of-<user>\pytest-<n>\<test name>`) puts some units' event file paths over the 240-character limit.
 
 Notebooks are left as they are (none in this worktree). Table 1 (`tools/*table1*`) is published work and keeps
 writing its own files without a run.
@@ -83,7 +91,10 @@ experiment type in `tests/test_t1_never_retrain.py` (a run crashed at a chosen c
 adapter or condition training for complete units, and every record, curve and named state equal to a straight
 run), and on g234 in fresh processes (complete study copied, 13 runs of all ten types deleted, rerun: only those
 runs trained, stages loaded, every record, curve and weight equal; the `rng` states differ only in whether the unused
-XPU generator state is present). Units recorded before 2026-11-23 have no `rng` state: skipping one prints a warning, since later runs of that
+XPU generator state is present). Two named states are equal in meaning but not by digest between two processes:
+every `rng` state's Python `random` part (the T1 tools never seed Python's `random`, so its state differs per
+process; numpy, torch, the generators and XPU are equal), and a stage's `objects` pickle where a pickled object
+carries a timing (e.g. `res.summary.selection_seconds`). Compare those semantically (or leave the Python part out). Units recorded before 2026-11-23 have no `rng` state: skipping one prints a warning, since later runs of that
 dataset and seed may then differ from an uninterrupted study.
 
 The other tools: a complete grid, ablation or pilot trial is read back before anything is fitted (its `trial` /
@@ -114,18 +125,20 @@ are too long even for a one-character condition label, and warns when a 48-chara
 |---|---|---|
 | `tools/t1_summarize.py <runs/t1/S/<experiment>> --metric ...` | condition units' `row` records, in the order the shards of the same runs held them | `results/t1/S/<experiment>/summary.csv`, `paired_vs_<ref>.csv` (`--out` overrides) |
 | `tools/t1_encoder_report.py <runs/t1/S/<experiment>>` | rows | `results/t1/S/<experiment>/encoder_*.csv`, `encoder_report.md` (`--out` overrides) |
-| `tools/t1_schedule_search.py select|loso|report <runs/t1/S/<experiment>> ... --out` | rows (`load_rows`) | `--out` (required; put it under `results/`) |
-| `tools/t1_block_accept.py`, `tools/t1_freeze.py` | rows through `t1_schedule_search.load_rows` | `--out` (required; `t1_freeze` writes configs to `--out-dir`) |
+| `tools/t1_schedule_search.py select|loso|report <runs/t1/S/<experiment>> ...` | rows (`load_rows`) | `results/t1/S/<experiment>/selection/`, `loso.json`, `test_report/` of the first tree (`--out` overrides) |
+| `tools/t1_block_accept.py rules|block|split` | rows through `t1_schedule_search.load_rows` | `results/t1/S/<experiment>/block_accept_<command>.json` of the first pool tree (`--out` overrides) |
+| `tools/t1_freeze.py` | rows through `t1_schedule_search.load_rows` | record: `results/t1/S/<experiment>/freeze/freeze_record.json` (+ `final_map.json`) of the first `--cls-pool` tree (`--record` overrides); the confirmation configs go to `--out-dir` (required: they are run inputs, kept under `configs/t1/`) |
 | `tools/t1_cbm_diagnostics.py <runs/t1/S/<experiment>>` | `manifest`, `case_statistics`, `history`, `case_maintenance` of every condition unit | prints the markdown; `--json`/`--md` (put them under `results/`) |
-| `tools/t1_confirm_report.py --runs <runs/t1/S/<experiment>>...` | rows, manifests (source fingerprint, device), `retrieval_events`; baseline test predictions from the grid's trial units (the grid or evaluate output records `"study"`) | `--out` (required; put it under `results/`) |
+| `tools/t1_confirm_report.py --runs <runs/t1/S/<experiment>>... --baselines <grid or evaluate output>...` | rows, manifests (source fingerprint, device), `retrieval_events`; baseline test metrics and predictions from the grid's evaluation trial units (the output's `completed.json`/`evaluation.json` says which; an output that records no `"study"` is refused) | `results/t1/S/<experiment>/confirm_report/` of the first `--runs` tree (`--out` overrides) |
 | `tools/t1_confirm_audit.py <runs/t1/S/<experiment>>` | unit status, row rebuilt from `manifest` + `metrics` against `row`, unit path, fingerprints, `[done]` lines with `--logs`; stage units are checked for status only | prints; `--json` (put it under `results/`) |
-| `tools/t1_core_ablation.py --summarize-only`, grid jobs | the job summaries the tool wrote from its trial units (`completed.json`) | `--out` |
+| `tools/t1_core_ablation.py CONFIG --study S [--summarize-only]` | every variant's trial units (`trial` records) in study S; baselines from the grid's evaluation trial units (a grid that records no `"study"` gives no baselines, with a warning) | `results/t1/S/core_ablation/summary.{md,csv,json}` (`--out` overrides; an `--out` whose `study.json` names another study is refused) |
 | `tools/t1_pre_topk_pilot.py`, `tools/t1_mask_joint_pilot.py` | their run units | `--out`, default `results/t1/...` |
 
 A path that holds no run units (for example a legacy result folder with `runs__*.jsonl` shards) is refused
-(`records.require_unit_tree`). Grid and ablation job summaries (`selection.json`, `completed.json`) and the configs'
-frozen selections are summaries, not per-run results, and are still read where a tool needs a grid winner or a
-baseline row.
+(`records.require_unit_tree`). A grid's `selection.json` and the configs' frozen selections are still read where a
+tool needs a grid winner, and a grid's `completed.json`/`evaluation.json` to know which evaluation trials (candidate,
+seeds) to take; the numbers themselves come only from the trial units. Old grid or ablation outputs on g234 whose
+job files hold full rows and record no study are not read for numbers.
 
 ## Selections
 

@@ -290,3 +290,25 @@ def test_reuse_rows_with_other_output_settings_are_distinct_candidates():
     assert condition_id(base) == "tuned::frozen_reuse__combined"
     assert condition_id(scaled) == "tuned::frozen_reuse__combined__kappa=10"
     assert condition_id(logit) == "tuned::frozen_reuse__combined__logit_residual"
+
+
+def test_select_and_loso_default_to_the_results_folder(tmp_path, monkeypatch):
+    """Without --out, select, loso and report write under <worktree>/results/ (here a stand-in) of the first tree."""
+    import sys
+    from model.t1 import records
+    from tools import t1_schedule_search
+    rows = [full_row("a", c, s, e, test_err=e) for c, e in (("p", .1), ("q", .2)) for s in (20, 21)]
+    rows += [full_row("a", "retrieval_only", s, .3, test_err=.3) for s in (20, 21)]
+    for r in rows:  # report also reads the pre-adaptation test error
+        r.setdefault("test_accuracy_pre", .7)
+    stage = write_stage(tmp_path / "stage", rows)
+    monkeypatch.setattr(records, "RESULTS", tmp_path / "results")
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
+    base = tmp_path / "results/t1/fx/stage"
+    for argv in (["select", str(stage)], ["loso", str(stage), "--seeds", "20", "21", "--reference", "tuned::p"],
+                 ["report", str(stage), "--selection", str(base / "selection/selection.json"), "--baseline", "tuned::p"]):
+        monkeypatch.setattr(sys, "argv", ["t1_schedule_search.py", *argv])
+        t1_schedule_search.main()
+    assert json.loads((base / "selection/selection.json").read_text())["global_winner"] == "tuned::p"
+    assert json.loads((base / "loso.json").read_text())["results"]
+    assert (base / "test_report/test_summary.md").is_file()

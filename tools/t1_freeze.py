@@ -12,6 +12,11 @@ classification score scale aligned (``__kappa10`` names map to their regression 
 Each confirmation config holds one task: F (named ``F``), the alternating default at F's epochs,
 patience, stopping rule and output scale (``alternating_default_matched``), F_global (descriptive on
 tuned tasks), and frozen-core reuse; retrieval only is recorded by the runner.
+
+The pools are run-unit trees (``NN-KNN/runs/t1/<study>/<experiment>``). ``--out-dir`` (required) receives the
+confirmation configs, which are run inputs (tracked under ``configs/t1/``). ``--record`` (the freeze record, with
+``final_map.json`` next to it) is a generated summary and defaults to
+``<worktree>/results/t1/<study>/<experiment>/freeze/freeze_record.json`` of the first --cls-pool tree.
 """
 from __future__ import annotations
 
@@ -27,6 +32,7 @@ import yaml
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
+from model.t1.records import results_dir  # noqa: E402
 from tools.t1_block_accept import infeasible, pool_rows  # noqa: E402
 from tools.t1_grid_search import nnknn_core_settings  # noqa: E402
 from tools.t1_run import load_config  # noqa: E402
@@ -154,10 +160,13 @@ def main() -> None:
     ap.add_argument("--seeds", type=int, nargs="+", required=True)
     ap.add_argument("--feasibility-pre", type=float, default=1.02)
     ap.add_argument("--out-dir", required=True)
-    ap.add_argument("--record", required=True)
+    ap.add_argument("--record", help="freeze record JSON (default: <worktree>/results/t1/<study>/<experiment>/freeze/"
+                                     "freeze_record.json of the first --cls-pool tree)")
     ap.add_argument("--experiment", default="confirm_final_20261013")
     ap.add_argument("--small-tasks", nargs="*", default=[], help="task keys from tools/t1_seed_audit.py (n_test < 100)")
     args = ap.parse_args()
+    if args.record is None:  # generated summaries go under <worktree>/results/
+        args.record = str(results_dir(args.cls_pool[0]) / "freeze" / "freeze_record.json")
     seeds = sorted(args.seeds)
     prereg = json.loads(Path(args.prereg).read_text(encoding="utf-8"))
     cls_rows = rows_for(args.cls_pool, None, args.cls_blocks, seeds, args.prereg, "classification")

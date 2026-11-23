@@ -8,6 +8,7 @@ import pandas as pd
 import torch
 
 from model.t1 import data as data_module
+from model.t1 import records
 from tools.t1_grid_search import expand_grid, rank_candidates, dataset_family, numeric_metrics
 
 
@@ -61,6 +62,10 @@ def test_worker_freezes_selection_before_test_prediction(tmp_path, monkeypatch):
     result = dataset_family(study, dict(name="tiny", task_type="regression"), "mlp", tmp_path, "g")
     assert result["status"] == "completed"
     assert seen.count(30) == 1
+    # completed.json names the evaluation trials only; their numbers are in the trial units
+    done = json.loads((tmp_path / "regression__tiny/mlp/completed.json").read_text())
+    assert done["evaluation"] == [{"status": "completed", "stage": "evaluation", "candidate_id": done["winner"], "seed": 30}]
+    assert "test_metrics" in records.trial_row("g", "regression__tiny", "mlp", done["evaluation"][0])
     from model.common.tracking import iter_runs, load_run
     from model.t1.records import record, unit_tree
     screens = list(iter_runs(unit_tree("g", "regression__tiny", "mlp", "screen")))
@@ -184,7 +189,11 @@ def test_evaluate_refits_the_frozen_winner_without_reselection(tmp_path, monkeyp
         evaluated = json.loads((out / key / family / "evaluation.json").read_text())
         assert evaluated["winner"] == completed["winner"] and evaluated["status"] == "completed"
         assert [r["seed"] for r in evaluated["evaluation"]] == [30, 31]
-        before, after = completed["evaluation"][0], evaluated["evaluation"][0]
+        # the job summaries only name their trials; the numbers are in the trial units
+        pointer = {"status": "completed", "stage": "evaluation", "candidate_id": completed["winner"], "seed": 30}
+        assert completed["evaluation"][0] == evaluated["evaluation"][0] == pointer
+        before = records.trial_row(records.grid_study(grid), key, family, completed["evaluation"][0])
+        after = records.trial_row(records.grid_study(out), key, family, evaluated["evaluation"][0])
         assert set(before) == set(after) and before["dataset"] == after["dataset"]
         assert before["test_metrics"] == after["test_metrics"]
         assert before["validation_metrics"] == after["validation_metrics"]
@@ -220,8 +229,9 @@ def test_evaluate_refits_the_frozen_winner_without_reselection(tmp_path, monkeyp
     empty.mkdir()
     search.main(["evaluate", "--grid", str(grid), "--out", str(empty), "--workers", "1", "--families", "knn",
                  "--seeds", "30", "--datasets", key, "--study", "E"])
-    assert (json.loads((empty / key / "knn/evaluation.json").read_text())["evaluation"][0]["test_metrics"]
-            == json.loads((grid / key / "knn/completed.json").read_text())["evaluation"][0]["test_metrics"])
+    assert (records.trial_row("E", key, "knn", json.loads((empty / key / "knn/evaluation.json").read_text())["evaluation"][0])
+            ["test_metrics"] == records.trial_row("G", key, "knn", json.loads((grid / key / "knn/completed.json").read_text())
+                                                  ["evaluation"][0])["test_metrics"])
     # NNKNN_DETERMINISTIC is recorded and an output directory may not be resumed under another setting.
     determinism = []
     monkeypatch.setattr(search.torch, "use_deterministic_algorithms", determinism.append)

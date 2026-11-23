@@ -228,7 +228,8 @@ Addendum 2 (step-D tuning on 18 legacy tasks; car and regression wine in confirm
   `tools/t1_run.py` appends rows under an OS lock (same bytes) and `tools/t1_parallel.py` keeps earlier
   attempt logs. The three transfer configs already running from `ba1c02f` still use the unlocked append.
   They are audited the same way when they finish. QSAR's confirmation will run from a commit that includes
-  the lock: an I/O-only difference, recorded by fingerprint per task in the report.
+  the lock: an I/O-only difference, recorded by fingerprint per task in the report. (Historical: since
+  2026-11-23 `t1_run` writes no shard rows; every run is a run unit, `docs/T1_RUN_RECORDS.md`.)
 - **Transfer batch (2026-10-19).** Diamonds, physiochemical protein and superconductivity: 30/30 jobs exit 0
   (`logs/.../confirm_final_20261013/progress_transfer3_20261019.json`). The audit found every row present and
   rebuilt exactly; all three tasks carry fingerprint `c614a768d682`

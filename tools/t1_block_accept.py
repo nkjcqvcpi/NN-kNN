@@ -16,6 +16,9 @@ Rows: ``--pool`` directories are read in order, keeping the first (task, conditi
 occurrence; ``--conditions-from`` restricts the pool to the conditions present in that
 directory (plus retrieval-only). List the newest stage first so its rows take precedence
 (for example uncapped abalone rows over earlier capped ones).
+
+The pool directories are run-unit trees (``NN-KNN/runs/t1/<study>/<experiment>``); ``--out`` defaults to
+``<worktree>/results/t1/<study>/<experiment>/block_accept_<command>.json`` of the first pool tree.
 """
 from __future__ import annotations
 
@@ -28,6 +31,7 @@ import numpy as np
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
+from model.t1.records import results_dir  # noqa: E402
 from tools.t1_schedule_search import (  # noqa: E402
     condition_id, guard_fallbacks, held_out_errors, load_rows, log_ratio, pre_feasibility, rank_conditions,
     selection_rows,
@@ -182,7 +186,8 @@ def main() -> None:
         p.add_argument("--reference", required=True)
         p.add_argument("--prereg")
         p.add_argument("--exclude-condition", action="append")
-        p.add_argument("--out", required=True)
+        p.add_argument("--out", help=f"output JSON (default: <worktree>/results/t1/<study>/<experiment>/block_accept_{name}.json "
+                                     "of the first --pool tree)")
         p.add_argument("--feasibility-pre", type=float, help="prereg H1 bound B (pre-adaptation feasibility)")
         p.add_argument("--tasks", nargs="*", help="restrict to these task (dataset) names")
         if name == "rules":
@@ -202,8 +207,11 @@ def main() -> None:
     sp.add_argument("--seeds", type=int, nargs="+", required=True)
     sp.add_argument("--feasibility-pre", type=float)
     sp.add_argument("--prereg")
-    sp.add_argument("--out", required=True)
+    sp.add_argument("--out", help="output JSON (default: <worktree>/results/t1/<study>/<experiment>/block_accept_split.json "
+                                  "of the first --cls-pool tree)")
     args = ap.parse_args()
+    if args.out is None:  # generated summaries go under <worktree>/results/
+        args.out = str(results_dir((args.cls_pool if args.cmd == "split" else args.pool)[0]) / f"block_accept_{args.cmd}.json")
     if args.cmd == "split":
         out = split_main(args)
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)

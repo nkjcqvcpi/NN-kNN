@@ -53,7 +53,9 @@ class ReviewerSession:
                 for path in sorted((repo / directory).rglob("*")):
                     if path.suffix in {".py", ".yaml", ".ps1"} and "__pycache__" not in path.parts:
                         bundle.write(path, path.relative_to(repo).as_posix())
-        (output / "session_manifest.json").write_text(json.dumps({
+        from .records import ordered
+        # the session's run metadata is recorded in its unit only (record ``session_manifest``)
+        self.run.log_record("session_manifest", ordered({
             "status": "engineering_demo_no_participants", "source_fingerprint": fingerprint,
             "git": git_state(repo), "environment": environment_info(), "seed": seed,
             "core_epochs_max": epochs, "injected_label_error_case_ids": [4, 5],
@@ -61,7 +63,7 @@ class ReviewerSession:
             "validation_sizes": [.1, .9], "display_query_sizes": [.35, .65],
             "training_sizes": [.2, .8], "rule": "red and circle, size irrelevant",
             "retrieval_event_semantics": "same event for prediction, display and C/H/A",
-            "statistic_reference": "eight fixed demo queries; no broad reliability inference"}, indent=2), encoding="utf-8")
+            "statistic_reference": "eight fixed demo queries; no broad reliability inference"}))
         self.started = time.monotonic()
         self.X, self.targets, self.queries, self.query_targets = common_knowledge_data()
         self.cfg = CoreConfig(task_type="classification", seed=seed, epochs=epochs,
