@@ -6,16 +6,27 @@ summary.json is written at completion. The campaign_timing.csv ledger is NOT
 trusted: PowerShell's {N1} format emits thousands separators ("1,234.5"), and
 that comma corrupts the CSV column alignment.
 
-An entry of OUT may also be a run unit of NN-KNN/runs (model/t2/runs.py): its
-config.json and summary.json come from the unit's records and its wall clock
-from the recorded training time (x/sys/train_seconds).
+Usage: python scripts/harvest_p17.py [RUNS_FOLDER]; the default folder is where
+the campaign's runs live now, results/t2/s06_case_memory_mechanisms/
+g234_p17_p22_capacity_cpu. The manifest goes to reports/p17_capacity_cpu_manifest.json.
+
+An entry of the folder may also be a run unit of NN-KNN/runs (model/t2/runs.py):
+its config.json and summary.json come from the unit's records. Its "seconds" is
+NOT the launch-to-summary.json wall clock of a run directory: it is the recorded
+training time (x/sys/train_seconds, the training call only, summed over the
+unit's sessions; an interrupted session counts up to its last checkpoint). Do not
+mix the two kinds in one throughput comparison. The run directories' wall clock
+needs summary.json's original mtime: the copies made when results/ was reorganised
+(2026-10-09) lost it, so for them "seconds" comes out in the millions; the earlier
+manifest in reports/ holds the original values.
 """
 import datetime, io, json, os, re, statistics, sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # the repository (this file is in scripts/)
+sys.path.insert(0, ROOT)
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(ROOT, "results", "rl_capacity_cpu_g234")
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
+    ROOT, "results", "t2", "s06_case_memory_mechanisms", "g234_p17_p22_capacity_cpu")
 DIRSTAMP = re.compile(r"_(\d{8})_(\d{6})_(\d{6})")
 
 def run_seconds(dirpath, name):
@@ -69,8 +80,9 @@ for name in sorted(os.listdir(OUT)):
     cap, seed = inner.get("case_capacity"), inner.get("seed")
     if cap is None or seed is None:
         print("  WARN: no capacity/seed in %s" % name); continue
+    rel = os.path.relpath(d, ROOT)  # as the manifest names runs: relative to the repository when inside it
     runs.append(dict(
-        run_dir="results/g234/capacity_cpu/" + name,
+        run_dir=d if rel.startswith("..") else rel.replace(os.sep, "/"),
         capacity=int(cap), seed=int(seed), device=cfg.get("device"),
         final_eval=s["final_eval"]["mean_return"],
         last_eval=s["last_eval"]["mean_return"],
