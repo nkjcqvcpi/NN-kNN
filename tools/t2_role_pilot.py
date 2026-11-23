@@ -5,9 +5,14 @@ import hashlib
 import json
 from itertools import product
 from pathlib import Path
+import sys
 import time
 
 import torch
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from model.nnknn_rl_workflow import (
     NNKNNValueNetwork, make_nnknn_rl_config, train_nnknn_rl,
@@ -122,7 +127,8 @@ def main():
             files=t2runs.run_training(args.study,t2runs.unit_parts(label),
                 t2runs.unit_config('nnknn_rl',task,cfg.to_dict(),'cpu',tool='t2_role_pilot'),train_and_audit,label='t2-role-pilot')
             audit=files.data.record('role_audit')
-            summary,holdout,train_seconds=files.json('summary.json'),audit['independent_mc'],audit['training_seconds']
+            # training time over all sessions of the unit (audit['training_seconds'] is the last session's)
+            summary,holdout,train_seconds=files.json('summary.json'),audit['independent_mc'],files.train_seconds()
             events,run_dir=files.data.records('role_audit/events'),files.path
             checkpoint_sha256=files.data.states()['checkpoint']['file']['sha256']
         credit=summarize_credit(events)

@@ -28,12 +28,15 @@ import io
 import json
 import math
 import re
+import time
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Mapping
 
 import numpy as np
 
 FILES = "files/"
+TRAIN_SECONDS = "t2_train_seconds"  # key of the accumulated training time in a resume payload's state
+IMAGE_RESUME_EVERY_SECONDS = 1800.0  # resume cadence of image (ALE) tasks; flat tasks use the core default
 
 
 def is_recording(run: Any) -> bool:
@@ -160,6 +163,12 @@ class RunOutput:
         self._last: dict[str, int] = {}
         self._outputs: list[dict[str, Any]] = []
         self.snapshots: dict[str, dict] = {}  # recorded mid-training snapshots: name -> state record
+        self._started, self._prior_seconds = time.perf_counter(), 0.0  # training time of this and earlier sessions
+
+    def train_seconds(self) -> float:
+        """Training time so far: this session since the output was made, plus what the earlier sessions had
+        reached at the checkpoint this one resumed from (work redone after that checkpoint is counted once)."""
+        return self._prior_seconds + time.perf_counter() - self._started
 
     # ------------------------------------------------------------ rows and curves
     def rows(self, filename: str, ordered: bool = True) -> RowLog:
@@ -200,9 +209,9 @@ class RunOutput:
         return self.resumable and self.run.checkpoint_due(step)
 
     def save_resume(self, state: Mapping[str, Any], *, step: int) -> None:
-        """Flush every row list, then write the resume checkpoint at ``step``."""
+        """Flush every row list, then write the resume checkpoint at ``step`` (with the training time so far)."""
         self.flush()
-        self.run.save_resume(state, step=step)
+        self.run.save_resume({**state, TRAIN_SECONDS: self.train_seconds()}, step=step)
 
     def load_resume(self) -> Any:
         """The resume payload (None on a fresh unit); rebuilds the row lists and snapshot records from the stream."""
@@ -221,6 +230,7 @@ class RunOutput:
             log[:] = [plain_row(r) for r in rows] if log.ordered else rows
             log.flushed = len(log)
         self.snapshots = {k: v for k, v in data.states().items() if k != "checkpoint"}
+        self._prior_seconds = float(payload.state.pop(TRAIN_SECONDS, 0.0))
         return payload
 
     # ------------------------------------------------------------ files
@@ -286,12 +296,14 @@ class RunOutput:
         return self.dir / record["file"]["relpath"], record["file"]["sha256"]
 
     def finish(self, finals: Mapping[str, Any]) -> None:
-        """Record the output list and the headline numbers (the caller completes the run)."""
+        """Record the output list, the headline numbers and the training time over all sessions as
+        ``x/sys/train_seconds`` at step 0 (``x/sys/*`` is outside the result digest); the caller completes the run."""
         if not self.recording:
             return
         self.flush()
         self.run.log_record("outputs", self._outputs)
         self.run.log_final({k: v for k, v in finals.items() if v is not None})
+        self.run.log_step(0, {"sys/train_seconds": self.train_seconds()})
 
 
 def headline(summary: Mapping[str, Any]) -> dict[str, Any]:
@@ -431,7 +443,8 @@ class RunFiles:
         return pd.read_csv(io.StringIO(self.text(name)))
 
     def train_seconds(self) -> float | None:
-        """Wall time of the training call (the last session's, for a resumed unit; ``run_training``)."""
+        """Training time of the unit summed over its sessions (``RunOutput.train_seconds``): None for a legacy
+        directory. An interrupted session counts up to the checkpoint the next one resumed from."""
         if not self.unit:
             return None
         points = self.data.series("sys/train_seconds")
@@ -490,12 +503,28 @@ def unit_config(algorithm: str, task: str, config: Mapping[str, Any], device: An
             "device": None if device is None else str(device), **extra}
 
 
+def resume_every_seconds(task: Any) -> float | None:
+    """Seconds between resume checkpoints for ``task``: ``IMAGE_RESUME_EVERY_SECONDS`` for an image (ALE) task,
+    whose checkpoints hold the filled replay buffer (GBs each), None (the core default, 300 s) otherwise or for an
+    unknown task. ``NNKNN_RESUME_EVERY_SECONDS`` overrides both (core)."""
+    if not task:
+        return None
+    from datasets.rl_tasks import get_rl_task_spec, is_image_observation_kind
+
+    try:
+        spec = get_rl_task_spec(str(task))
+    except ValueError:
+        return None
+    return IMAGE_RESUME_EVERY_SECONDS if is_image_observation_kind(spec.observation_kind) else None
+
+
 @contextlib.contextmanager
 def study_unit(study: str, parts: Iterable[str], config: Mapping[str, Any], *, root: Any = None,
-               label: str = "t2") -> Iterator[tuple[str, Any]]:
+               label: str = "t2", checkpoint_every_seconds: Any = "auto") -> Iterator[tuple[str, Any]]:
     """Yield ``("complete", RunFiles)`` for a complete unit of ``runs/t2/<study>/<parts...>`` (written with this
     config; another config raises ConfigMismatchError) or ``(source, run)`` for an open run that is completed when
-    the block ends (marked failed if it raises); ``source`` is ``fresh``, ``resumed`` or ``restarted``."""
+    the block ends (marked failed if it raises); ``source`` is ``fresh``, ``resumed`` or ``restarted``.
+    ``checkpoint_every_seconds``: the resume cadence; ``"auto"`` takes ``resume_every_seconds(config["task"])``."""
     from model.common.tracking import RunKey, open_run, resolve_unit, unit_dir
 
     key = RunKey("t2", study, tuple(parts))
@@ -503,24 +532,23 @@ def study_unit(study: str, parts: Iterable[str], config: Mapping[str, Any], *, r
         print(f"[{label}] {key.run_id}: complete, not rerun", flush=True)
         yield "complete", RunFiles(unit_dir(key, root))
         return
-    with open_run(key, config=config, root=root) as run:
+    if checkpoint_every_seconds == "auto":
+        checkpoint_every_seconds = resume_every_seconds(config.get("task"))
+    with open_run(key, config=config, root=root, checkpoint_every_seconds=checkpoint_every_seconds) as run:
         source = "restarted" if run.restarted else ("resumed" if run.resumed_from else "fresh")
         print(f"[{label}] {key.run_id}: {source}", flush=True)
         yield source, run
 
 
 def run_training(study: str, parts: Iterable[str], config: Mapping[str, Any], train: Any, *, root: Any = None,
-                 label: str = "t2") -> "RunFiles":
+                 label: str = "t2", checkpoint_every_seconds: Any = "auto") -> "RunFiles":
     """``train(run)`` in the unit ``runs/t2/<study>/<parts...>`` (resumable; skipped if the unit is complete);
-    returns the RunFiles of the complete unit. The wall time of the training call of the last session is logged
-    as ``x/sys/train_seconds`` (``RunFiles.train_seconds()``; ``x/sys/*`` is outside the result digest)."""
-    import time
-
-    with study_unit(study, parts, config, root=root, label=label) as (source, handle):
+    returns the RunFiles of the complete unit. The training time over all sessions is in
+    ``RunFiles.train_seconds()`` (logged by the workflow's ``RunOutput.finish``)."""
+    with study_unit(study, parts, config, root=root, label=label,
+                    checkpoint_every_seconds=checkpoint_every_seconds) as (source, handle):
         if source != "complete":
-            started = time.perf_counter()
             train(handle)
-            handle.log_step(0, {"sys/train_seconds": time.perf_counter() - started})
     from model.common.tracking import RunKey, unit_dir
 
     return RunFiles(unit_dir(RunKey("t2", study, tuple(parts)), root))
