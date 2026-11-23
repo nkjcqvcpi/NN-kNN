@@ -1,11 +1,16 @@
+# Recording is mandatory (2026-11-22): every run is a unit of NN-KNN\runs\t2\$STUDY\ (--study);
+# rerunning a launch skips a complete unit before any training and resumes an interrupted one, so this
+# driver no longer scans or deletes run folders under results/.
 $ErrorActionPreference = 'Continue'
-Set-Location "$env:USERPROFILE\NN-KNN_RL\nnknn-work"
+Set-Location 'C:\Users\Administrator\NN-KNN\rl'
+$PY='C:\Users\Administrator\NN-KNN\.venv\Scripts\python.exe'   # the shared uv venv
 $env:NNKNN_DEVICE='cpu'; $env:PYTHONUNBUFFERED='1'; $env:MPLBACKEND='Agg'
 # Constant across every run in the campaign so neither the returns nor the
 # throughput column is confounded by thread count.
 $env:OMP_NUM_THREADS='2'; $env:MKL_NUM_THREADS='2'
 
-$OUT  = 'results/g234/capacity_cpu'
+$STUDY = 'p17_capacity_cpu'
+$OUT  = 'results/g234/capacity_cpu'   # the timing ledger only
 $CAPS = @(100, 500, 1000, 2000)
 $SEEDS= @(0, 1, 2, 3, 4)
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
@@ -20,9 +25,9 @@ foreach ($seed in $SEEDS) {
     $jobArgs = @(
       'tools\run_rl_nnknn.py','cartpole','--profile','fast','--seed',"$seed",'--device','cpu',
       '--critic-type','nnknn','--critic-mutable-value-labels','--critic-trainable-value-labels',
-      '--case-capacity',"$cap",'--output-dir',$OUT
+      '--case-capacity',"$cap",'--study',$STUDY,'--unit',"nnknn_rl/cartpole/cap${cap}_s$seed"
     )
-    $p = Start-Process -FilePath ".\.venv\Scripts\python.exe" -ArgumentList $jobArgs `
+    $p = Start-Process -FilePath $PY -ArgumentList $jobArgs `
           -RedirectStandardOutput $log -RedirectStandardError ($log -replace '\.log$','.err') `
           -WindowStyle Hidden -PassThru
     $procs += [pscustomobject]@{ Proc=$p; Cap=$cap; Seed=$seed; Start=(Get-Date) }

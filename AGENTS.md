@@ -3,7 +3,7 @@
 This checkout is `rl/` on branch `rl`: the shared NN-kNN core plus RL (T2), including NN-kNN-RL. Keep T1/T3 stage implementations on neural-cbr and LLM, and standalone NN-kNN material on main. Read docs/BRANCH_ORGANIZATION.md.
 
 - The core files listed in `tools/check_nnknn_core.py` are owned by main. Do not edit them here; make the change on main and sync it (docs/NNKNN_CORE.md). `tests/test_nnknn_core.py` fails if they drift.
-- Results and logs are not in git. New training runs are recorded with `--study S` as run units of the shared `NN-KNN/runs/t2/S/` (TensorBoard event files and weights; `docs/T2_RUN_RECORDING.md`). Without `--study` the tools write run directories as before; on disk those (and every historical result) are filed by T2 handoff step under `results/t2/<step>/` and `logs/t2/<step>/` (see `results/README.md` beside them). Pass `--output-dir` explicitly; `results/rl/` is unfiled scratch.
+- Results and logs are not in git. Every training and evaluation is recorded as a run unit of the shared `NN-KNN/runs/t2/<study>/` (TensorBoard event files and weights; `docs/T2_RUN_RECORDING.md`): `--study` is required (owner's rules O1-O5, 2026-11-22), no tool writes per-run directories any more, and a complete unit is never trained again. Summary and report scripts read only run units and write their generated files under `results/` (git-ignored); hand-written reports go to `reports/` (in git). Historical results stay on disk, filed by T2 handoff step under `results/t2/<step>/` and `logs/t2/<step>/` (see `results/README.md` beside them); they are not read, moved or converted.
 
 # AGENTS.md
 
@@ -37,15 +37,15 @@ This checkout is `rl/` on branch `rl`: the shared NN-kNN core plus RL (T2), incl
 ## Validation
 
 - Fast import check: `uv run python codex/smoke_test.py --mode imports`
-- Fast training smoke test: `uv run python codex/smoke_test.py --mode train`
-- Fast RL smoke test: `uv run python codex/smoke_test.py --mode rl`
-- Fast NEC smoke test: `uv run python codex/smoke_test.py --mode nec`
-- Fast NN-kNN-RL smoke test: `uv run python codex/smoke_test.py --mode nnknn_rl`
+- Fast training smoke test: `uv run python codex/smoke_test.py --mode train --study smoke` (recorded under `NN-KNN/runs`; a second call reports the complete units, nothing is retrained)
+- Fast RL smoke test: `uv run python codex/smoke_test.py --mode rl --study smoke` (recorded under `NN-KNN/runs`; a second call reports the complete units, nothing is retrained)
+- Fast NEC smoke test: `uv run python codex/smoke_test.py --mode nec --study smoke` (recorded under `NN-KNN/runs`; a second call reports the complete units, nothing is retrained)
+- Fast NN-kNN-RL smoke test: `uv run python codex/smoke_test.py --mode nnknn_rl --study smoke` (recorded under `NN-KNN/runs`; a second call reports the complete units, nothing is retrained)
 - Core contract: `uv run python -m pytest tests/test_nnknn_core.py -q` and `uv run python tools/check_nnknn_core.py`
 
 ## Notes
 
 - `checkpoints/` and transient artifacts are expected and are gitignored.
-- RL runs record a run unit `NN-KNN/runs/t2/<study>/...` with `--study` (rerunning resumes or skips it); without it they write timestamped artifacts under `results/rl/` unless `--output-dir` is given; move finished campaigns under `results/t2/<step>/`. Summary and report scripts read both kinds through `model.t2.runs.RunFiles`.
+- RL runs record a run unit `NN-KNN/runs/t2/<study>/...` with the required `--study` (rerunning resumes an interrupted unit and skips a complete one before any training); library calls pass an open run (`run=`), there is no `output_dir`. Summary and report scripts read run units only, through `model.t2.runs.RunFiles`, and write under `results/`.
 - `matplotlib` should run headlessly in cloud tasks with `MPLBACKEND=Agg`.
 - Avoid full multi-run benchmarks for routine verification; they are intentionally expensive.

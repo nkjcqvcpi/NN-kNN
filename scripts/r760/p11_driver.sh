@@ -6,6 +6,8 @@
 # OMP_NUM_THREADS=2 itself so the env vars are correct inside the -P workers
 # regardless of xargs's own environment.
 set -u
+# Recording is mandatory (2026-11-22): every run is a unit of NN-KNN/runs/t2/p11_ppo/ (--study); a relaunch
+# skips complete units before any training.
 cd /home/haotangl/NN-KNN_RL/nnknn-work
 
 TASKS="cartpole acrobot lunarlander minatar_breakout"
@@ -28,7 +30,7 @@ run_one() {
   seed="$2"
   log="p11_ppo_${task}_s${seed}.log"
   echo "[driver] starting task=$task seed=$seed -> $log"
-  CUDA_VISIBLE_DEVICES="" OMP_NUM_THREADS=2 /usr/bin/time -v .venv/bin/python tools/run_rl_ppo.py "$task" --profile fast --seed "$seed" --device cpu --no-early-stopping --total-timesteps 150000 > "$log" 2>&1
+  CUDA_VISIBLE_DEVICES="" OMP_NUM_THREADS=2 /usr/bin/time -v .venv/bin/python tools/run_rl_ppo.py "$task" --profile fast --seed "$seed" --device cpu --no-early-stopping --total-timesteps 150000 --study p11_ppo > "$log" 2>&1
   status=$?
   echo "[driver] finished task=$task seed=$seed exit=$status"
 }
