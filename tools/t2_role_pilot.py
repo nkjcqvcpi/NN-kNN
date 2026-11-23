@@ -14,6 +14,7 @@ from model.nnknn_rl_workflow import (
     evaluate_critic_holdout,
 )
 from model.common.artifacts import source_fingerprint
+from model.t2 import runs as t2runs
 from model.t2.audit import summarize_credit
 
 
@@ -45,7 +46,13 @@ def main():
     ap.add_argument('--critic-label-modes',nargs='+',choices=['fixed','mutable','trainable','hybrid'],default=['fixed'])
     ap.add_argument('--critic-label-activation-threshold',type=float,default=0.)
     ap.add_argument('--critic-label-update-alpha',type=float,default=.25)
+    ap.add_argument('--study',default=None,help='Record each condition as a run unit runs/t2/<study>/<task>/<role...>/s<seed> '
+        '(training, role audit events and state) instead of a run folder under --output; rerunning skips complete units. '
+        'The manifest still goes to --output.')
     args=ap.parse_args()
+    if args.study is not None:
+        try:t2runs.check_study(args.study)
+        except (FileNotFoundError,ValueError) as exc:ap.error(f'--study: {exc}')
     if any(mode!='fixed' for mode in args.critic_label_modes) and any(role.endswith('_mlp') for role in args.roles):
         ap.error('nonfixed label variants require explicit NN-kNN critic roles')
     root=Path(args.output)
@@ -83,24 +90,41 @@ def main():
             case_retention_query_budget=None if args.no_retention_query_guard else args.retention_query_budget,
             case_retention_roles=args.retention_roles,
             case_audit_queries_per_batch=args.audit_queries_per_batch)
-        start=time.perf_counter()
-        state=train_nnknn_rl(task,cfg,output_dir=root/label,device='cpu',progress=False)
-        train_seconds=time.perf_counter()-start
-        events=[]
-        holdout=evaluate_critic_holdout(task,state['model'],state['value_model'],state['target_model'],
-            cfg,episodes=2,seed=40000+seed*2,global_step=args.steps,device='cpu',
-            audit_sink=events.append,max_audit_queries=8)
-        assert state['summary']['actual_timesteps']==args.steps
-        if isinstance(state['value_model'],NNKNNValueNetwork):
-            assert events
-            for e in events:
-                assert abs(e['full_prediction']-e['unmasked_holdout_prediction'])<1e-5
-        audit_state=dict(critic_state=state['value_model'].state_dict(),
-            target_state=state['target_model'].state_dict() if state['target_model'] else None,
-            config=asdict(cfg))
-        run_dir=Path(state['run_dir'])
-        torch.save(audit_state,run_dir/'role_audit_state.pt')
-        (run_dir/'role_audit_events.json').write_text(json.dumps(events,indent=2),encoding='utf-8')
+        def train_and_audit(run=None):
+            start=time.perf_counter()
+            if run is None:state=train_nnknn_rl(task,cfg,output_dir=root/label,device='cpu',progress=False)
+            else:state=train_nnknn_rl(task,cfg,device='cpu',progress=False,run=run,resumable=True)
+            train_seconds=time.perf_counter()-start
+            events=[]
+            holdout=evaluate_critic_holdout(task,state['model'],state['value_model'],state['target_model'],
+                cfg,episodes=2,seed=40000+seed*2,global_step=args.steps,device='cpu',
+                audit_sink=events.append,max_audit_queries=8)
+            assert state['summary']['actual_timesteps']==args.steps
+            if isinstance(state['value_model'],NNKNNValueNetwork):
+                assert events
+                for e in events:
+                    assert abs(e['full_prediction']-e['unmasked_holdout_prediction'])<1e-5
+            audit_state=dict(critic_state=state['value_model'].state_dict(),
+                target_state=state['target_model'].state_dict() if state['target_model'] else None,
+                config=asdict(cfg))
+            if run is None:
+                run_dir=Path(state['run_dir'])
+                torch.save(audit_state,run_dir/'role_audit_state.pt')
+                (run_dir/'role_audit_events.json').write_text(json.dumps(events,indent=2),encoding='utf-8')
+                return state['summary'],holdout,events,train_seconds,run_dir,hashlib.sha256((run_dir/'checkpoint.pt').read_bytes()).hexdigest()
+            # the same unit holds the role audit: state role_audit_state, records role_audit and role_audit/events
+            run.save_state('role_audit_state',audit_state)
+            run.log_records('role_audit/events',events)
+            run.log_record('role_audit',dict(independent_mc=holdout,training_seconds=train_seconds))
+        if args.study is None:
+            summary,holdout,events,train_seconds,run_dir,checkpoint_sha256=train_and_audit()
+        else:
+            files=t2runs.run_training(args.study,t2runs.unit_parts(label),
+                t2runs.unit_config('nnknn_rl',task,cfg.to_dict(),'cpu',tool='t2_role_pilot'),train_and_audit,label='t2-role-pilot')
+            audit=files.data.record('role_audit')
+            summary,holdout,train_seconds=files.json('summary.json'),audit['independent_mc'],audit['training_seconds']
+            events,run_dir=files.data.records('role_audit/events'),files.path
+            checkpoint_sha256=files.data.states()['checkpoint']['file']['sha256']
         credit=summarize_credit(events)
         credit_json=[dict(role=k[0],stream=k[1],cases=v) for k,v in credit.items()]
         record=dict(role=label,task=task,seed=seed,actor_type=actor_type,critic_type=critic_type,
@@ -110,9 +134,9 @@ def main():
             critic_label_update_alpha=args.critic_label_update_alpha,
             case_optimizer_maintenance=optimizer_mode,
             source_fingerprint=fingerprint,versions=versions,run_dir=str(run_dir),
-            training_seconds=train_seconds,summary=state['summary'],independent_mc=holdout,
+            training_seconds=train_seconds,summary=summary,independent_mc=holdout,
             audit_events=len(events),interventions=sum(len(e['interventions']) for e in events),
-            credit=credit_json,checkpoint_sha256=hashlib.sha256((run_dir/'checkpoint.pt').read_bytes()).hexdigest())
+            credit=credit_json,checkpoint_sha256=checkpoint_sha256)
         records.append(record)
         (root/'manifest.json').write_text(json.dumps(dict(status='exploratory_current_core_not_stage_a_gate',
             roles=records,source_fingerprint=fingerprint,versions=versions),indent=2),encoding='utf-8')

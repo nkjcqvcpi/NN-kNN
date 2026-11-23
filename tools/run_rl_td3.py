@@ -11,6 +11,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from datasets.rl_tasks import get_rl_task_spec  # noqa: E402
+from model.t2 import runs as t2runs  # noqa: E402
 from model.td3_workflow import (  # noqa: E402
     TD3Config,
     continuous_rl_task_names,
@@ -115,8 +116,9 @@ def parse_args() -> argparse.Namespace:
         help="Mean-return solve threshold; defaults to the task spec.",
     )
     parser.add_argument("--eval-only", action="store_true", help="Evaluate a saved checkpoint without training.")
-    parser.add_argument("--checkpoint", default=None, help="Checkpoint path for --eval-only.")
+    parser.add_argument("--checkpoint", default=None, help="Checkpoint path for --eval-only: a checkpoint.pt or a run unit directory.")
     parser.add_argument("--quiet", action="store_true", help="Disable progress logging during training.")
+    t2runs.add_study_arguments(parser)
     return parser.parse_args()
 
 
@@ -228,19 +230,17 @@ def main() -> None:
         print(f"Wrote eval-only results to {outdir}.")
         return
 
+    if args.study is not None:  # check the run root and the study name before training
+        try:
+            t2runs.check_study(args.study)
+        except (FileNotFoundError, ValueError) as exc:
+            raise SystemExit(f"--study: {exc}")
     cfg = _config_from_args(args)
     # Reject discrete-action tasks before a run directory is created for them.
     require_continuous_task(get_rl_task_spec(args.task))
-    state = train_td3(
-        args.task,
-        cfg,
-        output_dir=make_td3_output_dir(args.task, parent=args.output_dir),
-        device=args.device,
-        progress=not args.quiet,
-    )
-    summary = state["summary"]
+    summary, checkpoint = t2runs.train_or_record(args, "td3", cfg, train_td3, make_td3_output_dir)
     print(json.dumps({k: v for k, v in summary.items() if k != "checkpoint_path"}, indent=2))
-    print(f"Checkpoint: {state['checkpoint_path']}")
+    print(f"Checkpoint: {checkpoint}")
 
 
 if __name__ == "__main__":
