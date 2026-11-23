@@ -22,8 +22,14 @@ code is `model/t2/runs.py`; the tests are `tests/test_t2_runs.py`.
   does both and returns the reader of the finished unit.
 
 The battery tools still write their raw CSVs and reports to `--output-dir`, the sweep its manifest and sweep
-summary, the pilots their manifests; with `--study` the `run_dir` column holds the unit path and the wall time
-comes from `x/sys/train_seconds` for a unit that was not rerun.
+summary, the pilots their manifests; with `--study` the `run_dir` column holds the unit path and the wall-time
+column (`elapsed_seconds`, `elapsed`, `training_seconds`, harvest_p17's `seconds`) is the unit's
+`x/sys/train_seconds`: the training time summed over its sessions, whether or not this call trained it. An
+interrupted session counts up to the checkpoint the next session resumed from (the work redone after it is counted
+once), so a resumed unit's value is close to an uninterrupted run's, not to the total machine time spent. It is
+measured from the start of the training function to the end of its recording, which is not the same span as a
+legacy run directory's wall time (harvest_p17 took launch-to-`summary.json` for those): do not compare the two kinds
+in one throughput table.
 
 ## What a unit holds
 
@@ -40,11 +46,16 @@ Every per-run file of the file mode becomes a record or a named state; none is w
 
 Paths inside the records are relative to the unit: `run_dir` is `.`, `checkpoint_path` is `weights/checkpoint.pt`,
 a snapshot is `weights/<name>.pt`, and the case-quality ledger's namespace is `.`. The readers turn them into full
-paths. TensorBoard curves are `x/episode/*` (return, length, latest losses) at the environment step of each episode
+paths. The quality ledger's identities therefore differ between file mode and a unit with the same seed: its
+`namespace`, its event digests (they hash the snapshot path) and the rows' `last_snapshot_sha256` (a unit saves
+snapshots through a file object, so the archive bytes differ from `torch.save(path)`). The ledger numbers (C, H, Q,
+exposure, steps, phases, event ids) are equal; file mode already varied the same way with the output path. TensorBoard curves are `x/episode/*` (return, length, latest losses) at the environment step of each episode
 end, `x/eval/*`, `x/holdout/*` (NN-kNN critic holdout) and `x/train/*` (PPO and NN-kNN per update), and the headline
 numbers `x/final/{selected_mean_return,selected_std_return,last_mean_return,selected_step,actual_timesteps,passed}`.
-Per-update losses of DQN, NEC and TD3 are only in `loss_metrics.csv`: a `log_step` call costs about 0.55 ms on g234,
-so they are logged once per episode instead (measured on DQN CartPole, 20,000 steps with an update every step:
+Per-update losses of DQN, NEC and TD3 are in the event files only as the row record `rec/files/loss_metrics.csv`
+(every update, exact); their TensorBoard curves (`x/train/loss`, `x/train/critic_loss`, ...) show the latest
+loss once per episode, because a
+`log_step` call costs about 0.55 ms on g234 (measured on DQN CartPole, 20,000 steps with an update every step:
 curves 0.06 s in total, about 3 microseconds per step; each run also pays a fixed 1 to 1.5 s at the end to flush its
 rows and complete the unit).
 
@@ -58,8 +69,11 @@ rows and complete the unit).
 
 ## Resume
 
-With `resumable=True` a run checkpoints (`save_resume`, every 300 s by default; `NNKNN_RESUME_EVERY_SECONDS` /
-`_STEPS`) at an episode boundary, right after the environment was reset:
+With `resumable=True` a run checkpoints (`save_resume`) at an episode boundary, right after the environment was
+reset. The cadence is the core default of 300 s, except for image (ALE) tasks recorded through `--study` /
+`t2runs.run_training`, which checkpoint every 1800 s (`t2runs.resume_every_seconds`, from the task spec); a caller
+can pass `checkpoint_every_seconds`, and `NNKNN_RESUME_EVERY_SECONDS` / `_STEPS` override everything. What a
+checkpoint holds:
 
 - DQN, TD3: networks, target networks, optimizers, the filled part of the replay buffer, best state, counters,
   early-stopping state, the action-space sampler and the global RNGs.
@@ -86,7 +100,11 @@ Not restored, or not exact:
   an uninterrupted one in that field only (and so in its result digest).
 - Bit-exact resume needs the same device and the same torch thread count: on CPU the thread count changes the
   numbers. XPU resume is not tested.
-- `x/sys/train_seconds` is the wall time of the last session only.
-- The replay buffer is in every resume checkpoint: an Atari DQN with a 100,000-transition buffer writes about
-  5.6 GB per checkpoint, and `weights/resume/last.pt` and `prev.pt` stay in the unit after it completes (the core
-  keeps them). Raise `NNKNN_RESUME_EVERY_SECONDS` for such runs and watch the disk.
+- `x/sys/train_seconds` does not count the work an interrupted session did after its last checkpoint.
+- Disk: the replay buffer is in every resume checkpoint. An Atari DQN or NEC with a 100,000-transition buffer of
+  4x84x84 uint8 frames (observation and next observation) writes about 5.6 GB per checkpoint (estimate: 2 x 100,000
+  x 28,224 bytes; not measured), every 1800 s. The core keeps `weights/resume/last.pt` and `prev.pt` in the unit
+  after it completes, so a finished Atari unit holds about 11 GB of resume files besides its weights (a CartPole or
+  Pendulum unit a few MB). A multi-seed Atari battery needs that much free disk per unit; delete
+  `weights/resume/` of complete units by hand when the disk runs short (a complete unit never reads them; whether
+  `complete()` should prune them is an open core decision). PPO and NN-kNN-RL keep no replay buffer; TD3 runs only on flat tasks.
