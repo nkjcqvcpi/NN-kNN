@@ -126,6 +126,36 @@ def test_eval_feature_cache_matches_previous_loop_and_fills_only_requested_rows(
         assert model.cached_features is None
 
 
+def test_eval_feature_cache_follows_the_extractor_weights():
+    """Cached case features are a function of the current extractor: an in-place weight change or a
+    load_state_dict (a restored best state) refreshes them, and a cache set from outside is not trusted."""
+    import copy
+
+    from model.common.core import CoreConfig, build_model
+
+    torch.manual_seed(0)
+    X, y = torch.randn(30, 5), torch.randint(0, 3, (30,))
+    model = build_model(X, y, CoreConfig(task_type="classification", representation="mlp", top_k=4), 3)
+    model.eval()
+    rows = torch.arange(30)
+    with torch.no_grad():
+        encode = lambda: model.feature_extractor(model.cases)  # noqa: E731
+        start, saved = model._extract_features(rows).clone(), copy.deepcopy(model.state_dict())
+        assert torch.equal(start, encode())
+        for p in model.feature_extractor.parameters():
+            p.mul_(1.5)
+        moved = model._extract_features(rows).clone()
+        assert not torch.equal(moved, start) and torch.equal(moved, encode())
+        model.load_state_dict(saved)
+        assert torch.equal(model._extract_features(rows), start)
+        model.cached_features = torch.full_like(start, 1e6)
+        assert torch.equal(model._extract_features(rows), start)
+        q = torch.randn(7, 5)
+        rebuilt = copy.deepcopy(model)
+        rebuilt._invalidate_case_cache()
+        assert torch.equal(model(q)[0], rebuilt(q)[0])
+
+
 def test_build_model_puts_every_module_on_the_case_device_and_keeps_cpu_adam_default():
     from model.common.core import CoreConfig, build_model, make_optimizer
 

@@ -722,6 +722,16 @@ class NN_KNN_Model(nn.Module):
 
     def _invalidate_case_cache(self) -> None:
         self.cached_features = None
+        self._cached_features_key = None
+
+    def _case_feature_key(self) -> tuple:
+        """What evaluation-mode case features are a function of: the case buffer and every parameter and buffer
+        of the feature extractor, each by storage and in-place version counter. ``load_state_dict``, optimizer
+        steps, ``.to()`` and other in-place writes all change it, so cached features never outlive the weights
+        they were computed with (a model rebuilt from a saved state predicts exactly like this one). Writes
+        through ``.data`` bypass the version counter: call ``_invalidate_case_cache()`` after those."""
+        tensors = (self.cases, *self.feature_extractor.parameters(), *self.feature_extractor.buffers())
+        return tuple((t.data_ptr(), t._version) for t in tensors)
 
     def _rebuild_class_to_cases(self) -> None:
         self.class_to_cases = {}
@@ -925,14 +935,21 @@ class NN_KNN_Model(nn.Module):
                 if getattr(self, "mcb_normalize_embeddings", False):
                     extracted_features = F.normalize(extracted_features, p=2, dim=-1)
                 #wipe cache because feature extractor will be updated
-                self.cached_features = None
+                self._invalidate_case_cache()
             else:
-                # During evaluation, update cache only for processed indices
+                # During evaluation, update cache only for processed indices. The cache is only valid for the
+                # tensors it was computed from (also after load_state_dict, e.g. a restored best state).
+                key = self._case_feature_key()
+                stored = getattr(self, "_cached_features_key", None)
+                if self.cached_features is not None and (stored is None or stored[1] is not self.cached_features
+                                                         or stored[0] != key):
+                    self._invalidate_case_cache()
                 if self.cached_features is None:
                     # Initialize cache on the first evaluation pass
                     self.cached_features = torch.zeros(
                         (len(self.cases), self.feature_dim), dtype=torch.float32, device=selected_cases.device # type: ignore
                     ) # type: ignore
+                    self._cached_features_key = (key, self.cached_features)
 
                 # Requested cases not yet cached (all-zero rows), found in one
                 # vectorized step: a per-case Python loop forces a host sync per
