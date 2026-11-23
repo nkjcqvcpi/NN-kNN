@@ -24,7 +24,8 @@ def main():
     ap.add_argument('--runtime-library-bin',type=Path,required=True)
     ap.add_argument('--data-root',type=Path,required=True)
     ap.add_argument('--sample-manifest',type=Path,required=True)
-    ap.add_argument('--metric-checkpoint',type=Path,required=True)
+    ap.add_argument('--metric-checkpoint',type=Path,required=True,
+                    help='legacy s<seed>/metric.pt of t3_need_matching,or its run unit runs/t3/<study>/s<seed>/ (--study)')
     ap.add_argument('--output',type=Path,required=True)
     ap.add_argument('--conditions',nargs='+',choices=['none','bm25','fixed','learned','iterative'],default=['none','bm25','fixed','learned','iterative'])
     ap.add_argument('--format-library',type=Path)
@@ -45,7 +46,7 @@ def main():
     from model.t3.orchestrator import Budget,run_loop
     from model.t3.retrieval import Access,Retriever
     from model.t3.host_schema import decision_schema,decoder_schema,validate_decision,request_prompt,request_decode
-    from model.t3.metric_provenance import metric_provenance
+    from model.t3.metric_provenance import load_metric_checkpoint,metric_checkpoint_sha256,metric_provenance
     format_metadata=None
     if args.format_library is not None:
         sys.path.insert(0,str(args.format_library.resolve(strict=True)))
@@ -73,10 +74,10 @@ def main():
         host_names.add(name);path=args.model_dir/name
         assert path.stat().st_size==record['bytes'] and hashlib.sha256(path.read_bytes()).hexdigest()==record['sha256']
     assert host_names=={p.name for p in args.model_dir.iterdir() if p.is_file()}
-    metric=torch.load(args.metric_checkpoint,weights_only=True,map_location='cpu')
+    metric=load_metric_checkpoint(args.metric_checkpoint)
     selected=metric['selected_metric']['feature_weights']
     assert selected.shape==(1,256) and bool(torch.isfinite(selected).all()) and bool((selected>0).all())
-    metric_sha=hashlib.sha256(args.metric_checkpoint.read_bytes()).hexdigest()
+    metric_sha=metric_checkpoint_sha256(args.metric_checkpoint)
     metric_binding=metric_provenance(args.metric_checkpoint)
     data=json.loads((args.data_root/'manifest_mirror_complete.json').read_text())
     files={r['name']:r for r in data['files']}
