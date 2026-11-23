@@ -9,15 +9,15 @@ every variant on the grid's evaluation seeds so that the test errors are compara
 rows of the same grid. Exploratory and descriptive: nothing here selects or changes F.
 
 Usage:
-  .venv/Scripts/python.exe -u tools/t1_core_ablation.py configs/t1/core_ablation_20261027.yaml \
+  .venv/Scripts/python.exe -u tools/t1_core_ablation.py configs/t1/core_ablation_20261027.yaml --study S \
       --out results/t1/p6_confirmation_revision/core_ablation_20261027 --workers 12
-  .venv/Scripts/python.exe tools/t1_core_ablation.py <config> --out <dir> --summarize-only
+  .venv/Scripts/python.exe tools/t1_core_ablation.py <config> --study S --out <dir> --summarize-only
 
-With ``--study S`` every (task, variant, seed) trial is recorded as the run unit
-``NN-KNN/runs/t1/S/<task>/<variant>/s<seed>/`` (record ``trial`` = the receipt row, ``history`` and its curves,
-``final/*`` numbers, arrays ``test_prediction``/``test_target``, named state ``model``) instead of its
-``receipt.json`` and ``test_predictions.pt``; ``completed.json``/``partial.json``, the summaries and the logs stay
-files. The variants start from the config's inlined ``grid_winners`` (else the grid's selection.json).
+``--study S`` is required: every (task, variant, seed) trial is recorded as the run unit
+``NN-KNN/runs/t1/S/<task>/<variant>/s<seed>/`` (record ``trial``, ``history`` and its curves, ``final/*`` numbers,
+arrays ``test_prediction``/``test_target``, named state ``model``); a complete trial is read back, never refitted.
+``--out`` holds the job summaries (``completed.json``/``partial.json``), ``summary.*``, ``study.json`` and the logs.
+The variants start from the config's inlined ``grid_winners`` (else the grid's selection.json).
 """
 from __future__ import annotations
 
@@ -140,36 +140,30 @@ def fit_variant(settings, data, seed):
     return model, cc, tr
 
 
-def run_trial(job, variant, settings, data, seed, source, study=None):
-    """One receipt-backed fit of a variant on one seed; with ``study`` the run unit
-    ``t1/<study>/<task>/<variant>/s<seed>`` instead (record ``trial``, arrays ``test_prediction``/``test_target``,
-    named state ``model``), reused like a receipt when complete with the same config (settings, data definition,
-    source and runtime; another config raises ConfigMismatchError)."""
-    if study is not None:
-        key = records.key(study, Path(job).parent.name, Path(job).name, f"s{seed}")
-        # the data definition, source and runtime belong to the config: a unit is reused only for the same fit
-        config = dict(kind="t1_core_ablation_trial", task=Path(job).parent.name, variant=variant,
-                      settings=records.jsonable(settings), seed=seed, data=data_definition(data), source_sha256=source,
-                      runtime=trial_runtime())
-        info = resolve_unit(key, config=config)
-        if info is not None:
-            return records.unordered(load_run(info.path, arrays=False).record("trial"))
-        with open_run(key, config=config) as run:
-            row = fit_trial(run, None, variant, settings, data, seed, source)
-            if row["status"] != "completed":
-                run.fail(row["error"])
-        return row
-    path = Path(job) / f"s{seed}"
-    path.mkdir(parents=True, exist_ok=True)
-    receipt = path / "receipt.json"
-    if receipt.exists():
-        return json.loads(receipt.read_text())
-    return fit_trial(None, path, variant, settings, data, seed, source)
+def run_trial(job, variant, settings, data, seed, source, *, study):
+    """One fit of a variant on one seed, recorded as the run unit ``t1/<study>/<task>/<variant>/s<seed>`` (record
+    ``trial``, arrays ``test_prediction``/``test_target``, named state ``model``). A unit complete with the same
+    config (settings, data definition, source and runtime) is read back before anything is fitted; another config
+    raises ConfigMismatchError."""
+    if not study:
+        raise TypeError("run_trial needs a study: every core ablation trial is recorded as a run unit")
+    key = records.key(study, Path(job).parent.name, Path(job).name, f"s{seed}")
+    # the data definition, source and runtime belong to the config: a unit is reused only for the same fit
+    config = dict(kind="t1_core_ablation_trial", task=Path(job).parent.name, variant=variant,
+                  settings=records.jsonable(settings), seed=seed, data=data_definition(data), source_sha256=source,
+                  runtime=trial_runtime())
+    info = resolve_unit(key, config=config)
+    if info is not None:
+        return records.unordered(load_run(info.path, arrays=False).record("trial"))
+    with open_run(key, config=config) as run:
+        row = fit_trial(run, variant, settings, data, seed, source)
+        if row["status"] != "completed":
+            run.fail(row["error"])
+    return row
 
 
-def fit_trial(run, path, variant, settings, data, seed, source):
-    """Fit and evaluate one trial; write it into ``run`` (a run unit) or as files under ``path``."""
-    receipt = None if path is None else path / "receipt.json"
+def fit_trial(run, variant, settings, data, seed, source):
+    """Fit and evaluate one trial and record it into ``run`` (its run unit)."""
     started = time.perf_counter()
     try:
         full = data(seed)
@@ -188,29 +182,23 @@ def fit_trial(run, path, variant, settings, data, seed, source):
             best_epoch=tr.best_epoch, epochs_run=tr.epochs_run, best_val_loss=tr.best_val,
             training_seconds=training_seconds, inference_seconds=inference_seconds,
             diagnostics=retrieval_diagnostics(model, full.X_test), source_sha256=source, dataset=full.describe()))
-        if run is None:
-            torch.save(dict(prediction=torch.as_tensor(pred), target=full.y_test), path / "test_predictions.pt")
-            write_json(receipt, row)
-        else:
-            run.log_array("test_prediction", torch.as_tensor(pred).numpy())
-            run.log_array("test_target", full.y_test.numpy())
-            run.save_state("model", records.storable(dict(model_state=model.state_dict(), core=dataclasses.asdict(cc))))
-            run.log_final(records.numeric({k: row[k] for k in ("validation_error", "test_error", "train_resubstitution_error",
-                                                                 "best_epoch", "epochs_run", "best_val_loss")}))
-            run.log_record("history", records.ordered(tr.history))
-            records.log_curves(run, tr.history, "core")
-            run.log_record("trial", records.ordered(row))
+        run.log_array("test_prediction", torch.as_tensor(pred).numpy())
+        run.log_array("test_target", full.y_test.numpy())
+        run.save_state("model", records.storable(dict(model_state=model.state_dict(), core=dataclasses.asdict(cc))))
+        run.log_final(records.numeric({k: row[k] for k in ("validation_error", "test_error", "train_resubstitution_error",
+                                                             "best_epoch", "epochs_run", "best_val_loss")}))
+        run.log_record("history", records.ordered(tr.history))
+        records.log_curves(run, tr.history, "core")
+        run.log_record("trial", records.ordered(row))
         print(json.dumps(dict(variant=variant, seed=seed, val=row["validation_error"], test=row["test_error"])), flush=True)
         return row
     except Exception:
         failure = dict(status="failed", variant=variant, seed=seed, error=traceback.format_exc())
-        if run is None:
-            write_json(path / "failure.json", failure)
         print(failure["error"], flush=True)
         return failure
 
 
-def task_variant(study, ds, variant, out, run_study=None):
+def task_variant(study, ds, variant, out, run_study):
     out = Path(out)
     job = out / task_key(ds) / variant["name"]
     job.mkdir(parents=True, exist_ok=True)
@@ -223,7 +211,7 @@ def task_variant(study, ds, variant, out, run_study=None):
     settings = resolve_variant(base, variant, study)
     data = split_loader(study, ds)
     with (job / "training.log").open("a", encoding="utf-8") as log, contextlib.redirect_stdout(log):
-        rows = [run_trial(job, variant["name"], settings, data, seed, study["source_sha256"], run_study)
+        rows = [run_trial(job, variant["name"], settings, data, seed, study["source_sha256"], study=run_study)
                 for seed in study["evaluation_seeds"]]
     result = dict(task=task_key(ds), variant=variant["name"], override=variant.get("override") or {}, base_parameters=base,
                   settings=settings, status="completed" if all(r["status"] == "completed" for r in rows) else "partial", rows=rows)
@@ -328,30 +316,28 @@ def main(argv=None):
     parser.add_argument("--only-dataset", help="dataset name, e.g. zebra")
     parser.add_argument("--only-variant", nargs="+")
     parser.add_argument("--summarize-only", action="store_true")
-    parser.add_argument("--study", help="record every trial as a run unit under NN-KNN/runs/t1/<study>/ instead of "
-                                        "its receipt and test_predictions.pt; the job summaries stay files")
+    parser.add_argument("--study", required=True,
+                        help="every trial is recorded as a run unit under NN-KNN/runs/t1/<study>/; --out holds the "
+                             "job and study summaries")
     args = parser.parse_args(argv)
-    if args.study is not None:
-        try:
-            records.check_study(args.study)
-        except (FileNotFoundError, ValueError) as exc:
-            parser.error(f"--study: {exc}")
+    try:
+        records.check_study(args.study)
+    except (FileNotFoundError, ValueError) as exc:
+        parser.error(f"--study: {exc}")
     study = load_study(args.config)
-    if args.study is not None:
-        seed = f"s{max(study['evaluation_seeds'], key=lambda s: len(str(s)))}"
-        try:  # every trial unit's event file path fits, before any trial runs
-            records.check_unit_paths(args.study, [(task_key(ds), v["name"], seed) for ds in study["datasets"]
-                                                  for v in study["variants"]])
-        except ValueError as exc:
-            parser.error(f"--study: {exc}")
+    seed = f"s{max(study['evaluation_seeds'], key=lambda s: len(str(s)))}"
+    try:  # every trial unit's event file path fits, before any trial runs
+        records.check_unit_paths(args.study, [(task_key(ds), v["name"], seed) for ds in study["datasets"]
+                                              for v in study["variants"]])
+    except ValueError as exc:
+        parser.error(f"--study: {exc}")
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     if args.summarize_only:
         summarize(study, out)
         print(f"summary written to {out / 'summary.md'}")
         return 0
-    write_json(out / "study.json", dict(configuration=study, environment=environment_info(),
-                                        **({"study": args.study} if args.study else {})))
+    write_json(out / "study.json", dict(configuration=study, environment=environment_info(), study=args.study))
     jobs = []
     for ds in study["datasets"]:
         if args.only_dataset and ds["name"] != args.only_dataset:

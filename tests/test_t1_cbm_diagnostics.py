@@ -6,7 +6,8 @@ import numpy as np
 import pytest
 
 from model.t1.retention import protection_requirements, select_active_set
-from tools.t1_cbm_diagnostics import (_cfg, analyse_run, diagnose, fill, load_scores, main, parse_K, ranking,
+from t1_units import units_from_files
+from tools.t1_cbm_diagnostics import (_cfg, analyse_run, find_runs, diagnose, fill, load_scores, main, parse_K, ranking,
                                       resolve_K, retention_kept, run_config)
 
 STATS = {"source": "train_loo", "accumulation": "per_checkpoint", "smoothing": 1.0, "min_retrieval_count": 2,
@@ -153,7 +154,10 @@ def test_logged_maintenance_is_replayed(tmp_path):
     events = logged("provenance_only", 40) + logged("bias_current", 80, flip=3) + [
         {**e, "step": 90, "policy_version": "kcenter/pi-20260920-v2"} for e in logged("provenance_only", 90)]
     history = {"core": [], "sync": [{"epoch": 40, "maintenance": {"n_after": 10}}, {"epoch": 41}, {"epoch": 80, "maintenance": None}]}
-    run = analyse_run(write_run(tmp_path, "hub", "tuned__a", 20, hub_rows(), events, history), tmp_path, 0.5, 20, 0)
+    write_run(tmp_path / "files", "hub", "tuned__a", 20, hub_rows(), events, history)
+    tree = units_from_files(tmp_path / "files", tmp_path / "runs")
+    (src,) = find_runs(tree)
+    run = analyse_run(src, tree, 0.5, 20, 0)
     assert run["context"]["maintenance_steps"] == 1
     assert run["context"]["replay"] == {
         "provenance_only": {"steps": 1, "replayed": 1, "agree": 1, "case_mismatches": 0},
@@ -162,12 +166,13 @@ def test_logged_maintenance_is_replayed(tmp_path):
 
 
 def test_cli_filters_averages_seeds_and_writes_tables(tmp_path):
-    root = tmp_path / "runs"
-    write_run(root, "hub", "tuned__a", 20, hub_rows())
-    write_run(root, "hub", "tuned__a", 21, hub_rows(bias_sign=-1.0))  # bias keeps ids 0-7, 10, 11
-    write_run(root, "hub", "tuned__a", 30, tie_rows())  # not a development seed
-    write_run(root, "hub", "tuned__retrieval_only", 20, [])
-    write_run(root, "tie", "tuned__b", 22, tie_rows(), min_per_cohort=0)
+    files = tmp_path / "files"
+    write_run(files, "hub", "tuned__a", 20, hub_rows())
+    write_run(files, "hub", "tuned__a", 21, hub_rows(bias_sign=-1.0))  # bias keeps ids 0-7, 10, 11
+    write_run(files, "hub", "tuned__a", 30, tie_rows())  # not a development seed
+    write_run(files, "hub", "tuned__retrieval_only", 20, [])
+    write_run(files, "tie", "tuned__b", 22, tie_rows(), min_per_cohort=0)
+    root = units_from_files(files, tmp_path / "runs")
     out = tmp_path / "out"
     assert main([str(root), "--draws", "10", "--json", str(out / "d.json"), "--md", str(out / "d.md")]) == 0
     rep = json.loads((out / "d.json").read_text())

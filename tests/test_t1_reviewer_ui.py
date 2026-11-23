@@ -16,8 +16,15 @@ from tools.t1_reviewer_ui import make_handler
 
 
 @pytest.fixture
-def session(tmp_path):
-    return ReviewerSession(tmp_path / "session", epochs=2)
+def session(tmp_path, monkeypatch):
+    """A session recorded into its run unit (every session is recorded)."""
+    from model.common.tracking import open_run
+    from model.t1.records import key
+    (tmp_path / "runs").mkdir()
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
+    run = open_run(key("rv", "reviewer", "session"), config={"kind": "test"})
+    yield ReviewerSession(tmp_path / "session", epochs=2, run=run)
+    run.complete()
 
 
 def request(session, op, **kwargs):
@@ -98,7 +105,8 @@ def test_M2_MC_fixed_budget_and_saved_checkpoints_replay(session):
     session.act(request(session, "relabel", label=0))
     session.act(request(session, "retrain", epochs=2))
     assert len(session.retraining["M2_history"]) == len(session.retraining["MC_history"]) == 2
-    checkpoint = torch.load(session.output / "v0002-M2/checkpoint.pt", weights_only=True)
+    assert json.loads((session.output / "latest.json").read_text())["state"] == "v0002-M2"
+    checkpoint = torch.load(session.run.path / "weights" / "v0002-M2.pt", weights_only=True)  # the unit's named state
     model = build_model(checkpoint["X_train"], checkpoint["training_targets"], CoreConfig(**checkpoint["core"]), 2)
     model.load_state_dict(checkpoint["model_state"])
     model.set_active_case_count(checkpoint["active_case_count"])
@@ -106,7 +114,7 @@ def test_M2_MC_fixed_budget_and_saved_checkpoints_replay(session):
         r = model.retrieve(checkpoint["X_queries"], exclude_identical=False)
         _, post, _ = final_prediction(model, checkpoint["X_queries"], r)
     assert post.argmax(1).tolist() == [q["prediction"] for q in session.snapshot["queries"]]
-    assert (session.output / "MC.pt").exists()
+    assert (session.run.path / "weights" / "MC.pt").exists() and not (session.output / "MC.pt").exists()
     with pytest.raises(ValueError, match="比较已完成"):
         session.act(request(session, "relabel", label=1))
 

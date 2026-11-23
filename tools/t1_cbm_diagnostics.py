@@ -1,12 +1,11 @@
 """Read-only case-base maintenance (CBM) diagnostics from saved ``tools/t1_run.py`` outputs.
 
-    python tools/t1_cbm_diagnostics.py <runs dir> [--K 0.5] [--condition GLOB ...]
+    python tools/t1_cbm_diagnostics.py <NN-KNN/runs/t1/<study>/<experiment>> [--K 0.5] [--condition GLOB ...]
         [--seeds 20 21 ... | --all-seeds] [--draws 200] [--tie-seed 0] [--json OUT] [--md OUT]
 
-Every ``<task>/<condition>/s<seed>/`` under ``<runs dir>`` with a nonempty case_statistics.jsonl
-and a run_manifest.json is read (or, for a run-unit tree of ``tools/t1_run.py --study``, every condition unit's
-``case_statistics``, ``manifest``, ``history`` and ``case_maintenance`` records); nothing is trained, no model or checkpoint is loaded and nothing
-under ``<runs dir>`` is written. The scores are rebuilt from the run's final train-LOO audit with
+Every condition unit of the run-unit tree (``tools/t1_run.py --study``) is read: its ``case_statistics``,
+``manifest``, ``history`` and ``case_maintenance`` records; nothing is trained, no model or checkpoint is loaded and
+nothing under the run root is written (put ``--json``/``--md`` under ``<worktree>/results/``). The scores are rebuilt from the run's final train-LOO audit with
 ``model.t1.provenance.score_cases`` and its statistics settings, over the active cases, as
 ``maintenance.run_maintenance`` scores them. Per run, at capacity K (``t1_run.resolve_K``):
 
@@ -44,7 +43,7 @@ sys.path.insert(0, str(REPO))
 
 from model.t1.provenance import CaseScores, CaseStatisticsStore, CaseStats, ScoreConfig, score_cases  # noqa: E402
 from model.t1.retention import RetentionConfig, candidate_rank, protection_requirements, select_active_set  # noqa: E402
-from model.t1.records import is_unit_tree, record as read_record, rows as read_rows, unordered  # noqa: E402
+from model.t1.records import record as read_record, require_unit_tree, rows as read_rows, unordered  # noqa: E402
 from model.common.tracking import iter_runs, load_run  # noqa: E402
 
 POLICIES = ("provenance_only", "bias_current", "exposure_only")
@@ -64,11 +63,6 @@ def resolve_K(k, n: int) -> int:
 
 def parse_K(text: str):
     return float(text) if any(ch in text for ch in ".eE") else int(text)
-
-
-def read_jsonl(path: Path) -> list[dict]:
-    with open(path, encoding="utf-8") as f:
-        return [json.loads(line) for line in f if line.strip()]
 
 
 def run_config(manifest: dict) -> tuple[ScoreConfig, RetentionConfig]:
@@ -295,33 +289,15 @@ def find_units(root: Path, conditions=None, seeds=None):
 
 
 def find_runs(root: Path, conditions=None, seeds=None):
-    """Legacy run directories below ``root``, or (a tree of run units) their ``UnitSource``s."""
-    if is_unit_tree(root):
-        yield from find_units(root, conditions, seeds)
-        return
-    for p in sorted(root.rglob("case_statistics.jsonl")):
-        d = p.parent
-        if not (d / "run_manifest.json").exists():
-            continue
-        if conditions and not any(fnmatch.fnmatchcase(d.parent.name, c) for c in conditions):
-            continue
-        if seeds is not None and d.name.startswith("s") and d.name[1:].isdigit() and int(d.name[1:]) not in seeds:
-            continue
-        yield d
+    """The ``UnitSource`` of every condition unit below the run-unit tree ``root``."""
+    yield from find_units(require_unit_tree(root), conditions, seeds)
 
 
 def analyse_run(d, root: Path, K_spec, draws, tie_seed) -> dict:
-    if isinstance(d, UnitSource):
-        manifest, rows = read_record(d.data, "manifest"), read_rows(d.data, "case_statistics")
-        task_dir, condition, rel = d.task_dir, d.condition, d.rel
-        history = read_record(d.data, "history")
-        events = read_rows(d.data, "case_maintenance")
-    else:
-        manifest = json.loads((d / "run_manifest.json").read_text(encoding="utf-8"))
-        rows = read_jsonl(d / "case_statistics.jsonl")
-        task_dir, condition, rel = d.parent.parent.name, d.parent.name, d.relative_to(root).as_posix()
-        history = json.loads((d / "history.json").read_text(encoding="utf-8")) if (d / "history.json").exists() else None
-        events = read_jsonl(d / "case_maintenance.jsonl") if (d / "case_maintenance.jsonl").exists() else []
+    manifest, rows = read_record(d.data, "manifest"), read_rows(d.data, "case_statistics")
+    task_dir, condition, rel = d.task_dir, d.condition, d.rel
+    history = read_record(d.data, "history")
+    events = read_rows(d.data, "case_maintenance")
     out = {"task": manifest.get("task", {}).get("name", task_dir), "condition": condition,
            "seed": int(manifest["run"]["seed"]), "run_dir": rel}
     if not rows:
@@ -415,16 +391,15 @@ def _json_default(o):
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("runs", help="t1_run experiment directory (<task>/<condition>/s<seed>/ below it), or its run-unit "
-                                 "tree NN-KNN/runs/t1/<study>/<experiment> (tools/t1_run.py --study)")
+    ap.add_argument("runs", help="run-unit tree of a t1_run experiment: NN-KNN/runs/t1/<study>/<experiment>")
     ap.add_argument("--K", type=parse_K, default=0.5, help="capacity: a float <= 1 is a fraction of the active cases")
     ap.add_argument("--condition", nargs="+", default=None, metavar="GLOB", help="condition directory names to include")
     ap.add_argument("--seeds", nargs="+", type=int, default=list(DEV_SEEDS), help="default: development seeds 20-25")
     ap.add_argument("--all-seeds", action="store_true")
     ap.add_argument("--draws", type=int, default=200, help="random tie-break permutations per run")
     ap.add_argument("--tie-seed", type=int, default=0, help="seeds the permutations together with the run seed")
-    ap.add_argument("--json", help="write runs and summary as JSON")
-    ap.add_argument("--md", help="write the per-task tables as markdown (default: print)")
+    ap.add_argument("--json", help="write runs and summary as JSON (put it under <worktree>/results/)")
+    ap.add_argument("--md", help="write the per-task tables as markdown (default: print; put it under <worktree>/results/)")
     args = ap.parse_args(argv)
     root = Path(args.runs)
     seeds = None if args.all_seeds else set(args.seeds)

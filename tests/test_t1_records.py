@@ -1,7 +1,8 @@
-"""T1 run units (--study): what the T1 tools record, and the readers on units versus the legacy files (CPU).
+"""T1 run units (--study, required): what the T1 tools record, and the readers of run units (CPU).
 
-The same runs written as files and recorded as units must hold the same numbers, rows, histories and weights,
-and every converted summary must give byte-identical outputs from either input.
+Every T1 run is recorded as a unit; no per-run file is written. The readers read only run units and write their
+outputs under ``<worktree>/results/``. The equality of these records and summaries with the files the tools wrote
+before recording was mandatory was proven before the file mode was removed, and again on g234 against that tree.
 """
 import contextlib
 import io
@@ -56,7 +57,7 @@ def run_jobs(runner, cfg, seeds=(40, 41)):
 
 @pytest.fixture(scope="module")
 def pair(tmp_path_factory):
-    """The same jobs once as files (``files/<EXP>``) and once recorded (``runs/t1/<STUDY>/<EXP>``)."""
+    """The jobs recorded once (``runs/t1/<STUDY>/<EXP>``); ``units_out`` is the runner's input folder."""
     base = tmp_path_factory.mktemp("pair")
     runs = base / "runs"
     runs.mkdir()
@@ -64,21 +65,24 @@ def pair(tmp_path_factory):
         mp.setenv("NNKNN_RUNS", str(runs))
         for name in ("NNKNN_RESUME", "NNKNN_RESUME_EVERY_SECONDS", "NNKNN_RESUME_EVERY_STEPS"):
             mp.delenv(name, raising=False)
-        cfg = tiny_config()
-        files = Runner(cfg, base / "files")
-        files.data_for = tiny_data
-        run_jobs(files, cfg)
         units = Runner(tiny_config(), base / "units", study=STUDY)
         units.data_for = tiny_data
         printed = run_jobs(units, tiny_config())
-    return {"base": base, "runs": runs, "files": base / "files" / EXP, "units_out": base / "units" / EXP,
-            "units": runs / "t1" / STUDY / EXP, "printed": printed}
+    return {"base": base, "runs": runs, "units_out": base / "units" / EXP, "units": runs / "t1" / STUDY / EXP,
+            "printed": printed}
 
 
 @pytest.fixture
 def runs_root(pair, monkeypatch):
     monkeypatch.setenv("NNKNN_RUNS", str(pair["runs"]))
     return pair["runs"]
+
+
+@pytest.fixture
+def results(tmp_path, monkeypatch):
+    """``<worktree>/results`` of the summaries, moved into the test's folder."""
+    monkeypatch.setattr(records, "RESULTS", tmp_path / "results")
+    return tmp_path / "results"
 
 
 def jsonl(path):
@@ -132,37 +136,41 @@ def test_storable_converts_numpy_and_refuses_objects():
         records.storable({"f": object()})
 
 
+def test_id_counters_are_read_without_consuming_and_restored():
+    import model.t1.maintenance as maintenance
+    import model.t1.revise as revise
+    before = records.capture_ids()
+    assert records.capture_ids() == before
+    first = next(maintenance._event_counter)
+    assert records.capture_ids()["model.t1.maintenance._event_counter"] == first + 1
+    records.restore_ids({"model.t1.maintenance._event_counter": 7, "model.t1.revise._ids": 3})
+    assert next(maintenance._event_counter) == 7 and next(revise._ids) == 3
+    records.restore_ids(before)
+
+
 # ----------------------------------------------------------------------------- tools/t1_run.py
 
 
-def test_recorded_runs_equal_the_files_of_the_same_runs(pair):
-    rows = {(r["dataset"], r["condition"], r["seed"]): r for r in records.shard_rows(pair["files"])}
-    units = records.condition_units(pair["units"])
-    assert len(units) == len(rows) == 2 * 2 * 4  # 2 tasks x 2 seeds x (retrieval only, reuse, F, default)
-    for row, data in units:
-        d = pair["files"] / row["dataset"] / row["condition"] / f"s{row['seed']}"
-        old = rows[(row["dataset"], row["condition"], row["seed"])]
-        assert json.dumps(row) == json.dumps(old)  # values and key order
+def test_recorded_runs_hold_every_part(pair):
+    found = records.condition_units(pair["units"])
+    assert len(found) == 2 * 2 * 4  # 2 tasks x 2 seeds x (retrieval only, reuse, F, default)
+    stages = [i for i in tr.iter_runs(pair["units"]) if Path(i.path).parent.name.startswith("_")]
+    assert len(stages) == 2 * 2  # the trained core of each task and seed
+    for row, data in found:
         metrics = records.record(data, "metrics")
-        assert json.dumps(metrics) == json.dumps(json.loads((d / "metrics.json").read_text()))
         assert data.final() == records.numeric(metrics)
-        assert json.dumps(records.record(data, "history")) == json.dumps(json.loads((d / "history.json").read_text()))
+        assert {k: v for k, v in row.items() if k in metrics} == {k: v for k, v in metrics.items()
+                                                                     if not isinstance(v, (dict, list))}
+        assert {"checkpoint", "rng", "ids"} <= set(data.states())
         for name in ("case_statistics", "case_maintenance", "retrieval_events"):
-            assert json.dumps(records.rows(data, name)) == json.dumps(jsonl(d / f"{name}.jsonl"))
+            assert isinstance(records.rows(data, name), list)
         man = records.record(data, "manifest")
-        assert same(man, json.loads((d / "run_manifest.json").read_text()))
-        pt = sorted(p.stem for p in d.glob("*.pt"))
-        assert sorted(data.states()) == pt
-        for stem in pt:
-            assert same(torch.load(d / f"{stem}.pt", weights_only=False), tr.load_state(data.path, stem))
-        for f in d.glob("*.json"):
-            if f.name not in ("metrics.json", "history.json", "run_manifest.json"):
-                assert json.dumps(records.record(data, f.stem)) == json.dumps(json.loads(f.read_text()))
+        assert man["run"]["id"] == row["run_id"] and man["resolved_config"]["seed"] == row["seed"]
         if records.record(data, "history").get("core"):
             assert len(data.series("core/train_loss")) == len(records.record(data, "history")["core"])
 
 
-def test_recording_writes_no_per_run_files_and_prints_the_same(pair):
+def test_recording_writes_no_per_run_files(pair):
     out = pair["units_out"]
     assert not list(out.glob("runs__*.jsonl"))
     assert sorted(p.name for p in out.rglob("*") if p.is_file() and not p.name.startswith("source_snapshot")) == \
@@ -195,23 +203,17 @@ def test_legacy_reference_records_train_model_states(tmp_path, monkeypatch):
     cfg["legacy"]["overrides"].update(training_epochs=3, patience=3, batch_size=4)
     ds = {"name": "tiny", "task_type": "classification"}
     cfg["datasets"] = [ds]
-    results = []
-    for study in (None, "leg"):
-        runner = Runner(cfg, tmp_path / f"out-{study}", study=study)
-        runner.data_for = tiny_data
-        with contextlib.redirect_stdout(io.StringIO()):
-            runner.run_legacy_reference(ds, 0)
-        results.append(runner)
-    d = tmp_path / "out-None" / cfg["experiment"] / "tiny" / "legacy" / "s0"
-    assert (d / "legacy_best.pth").exists()
+    with pytest.raises(TypeError):
+        Runner(cfg, tmp_path / "out-None", study=None)
+    runner = Runner(cfg, tmp_path / "out-leg", study="leg")
+    runner.data_for = tiny_data
+    with contextlib.redirect_stdout(io.StringIO()):
+        runner.run_legacy_reference(ds, 0)
     unit = tmp_path / "runs" / "t1" / "leg" / cfg["experiment"] / "tiny" / "legacy" / "s0"
     data = tr.load_run(unit)
-    assert {"best_retrieval", "final", "checkpoint"} <= set(data.states())
+    assert {"best_retrieval", "final", "checkpoint", "rng", "ids"} <= set(data.states())
     assert data.series("val/loss") and data.series("train/stage")
-    assert same(json.loads((d / "metrics.json").read_text()), records.record(data, "metrics"))
-    old = torch.load(d / "checkpoint.pt", weights_only=False)
-    new = tr.load_state(unit, "checkpoint")
-    assert same(old["model_state"], new["model_state"])
+    assert records.record(data, "metrics")["n_cases"] == 16
     assert not list((tmp_path / "out-leg").rglob("*.pth")) and not (tmp_path / "checkpoints").exists()
 
 
@@ -227,40 +229,47 @@ def _summarize(src, out, *extra):
         t1_summarize.main()
 
 
-def test_summaries_are_byte_identical_from_units_and_files(pair, tmp_path):
-    files = Path(shutil.copytree(pair["files"], tmp_path / "files"))
-    _summarize(files, None)
-    _summarize(pair["units"], tmp_path / "from_units")
+def test_summaries_read_units_and_write_to_results(pair, runs_root, results, tmp_path):
+    _summarize(pair["units"], None)
+    default = results / "t1" / STUDY / EXP
+    assert default == records.results_dir(pair["units"])
+    _summarize(pair["units"], tmp_path / "chosen")
     for name in ("summary.csv", "paired_vs_tuned__retrieval_only.csv"):
-        assert (files / name).read_bytes() == (tmp_path / "from_units" / name).read_bytes()
+        assert (default / name).read_bytes() == (tmp_path / "chosen" / name).read_bytes()
+    rows = records.experiment_rows(pair["units"])
+    assert (default / "summary.csv").read_text().count("\n") > len({(r["dataset"], r["condition"]) for r in rows})
+    assert not list(pair["units"].rglob("*.csv"))  # nothing is written into the run root
+    legacy = tmp_path / "legacy"
+    legacy.mkdir()
+    (legacy / "runs__wine.jsonl").write_text(json.dumps(rows[0]) + "\n", encoding="utf-8")
     with pytest.raises(SystemExit):
-        _summarize(pair["units"], None)  # a unit tree needs --out
+        _summarize(legacy, tmp_path / "x")  # legacy result folders are not read
 
 
 def test_schedule_search_rows_come_from_units_in_shard_order(pair):
     from tools.t1_schedule_search import load_rows
-    assert json.dumps(load_rows(pair["units"])) == json.dumps(load_rows(pair["files"]))
+    rows = load_rows(pair["units"])
+    assert json.dumps(rows) == json.dumps(records.experiment_rows(pair["units"]))
+    keys = [r["dataset"] for r in rows]
+    assert keys == sorted(keys, key=lambda k: f"runs__{k}.jsonl")
 
 
-def test_cbm_diagnostics_are_identical_from_units_and_files(pair, tmp_path):
+def test_cbm_diagnostics_read_units(pair, tmp_path):
     from tools.t1_cbm_diagnostics import main
-    outs = {}
-    for name, src in (("files", pair["files"]), ("units", pair["units"])):
-        with contextlib.redirect_stderr(io.StringIO()):
-            assert main([str(src), "--all-seeds", "--draws", "3", "--json", str(tmp_path / f"{name}.json"),
-                         "--md", str(tmp_path / f"{name}.md")]) == 0
-        outs[name] = json.loads((tmp_path / f"{name}.json").read_text())
-    assert outs["files"]["runs"] and outs["files"]["summary"] == outs["units"]["summary"]
-    assert [r["metrics"] for r in outs["files"]["runs"]] == [r["metrics"] for r in outs["units"]["runs"]]
-    md = [(tmp_path / f"{n}.md").read_text().replace(str(pair[n]), "ROOT") for n in ("files", "units")]
-    assert md[0] == md[1]
+    with contextlib.redirect_stderr(io.StringIO()):
+        assert main([str(pair["units"]), "--all-seeds", "--draws", "3", "--json", str(tmp_path / "units.json"),
+                     "--md", str(tmp_path / "units.md")]) == 0
+    out = json.loads((tmp_path / "units.json").read_text())
+    assert len(out["runs"]) + len(out["skipped"]) == 16 and (tmp_path / "units.md").read_text().strip()
+    with pytest.raises(SystemExit):
+        main([str(tmp_path), "--all-seeds"])
 
 
 def test_confirm_audit_checks_units(pair, tmp_path, runs_root):
     from tools.t1_confirm_audit import audit_units, main
     report = audit_units(pair["units"])
     assert report["ok"], (report["problems"], report["unit_self_check"]["mismatches"][:3])
-    assert report["unit_self_check"]["exact"] == report["rows"] == 16
+    assert report["unit_self_check"]["exact"] == report["rows"] == 16 and report["stage_units"] == 4
     logs = tmp_path / "logs"
     logs.mkdir()
     (logs / "job.log").write_text(pair["printed"], encoding="utf-8")
@@ -270,19 +279,19 @@ def test_confirm_audit_checks_units(pair, tmp_path, runs_root):
     assert not audit_units(pair["units"], logs=logs)["ok"]
     with contextlib.redirect_stdout(io.StringIO()):
         assert main([str(pair["units"])]) == 0
-        with pytest.raises(SystemExit):
-            main([str(pair["units"]), "--repair", "--logs", str(logs)])
 
 
 def test_confirm_report_reads_rows_and_predictions_from_units(pair):
     from tools.t1_confirm_report import events_predictions, experiment_rows
-    legacy = [(row, src) for src, row, _ in experiment_rows(pair["files"])]
     units = [(row, data) for _, row, data in experiment_rows(pair["units"])]
-    assert json.dumps([r for r, _ in legacy]) == json.dumps([r for r, _ in units])
-    for (row, _), (_, data) in zip(legacy, units):
-        if row["task_type"] == "classification":
-            d = pair["files"] / row["dataset"] / row["condition"] / f"s{row['seed']}" / "retrieval_events.jsonl"
-            assert events_predictions(d, "final_prediction") == events_predictions(data, "final_prediction")
+    assert json.dumps([r for r, _ in units]) == json.dumps(records.experiment_rows(pair["units"]))
+    checked = 0
+    for row, data in units:
+        if row["task_type"] == "classification" and "test_accuracy_post" in row:
+            y, p = events_predictions(data, "final_prediction")
+            assert len(y) == len(p) == 8 and float(np.mean(np.array(y) == np.array(p))) == pytest.approx(row["test_accuracy_post"])
+            checked += 1
+    assert checked
 
 
 # ----------------------------------------------------------------------------- grid, ablation, reviewer
@@ -295,27 +304,27 @@ def test_grid_trial_units_reuse_and_failures(tmp_path, monkeypatch):
     x = torch.arange(24).float().reshape(-1, 2)
     y = torch.arange(12) % 2
     data = T1Data("tiny", "classification", x[:6], y[:6], x[6:9], y[6:9], x[9:], y[9:], num_classes=2)
-    job_files, job_units = tmp_path / "out/classification__tiny/knn", tmp_path / "grid/classification__tiny/knn"
+    job_units = tmp_path / "grid/classification__tiny/knn"
     params = {"n_neighbors": 3, "weights": "uniform"}
+    with pytest.raises(TypeError):  # every trial is recorded: no study, no trial
+        search.run_trial(job_units, "knn", "c1", params, "evaluation", loader(lambda s: data), 30, 1, 1, "src",
+                         test=True, study=None)
     with contextlib.redirect_stdout(io.StringIO()):
-        old = search.run_trial(job_files, "knn", "c1", params, "evaluation", lambda s: data, 30, 1, 1, "src", test=True)
         new = search.run_trial(job_units, "knn", "c1", params, "evaluation", loader(lambda s: data), 30, 1, 1, "src",
                                test=True, study="g")
         again = search.run_trial(job_units, "knn", "c1", params, "evaluation", loader(lambda s: None), 30, 1, 1, "src",
                                  test=True, study="g")
-    assert same(old, new) and json.dumps(again) == json.dumps(new)
+    assert new["status"] == "completed" and json.dumps(again) == json.dumps(new)
     assert not job_units.exists()
     unit = records.trial_unit("g", "classification__tiny", "knn", "evaluation", "c1", 30)
     run = tr.load_run(unit)
-    saved = torch.load(job_files / "evaluation/c1/s30/test_predictions.pt", weights_only=True)
-    assert np.array_equal(run.array("test_prediction"), saved["prediction"].numpy())
-    assert np.array_equal(run.array("test_target"), saved["target"].numpy())
+    assert np.array_equal(run.array("test_target"), data.y_test.numpy())
     assert run.final()["validation_error"] == new["validation_error"]
     model = search.trial_model(unit)
-    assert np.array_equal(model.predict_proba(data.X_test.numpy()), saved["prediction"].numpy())
+    assert np.array_equal(model.predict_proba(data.X_test.numpy()), run.array("test_prediction"))
     from tools.t1_confirm_report import saved_predictions
-    assert all(np.array_equal(a, b) for a, b in zip(saved_predictions(unit),
-                                                     saved_predictions(job_files / "evaluation/c1/s30/test_predictions.pt")))
+    target, pred = saved_predictions(unit)
+    assert np.array_equal(target, data.y_test.numpy()) and np.array_equal(pred, run.array("test_prediction").argmax(1))
 
     @loader
     def broken(seed):
@@ -332,7 +341,7 @@ def test_grid_trial_units_reuse_and_failures(tmp_path, monkeypatch):
 
 def test_grid_prefill_reads_trial_units(tmp_path, monkeypatch):
     import tools.t1_grid_search as search
-    from tools.t1_grid_prefill import receipt
+    from tools.t1_grid_prefill import receipt, recorded_study
     (tmp_path / "runs").mkdir()
     monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
     x = torch.arange(24).float().reshape(-1, 2)
@@ -349,26 +358,31 @@ def test_grid_prefill_reads_trial_units(tmp_path, monkeypatch):
                                 loader(lambda s: data, task_type="regression", val_frac=.3), 20, 1, 1, "src")
     with pytest.raises(tr.ConfigMismatchError):  # a unit fitted on other splits is not this grid's trial
         receipt(job, "screen", "c", 20, run_study="g", config=other)
+    (tmp_path / "grid").mkdir(exist_ok=True)
+    (tmp_path / "grid/study.json").write_text(json.dumps({"configuration": {}}))
+    with pytest.raises(ValueError, match="no run study"):  # a grid that wrote trial files is refused
+        recorded_study(tmp_path / "grid")
 
 
-def test_core_ablation_trial_unit_matches_receipt(tmp_path, monkeypatch):
+def test_core_ablation_trial_unit(tmp_path, monkeypatch):
     import tools.t1_core_ablation as abl
     (tmp_path / "runs").mkdir()
     monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
     data = tiny_data({"task_type": "regression", "name": "tiny"}, 3)
     settings = dict(epochs=2, patience=2, batch_size=4, top_k=3, bias_init_k=3)
+    load = loader(lambda s: data, task_type="regression")
+    with pytest.raises(TypeError):
+        abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings, load, 30, "src", study=None)
     with contextlib.redirect_stdout(io.StringIO()):
-        old = abl.run_trial(tmp_path / "out/regression__tiny/base", "base", settings, lambda s: data, 30, "src")
-        load = loader(lambda s: data, task_type="regression")
-        new = abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings, load, 30, "src", "abl")
-        again = abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings, loader(lambda s: None, task_type="regression"),
-                              30, "src", "abl")
-    assert old["status"] == new["status"] == "completed" and same(old, new) and json.dumps(again) == json.dumps(new)
+        new = abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings, load, 30, "src", study="abl")
+        again = abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings,
+                              loader(lambda s: None, task_type="regression"), 30, "src", study="abl")
+    assert new["status"] == "completed" and json.dumps(again) == json.dumps(new)
     unit = tr.unit_dir(records.key("abl", "regression__tiny", "base", "s30"))
     run = tr.load_run(unit)
-    saved = torch.load(tmp_path / "out/regression__tiny/base/s30/test_predictions.pt", weights_only=True)
-    assert np.array_equal(run.array("test_prediction"), saved["prediction"].numpy())
+    assert np.array_equal(run.array("test_target"), data.y_test.numpy())
     assert "model" in run.states() and run.series("core/train_loss")
+    assert not (tmp_path / "u/regression__tiny/base/s30").exists()
 
 
 def test_core_ablation_uses_inlined_grid_winners():
@@ -384,16 +398,14 @@ def test_reviewer_session_records_version_states(tmp_path, monkeypatch):
     from model.t1.reviewer_ui import ReviewerSession
     (tmp_path / "runs").mkdir()
     monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
-    plain = ReviewerSession(tmp_path / "plain", epochs=2)
+    with pytest.raises(TypeError):
+        ReviewerSession(tmp_path / "plain", epochs=2, run=None)
     with tr.open_run(records.key("rv", "reviewer", "s1"), config={"kind": "test"}) as run:
         recorded = ReviewerSession(tmp_path / "session", epochs=2, run=run)
-    assert plain.snapshot == recorded.snapshot
     data = tr.load_run(run.path)
-    assert list(data.states()) == ["v0000-M0"] and records.record(data, "view/v0000") == json.loads(
-        (tmp_path / "plain/v0000-M0/view.json").read_text(encoding="utf-8"))
-    assert same(torch.load(tmp_path / "plain/v0000-M0/checkpoint.pt", weights_only=False)["model_state"],
-                tr.load_state(run.path, "v0000-M0")["model_state"])
+    assert list(data.states()) == ["v0000-M0"] and records.record(data, "view/v0000") == recorded.snapshot
     assert not list((tmp_path / "session").glob("v0000*")) and data.series("m0/train/loss")
+    assert json.loads((tmp_path / "session/latest.json").read_text())["state"] == "v0000-M0"
 
 
 def test_frozen_confirmation_configs_name_their_selection_files():
@@ -483,9 +495,10 @@ def test_core_ablation_trials_are_reused_only_for_the_same_data(tmp_path, monkey
     job = tmp_path / "u/regression__tiny/base"
     with contextlib.redirect_stdout(io.StringIO()):
         assert abl.run_trial(job, "base", settings, loader(lambda s: data, task_type="regression"), 30, "src",
-                             "abl")["status"] == "completed"
+                             study="abl")["status"] == "completed"
         with pytest.raises(tr.ConfigMismatchError):
-            abl.run_trial(job, "base", settings, loader(lambda s: data, task_type="regression", val_frac=.5), 30, "src", "abl")
+            abl.run_trial(job, "base", settings, loader(lambda s: data, task_type="regression", val_frac=.5), 30, "src",
+                          study="abl")
 
 
 def legacy_config(tmp_path, seeds=(0, 1), epochs=3):
@@ -612,6 +625,8 @@ def test_killed_legacy_reference_resumes_into_the_same_unit(tmp_path, monkeypatc
     states_new, states_old = new.states(), old.states()
     assert {"best_retrieval", "final", "checkpoint"} <= set(states_new) and set(states_new) == set(states_old)
     for name in states_old:
-        assert same(tr.load_state(unit, name), tr.load_state(old.path, name)), name
+        if name not in ("ids", "rng"):  # process state: the reference ran inside pytest, the resumed job in its own
+            # process (Python's random module is seeded per process; the ID counters number on per process)
+            assert same(tr.load_state(unit, name), tr.load_state(old.path, name)), name
     for tag in ("val/loss", "train/stage"):
         assert new.series(tag) and new.series(tag) == old.series(tag), tag

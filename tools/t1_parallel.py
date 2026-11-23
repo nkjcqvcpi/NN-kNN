@@ -1,9 +1,9 @@
 """Run one T1 config as independent (dataset, seed) subprocesses with receipts.
 
-    python tools/t1_parallel.py configs/t1/<config>.yaml --out <results dir> --logs <log dir> --workers 8
+    python tools/t1_parallel.py configs/t1/<config>.yaml --study S --out <input dir> --logs <log dir> --workers 8
 
-Each job calls ``tools/t1_run.py --only-dataset <name> --seeds <seed>`` (plus ``--study S`` when
-given: the runs are then recorded as units under ``NN-KNN/runs/t1/S/``). A job whose
+Each job calls ``tools/t1_run.py --only-dataset <name> --seeds <seed> --study S``: the runs are recorded as units
+under ``NN-KNN/runs/t1/S/`` (``--study`` is required; ``--out`` is t1_run's input-snapshot folder). A job whose
 receipt records exit code 0 is skipped on resume; failed jobs are retried, and a
 retry keeps the earlier log as ``<name>__s<seed>.attempt<N>.log``.
 ``progress.json`` in the log directory tracks counts. Exits nonzero if any job fails.
@@ -45,7 +45,7 @@ def keep_previous_log(log: Path) -> None:
 
 
 def run_job(config: Path, name: str, seed: int, out: Path, logs: Path, device: str | None = None,
-            key: str | None = None, study: str | None = None) -> dict:
+            key: str | None = None, *, study: str) -> dict:
     log = logs / f"{key or name}__s{seed}.log"
     receipt = log.with_suffix(".json")
     if receipt.exists():
@@ -59,8 +59,7 @@ def run_job(config: Path, name: str, seed: int, out: Path, logs: Path, device: s
     keep_previous_log(log)
     with log.open("w", encoding="utf-8") as fh:
         proc = subprocess.run([sys.executable, "-u", str(REPO / "tools/t1_run.py"), str(config),
-                               "--only-dataset", name, "--seeds", str(seed), "--out", str(out),
-                               *(["--study", study] if study else [])],
+                               "--only-dataset", name, "--seeds", str(seed), "--out", str(out), "--study", study],
                               cwd=REPO, stdout=fh, stderr=subprocess.STDOUT, env=env)
     result = {"config": str(config), "dataset": name, "seed": seed, "exit_code": proc.returncode,
               "seconds": time.time() - t0, "log": str(log), "device": device or env.get("NNKNN_DEVICE", "cpu")}
@@ -77,14 +76,14 @@ def main() -> None:
     ap.add_argument("--seeds", type=int, nargs="*")
     ap.add_argument("--datasets", nargs="*", help="subset of dataset names, in launch order")
     ap.add_argument("--device", help="NNKNN_DEVICE for every job, e.g. cpu or xpu (one device per batch)")
-    ap.add_argument("--study", help="passed to tools/t1_run.py: record the runs as units under NN-KNN/runs/t1/<study>/")
+    ap.add_argument("--study", required=True,
+                    help="passed to tools/t1_run.py: the runs are recorded as units under NN-KNN/runs/t1/<study>/")
     args = ap.parse_args()
-    if args.study:
-        from model.t1.records import check_study
-        try:
-            check_study(args.study)
-        except (FileNotFoundError, ValueError) as exc:
-            ap.error(f"--study: {exc}")
+    from model.t1.records import check_study
+    try:
+        check_study(args.study)
+    except (FileNotFoundError, ValueError) as exc:
+        ap.error(f"--study: {exc}")
     multi = len(args.config) > 1
     jobs = []  # (config, dataset name, seed, log key)
     for path in args.config:
@@ -109,7 +108,7 @@ def main() -> None:
     config = args.config[0] if not multi else f"{len(args.config)} configs"
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futures = {pool.submit(run_job, c, n, s, out, logs, args.device, k, args.study): (n, s) for c, n, s, k in jobs}
+        futures = {pool.submit(run_job, c, n, s, out, logs, args.device, k, study=args.study): (n, s) for c, n, s, k in jobs}
         for future in concurrent.futures.as_completed(futures):
             r = future.result()
             results.append(r)

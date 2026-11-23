@@ -1,9 +1,8 @@
-"""T1 run units: recording helpers for the T1 tools and readers for both run units and legacy result files.
+"""T1 run units: recording helpers for the T1 tools, and the readers of run units.
 
-A T1 tool called with ``--study S`` records each run as one unit under ``NN-KNN/runs/t1/S/...`` through
-``model.common.tracking`` (docs/NNKNN_CORE.md, "Run tracking"). Readers accept either such a unit tree or a legacy
-result directory written before recording existed (``runs__*.jsonl`` shards, per-run files, ``test_predictions.pt``);
-the legacy files are read as they are and never converted.
+Every T1 tool records each run as one unit under ``NN-KNN/runs/t1/S/...`` (``--study S`` is required) through
+``model.common.tracking`` (docs/NNKNN_CORE.md, "Run tracking"). Summaries read only run units and write their outputs
+under ``<worktree>/results/`` (``results_dir``); legacy result folders (shards, per-run files) are not read.
 
 Every JSON record the T1 tools write is stored with ``ordered`` (each dict as ``{"$items": [[key, value], ...]}``)
 and read back with ``record``/``rows`` (``unordered``): a record's canonical JSON sorts dictionary keys, and the
@@ -14,7 +13,6 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
-import json
 import re
 from collections import OrderedDict
 from pathlib import Path
@@ -193,21 +191,29 @@ def log_curves(run: Any, history: Any, group: str = "history") -> None:
 
 # ----------------------------------------------------------------------------- readers
 
+REPO = Path(__file__).resolve().parents[2]
+RESULTS = REPO / "results"  # git-ignored: generated summaries only (reports written by people go to reports/)
 
-def has_shards(path: Path, pattern: str = "runs__*.jsonl") -> bool:
-    return any(Path(path).glob(pattern))
+
+def results_dir(tree: Any, root: Any = None) -> Path:
+    """Default output directory of a summary of the run-unit tree ``tree``: ``<worktree>/results/`` plus the tree's
+    path below the run root (e.g. ``results/t1/<study>/<experiment>``), or plus its name when it is elsewhere."""
+    tree = Path(tree).resolve()
+    try:
+        rel = tree.relative_to(runs_root(root).resolve())
+    except (FileNotFoundError, ValueError):
+        rel = Path(tree.name)
+    return RESULTS / rel
 
 
-def is_unit_tree(path: Path) -> bool:
-    """True when ``path`` holds run units (event files below it) rather than legacy result files."""
+def require_unit_tree(path: Any) -> Path:
+    """``path`` when it holds run units (event files below it); SystemExit otherwise (legacy result folders with
+    ``runs__*.jsonl`` shards or per-run files are no longer read)."""
     path = Path(path)
-    return path.is_dir() and not has_shards(path) and any(path.rglob("events.out.tfevents.*"))
-
-
-def shard_rows(path: Path, pattern: str = "runs__*.jsonl") -> list[dict]:
-    """Rows of the legacy ``runs__*.jsonl`` shards of an experiment directory, in file and line order."""
-    return [json.loads(line) for f in sorted(Path(path).glob(pattern))
-            for line in f.read_text(encoding="utf-8").splitlines() if line.strip()]
+    if not path.is_dir() or not any(path.rglob("events.out.tfevents.*")):
+        raise SystemExit(f"{path} holds no run units; summaries read only run units under the run root "
+                         f"(NN-KNN/runs/t1/<study>/...)")
+    return path
 
 
 def _started(data: Any) -> str:
@@ -218,8 +224,9 @@ def _started(data: Any) -> str:
 def condition_units(path: Path, arrays: bool = False) -> list[tuple[dict, Any]]:
     """``(row, RunData)`` of every complete ``tools/t1_run.py`` condition unit below ``path``.
 
-    The order is that of the legacy shards the same runs would have filled: by shard file name
-    (``runs__<dataset key>.jsonl``), then by the time the unit was first opened (one shard row per finished run).
+    The order is that of the shards the same runs filled before recording (and so of every summary written then):
+    by dataset key (as the shard file name ``runs__<dataset key>.jsonl`` sorted), then by the time the unit was first
+    opened. Stage units (no ``row`` record) are left out.
     """
     out = []
     for info in iter_runs(Path(path)):
@@ -234,12 +241,120 @@ def condition_units(path: Path, arrays: bool = False) -> list[tuple[dict, Any]]:
     return [(row, data) for *_, row, data in out]
 
 
-def experiment_rows(path: Path, pattern: str = "runs__*.jsonl") -> list[dict]:
-    """Rows of an experiment: legacy shards when ``path`` has any, else the rows of its condition units."""
-    path = Path(path)
-    if has_shards(path, pattern):
-        return shard_rows(path, pattern)
-    return [row for row, _ in condition_units(path)] if path.is_dir() else []
+def experiment_rows(path: Path) -> list[dict]:
+    """Rows of an experiment's run-unit tree (its condition units, in ``condition_units`` order)."""
+    return [row for row, _ in condition_units(require_unit_tree(path))]
+
+
+def pack(objects: Any) -> dict:
+    """``objects`` (models, optimizers, adapters, archives, rows: anything ``torch.save`` pickles) as a named state.
+
+    A stage unit keeps the exact objects its training produced, so loading it continues with what an uninterrupted
+    run holds in memory: parameters and buffers, optimizer moments, plain attributes, train/eval modes and Python
+    value types, with shared references kept (an optimizer stays bound to its model's parameters).
+    """
+    import io
+    import torch
+    buf = io.BytesIO()
+    torch.save(objects, buf)
+    return {"format": "torch.save", "bytes": torch.frombuffer(bytearray(buf.getvalue()), dtype=torch.uint8)}
+
+
+def unpack(state: dict) -> Any:
+    """Inverse of ``pack``; tensors go to the runtime device (``NNKNN_DEVICE``), as freshly trained ones would."""
+    import io
+    import torch
+    from model.device_utils import resolve_runtime_device
+    if state.get("format") != "torch.save":
+        raise ValueError(f"unknown stage object format {state.get('format')!r}")
+    # our own stage file, already checked against its recorded SHA-256 by RunData.load_state
+    return torch.load(io.BytesIO(state["bytes"].numpy().tobytes()), map_location=resolve_runtime_device(),
+                      weights_only=False)
+
+
+# Process-wide ID counters whose position later records depend on, like an RNG: maintenance event ids
+# (``<run>-m<n>``) and intervention ids (``<run>-i<n>``) number on across the runs of one process.
+ID_COUNTERS = (("model.t1.maintenance", "_event_counter"), ("model.t1.revise", "_ids"))
+
+
+def capture_ids() -> dict:
+    """Positions of the ``ID_COUNTERS`` (read from their repr: nothing is consumed)."""
+    import sys
+    out = {}
+    for module, attr in ID_COUNTERS:
+        if module in sys.modules:
+            out[f"{module}.{attr}"] = int(re.fullmatch(r"count\((-?\d+)\)", repr(getattr(sys.modules[module], attr))).group(1))
+    return out
+
+
+def restore_ids(positions: dict) -> None:
+    import importlib
+    import itertools
+    for name, position in positions.items():
+        module, attr = name.rsplit(".", 1)
+        setattr(importlib.import_module(module), attr, itertools.count(int(position)))
+
+
+def save_rng(run: Any) -> tuple[dict, dict]:
+    """Record the RNG state (``rng``) and the ID counter positions (``ids``) a unit's computation leaves; returns
+    them for ``restore_after``."""
+    from model.common.tracking import capture_rng
+    rng, ids = capture_rng(), capture_ids()
+    run.save_state("rng", rng, meta={"kind": "rng"})
+    run.save_state("ids", ids, meta={"kind": "id_counters"})
+    return rng, ids
+
+
+def restore_after(saved: tuple[dict, dict]) -> None:
+    """Put back what ``save_rng`` captured (writing a unit must not move the RNG or the counters)."""
+    from model.common.tracking import restore_rng
+    restore_rng(saved[0])
+    restore_ids(saved[1])
+
+
+def restore_rng_of(data: Any) -> bool:
+    """Restore the RNG state and ID counter positions a complete unit recorded (named states ``rng``, ``ids``), so
+    the code after a skipped unit computes what it computed in an uninterrupted run; False (and a warning) for a unit
+    recorded without them."""
+    import sys
+    states = data.states()
+    if "rng" in states:
+        data.restore_rng()
+    if "ids" in states:
+        restore_ids(data.load_state("ids"))
+    if "rng" in states and "ids" in states:
+        return True
+    print(f"[warning] {data.info.run_id} has no recorded RNG state or ID counters; what follows it may differ from an "
+          f"uninterrupted run", file=sys.stderr, flush=True)
+    return False
+
+
+def stage_unit(key: RunKey, config: Any, compute: Any, describe: Any = None) -> tuple[dict, bool]:
+    """Shared training recorded once and never repeated: ``(objects, loaded)``.
+
+    When the unit ``key`` is complete with ``config`` its objects are loaded (``pack``) and the RNG state and ID
+    counters its training left are restored; else ``compute()`` runs, and its dict of objects is recorded (named
+    states ``objects``, ``rng``, ``ids`` and a readable state dict per ``torch.nn.Module``; ``describe(run, objects)``
+    adds records) before it is returned. Writing the unit leaves the RNG and the counters as the computation left them.
+    """
+    import torch
+    from model.common.tracking import load_unit, open_run
+    data = load_unit(key, config=config, arrays=False)
+    if data is not None:
+        objects = unpack(data.load_state("objects"))
+        restore_rng_of(data)
+        return objects, True
+    objects = compute()
+    with open_run(key, config=config) as run:
+        saved = save_rng(run)  # first: writing the unit must not move the RNG or the counters
+        run.save_state("objects", pack(objects), meta={"kind": "objects", "keys": sorted(objects)})
+        for part, obj in objects.items():
+            if isinstance(obj, torch.nn.Module):
+                run.save_state(part, storable(obj.state_dict()))
+        if describe is not None:
+            describe(run, objects)
+    restore_after(saved)
+    return objects, False
 
 
 def unit_tree(study: str, *parts: Any, root: Any = None) -> Path:

@@ -1,10 +1,13 @@
 """Factorial mask x retrieval-freezing pilot through the existing T1 synchronization trainer.
 
-With ``--study S`` every continuation is recorded as the run unit
+``--study S`` is required: every continuation is recorded as the run unit
 ``NN-KNN/runs/t1/S/<dataset>/s<seed>/mask<m>_frozen<f>/`` (record ``result`` = the run record, ``history`` and
 ``pretrain_history`` curves, ``final/*`` numbers, named states ``retriever`` and ``adapter`` of the selected
-checkpoint) instead of ``runs/<dataset>/s<seed>/*.json`` and ``runs.json``; a complete unit is read back instead
-of continued again. The report, figure, manifest and runner copy are written as before.
+checkpoint, ``rng``), and the pretrained core both continuations of a mask setting share as the stage unit
+``.../s<seed>/pretrain_mask<m>/`` (``records.stage_unit``). Nothing is trained twice: a complete continuation is read
+back (its RNG state restored), a complete pretrain is loaded, and a pretrain whose continuations are both complete
+is neither trained nor loaded. ``--out`` (default under ``<worktree>/results/``) receives the report, figure,
+manifest and runner copy.
 """
 from __future__ import annotations
 
@@ -34,7 +37,7 @@ from model.t1.calibration import calibrate_free_radius
 from model.t1.sync import SyncConfig, _forward_terms, frozen_parameters, train_synchronized
 from tools.t1_pre_topk_pilot import data_for, state_digest
 from model.t1 import records
-from model.common.tracking import load_run, open_run, resolve_unit
+from model.common.tracking import load_unit, open_run
 
 
 @torch.no_grad()
@@ -192,9 +195,9 @@ def report(study, rows, out, config):
               "isolate toggling masking only after a common cross-mask pretrain, prove the proposed neighborhood-jump "
               "mechanism, or establish a general result beyond these datasets/seeds. Selected and last checkpoints answer "
               "different questions. CPU, one thread, deterministic algorithms; actual runtime versions are in the manifest.", "",
-              f"Configuration: [YAML](../../../../{Path(config).as_posix()}). Evidence: [rows](runs.json), "
+              f"Configuration: [YAML](../../../../{Path(config).as_posix()}). Evidence: the run units (record `result`), "
               "[summary JSON](summary.json), [manifest](manifest.json).", "",
-              "```powershell", f".venv/Scripts/python.exe tools/t1_mask_joint_pilot.py --config {Path(config).as_posix()} --out results/t1/p4_component_sync/mask_joint_rerun", "```"]
+              "```powershell", f".venv/Scripts/python.exe tools/t1_mask_joint_pilot.py --config {Path(config).as_posix()} --study <study> --out results/t1/p4_component_sync/mask_joint_rerun", "```"]
     (out / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     import matplotlib
     matplotlib.use("Agg")
@@ -223,7 +226,7 @@ def report(study, rows, out, config):
     plt.close(fig)
 
 
-def run(study, out, config, run_study=None):
+def run(study, out, config, run_study):
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     if (out / "manifest.json").exists():
@@ -242,29 +245,46 @@ def run(study, out, config, run_study=None):
             initial_hash = None
             for masked in [True, False]:
                 cc = CoreConfig(task_type=ds["task_type"], seed=seed, pre_topk_mask=masked, **study["core"])
-                base = build_model(data.X_train, data.y_train, cc, data.num_classes)
-                initial_hash = initial_hash or state_digest(base)
-                assert state_digest(base) == initial_hash
-                trained = train_retrieval(base, data.X_train, data.y_train, data.X_val, data.y_val, cc)
-                radius, _ = calibrate_free_radius(base, s_task=.5, snapshot_step=trained.best_epoch)
                 sync = {**study["sync"], "hidden_dims": tuple(study["sync"]["hidden_dims"])}
                 sc = SyncConfig(seed=seed+10000, output_mode="aggregate_regression" if ds["task_type"] == "regression" else "nominal_residual_scores",
                                 score_scale=study.get("classification_score_scale",10.) if ds["task_type"] == "classification" else 1., **sync)
-                baseline = measure(base, None, data.X_test, data.y_test, sc, radius)
-                paired_warmup = None
+                units = []
                 for frozen in [True, False]:
-                    key = None if run_study is None else records.key(run_study, ds["name"], f"s{seed}",
-                                                                     f"mask{int(masked)}_frozen{int(frozen)}")
+                    key = records.key(run_study, ds["name"], f"s{seed}", f"mask{int(masked)}_frozen{int(frozen)}")
                     unit_cfg = records.jsonable({"kind": "t1_mask_joint_pilot", "dataset": ds, "seed": seed,
                                                  "masked": masked, "frozen": frozen, "core": study["core"],
                                                  "sync": study["sync"], "splits": study["splits"],
                                                  "classification_score_scale": study.get("classification_score_scale", 10.)})
-                    info = None if key is None else resolve_unit(key, config=unit_cfg)
-                    if info is not None:
-                        r = records.unordered(load_run(info.path, arrays=False).record("result"))
+                    units.append((frozen, key, unit_cfg, load_unit(key, config=unit_cfg, arrays=False)))
+                pre = None
+                if any(done is None for *_, done in units):  # the pretrain is needed: load it, or train and record it
+
+                    def pretrain():
+                        base = build_model(data.X_train, data.y_train, cc, data.num_classes)
+                        digest = state_digest(base)
+                        trained = train_retrieval(base, data.X_train, data.y_train, data.X_val, data.y_val, cc)
+                        return {"base": base, "trained": trained, "initial_state_sha256": digest}
+                    pre_key = records.key(run_study, ds["name"], f"s{seed}", f"pretrain_mask{int(masked)}")
+                    pre_cfg = records.jsonable({"kind": "t1_mask_joint_pilot_pretrain", "dataset": ds, "seed": seed,
+                                                "masked": masked, "core": study["core"], "splits": study["splits"]})
+                    pre, loaded = records.stage_unit(pre_key, pre_cfg, pretrain)
+                    if loaded:
+                        print(f"{ds['name']} seed={seed} mask={masked}: pretrain loaded from {pre_key.run_id}", flush=True)
+                    base, trained = pre["base"], pre["trained"]
+                    initial_hash = initial_hash or pre["initial_state_sha256"]
+                    assert pre["initial_state_sha256"] == initial_hash
+                    radius, _ = calibrate_free_radius(base, s_task=.5, snapshot_step=trained.best_epoch)
+                    baseline = measure(base, None, data.X_test, data.y_test, sc, radius)
+                paired_warmup = None
+                for frozen, key, unit_cfg, done in units:
+                    if done is not None:
+                        r = records.unordered(done.record("result"))
+                        initial_hash = initial_hash or r["initial_state_sha256"]
+                        assert r["initial_state_sha256"] == initial_hash
                         paired_warmup = paired_warmup or r["warmup_end_sha256"]
                         assert r["warmup_end_sha256"] == paired_warmup
                         rows.append(r)
+                        records.restore_rng_of(done)
                         print(f"{ds['name']} seed={seed} mask={masked} frozen={frozen}: recorded in {key.run_id}", flush=True)
                         continue
                     weights = {}
@@ -280,21 +300,19 @@ def run(study, out, config, run_study=None):
                              pretrain_best_epoch=trained.best_epoch, pretrain_epochs_run=trained.epochs_run,
                              pretrain_history=trained.history)
                     rows.append(r)
-                    if key is None:
-                        write_json(out / "runs" / ds["name"] / f"s{seed}" / f"mask{int(masked)}_frozen{int(frozen)}.json", r)
-                        write_json(out / "runs.json", rows)
-                    else:
-                        with open_run(key, config=unit_cfg) as unit:
-                            for name in ("history", "pretrain_history"):
-                                unit.log_record(name, records.ordered(r[name]))
-                                records.log_curves(unit, r[name], "sync" if name == "history" else "core")
-                            unit.log_final(records.numeric({
-                                **{f"selected/{k}": v for k, v in r["selected"].items()},
-                                **{f"baseline/{k}": v for k, v in r["baseline"].items()},
-                                "best_epoch": r["best_epoch"], "epochs_run": r["epochs_run"]}))
-                            for name, state in weights.items():
-                                unit.save_state(name, records.storable(state))
-                            unit.log_record("result", records.ordered(r))
+                    with open_run(key, config=unit_cfg) as unit:
+                        for name in ("history", "pretrain_history"):
+                            unit.log_record(name, records.ordered(r[name]))
+                            records.log_curves(unit, r[name], "sync" if name == "history" else "core")
+                        unit.log_final(records.numeric({
+                            **{f"selected/{k}": v for k, v in r["selected"].items()},
+                            **{f"baseline/{k}": v for k, v in r["baseline"].items()},
+                            "best_epoch": r["best_epoch"], "epochs_run": r["epochs_run"]}))
+                        for name, state in weights.items():
+                            unit.save_state(name, records.storable(state))
+                        unit.log_record("result", records.ordered(r))
+                        saved = records.save_rng(unit)
+                    records.restore_after(saved)
                     print(f"{ds['name']} seed={seed} mask={masked} frozen={frozen} "
                           f"retrieval={r['selected']['pre_error']:.5f} adapted={r['selected']['post_error']:.5f} "
                           f"loss_drift={r['selected']['pre_loss']-baseline['pre_loss']:+.5f} best={r['best_epoch']}", flush=True)
@@ -306,14 +324,14 @@ def run(study, out, config, run_study=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="configs/t1/mask_joint_pilot_20261030.yaml")
-    parser.add_argument("--out", default="results/t1/p4_component_sync/mask_joint_pilot_20261030")
-    parser.add_argument("--study", help="record every continuation as a run unit under NN-KNN/runs/t1/<study>/")
+    parser.add_argument("--out", default=str(REPO / "results/t1/p4_component_sync/mask_joint_pilot_20261030"))
+    parser.add_argument("--study", required=True,
+                        help="every continuation is recorded as a run unit under NN-KNN/runs/t1/<study>/")
     args = parser.parse_args()
-    if args.study is not None:
-        try:
-            records.check_study(args.study)
-        except (FileNotFoundError, ValueError) as exc:
-            parser.error(f"--study: {exc}")
+    try:
+        records.check_study(args.study)
+    except (FileNotFoundError, ValueError) as exc:
+        parser.error(f"--study: {exc}")
     study = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     run(study, args.out, args.config, args.study)
 

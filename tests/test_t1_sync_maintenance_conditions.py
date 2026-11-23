@@ -7,6 +7,8 @@ import pytest
 
 from tools.t1_run import Runner, load_config, retention_cfg_for, sync_maintenance_for
 
+from t1_units import study_runner, units
+
 IRIS = {"name": "iris", "task_type": "classification", "max_train": 30}
 
 
@@ -20,14 +22,8 @@ def tiny_cfg():
 
 def read_runs(root):
     """{condition: (row, manifest, events, history)} of one tiny iris run."""
-    rows = {r["condition"]: r for r in map(json.loads, next(root.rglob("runs__iris.jsonl")).read_text().splitlines())}
-    out = {}
-    for label, row in rows.items():
-        run_dir = next(root.rglob(f"iris/{label}/s8"))
-        events = [json.loads(line) for line in (run_dir / "case_maintenance.jsonl").read_text().splitlines()]
-        out[label] = (row, json.loads((run_dir / "run_manifest.json").read_text()), events,
-                      json.loads((run_dir / "history.json").read_text())["sync"])
-    return out
+    return {u.condition: (u.row, u.json("run_manifest.json"), u.jsonl("case_maintenance.jsonl"),
+                          u.json("history.json")["sync"]) for u in units(root)}
 
 
 @pytest.fixture(scope="module")
@@ -37,8 +33,9 @@ def runs(tmp_path_factory):
                          {"name": "rand", "schedule": "joint_rrr", "policy": "random"},
                          {"name": "k05", "schedule": "joint_rrr", "K": .5, "maintenance_epochs": [3]}]
     root = tmp_path_factory.mktemp("sync_conditions")
-    Runner(cfg, root).run_sync(IRIS, 8)
-    return read_runs(root)
+    with pytest.MonkeyPatch.context() as mp:
+        study_runner(cfg, root, mp).run_sync(IRIS, 8)
+    return read_runs(root / "runs")
 
 
 def test_condition_policy_reaches_the_rrr_hook(runs):
@@ -71,7 +68,7 @@ def test_condition_K_and_maintenance_epochs_take_effect(runs):
 def test_unread_condition_key_raises_before_training(tmp_path, key):
     cfg = tiny_cfg()
     cfg["conditions"] = [{"schedule": "joint_rrr"}, {"name": "typo", "schedule": "joint_rrr", key: "random"}]
-    runner = Runner(cfg, tmp_path)
+    runner = Runner(cfg, tmp_path, "t")
     runner.data_for = lambda ds, seed: pytest.fail("trained before checking conditions")
     with pytest.raises(ValueError, match=rf"'typo'.*unknown key\(s\) \['{key}'\]"):
         runner.run_sync(IRIS, 8)

@@ -37,11 +37,11 @@ from tools.t1_seed_audit import FORBIDDEN_ROLES, load_prereg, seed_roles  # noqa
 # ----------------------------------------------------------------------------- rows
 
 def load_rows(exp_dir: Path) -> list[dict]:
-    """Rows of one experiment: its legacy ``runs__*.jsonl`` shards, or the rows of its run units
-    (``NN-KNN/runs/t1/<study>/<experiment>``, written by ``tools/t1_run.py --study``)."""
+    """Rows of one experiment: the rows of its run units (``NN-KNN/runs/t1/<study>/<experiment>``, recorded by
+    ``tools/t1_run.py --study``)."""
     rows = experiment_rows(exp_dir)
     if not rows:
-        raise SystemExit(f"no runs__*.jsonl rows and no run units in {exp_dir}")
+        raise SystemExit(f"no complete runs in {exp_dir}")
     return rows
 
 

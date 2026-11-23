@@ -3,8 +3,10 @@ from pathlib import Path
 
 import torch
 
-from tools.t1_run import Runner, load_config
+from tools.t1_run import load_config
 from model.t1 import adapted_retraining
+
+from t1_units import study_runner, unit
 
 
 def test_actual_paired_reference_routes_share_initial_state_and_record_denominators(tmp_path, monkeypatch):
@@ -24,17 +26,16 @@ def test_actual_paired_reference_routes_share_initial_state_and_record_denominat
         calls.append(dict(stream=reference.stream, denominator=len(reference.y), query_ids=reference.query_case_ids))
         return original(*args, **kwargs)
     monkeypatch.setattr(adapted_retraining, "run_adapted_retrained_removal", wrapped)
-    Runner(cfg, tmp_path).run_adapted_retrained_removal(ds, 8)
+    study_runner(cfg, tmp_path, monkeypatch).run_adapted_retrained_removal(ds, 8)
     assert [c["stream"] for c in calls] == ["train_loo", "maintenance_split"]
     assert calls[0]["denominator"] == 18 and calls[0]["query_ids"].tolist() == list(range(18))
     assert calls[1]["denominator"] != 18 and calls[1]["query_ids"] is None
-    root = tmp_path / cfg["experiment"] / "iris"
     starts = []
     for scope in ("train", "maintenance"):
-        run = root / f"{scope}_K17" / "s8"
-        starts.append(torch.load(run / "initial.pt", weights_only=True))
-        manifest = json.loads((run / "run_manifest.json").read_text())
-        trace = json.loads((run / "maintenance_scoring_trace.json").read_text())
+        run = unit(tmp_path / "runs", f"{scope}_K17")
+        starts.append(run.torch("initial.pt"))
+        manifest = run.json("run_manifest.json")
+        trace = run.json("maintenance_scoring_trace.json")
         expected = "train_loo" if scope == "train" else "maintenance_split"
         assert manifest["maintenance"]["reference_stream"] == expected
         assert trace and all(r["reference_stream"] == expected for r in trace)

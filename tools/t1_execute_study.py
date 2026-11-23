@@ -2,6 +2,11 @@
 
 Full-capacity removal is intentionally separated from exact small-memory removal
 diagnostics; neither is mislabeled as a scalable full-data result.
+
+    python tools/t1_execute_study.py GRID_OUT --out DIR --study S [--workers N]
+
+Every job is ``tools/t1_run.py ... --study S`` (required): the runs are recorded as units under
+``NN-KNN/runs/t1/S/``; ``DIR`` holds the generated configs, the job logs and receipts and t1_run's input snapshots.
 """
 from __future__ import annotations
 import argparse
@@ -21,7 +26,7 @@ from tools.t1_grid_search import nnknn_core_settings
 from tools.t1_run import load_config
 
 
-def execute(config, dataset, seed, out, study=None):
+def execute(config, dataset, seed, out, study):
     log = out / "logs" / f"{config.stem}__{dataset['task_type']}__{dataset['name']}__s{seed}.log"
     receipt = log.with_suffix(".json")
     if receipt.exists():
@@ -32,7 +37,7 @@ def execute(config, dataset, seed, out, study=None):
     with log.open("w", encoding="utf-8") as f:
         run = subprocess.run([sys.executable, str(REPO / "tools/t1_run.py"), str(config),
             "--only-dataset", dataset["name"], "--seeds", str(seed), "--out", str(out / "experiments"),
-            *(["--study", study] if study else [])],
+            "--study", study],
             cwd=REPO, stdout=f, stderr=subprocess.STDOUT)
     result = dict(config=str(config), dataset=dataset, seed=seed, exit_code=run.returncode, log=str(log))
     write_json(receipt, result)
@@ -47,14 +52,14 @@ def main():
     parser.add_argument("--groups", nargs="*")
     parser.add_argument("--only-dataset", nargs="*")
     parser.add_argument("--plan-only", action="store_true")
-    parser.add_argument("--study", help="passed to tools/t1_run.py: record the runs as units under NN-KNN/runs/t1/<study>/")
+    parser.add_argument("--study", required=True,
+                        help="passed to tools/t1_run.py: the runs are recorded as units under NN-KNN/runs/t1/<study>/")
     args = parser.parse_args()
-    if args.study:
-        from model.t1.records import check_study
-        try:
-            check_study(args.study)
-        except (FileNotFoundError, ValueError) as exc:
-            parser.error(f"--study: {exc}")
+    from model.t1.records import check_study
+    try:
+        check_study(args.study)
+    except (FileNotFoundError, ValueError) as exc:
+        parser.error(f"--study: {exc}")
     grid = Path(args.grid_output)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

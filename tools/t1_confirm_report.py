@@ -1,7 +1,7 @@
 """Pre-registered T1 confirmation analysis (docs/T1_PREREG_20261013.md).
 
     python tools/t1_confirm_report.py --prereg configs/t1/prereg_20261013.json --prereg-sha256 <hex>
-        --runs <neural-cbr experiment dirs...> --baselines <grid or evaluate output dirs...>
+        --runs <run-unit trees NN-KNN/runs/t1/<study>/<experiment>...> --baselines <grid or evaluate output dirs...>
         --final <arm::name of F> --out <dir> [--groups legacy transfer] [--final-map <json>]
         [--expect-fingerprints <json | pattern=prefix[,prefix...]>...]
 
@@ -49,7 +49,7 @@ from scipy import optimize, stats
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from model.common.tracking import load_run  # noqa: E402  (numpy and tensorboard only)
-from model.t1.records import condition_units, record as read_record, rows as read_rows, trial_unit  # noqa: E402
+from model.t1.records import condition_units, record as read_record, require_unit_tree, rows as read_rows, trial_unit  # noqa: E402
 
 ALPHA = 0.05  # Holm family-wise level over {E1, E2, E3a, E3b}
 BH_Q = 0.10  # Benjamini-Hochberg level for secondary analyses
@@ -70,9 +70,9 @@ EXTRA_METRIC_DEFINITIONS = {
                   "validation stream (the distribution behind ECE_T; argmax unchanged); retrieval-only and the "
                   "baselines record no temperature-scaled output",
     "macro_f1": "unweighted mean of per-class F1 over the classes in the targets or predictions (sklearn's macro "
-                "average), from per-example test predictions: neural-CBR runs' retrieval_events.jsonl "
-                "(final_prediction; pre_adaptation_prediction for retrieval-only), baselines' test_predictions.pt "
-                "(argmax); a seed is used only if its predictions reproduce the recorded accuracy",
+                "average), from per-example test predictions: neural-CBR runs' retrieval_events records "
+                "(final_prediction; pre_adaptation_prediction for retrieval-only), baselines' grid trial units' "
+                "test_prediction (argmax); a seed is used only if its predictions reproduce the recorded accuracy",
 }
 PRE = "@pre"  # suffix of a condition's pre-adaptation error series
 NAN = float("nan")
@@ -310,8 +310,7 @@ def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Condition
             counts["rows_analysed"] += 1
             if mapped is not None and c == cond.final:
                 mapped_rows[t.key] = mapped_rows.get(t.key, 0) + 1
-            run_dir = d / row["dataset"] / row["condition"] / f"s{s}" if unit is None else unit.path
-            ev.run_dirs.setdefault((t.key, c), {})[s] = run_dir if unit is None else unit
+            ev.run_dirs.setdefault((t.key, c), {})[s] = unit
             if row.get("sync_no_eligible_checkpoint"):  # untrained adapter: the guard rejected every epoch
                 ev.warnings.append(f"{t.key} {c} seed {s}: retrieval guard left no eligible checkpoint; "
                                    "post-adaptation metrics come from the epoch-0 state")
@@ -321,11 +320,12 @@ def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Condition
             if row.get("test_n") is not None:
                 if ev.n_test.setdefault((t.key, s), int(row["test_n"])) != int(row["test_n"]):
                     raise SystemExit(f"{t.key} seed {s}: rows disagree on test_n; the splits differ")
-            manifest = run_dir / "run_manifest.json"
+            try:  # tools/t1_run.py records a manifest with every run
+                run = read_record(unit, "manifest")["run"]
+            except KeyError:
+                run = None
             device, fp = UNKNOWN_DEVICE, None
-            if unit is not None or manifest.exists():
-                run = (read_record(unit, "manifest") if unit is not None else
-                       json.loads(manifest.read_text(encoding="utf-8")))["run"]
+            if run is not None:
                 fp = str(run.get("source_fingerprint_sha256"))
                 per_cond, per_task = fingerprints.setdefault(fp, {}), by_task.setdefault(t.key, {})
                 per_cond[c] = per_cond.get(c, 0) + 1
@@ -371,18 +371,11 @@ def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Condition
 
 
 def experiment_rows(d: Path):
-    """``(source, row, unit)`` of an experiment: its legacy ``runs__*.jsonl`` shards (unit None), or the condition
-    units of a run-unit tree written by ``tools/t1_run.py --study`` (unit = its RunData, source = its path)."""
-    shards = sorted(d.glob("runs__*.jsonl"))
-    if shards:
-        for shard in shards:
-            for line in shard.read_text(encoding="utf-8").splitlines():
-                if line.strip():
-                    yield shard, json.loads(line), None
-        return
-    units = condition_units(d) if d.is_dir() else []
+    """``(source, row, unit)`` of every condition unit of a run-unit tree recorded by ``tools/t1_run.py --study``
+    (unit = its RunData, source = its path)."""
+    units = condition_units(require_unit_tree(d))
     if not units:
-        raise SystemExit(f"no runs__*.jsonl rows and no run units in {d}")
+        raise SystemExit(f"no complete runs in {d}")
     for row, data in units:
         yield data.path, row, data
 
@@ -547,11 +540,10 @@ def f1_record(y, pred, accuracy: float, n_test: int | None) -> dict:
     return {"macro_f1": macro_f1(y, pred), "macro_f1_note": None}
 
 
-def events_predictions(path, key: str) -> tuple[list[int], list[int]]:
-    """(targets, ``key`` predictions) of the test stream, in query order, from a run's retrieval_events.jsonl
-    (or the ``retrieval_events`` records of a run unit, given as its RunData)."""
-    events = (read_rows(path, "retrieval_events") if not isinstance(path, Path) else
-              [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()])
+def events_predictions(unit, key: str) -> tuple[list[int], list[int]]:
+    """(targets, ``key`` predictions) of the test stream, in query order, from the ``retrieval_events`` records of a
+    run unit (its RunData)."""
+    events = read_rows(unit, "retrieval_events")
     rows = []
     for e in events:
         if e.get("stream") == "test":
@@ -563,29 +555,24 @@ def events_predictions(path, key: str) -> tuple[list[int], list[int]]:
 
 
 def saved_predictions(path: Path) -> tuple[np.ndarray, np.ndarray]:
-    """(targets, argmax predictions) from a baseline's test_predictions.pt (class probabilities), or from the
-    ``test_prediction``/``test_target`` arrays of a recorded grid trial unit (``path`` = the unit directory)."""
-    if path.is_dir():  # a run unit: numpy only
-        data = load_run(path)
-        prob, target = np.asarray(data.array("test_prediction"), dtype=np.float64), data.array("test_target")
-    else:
-        import torch  # only to read the saved baseline predictions; the analysis itself stays torch-free
-        data = torch.load(path, map_location="cpu", weights_only=True)
-        prob, target = np.asarray(data["prediction"].double().numpy()), data["target"].numpy()
+    """(targets, argmax predictions) from the ``test_prediction`` (class probabilities)/``test_target`` arrays of a
+    recorded grid trial unit (``path`` = the unit directory)."""
+    data = load_run(path)
+    prob, target = np.asarray(data.array("test_prediction"), dtype=np.float64), data.array("test_target")
     if prob.ndim != 2:
         raise ValueError(f"predictions of shape {prob.shape} are not class probabilities")
     return np.asarray(target).astype(int), prob.argmax(1)
 
 
-def baseline_prediction_path(job: Path, e: dict, s: int) -> Path:
-    """Where a grid evaluation entry's test predictions are: its trial's test_predictions.pt, or, for a grid or
-    evaluate output that recorded run units (``"study"`` in its study.json or evaluate.json), its trial unit."""
+def baseline_prediction_path(job: Path, e: dict, s: int) -> Path | None:
+    """The trial unit holding a grid evaluation entry's test predictions (the grid or evaluate output records its
+    run study as ``"study"`` in its study.json or evaluate.json); None for an output that recorded none."""
     stage, cid = str(e.get("stage", "evaluation")), str(e["candidate_id"])
     root = job.parent.parent
     for name in ("study.json", "evaluate.json"):
         if (root / name).exists() and (study := json.loads((root / name).read_text(encoding="utf-8")).get("study")):
             return trial_unit(study, job.parent.name, job.name, stage, cid, s)
-    return job / stage / cid / f"s{s}" / "test_predictions.pt"
+    return None
 
 
 def _finite(x) -> float | None:
@@ -603,36 +590,34 @@ def load_extra_metrics(ev: Evidence, tasks: list[Task], cond: Conditions, famili
         for c in dict.fromkeys((cond.final, cond.retrieval_only, cond.default)):
             for s, row in sorted(ev.rows.get((t.key, c), {}).items()):
                 pre = condition_id(row).endswith("retrieval_only")  # as row_error: its output is pre-adaptation
-                ref = ev.run_dirs[t.key, c][s]
-                unit = None if isinstance(ref, Path) else ref
-                path = ref / "retrieval_events.jsonl" if unit is None else unit
+                unit = ev.run_dirs[t.key, c][s]
                 rec = {"log_loss": _finite(row.get("test_loss_pre" if pre else "test_L_post")),
                        "log_loss_T": None if pre else _finite(row.get("test_nll_post_T")),
-                       "macro_f1_source": str(path) if unit is None else f"{unit.path}#retrieval_events"}
-                if unit is None and not path.exists():
-                    rec.update(macro_f1=None, macro_f1_note="not recorded: no retrieval_events.jsonl")
+                       "macro_f1_source": f"{unit.path}#retrieval_events"}
+                if not unit.records("retrieval_events"):
+                    rec.update(macro_f1=None, macro_f1_note="not recorded: no retrieval_events record")
                 else:
                     try:
-                        y, p = events_predictions(path, "pre_adaptation_prediction" if pre else "final_prediction")
+                        y, p = events_predictions(unit, "pre_adaptation_prediction" if pre else "final_prediction")
                         rec.update(f1_record(y, p, 1.0 - row_error(row), ev.n_test.get((t.key, s))))
                     except (OSError, ValueError, KeyError, TypeError) as exc:
-                        rec.update(macro_f1=None, macro_f1_note=f"not recorded: unreadable retrieval_events.jsonl ({exc})")
+                        rec.update(macro_f1=None, macro_f1_note=f"not recorded: unreadable retrieval_events ({exc})")
                 ev.extra.setdefault((t.key, c), {})[s] = rec
         for fam in families:
             for s, found in sorted(ev.baseline_entries.get((t.key, f"baseline:{fam}"), {}).items()):
                 paths = [baseline_prediction_path(job, e, s) for e, job in found if e.get("candidate_id") is not None]
-                path = next((p for p in paths if p.exists()), None)
+                path = next((p for p in paths if p is not None and p.exists()), None)
                 metrics = found[0][0]["test_metrics"]
                 rec = {"log_loss": _finite(metrics.get("loss")), "log_loss_T": None,
                        "macro_f1_source": None if path is None else str(path)}
                 if path is None:
-                    rec.update(macro_f1=None, macro_f1_note="not recorded: no test_predictions.pt")
+                    rec.update(macro_f1=None, macro_f1_note="not recorded: no grid trial unit with test predictions")
                 else:
                     try:
                         y, p = saved_predictions(path)
                         rec.update(f1_record(y, p, 1.0 - baseline_error(found[0][0], t.task_type), ev.n_test.get((t.key, s))))
                     except Exception as exc:  # torch missing or an unreadable file: descriptive output, keep the reason
-                        rec.update(macro_f1=None, macro_f1_note=f"not recorded: unreadable test_predictions.pt "
+                        rec.update(macro_f1=None, macro_f1_note=f"not recorded: unreadable trial unit "
                                                                  f"({type(exc).__name__}: {exc})")
                 ev.extra.setdefault((t.key, f"baseline:{fam}"), {})[s] = rec
 
@@ -1137,7 +1122,7 @@ def main(argv: list[str] | None = None) -> dict:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--prereg", required=True)
     ap.add_argument("--prereg-sha256", required=True)
-    ap.add_argument("--runs", nargs="+", required=True, help="neural-CBR experiment dirs (runs__*.jsonl)")
+    ap.add_argument("--runs", nargs="+", required=True, help="run-unit trees of the neural-CBR experiments (NN-KNN/runs/t1/<study>/<experiment>)")
     ap.add_argument("--baselines", nargs="*", default=[], help="grid or evaluate output dirs")
     ap.add_argument("--final", required=True, help="condition id of F, e.g. tuned::joint_summed_w5__...")
     ap.add_argument("--final-map", help="JSON {task key: condition id} for tasks whose F has another id")

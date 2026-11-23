@@ -3,11 +3,10 @@
 This is engineering preparation, not participant evidence. Displayed predictions,
 case activations and C/H statistics share one frozen retrieval computation.
 
-With a run (``tools/t1_reviewer_ui.py --study``) every version state is the named state
-``v<NNNN>-<stage>`` of the session's unit and its view the record ``view/v<NNNN>`` (instead of
-``v<NNNN>-<stage>/checkpoint.pt`` and ``view.json``), the control model is the state ``MC`` (instead of
-``MC.pt``), and the trainings log their curves (``m0/``, ``m2/``, ``mc/``); the session manifest, source
-snapshot and ``latest.json`` stay files.
+Every session is recorded in its run unit (``tools/t1_reviewer_ui.py --study``, required): every version state is
+the named state ``v<NNNN>-<stage>`` and its view the record ``view/v<NNNN>``, the control model is the state ``MC``,
+and the trainings log their curves (``m0/``, ``m2/``, ``mc/``); only the session manifest, the source snapshot and
+``latest.json`` (which names the current state) are files in the output directory.
 """
 from __future__ import annotations
 
@@ -40,7 +39,9 @@ def common_knowledge_data():
 
 
 class ReviewerSession:
-    def __init__(self, output: Path, *, seed=11, epochs=30, run=None):
+    def __init__(self, output: Path, *, seed=11, epochs=30, run):
+        if run is None or not hasattr(run, "save_state") or type(run).__name__ == "NullRun":
+            raise TypeError("ReviewerSession needs an open tracking.Run: every session is recorded as a run unit")
         if output.exists() and any(output.iterdir()):
             raise ValueError("use an empty output directory to preserve previous sessions")
         output.mkdir(parents=True, exist_ok=True)
@@ -136,7 +137,7 @@ class ReviewerSession:
                 "retraining": self.retraining, "study_status": "工程演示，尚未开展参与者研究"}
 
     def _tracking(self, prefix):
-        return {} if self.run is None else {"run": self.run, "log_prefix": prefix}
+        return {"run": self.run, "log_prefix": prefix}
 
     def _save(self, stage):
         name = f"v{self.version:04d}-{stage}"
@@ -145,17 +146,10 @@ class ReviewerSession:
                     "statistics": self.store.state_dict(), "training_targets": self.targets,
                     "X_train": self.X, "X_queries": self.queries, "y_queries": self.query_targets,
                     "core": self.cfg.__dict__}
-        if self.run is not None:
-            from .records import ordered, storable
-            self.run.save_state(name, storable(state))
-            self.run.log_record(f"view/v{self.version:04d}", ordered(self.snapshot))
-            latest = {"version": self.version, "stage": stage, "state": name, "run": self.run.run_id}
-        else:
-            folder = self.output / name
-            folder.mkdir()
-            torch.save(state, folder / "checkpoint.pt")
-            (folder / "view.json").write_text(json.dumps(self.snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
-            latest = {"version": self.version, "stage": stage, "folder": folder.name}
+        from .records import ordered, storable
+        self.run.save_state(name, storable(state))
+        self.run.log_record(f"view/v{self.version:04d}", ordered(self.snapshot))
+        latest = {"version": self.version, "stage": stage, "state": name, "run": self.run.run_id}
         (self.output / "latest.json").write_text(json.dumps(latest, indent=2), encoding="utf-8")
 
     def act(self, request):
@@ -272,11 +266,8 @@ class ReviewerSession:
         mc = {"model_state": control.state_dict(), "active_case_count": control.case_count(),
               "optimizer_state": ctr.optimizer.state_dict(), "history": ctr.history,
               "training_targets": self.m0_targets}
-        if self.run is not None:
-            from .records import storable
-            self.run.save_state("MC", storable(mc))
-        else:
-            torch.save(mc, self.output / "MC.pt")
+        from .records import storable
+        self.run.save_state("MC", storable(mc))
         self.model, self.optimizer = model, result.optimizer
         self.retraining = {"epochs": epochs, "lr_scale": .1, "selection": "fixed final epoch",
                            "M2_history": result.history, "MC_history": ctr.history,

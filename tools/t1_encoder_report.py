@@ -1,9 +1,9 @@
 """Report an ``encoder_ablation`` experiment: does the EMA case encoder help?
 
-    python tools/t1_encoder_report.py <experiment dir> --out <dir> [--reference shared --reference raw]
+    python tools/t1_encoder_report.py <NN-KNN/runs/t1/<study>/<experiment>> [--out <dir>] [--reference shared ...]
 
-The experiment is a legacy result directory (``runs__*.jsonl`` shards) or the run-unit tree
-``NN-KNN/runs/t1/<study>/<experiment>`` that ``tools/t1_run.py --study`` recorded.
+The experiment is the run-unit tree that ``tools/t1_run.py --study`` recorded. ``--out`` defaults to
+``<worktree>/results/t1/<study>/<experiment>/`` (``records.results_dir``).
 
 Error is 1 - accuracy (classification) or train-standardized RMSE (regression);
 lower is better. Retrieval-only rows use the pre-adaptation output, all other
@@ -24,7 +24,7 @@ import numpy as np
 from scipy import stats
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from model.t1.records import experiment_rows  # noqa: E402
+from model.t1.records import experiment_rows, results_dir  # noqa: E402
 
 
 def setting_of(row: dict) -> str:
@@ -54,13 +54,14 @@ def write_csv(path: Path, rows: list[dict]) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("exp_dir")
-    ap.add_argument("--out", required=True)
+    ap.add_argument("exp_dir", help="run-unit tree of one experiment: NN-KNN/runs/t1/<study>/<experiment>")
+    ap.add_argument("--out", help="output directory (default: <worktree>/results/t1/<study>/<experiment>)")
     ap.add_argument("--reference", action="append")
     ap.add_argument("--ema-prefix", default="ema")
     args = ap.parse_args()
     refs = args.reference or ["shared", "raw"]
-    rows = experiment_rows(Path(args.exp_dir))  # legacy shards, or the run units of tools/t1_run.py --study
+    rows = experiment_rows(Path(args.exp_dir))  # the run units of tools/t1_run.py --study
+    args.out = args.out or str(results_dir(args.exp_dir))
     if not rows:
         raise SystemExit("no rows")
     test, val, task_type = {}, {}, {}

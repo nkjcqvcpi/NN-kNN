@@ -111,9 +111,11 @@ def full_row(task, cond, seed, val_err, val_loss=.5, test_err=.5, pre_err=None, 
 
 
 def write_stage(path, rows):
+    """The rows recorded as the condition units of one stage experiment (``<path parent>/runs/t1/fx/<path name>``)."""
+    from t1_units import units_from_files
     path.mkdir(parents=True, exist_ok=True)
     (path / "runs__x.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
-    return path
+    return units_from_files(path, path.parent / "runs")
 
 
 def sel_args(out, dirs, **kw):

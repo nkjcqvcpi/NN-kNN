@@ -31,6 +31,8 @@ from model.t1.reuse import (ReuseConfig, _adapter_losses, adapter_optimizer, cal
 from model.t1.sync import SyncConfig, _forward_terms, train_synchronized
 from tools.t1_run import Runner, input_locality, load_config, to_cpu
 
+from t1_units import units
+
 
 # --------------------------------------------------------------------------- toy scenarios
 
@@ -522,8 +524,8 @@ def test_to_cpu_is_identity_on_cpu_and_keeps_state_dict_metadata():
     assert to_cpu(on_device)._metadata == state._metadata
 
 
-def run_tiny_runner(tmp_path):
-    """retrieval_only, two reuse and two sync conditions; returns (rows, manifests)."""
+def run_tiny_runner(tmp_path, monkeypatch):
+    """retrieval_only, two reuse and two sync conditions, recorded; returns (rows, manifests)."""
     cfg = load_config(Path("configs/t1/ema_ablation_20261010.yaml"))
     cfg["arms"] = [{"name": "raw", "representation": "raw", "mcb_enabled": False}]
     cfg["core"].update(epochs=3, patience=3, batch_size=4, top_k=3, bias_init_k=3)
@@ -535,38 +537,47 @@ def run_tiny_runner(tmp_path):
     cfg["conditions"] = [{"schedule": "joint_rr"},
                          {"name": "guarded", "schedule": "joint_rr", "retrieval_guard": 0.02, "early_stopping": "val_error",
                           "score_scale": 3.0, "adapter_weight_decay": 0.01, "adapter_dropout": 0.1, "hidden_dims": [8, 4]}]
-    runner = Runner(cfg, tmp_path)
+    (tmp_path / "runs").mkdir(exist_ok=True)
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
+    runner = Runner(cfg, tmp_path / "inputs", "t")
     data = toy_classification()
     runner.data_for = lambda ds, seed: data
     runner.run_encoder_ablation({"name": "toy", "task_type": "classification"}, 20)
-    rows = {r["condition"]: r for r in map(json.loads, next(tmp_path.rglob("runs__toy.jsonl")).read_text().splitlines())}
+    rows = {u.condition: u.row for u in units(tmp_path / "runs")}
     assert set(rows) == {"raw__retrieval_only", "raw__nominal_residual_scores_combined", "raw__scaled", "raw__joint_rr", "raw__guarded"}
-    manifests = {p.parent.parent.name: json.loads(p.read_text()) for p in tmp_path.rglob("run_manifest.json")}
+    manifests = {u.condition: u.json("run_manifest.json") for u in units(tmp_path / "runs")}
     assert set(manifests) == set(rows)
     return rows, manifests
 
 
 def test_runner_records_new_metrics_flows_yaml_options_and_saves_cpu_checkpoints(tmp_path, monkeypatch):
-    # Every torch.save must receive an object returned by to_cpu (a no-op on CPU,
+    # Every weight part a run records, and the data snapshot, must pass through to_cpu (a no-op on CPU,
     # so the CPU-tensor check below cannot see the wiring by itself).
-    converted, saved = [], []
-    real_to_cpu, real_save = t1_run.to_cpu, torch.save
+    inputs, converted, sunk, saved = [], [], [], []
+    real_to_cpu, real_save, real_sink = t1_run.to_cpu, torch.save, t1_run.RunSink.torch
 
     def spy_to_cpu(obj):
+        inputs.append(obj)
         converted.append(real_to_cpu(obj))
         return converted[-1]
 
+    def spy_sink(self, name, obj):
+        sunk.append((obj, name))
+        return real_sink(self, name, obj)
+
     def spy_save(obj, f, *args, **kwargs):
-        saved.append((obj, Path(f).name))
+        if isinstance(f, (str, Path)) and Path(f).name.startswith("data_snapshot"):
+            saved.append((obj, Path(f).name))
         return real_save(obj, f, *args, **kwargs)
 
-    monkeypatch.setattr(t1_run, "to_cpu", spy_to_cpu)
-    monkeypatch.setattr(torch, "save", spy_save)
-    rows, manifests = run_tiny_runner(tmp_path)
-    monkeypatch.undo()
-    assert {name for _, name in saved} >= {"checkpoint.pt", "calibration_snapshots.pt", "data_snapshot_s20.pt"}
-    assert all(any(obj is c for c in converted) for obj, _ in saved), [name for obj, name in saved
-                                                                      if not any(obj is c for c in converted)]
+    with monkeypatch.context() as m:
+        m.setattr(t1_run, "to_cpu", spy_to_cpu)
+        m.setattr(t1_run.RunSink, "torch", spy_sink)
+        m.setattr(torch, "save", spy_save)
+        rows, manifests = run_tiny_runner(tmp_path, monkeypatch)
+    assert {name for _, name in sunk} >= {"checkpoint.pt", "calibration_snapshots.pt"}
+    assert all(any(obj is i for i in inputs) for obj, _ in sunk), [n for obj, n in sunk if not any(obj is i for i in inputs)]
+    assert [name for _, name in saved] == ["data_snapshot_s20.pt"] and any(saved[0][0] is c for c in converted)
     base = rows["raw__retrieval_only"]["test_locality_input"]
     assert base > 0 and rows["raw__nominal_residual_scores_combined"]["test_locality_input"] == base
     for label, row in rows.items():
@@ -588,10 +599,18 @@ def test_runner_records_new_metrics_flows_yaml_options_and_saves_cpu_checkpoints
     assert {k: reuse_desc[k] for k in ("score_scale", "weight_decay", "dropout")} == dict(score_scale=3., weight_decay=.01, dropout=.1)
     assert manifests["raw__joint_rr"]["model"]["sync"]["retrieval_guard"] is None
     assert all(m["run"]["deterministic"] is False for m in manifests.values())
-    files = list(tmp_path.rglob("*.pt"))
-    assert any(p.name == "checkpoint.pt" for p in files) and any(p.name == "calibration_snapshots.pt" for p in files)
-    for path in files:
-        assert all(t.device.type == "cpu" for t in tensors(torch.load(path, weights_only=False)))
+    assert_cpu_parts(tmp_path)
+
+
+def assert_cpu_parts(tmp_path):
+    """Every named state of every recorded run, and the data snapshot, holds CPU tensors only."""
+    recorded = units(tmp_path / "runs")
+    assert any("checkpoint" in u.states() for u in recorded) and any("calibration_snapshots" in u.states() for u in recorded)
+    for u in recorded:
+        for name in u.states():  # no map_location: tensors come back on the device they were saved from
+            assert all(t.device.type == "cpu" for t in tensors(u.torch(name))), (u.condition, name)
+    snapshot = next((tmp_path / "inputs").rglob("data_snapshot_s20.pt"))
+    assert all(t.device.type == "cpu" for t in tensors(torch.load(snapshot, weights_only=False)))
 
 
 @pytest.fixture
@@ -628,31 +647,34 @@ def test_locality_and_temperature_metrics_run_on_an_accelerator(on_accelerator):
         assert T > 0 and isinstance(degenerate, bool) and math.isfinite(scaled["ece_post_T"])
 
 
-def test_runner_on_an_accelerator_saves_checkpoints_that_load_on_the_cpu(tmp_path, on_accelerator):
-    rows, manifests = run_tiny_runner(tmp_path)
+def test_runner_on_an_accelerator_saves_checkpoints_that_load_on_the_cpu(tmp_path, on_accelerator, monkeypatch):
+    rows, manifests = run_tiny_runner(tmp_path, monkeypatch)
     assert all(m["run"]["device"].startswith(on_accelerator) for m in manifests.values())
     assert all(math.isfinite(row["test_locality_input"]) for row in rows.values())
     assert all(math.isfinite(row["test_nll_post_T"]) for label, row in rows.items() if label != "raw__retrieval_only")
-    files = list(tmp_path.rglob("*.pt"))
-    assert {"checkpoint.pt", "calibration_snapshots.pt", "data_snapshot_s20.pt"} <= {p.name for p in files}
-    for path in files:  # no map_location: tensors come back on the device they were saved from
-        assert all(t.device.type == "cpu" for t in tensors(torch.load(path, weights_only=False)))
+    assert_cpu_parts(tmp_path)
 
 
 def test_deterministic_environment_switch(monkeypatch, tmp_path):
     seen = []
 
     class Stub:
-        def __init__(self, cfg, out):
+        def __init__(self, cfg, out, study):
             seen.append(torch.are_deterministic_algorithms_enabled())
+            self.study, self.exp = study, cfg["experiment"]
+
+        def dataset_key(self, ds):
+            return ds["name"]
 
         def __getattr__(self, name):
             return lambda ds, seed: None
 
     monkeypatch.setattr(t1_run, "Runner", Stub)
     monkeypatch.setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8")  # restored after the test
+    (tmp_path / "runs").mkdir()
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
     monkeypatch.setattr("sys.argv", ["t1_run.py", "configs/t1/smoke_sync.yaml", "--out", str(tmp_path), "--seeds", "0",
-                                     "--only-dataset", "none"])
+                                     "--only-dataset", "none", "--study", "det"])
     try:
         monkeypatch.setenv("NNKNN_DETERMINISTIC", "1")
         t1_run.main()
@@ -668,7 +690,7 @@ def test_qualified_dataset_entry_gets_a_role_qualified_key(tmp_path):
     from tools.t1_run import Runner, load_config
     cfg = load_config(Path("configs/t1/ema_ablation_20261010.yaml"))
     cfg["datasets"] = [{"name": "wine", "task_type": "regression", "qualified": True}]
-    runner = Runner(cfg, tmp_path)
+    runner = Runner(cfg, tmp_path, "t")
     assert runner.dataset_key(cfg["datasets"][0]) == "regression__wine"
     cfg["datasets"] = [{"name": "wine", "task_type": "classification"}]
-    assert Runner(cfg, tmp_path).dataset_key(cfg["datasets"][0]) == "wine"
+    assert Runner(cfg, tmp_path, "t").dataset_key(cfg["datasets"][0]) == "wine"

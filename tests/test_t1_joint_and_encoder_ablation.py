@@ -13,6 +13,8 @@ from model.t1.sync import SyncConfig, _forward_terms, joint_backward, train_sync
 from model.nn_cdh import ClassificationNNCDHAdapter
 from tools.t1_run import EveryEpoch, Runner, load_config
 
+from t1_units import study_runner, units
+
 
 def classification_data(n=24):
     g = torch.Generator().manual_seed(0)
@@ -145,15 +147,15 @@ def ablation_cfg():
     return cfg
 
 
-def test_encoder_ablation_records_both_settings_per_arm(tmp_path):
+def test_encoder_ablation_records_both_settings_per_arm(tmp_path, monkeypatch):
     cfg = ablation_cfg()
     cfg["conditions"] = [{"schedule": "joint_rr"}, {"name": "joint_scratch", "schedule": "joint_rr", "core_pretrain": False,
                                                       "retrieval_lr_scale": 1.0}]
-    runner = Runner(cfg, tmp_path)
+    runner = study_runner(cfg, tmp_path, monkeypatch)
     data = classification_data()
     runner.data_for = lambda ds, seed: data
     runner.run_encoder_ablation({"name": "tiny", "task_type": "classification"}, 30)
-    rows = [json.loads(line) for line in next(tmp_path.rglob("runs__tiny.jsonl")).read_text().splitlines()]
+    rows = [u.row for u in units(tmp_path / "runs")]
     arms = [a["name"] for a in cfg["arms"]]
     labels = {r["condition"] for r in rows}
     for arm in arms:
@@ -169,19 +171,19 @@ def test_encoder_ablation_records_both_settings_per_arm(tmp_path):
     assert ema and all(r["online_ema_gap"] >= 0 for r in ema)
     raw = next(r for r in rows if r["arm"] == "raw" and r["condition"].endswith("retrieval_only"))
     assert raw["core_mean_representation_drift"] == 0.0
-    scratch = [json.loads(p.read_text()) for p in tmp_path.rglob("run_manifest.json") if "joint_scratch" in str(p)]
+    scratch = [u.json("run_manifest.json") for u in units(tmp_path / "runs", "*joint_scratch")]
     assert scratch and all(m["budgets"]["core_pretrain"] is False and m["budgets"]["core_epochs_run"] == 0 for m in scratch)
 
 
-def test_sync_arms_keep_unarmed_labels(tmp_path):
+def test_sync_arms_keep_unarmed_labels(tmp_path, monkeypatch):
     cfg = ablation_cfg()
     cfg.update(type="sync", conditions=[{"schedule": "joint_rr"}])
     cfg.pop("arms")
-    runner = Runner(cfg, tmp_path)
+    runner = study_runner(cfg, tmp_path, monkeypatch)
     data = regression_data()
     runner.data_for = lambda ds, seed: data
     runner.run_sync({"name": "tiny", "task_type": "regression"}, 30)
-    rows = [json.loads(line) for line in next(tmp_path.rglob("runs__tiny.jsonl")).read_text().splitlines()]
+    rows = [u.row for u in units(tmp_path / "runs")]
     assert [r["condition"] for r in rows] == ["joint_rr"]
     assert "arm" not in rows[0] and "val_rmse_post" in rows[0]
 

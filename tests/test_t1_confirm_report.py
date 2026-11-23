@@ -8,8 +8,49 @@ import numpy as np
 import pytest
 from scipy import stats
 
+from t1_units import trial_units_from_files, units_from_files
 from tools.t1_confirm_report import (Evidence, Task, bh, compare, condition_id, device_type, expected_fingerprints,
-                                     holm, macro_f1, main, plan_tasks, pool, reml_tau2, small_task_names, wording)
+                                     holm, macro_f1, plan_tasks, pool, reml_tau2, small_task_names, wording)
+from tools.t1_confirm_report import main as report_main
+
+_CALLS = iter(range(10**6))
+_TREES = {}
+
+
+def _units(d, runs):
+    """The run units of fixture folder ``d``; folders with the same name and files (in any test) share one tree,
+    so a fixture is recorded only once (the readers never write into it)."""
+    d = Path(d)
+    files = sorted(p for p in d.rglob("*") if p.is_file())
+    digest = hashlib.sha256(b"".join(p.relative_to(d).as_posix().encode() + p.read_bytes() for p in files)).hexdigest()
+    if (d.name, digest) not in _TREES:
+        _TREES[d.name, digest] = units_from_files(d, runs, study=f"c{next(_CALLS)}")
+    return _TREES[d.name, digest]
+
+
+def main(argv):
+    """``tools/t1_confirm_report.py main`` on the run units of the fixture folders the tests write in the old file
+    layout, and on grid outputs whose saved test predictions are trial units."""
+    import os
+    argv = list(argv)
+    out = Path(argv[argv.index("--out") + 1])
+    runs = out.parent / "u"  # short: the tracking module limits event file paths to 240 characters
+    i = argv.index("--runs") + 1
+    j = next((k for k in range(i, len(argv)) if argv[k].startswith("--")), len(argv))
+    argv[i:j] = [str(_units(d, runs)) for d in argv[i:j]]
+    if "--baselines" in argv:
+        i = argv.index("--baselines") + 1
+        for d in argv[i:next((k for k in range(i, len(argv)) if argv[k].startswith("--")), len(argv))]:
+            trial_units_from_files(Path(d), runs)
+    old = os.environ.get("NNKNN_RUNS")
+    os.environ["NNKNN_RUNS"] = str(runs)
+    try:
+        return report_main(argv)
+    finally:
+        if old is None:
+            os.environ.pop("NNKNN_RUNS", None)
+        else:
+            os.environ["NNKNN_RUNS"] = old
 
 PREREG = Path("configs/t1/prereg_20261013.json")
 SEEDS = list(range(40, 50))
@@ -581,7 +622,7 @@ def test_log_loss_and_macro_f1_on_churn_and_mic(tmp_path, monkeypatch):
     assert r["macro_f1_missing"] == {"not used: saved predictions do not reproduce the recorded accuracy": [SEEDS[1]]}
     r = get["churn", "alternating default"]
     assert r["log_loss"] == pytest.approx(0.35) and r["macro_f1_seeds"] == 9
-    assert r["macro_f1_missing"] == {"not recorded: no retrieval_events.jsonl": [SEEDS[2]]}
+    assert r["macro_f1_missing"] == {"not recorded: no retrieval_events record": [SEEDS[2]]}
     r = get["MIC", "NN-kNN retrieval-only"]
     assert r["log_loss"] == pytest.approx(0.5) and r["log_loss_T"] is None and r["macro_f1"] == mean_f1(
         "digits", "tuned__retrieval_only", SEEDS)
@@ -590,12 +631,13 @@ def test_log_loss_and_macro_f1_on_churn_and_mic(tmp_path, monkeypatch):
         "classification__digits", "catboost", SEEDS)
     assert get["churn", "TabM"]["macro_f1"] == mean_f1("classification__tabarena_363702", "tabm", SEEDS)
     r = get["churn", "kNN"]
-    assert r["macro_f1"] is None and r["macro_f1_missing"] == {"not recorded: no test_predictions.pt": SEEDS}
+    missing = "not recorded: no grid trial unit with test predictions"
+    assert r["macro_f1"] is None and r["macro_f1_missing"] == {missing: SEEDS}
     r = get["churn", "MLP"]  # entries without a test loss or a candidate directory
-    assert r["n_seeds"] == 10 and r["log_loss"] is None and r["macro_f1_missing"] == {"not recorded: no test_predictions.pt": SEEDS}
+    assert r["n_seeds"] == 10 and r["log_loss"] is None and r["macro_f1_missing"] == {missing: SEEDS}
     assert rep["secondary"]["transfer"]["log_loss_macro_f1"]["tasks"] == ["classification__tabarena_363702"]
     md = (tmp_path / "out" / "report.md").read_text(encoding="utf-8")
     assert "| churn | F | 0.3000 (10) | 0.2000 (10) | " in md and " (9) |" in md
     assert "| churn | kNN | 0.2945 (10) | not recorded | not recorded |" in md
-    assert f"- churn kNN macro-F1 not recorded: no test_predictions.pt (seeds {', '.join(map(str, SEEDS))})" in md
+    assert f"- churn kNN macro-F1 {missing} (seeds {', '.join(map(str, SEEDS))})" in md
     assert "- log_loss_T: adapted neural-CBR arms' test_nll_post_T" in md

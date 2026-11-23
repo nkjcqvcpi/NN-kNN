@@ -8,7 +8,8 @@ from model.common.core import CoreConfig, build_model
 from model.t1.calibration import calibrate_free_radius
 from model.t1.data import T1Data
 from model.t1.sync import SyncConfig, train_synchronized
-from tools.t1_run import Runner, load_config
+from tools.t1_run import load_config
+from t1_units import study_runner, unit
 
 
 def toy():
@@ -63,18 +64,17 @@ def test_updates_are_isolated_and_all_terms_are_logged():
             assert row["train_after_update"]["L_post"] != row["train_before_update"]["L_post"]
 
 
-def test_runner_saves_post_core_and_maintenance_calibration(tmp_path):
+def test_runner_saves_post_core_and_maintenance_calibration(tmp_path, monkeypatch):
     cfg = load_config(Path("configs/t1/alignment_sync_plan_20261009.yaml"))
     cfg["core"].update(epochs=2, patience=2, batch_size=3, top_k=3, bias_init_k=3)
     cfg["sync"].update(epochs=4, block_epochs=1, maintenance_epochs=[2], patience=4, K=.75)
     cfg["conditions"] = [{"name": "rrr_primary", "schedule": "alternating_rrr"}]
     cfg["retention"]["min_per_cohort"] = 0
-    runner = Runner(cfg, tmp_path)
+    runner = study_runner(cfg, tmp_path, monkeypatch)
     data = toy()
     runner.data_for = lambda ds, seed: data
     runner.run_sync({"name": "tiny", "task_type": "regression"}, 8)
-    path = next(tmp_path.rglob("calibration_snapshots.pt"))
-    snapshots = torch.load(path, weights_only=True)
+    snapshots = unit(tmp_path / "runs").torch("calibration_snapshots.pt")
     assert len(snapshots) == 2
     assert [s["active_case_count"] for s in snapshots] == [6, 4]
     for snap in snapshots:

@@ -58,10 +58,11 @@ def test_invalid_factors_fail_before_generation(kwargs):
         make_synthetic("synthetic", 0, **kwargs)
 
 
-def test_runner_routes_parameters_and_saves_safe_snapshot(tmp_path):
-    from tools.t1_run import Runner, load_config, REPO
+def test_runner_routes_parameters_and_saves_safe_snapshot(tmp_path, monkeypatch):
+    from tools.t1_run import load_config, REPO
+    from t1_units import study_runner
     cfg = load_config(REPO / "configs/t1/alignment_revision_matched.yaml")
-    runner = Runner(cfg, tmp_path)
+    runner = study_runner(cfg, tmp_path, monkeypatch)
     ds = dict(name="synthetic_zero", task_type="classification", synthetic=dict(
         generator_version="independent_v1", corruption_rate=0, duplicate_count=0, rare_count=0))
     data = runner.data_for(ds, 3)

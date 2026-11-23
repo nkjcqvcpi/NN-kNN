@@ -1,12 +1,11 @@
-"""Summarize a T1 experiment from its raw ``runs__*.jsonl`` shards (no narrative, numbers only).
+"""Summarize a T1 experiment from its run units (no narrative, numbers only).
 
-    python tools/t1_summarize.py results/t1/<experiment> --metric test_accuracy_pre \
-        --reference random_K0.5 [--metric test_accuracy_post ...]
-    python tools/t1_summarize.py <NN-KNN/runs/t1/<study>/<experiment>> --out <dir> --metric ...
+    python tools/t1_summarize.py <NN-KNN/runs/t1/<study>/<experiment>> --metric test_accuracy_pre \
+        --reference random_K0.5 [--metric test_accuracy_post ...] [--out DIR]
 
-The input is a legacy experiment directory (its ``runs*.jsonl`` shards) or the run-unit tree that
-``tools/t1_run.py --study`` recorded, whose ``row`` records are read in the order the shards would hold them.
-The outputs go to the experiment directory, or to ``--out`` (required for a run-unit tree).
+The input is the run-unit tree that ``tools/t1_run.py --study`` recorded; the ``row`` records of its condition
+units are read in the order the shards of the same runs held them. The outputs go to ``--out``, by default
+``<worktree>/results/t1/<study>/<experiment>/`` (``records.results_dir``).
 
 Writes ``summary.csv`` (mean, sd, n, 95% t-interval per dataset x condition x metric)
 and, with ``--reference``, ``paired_vs_<reference>.csv`` (per-seed paired differences,
@@ -26,7 +25,7 @@ import pandas as pd
 from scipy import stats
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from model.t1.records import experiment_rows, has_shards  # noqa: E402
+from model.t1.records import experiment_rows, require_unit_tree, results_dir  # noqa: E402
 
 
 def t_interval(x: np.ndarray) -> tuple[float, float]:
@@ -40,18 +39,16 @@ def t_interval(x: np.ndarray) -> tuple[float, float]:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("exp_dir")
+    ap.add_argument("exp_dir", help="run-unit tree of one experiment: NN-KNN/runs/t1/<study>/<experiment>")
     ap.add_argument("--metric", action="append", required=True)
     ap.add_argument("--reference", default=None, help="condition label used as the paired reference")
     ap.add_argument("--higher-is-better", action="store_true", default=True)
-    ap.add_argument("--out", default=None, help="output directory (default: the experiment directory)")
+    ap.add_argument("--out", default=None, help="output directory (default: <worktree>/results/t1/<study>/<experiment>)")
     args = ap.parse_args()
-    src = Path(args.exp_dir)
-    if args.out is None and not has_shards(src, "runs*.jsonl"):
-        ap.error("a run-unit tree needs --out (summaries are not written into the run root)")
-    exp = Path(args.out) if args.out else src
+    src = require_unit_tree(args.exp_dir)
+    exp = Path(args.out) if args.out else results_dir(src)
     exp.mkdir(parents=True, exist_ok=True)
-    rows = experiment_rows(src, "runs*.jsonl")
+    rows = experiment_rows(src)
     df = pd.DataFrame(rows)
     # the latest run per (dataset, condition, seed) wins if a config was re-run
     df = df.drop_duplicates(subset=["dataset", "condition", "seed"], keep="last")

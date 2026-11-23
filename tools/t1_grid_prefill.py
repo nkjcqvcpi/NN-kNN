@@ -2,23 +2,19 @@
 
 t1_grid_search.py gives each (dataset, family) job one worker and fits its trials one after
 another, so cores sit idle when a few slow jobs remain. This tool fits the same trials with the
-grid's own ``run_trial`` (same receipts, paths and source hash), several at a time, stage by stage:
+grid's own ``run_trial`` (same run units, config and source hash), several at a time, stage by stage:
 every screen trial; then the refit of the finalists that the grid's ``rank_candidates`` picks from
-those receipts; then the evaluation of the winner it picks from the refits. Afterwards rerun the
-grid's full command unchanged: it reuses every receipt and writes completed.json itself.
+those trials; then the evaluation of the winner it picks from the refits. Afterwards rerun the
+grid's full command unchanged: it reads every complete trial back and writes completed.json itself.
 
 All grid logic is loaded from ``--grid-repo``, the checkout the grid was started from, whose
-source fingerprint must equal the grid's study.json. Grids started before ``run_trial`` existed
-(e.g. 79dbb31) keep the trial inside ``dataset_family``; ``legacy_trial`` repeats that closure
-statement for statement with the checkout's own functions. Stop the grid's own run on these jobs
-first: receipts are written without locking.
+source fingerprint must equal the grid's study.json. The grid must record its trials as run units
+(``--study S``, so its study.json holds ``"study": S``, and the checkout's ``run_trial`` takes ``study``); the
+prefill fits the trials into the same units and reads the complete units' ``trial`` records. Grids that wrote
+trial files (receipts) are refused. Stop the grid's own run on these jobs first.
 
     python tools/t1_grid_prefill.py --grid-repo CHECKOUT --out GRID_OUT --jobs TASK_KEY/FAMILY.. \
         [--workers N] [--workers-file PATH]
-
-A grid started with ``--study S`` (its study.json holds ``"study": S``) records its trials as run units: the
-prefill then fits them into the same units (the pinned checkout's ``run_trial`` must take ``study``) and reads
-the complete units' ``trial`` records where it would read receipts.
 
 Jobs are served in the order given (put the longest first). ``--workers-file`` holds an integer
 that is re-read before each submission, so the concurrency can be raised or lowered while running
@@ -76,61 +72,15 @@ def load_study(gs, repo, out):
 
 
 def recorded_study(out):
-    """The run study a grid records its trials into (``"study"`` in its study.json), or None for receipts."""
-    return json.loads((Path(out) / "study.json").read_text()).get("study")
+    """The run study a grid records its trials into (``"study"`` in its study.json); a grid without one wrote trial
+    files, which T1 no longer writes or reads, and is refused."""
+    study = json.loads((Path(out) / "study.json").read_text()).get("study")
+    if not study:
+        raise ValueError(f"{out}: the grid records no run study (started without --study); it cannot be prefilled")
+    return study
 
 
-def legacy_trial(gs, study, ds, family, job, cid, params, stage, seed, epochs, patience, test):
-    """The ``trial`` closure of dataset_family in grids without ``run_trial`` (79dbb31), statement for statement.
-
-    The grid's data_cache only memoizes make_splits per seed; a fresh call builds the same bundle.
-    """
-    path = job / stage / cid / f"s{seed}"
-    path.mkdir(parents=True, exist_ok=True)
-    receipt = path / "receipt.json"
-    if receipt.exists():
-        return json.loads(receipt.read_text())
-    torch = gs.torch
-    started = time.perf_counter()
-    try:
-        full = gs.make_splits(ds["name"], ds["task_type"], seed, **study["splits"])
-        allowed = dict(X_train=full.X_train, y_train=full.y_train, X_val=full.X_val,
-                       y_val=full.y_val, task=full.task_type, classes=full.num_classes)
-        model, info = gs.fit_candidate(family, params, allowed, seed, epochs, patience)
-        val_prediction = gs.prediction(model, family, full.X_val, full.task_type)
-        metrics = gs.numeric_metrics(val_prediction, full.y_val.numpy(), full.task_type, full.y_scale)
-        row = dict(status="completed", family=family, candidate_id=cid, parameters=params,
-            seed=seed, stage=stage, validation_error=1.-metrics["accuracy"] if full.num_classes else metrics["rmse_standardized"],
-            validation_loss=metrics["loss"], validation_metrics=metrics, test_stream_evaluated=test,
-            training_seconds=time.perf_counter()-started, source_sha256=study["source_sha256"],
-            dataset=full.describe())
-        if test:
-            # Winner was frozen before this branch can execute.
-            inference_started = time.perf_counter()
-            pred = gs.prediction(model, family, full.X_test, full.task_type)
-            row["inference_seconds"] = time.perf_counter() - inference_started
-            row["inference_queries"] = len(full.y_test)
-            row["training_case_count"] = len(full.y_train)
-            row["active_case_count"] = model.case_count() if family == "nnknn" else len(full.y_train) if family == "knn" else None
-            row["test_metrics"] = gs.numeric_metrics(pred, full.y_test.numpy(), full.task_type, full.y_scale)
-            torch.save(dict(prediction=torch.as_tensor(pred), target=full.y_test), path / "test_predictions.pt")
-            torch.save(gs.tensorize(gs.dataclasses.asdict(full)), path / "data.pt")
-            if family in {"knn", "catboost"}:
-                gs.joblib.dump(model, path / "model.joblib")
-            else:
-                torch.save(dict(model_state=model.state_dict(), info=info), path / "model.pt")
-        torch.save(dict(prediction=torch.as_tensor(val_prediction), target=full.y_val), path / "validation_predictions.pt")
-        gs.write_json(receipt, row)
-        print(json.dumps(dict(stage=stage, seed=seed, candidate=cid, error=row["validation_error"])), flush=True)
-        return row
-    except Exception:
-        failure = dict(status="failed", stage=stage, candidate_id=cid, seed=seed, error=gs.traceback.format_exc())
-        gs.write_json(path / "failure.json", failure)
-        print(failure["error"], flush=True)
-        return failure
-
-
-def fit_trial(repo, study, ds, family, out, stage, cid, seed, test, run_study=None):
+def fit_trial(repo, study, ds, family, out, stage, cid, seed, test, run_study):
     """One grid trial in a worker process, exactly as dataset_family would run it."""
     gs = grid_module(repo)
     if hasattr(gs, "apply_determinism"):
@@ -142,42 +92,23 @@ def fit_trial(repo, study, ds, family, out, stage, cid, seed, test, run_study=No
     job = Path(out) / task_key(ds) / family
     job.mkdir(parents=True, exist_ok=True)
     with (job / "training.log").open("a", encoding="utf-8") as log, contextlib.redirect_stdout(log):
-        if run_study is not None:
-            import inspect
-            if "study" not in inspect.signature(getattr(gs, "run_trial", lambda: None)).parameters:
-                raise ValueError("the grid records run units but its pinned checkout's run_trial cannot")
-            row = gs.run_trial(job, family, cid, grid[cid], stage, gs.split_loader(study, ds), seed, epochs, patience,
-                               study["source_sha256"], test, study=run_study)
-        elif hasattr(gs, "run_trial"):
-            row = gs.run_trial(job, family, cid, grid[cid], stage, gs.split_loader(study, ds), seed, epochs, patience,
-                               study["source_sha256"], test)
-        else:
-            row = legacy_trial(gs, study, ds, family, job, cid, grid[cid], stage, seed, epochs, patience, test)
+        import inspect
+        if "study" not in inspect.signature(getattr(gs, "run_trial", lambda: None)).parameters:
+            raise ValueError("the grid records run units but its pinned checkout's run_trial cannot")
+        row = gs.run_trial(job, family, cid, grid[cid], stage, gs.split_loader(study, ds), seed, epochs, patience,
+                           study["source_sha256"], test, study=run_study)
     return row["status"]
 
 
-def receipt(job, stage, cid, seed, run_study=None, config=None):
-    """A trial's receipt row, or None; one that does not parse (its writer was killed mid-write) is an error.
-
-    With ``run_study``, the ``trial`` record of the trial's run unit when it is complete with ``config`` (the
-    grid's ``trial_config``), else None; a unit complete with another config raises ConfigMismatchError.
-    """
-    if run_study is not None:
-        from model.common.tracking import load_run, resolve_unit
-        from model.t1.records import key, unordered
-        if config is None:
-            raise ValueError("reading a recorded trial needs its config")
-        info = resolve_unit(key(run_study, Path(job).parent.name, Path(job).name, stage, cid, f"s{seed}"), config=config)
-        if info is None:
-            return None
-        return unordered(load_run(info.path, arrays=False).record("trial"))
-    path = job / stage / cid / f"s{seed}" / "receipt.json"
-    if not path.exists():
+def receipt(job, stage, cid, seed, run_study, config):
+    """The ``trial`` record of the trial's run unit when it is complete with ``config`` (the grid's
+    ``trial_config``), else None; a unit complete with another config raises ConfigMismatchError."""
+    from model.common.tracking import load_run, resolve_unit
+    from model.t1.records import key, unordered
+    info = resolve_unit(key(run_study, Path(job).parent.name, Path(job).name, stage, cid, f"s{seed}"), config=config)
+    if info is None:
         return None
-    try:
-        return json.loads(path.read_text())
-    except json.JSONDecodeError as error:
-        raise ValueError(f"{path} does not parse ({error}); move it aside so that the trial is refitted") from error
+    return unordered(load_run(info.path, arrays=False).record("trial"))
 
 
 def write_frozen(gs, path, obj):
@@ -192,7 +123,7 @@ def write_frozen(gs, path, obj):
     gs.write_json(path, obj)
 
 
-def next_trials(gs, study, out, ds, family, running=(), run_study=None):
+def next_trials(gs, study, out, ds, family, running=(), *, run_study):
     """(stage, [(cid, seed), ..]) still missing at the job's first unfinished stage; ("done", []) at the end.
 
     ``running`` holds the job's in-flight (stage, cid, seed): they count as missing and their receipts, which may be
@@ -204,11 +135,9 @@ def next_trials(gs, study, out, ds, family, running=(), run_study=None):
     seeds = study["development_seeds"]
     grid = {gs.config_id(p): p for p in gs.expand_grid(study["grids"][family])}
 
-    data = gs.split_loader(study, ds) if run_study is not None else None  # lazy: only its data definition is used
+    data = gs.split_loader(study, ds)  # lazy: only its data definition is used
 
     def config(stage, cid, seed):
-        if run_study is None:
-            return None
         epochs, patience = ((study["screen_epochs"], study["screen_patience"]) if stage == "screen"
                             else (study["refit_epochs"], study["refit_patience"]))
         return gs.trial_config(job, family, cid, grid[cid], stage, data, seed, epochs, patience, study["source_sha256"],
@@ -299,7 +228,7 @@ def main(argv=None):
                 if (key, family) in failed:
                     continue
                 mine = {t[2:] for t in running.values() if t[:2] == (key, family)}
-                stage, missing = next_trials(gs, study, out, ds, family, mine, run_study)
+                stage, missing = next_trials(gs, study, out, ds, family, mine, run_study=run_study)
                 state[key, family] = stage
                 if stage == "no_winner":
                     failed.add((key, family))

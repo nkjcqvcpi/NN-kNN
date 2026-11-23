@@ -5,13 +5,15 @@ from types import SimpleNamespace
 
 import torch
 
-from tools.t1_run import Runner, load_config
+from tools.t1_run import load_config
+from t1_units import study_runner, unit
 from model.common.core import CoreConfig, build_model, make_optimizer
 from model.nn_cdh import NNCDHAdapter
 
 
-def test_before_and_after_metadata_and_frozen_pair_optimizer_restore(tmp_path):
+def test_before_and_after_metadata_and_frozen_pair_optimizer_restore(tmp_path, monkeypatch):
     cfg = load_config(Path("configs/t1/alignment_sync_capacity_match.yaml"))
+    cfg["experiment"] = "cap"  # a short unit path (the tracking limit is 240 characters)
     cfg["core"].update(epochs=2, patience=2, batch_size=3, top_k=3, bias_init_k=3)
     cfg["sync"].update(epochs=4, block_epochs=1, maintenance_epochs=[2], patience=4)
     cfg["conditions"] = [{"schedule": "alternating_rr"}]
@@ -22,12 +24,11 @@ def test_before_and_after_metadata_and_frozen_pair_optimizer_restore(tmp_path):
     from model.t1.data import T1Data
     data = T1Data(name="tiny_regression", task_type="regression", X_train=X, y_train=y,
         X_val=X + .01, y_val=y, X_test=X + .02, y_test=y, reg_bins=None)
-    runner = Runner(cfg, tmp_path / "runs")
+    runner = study_runner(cfg, tmp_path, monkeypatch)
     runner.data_for = lambda ds, seed: data
     runner.run_sync({"name": data.name, "task_type": "regression"}, 5)
-    path = next((tmp_path / "runs").rglob("checkpoint.pt"))
-    before = torch.load(path.parent / "before_capacity_match.pt", weights_only=True)
-    after = torch.load(path, weights_only=True)
+    run = unit(tmp_path / "runs")
+    before, after = run.torch("before_capacity_match.pt"), run.torch("checkpoint.pt")
     assert before["active_case_count"] == 6 and after["active_case_count"] == 4
     assert before["model_description"] == after["model_description"]
     desc = before["model_description"]

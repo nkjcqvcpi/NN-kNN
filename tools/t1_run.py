@@ -1,24 +1,24 @@
-"""Run a T1 experiment from a YAML config.
+"""Run a T1 experiment from a YAML config; every run is recorded as a run unit.
 
-    .venv\\Scripts\\python.exe tools\\t1_run.py configs\\t1\\p1_retention_pilot.yaml [--only-dataset iris] [--seeds 0 1]
+    python tools/t1_run.py configs/t1/<config>.yaml --study S [--only-dataset iris] [--seeds 0 1]
 
-Experiment types (``type:``): legacy_reference, retention, reuse, reuse_retention,
-removal_retraining, sync, mcb, revise.
-Every run writes, under ``results/t1/<experiment>/<dataset>/<condition>/s<seed>/``:
-run_manifest.json, metrics.json, history.json, case_statistics.jsonl,
-case_maintenance.jsonl, retrieval_events.jsonl (test stream, pre/final predictions),
-checkpoint.pt and the type's extra files, and appends one row to
-``results/t1/<experiment>/runs__<dataset>.jsonl``.
+Experiment types (``type:``): legacy_reference, retention, reuse, reuse_retention, encoder_ablation,
+removal_retraining, adapted_retrained_removal, sync, mcb, revise.
 
-With ``--study S`` every run is instead recorded as one unit
-``NN-KNN/runs/t1/S/<experiment>/<dataset>/<condition>/s<seed>/`` (``model.t1.records``): records
-``manifest``, ``metrics`` (and ``final/*`` numbers), ``history`` (and its curves), ``case_statistics``,
-``case_maintenance``, ``retrieval_events``, ``row`` and one record per extra JSON file; weights as named
-states (``checkpoint`` and the type's ``.pt`` files, e.g. ``M0``, ``initial``, ``starting_checkpoint``;
-legacy_reference also ``best_retrieval``/``best_adapter``/``final`` from ``train_model``). None of the per-run
-files above, no shard row and no ``legacy_best.pth``/``starting_checkpoint_s<seed>.pt`` is written then; the
-source snapshot zip and ``data_snapshot_s<seed>.pt`` (inputs, not training data) stay under ``--out``. A unit
-that is already complete with the same config is not written again (another config raises).
+``--study S`` is required. Every run is one unit ``NN-KNN/runs/t1/S/<experiment>/<dataset>/<condition>/s<seed>/``
+(``model.t1.records``; ``$NNKNN_RUNS`` overrides the run root): records ``manifest``, ``metrics`` (and ``final/*``
+numbers), ``history`` (and its curves), ``case_statistics``, ``case_maintenance``, ``retrieval_events``, ``row`` and
+one record per extra JSON part; weights as named states (``checkpoint`` and the type's parts, e.g. ``M0``,
+``initial``, ``starting_checkpoint``; legacy_reference also ``best_retrieval``/``best_adapter``/``final`` from
+``train_model``); ``rng``, the RNG state the run left. No per-run file, shard row or checkpoint file is written.
+``--out`` holds only the inputs: the source snapshot zip and ``<dataset>/data_snapshot_s<seed>.pt``.
+
+Never retrained: training that several runs share (the trained core, a type's initial adapter, the retrained
+removal of one K, the revise ablation) is recorded as a stage unit ``.../<dataset>/_<stage>/s<seed>/`` (named states
+``objects``, the exact objects, and ``rng``). Before any training a rerun checks every unit: a complete run is
+skipped and the RNG state it recorded is restored, a complete stage is loaded instead of trained, and a stage whose
+runs are all complete is neither trained nor loaded. A partly rerun study therefore computes the same numbers and
+weights as an uninterrupted one. A complete unit with another config raises ConfigMismatchError before training.
 
 Values required by the plan that remain unresolved PI decisions must be given
 explicitly in the config; ``null`` or ``"..."`` aborts the run.
@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import argparse
 import copy
-import json
 import os
 import sys
 import time
@@ -44,7 +43,7 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 import yaml  # noqa: E402
 
-from model.common.artifacts import build_manifest, case_statistics_rows, config_id, source_fingerprint, write_json, write_jsonl  # noqa: E402
+from model.common.artifacts import build_manifest, case_statistics_rows, config_id, source_fingerprint  # noqa: E402
 from model.t1.calibration import calibrate_free_radius, compact_calibration_snapshot  # noqa: E402
 from model.common.core import CoreConfig, build_model, clone_optimizer, evaluate, make_optimizer, retrieval_events, train_retrieval  # noqa: E402
 from model.common.geometry import active_case_features, query_features  # noqa: E402
@@ -59,7 +58,8 @@ from model.t1.revise import flagging_ablation  # noqa: E402
 from model.t1.sync import SyncConfig, train_synchronized  # noqa: E402
 from model.t1 import records  # noqa: E402
 from model.common.nominal import encoded_queries  # noqa: E402
-from model.common.tracking import ConfigMismatchError, load_run, payload_sha256, open_run, resolve_unit, run_status  # noqa: E402
+from model.common.tracking import (ConfigMismatchError, load_run, load_unit, open_run, payload_sha256,  # noqa: E402
+                                   resolve_unit, run_status)
 
 
 # --------------------------------------------------------------------------- config
@@ -407,85 +407,8 @@ def truth_retention(model, data) -> dict[str, Any]:
     return out
 
 
-def _lock(fd: int) -> None:
-    """Take an exclusive lock on byte 0 of ``fd``, waiting while another process holds it."""
-    if os.name != "nt":
-        import fcntl
-        fcntl.flock(fd, fcntl.LOCK_EX)
-        return
-    import errno
-    import msvcrt
-    while True:  # LK_LOCK gives up after 10 s; a holder keeps the lock for one write and fsync
-        try:
-            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-            return
-        except OSError as e:
-            if e.errno != errno.EACCES:
-                raise
-            time.sleep(0.01)
-
-
-def _unlock(fd: int) -> None:
-    if os.name != "nt":
-        import fcntl
-        fcntl.flock(fd, fcntl.LOCK_UN)
-    else:
-        import msvcrt
-        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
-
-
-def append_row(shard: Path, row: dict[str, Any]) -> None:
-    """Append ``row`` to ``shard`` as one JSON line, serialized across processes.
-
-    tools/t1_parallel.py runs one job per (dataset, seed), several at once, so jobs
-    of one dataset append to one shard. The Windows CRT emulates O_APPEND by seek
-    then write, so two unlocked appends can land at one offset and one row overwrites
-    the other. Each append holds an exclusive OS lock on ``<shard>.lock`` (a separate
-    file, so the shard stays readable) and writes the line in one write, fsynced
-    before the lock is released. The bytes equal the earlier text-mode append of
-    ``json.dumps(row) + "\\n"``, whose newline became ``os.linesep``.
-    """
-    data = (json.dumps(row) + os.linesep).encode("utf-8")
-    lock = os.open(shard.with_name(shard.name + ".lock"), os.O_RDWR | os.O_CREAT, 0o666)
-    try:
-        _lock(lock)  # the lock file is never written, so its position stays at byte 0
-        try:
-            fd = os.open(shard, os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0), 0o666)
-            try:
-                view = memoryview(data)
-                while view:  # one write; loops only after a short write
-                    view = view[os.write(fd, view):]
-                os.fsync(fd)
-            finally:
-                os.close(fd)
-        finally:
-            _unlock(lock)
-    finally:
-        os.close(lock)
-
-
-class FileSink:
-    """Per-run outputs as files under ``run_dir`` plus the shard row (the behaviour without ``--study``)."""
-
-    def __init__(self, runner: "Runner", run_dir: Path, dataset_key: str) -> None:
-        self.runner, self.run_dir, self.dataset_key = runner, run_dir, dataset_key
-
-    def json(self, name: str, obj: Any) -> None:
-        write_json(self.run_dir / name, obj)
-
-    def jsonl(self, name: str, rows: list) -> None:
-        write_jsonl(self.run_dir / name, rows)
-
-    def torch(self, name: str, obj: Any) -> None:
-        torch.save(to_cpu(obj), self.run_dir / name)
-
-    def row(self, row: dict) -> None:
-        # one shard per dataset; parallel jobs (one per dataset and seed) share it, so append under a lock
-        append_row(self.runner.out / f"runs__{self.dataset_key}.jsonl", row)
-
-
 class RunSink:
-    """The same outputs recorded into an open run unit (``--study``); see the module docstring."""
+    """One run's outputs recorded into its open run unit; see the module docstring."""
 
     RECORD = {"run_manifest.json": "manifest", "history.json": "history"}
 
@@ -512,7 +435,10 @@ class RunSink:
 
 
 class Runner:
-    def __init__(self, cfg: dict[str, Any], out_root: Path, study: str | None = None) -> None:
+    def __init__(self, cfg: dict[str, Any], out_root: Path, study: str) -> None:
+        """``study``: every run is recorded as a unit of this study (required); ``out_root`` keeps the inputs only."""
+        if not isinstance(study, str) or not study:
+            raise TypeError("Runner needs a study: every T1 run is recorded as a run unit (tools/t1_run.py --study)")
         self.cfg = cfg
         self.study = study
         self.exp = cfg["experiment"]
@@ -539,17 +465,19 @@ class Runner:
         roles = {d["task_type"] for d in self.cfg["datasets"] if d["name"] == ds["name"]}
         return f"{ds['task_type']}__{ds['name']}" if len(roles) > 1 or ds.get("qualified") else ds["name"]
 
-    def trained_core(self, data, seed: int, **over):
+    def core_config(self, data, seed: int, **over) -> CoreConfig:
         selected = self.cfg.get("core_by_dataset", {}).get(f"{data.task_type}__{data.name}", {})
-        cc = core_cfg_for(self.cfg, data.task_type, seed, **{**selected, **over})
+        return core_cfg_for(self.cfg, data.task_type, seed, **{**selected, **over})
+
+    def trained_core(self, data, seed: int, **over):
+        cc = self.core_config(data, seed, **over)
         model = build_model(data.X_train, data.y_train, cc, data.num_classes)
         tr = train_retrieval(model, data.X_train, data.y_train, data.X_val, data.y_val, cc)
         return model, cc, tr
 
     def observed_core(self, data, seed: int, **over):
         """``trained_core`` plus read-only per-epoch stability snapshots on validation probes."""
-        selected = self.cfg.get("core_by_dataset", {}).get(f"{data.task_type}__{data.name}", {})
-        cc = core_cfg_for(self.cfg, data.task_type, seed, **{**selected, **over})
+        cc = self.core_config(data, seed, **over)
         model = build_model(data.X_train, data.y_train, cc, data.num_classes)
         tracker = StabilityTracker(data.X_val, k=cc.top_k)
         tracker.snapshot(model, 0)
@@ -580,8 +508,6 @@ class Runner:
     def check_recorded(self, ds, seed) -> None:
         """Before any training of ``(ds, seed)``: each complete unit of this experiment, dataset and seed must hold
         the config this run would give it (its condition aside), else ConfigMismatchError now, not after training."""
-        if self.study is None:
-            return
         expected = self.unit_config(self.run_config(ds, seed, {}))
         expected.pop("condition")
         expected = payload_sha256(expected)
@@ -602,18 +528,85 @@ class Runner:
             print(f"[recorded] {key.run_id} is complete; not written again", flush=True)
         return info is not None
 
+    # ----------------------------------------------------------------- never retrained
+
+    def complete(self, ds, seed, label, cond):
+        """RunData of the unit ``label`` when it is complete with this run's config, else None; ConfigMismatchError
+        when it is complete with another config."""
+        return load_unit(self.unit_key(ds, label, seed), config=self.unit_config(self.run_config(ds, seed, cond)),
+                         arrays=False)
+
+    def skip(self, ds, seed, label, cond) -> bool:
+        """Call before any training of one run: True when its unit is complete. The RNG state the run left is then
+        restored, so the runs after it compute what they computed in an uninterrupted study."""
+        data = self.complete(ds, seed, label, cond)
+        if data is None:
+            return False
+        records.restore_rng_of(data)
+        print(f"[recorded] {data.info.run_id} is complete; not trained again", flush=True)
+        return True
+
+    def stage(self, ds, seed, name, units, compute):
+        """Shared training that the runs ``units`` (``[(label, cond)]``) continue, e.g. the trained core.
+
+        Returns None, training and loading nothing, when every one of those runs is complete. Otherwise the stage
+        unit ``<experiment>/<dataset>/_<name>/s<seed>`` provides it (``records.stage_unit``): loaded when complete
+        (its objects, then the RNG state its training left), else ``compute()`` runs and its dict is recorded first.
+        """
+        if all(self.complete(ds, seed, label, cond) is not None for label, cond in units):
+            return None
+        key = self.unit_key(ds, f"_{name}", seed)
+
+        def describe(run, objects):
+            if "tr" in objects:
+                run.log_record("history", records.ordered({"core": objects["tr"].history}))
+                records.log_curves(run, {"core": objects["tr"].history})
+        objects, loaded = records.stage_unit(key, self.unit_config(self.run_config(ds, seed, {"stage": name})),
+                                             compute, describe)
+        print(f"[recorded] {key.run_id} is complete; loaded, not trained again" if loaded else
+              f"[stage] {key.run_id} recorded", flush=True)
+        return objects
+
+    def core_stage(self, ds, seed, data, units, arm=None, observed=False, extra=None):
+        """The trained core of ``(ds, seed, arm)`` (``model``, ``cc``, ``tr`` and, observed, ``tracker``) as a stage;
+        ``extra(objects)`` adds more shared training to the same stage (e.g. the initial adapter)."""
+        def compute():
+            over = arm_core(arm)
+            if observed:
+                model, cc, tr, tracker = self.observed_core(data, seed, **over)
+                objects = {"model": model, "cc": cc, "tr": tr, "tracker": tracker}
+            else:
+                model, cc, tr = self.trained_core(data, seed, **over)
+                objects = {"model": model, "cc": cc, "tr": tr}
+            if extra is not None:
+                objects.update(extra(objects))
+            return objects
+        return self.stage(ds, seed, "core" if arm is None else f"core__{arm['name']}", units, compute)
+
+    def reuse_unit(self, task_type, cond, arm=None):
+        output_mode = cond["output_mode"] if task_type == "classification" else "aggregate_regression"
+        return arm_label(arm, cond.get("name", f"{output_mode}_{cond['loss']}")), {**arm_fields(arm), **cond}
+
+    def sync_unit(self, cond, arm=None):
+        capacity_match = self.cfg.get("capacity_match")
+        capacity_spec = capacity_match["K"] if capacity_match else self.cfg["sync"].get("K", 1.0)
+        label = cond.get("name", cond["schedule"]) + (f"_matched_K{capacity_spec}" if capacity_match else "")
+        return arm_label(arm, label), {**arm_fields(arm), **cond}
+
     def finish(self, *, ds, seed, cond_label, cond, run=None, **kw):
-        """Write one run's outputs: files and a shard row, or (``--study``) one unit, opened here unless ``run`` is given."""
-        if self.study is None:
-            return self._finish(FileSink(self, self.out / self.dataset_key(ds) / cond_label / f"s{seed}", self.dataset_key(ds)),
-                                ds=ds, seed=seed, cond_label=cond_label, cond=cond, **kw)
+        """Record one run into its unit (opened here unless ``run`` is given) with the RNG state and ID counter
+        positions it leaves (named states ``rng``, ``ids``); returns them."""
         if run is not None:
-            return self._finish(RunSink(run), ds=ds, seed=seed, cond_label=cond_label, cond=cond, **kw)
+            self._finish(RunSink(run), ds=ds, seed=seed, cond_label=cond_label, cond=cond, **kw)
+            return records.save_rng(run)
         key, run_cfg = self.unit_key(ds, cond_label, seed), self.run_config(ds, seed, cond)
-        if self.recorded(key, run_cfg):
-            return
+        if self.recorded(key, run_cfg):  # skip() refuses this before training; kept for a concurrent writer
+            return None
         with open_run(key, config=self.unit_config(run_cfg)) as unit:
             self._finish(RunSink(unit), ds=ds, seed=seed, cond_label=cond_label, cond=cond, **kw)
+            saved = records.save_rng(unit)
+        records.restore_after(saved)  # closing the unit leaves the RNG and the ID counters as the run did
+        return saved
 
     def _finish(self, sink, *, ds, seed, cond_label, cond, data, model, store, archive, metrics, history, events, components, budgets, maintenance, model_desc, extra_files=None, prediction_adapter=None, binary_files=None, optimizer=None, adapter_optimizer_state=None, optimizer_checkpoint_epoch=None):
         dataset_key = self.dataset_key(ds)
@@ -671,10 +664,9 @@ class Runner:
     def run_legacy_reference(self, ds, seed):
         """Phase 0: the maintained NN-kNN trainer (current behavior) on the same splits."""
         cond = {"variant": "maintained_train_model"}
-        if self.study is not None:
-            key, run_cfg = self.unit_key(ds, "legacy", seed), self.run_config(ds, seed, cond)
-            if self.recorded(key, run_cfg):  # before the data is loaded
-                return None
+        if self.skip(ds, seed, "legacy", cond):  # before the data is loaded
+            return None
+        key, run_cfg = self.unit_key(ds, "legacy", seed), self.run_config(ds, seed, cond)
         data = self.data_for(ds, seed)
         if data.task_type == "classification":
             from model.classification_workflow import make_classification_cfg
@@ -684,15 +676,11 @@ class Runner:
             from model.regression_workflow import make_regression_cfg
 
             lcfg = make_regression_cfg({**self.cfg["legacy"].get("overrides", {}), **self.cfg["legacy"]["regression_overrides"]})
-        if self.study is None:
-            run_dir = self.out / ds["name"] / "legacy" / f"s{seed}"
-            run_dir.mkdir(parents=True, exist_ok=True)
-            lcfg["checkpoint_path"] = str(run_dir / "legacy_best.pth")
-            return self._legacy_reference(ds, seed, data, lcfg, cond, None)
-        # recorded: train_model writes no checkpoint file; it records its curves and best/final states into the
-        # unit and can resume an interrupted training from the unit's resume checkpoint
+        # train_model writes no checkpoint file: it records its curves and best/final states into the unit and
+        # resumes an interrupted training from the unit's resume checkpoint
         with open_run(key, config=self.unit_config(run_cfg)) as run:
-            self._legacy_reference(ds, seed, data, lcfg, cond, run)
+            saved = self._legacy_reference(ds, seed, data, lcfg, cond, run)
+        records.restore_after(saved)
 
     def _legacy_reference(self, ds, seed, data, lcfg, cond, run):
         from model.nnknn_model import train_model
@@ -700,22 +688,26 @@ class Runner:
         torch.manual_seed(seed)
         np.random.seed(seed)
         t0 = time.time()
-        tracking = {} if run is None else {"run": run, "resumable": True}
-        _, _, model = train_model(data.X_train, data.y_train, data.X_val, data.y_val, None, lcfg, **tracking)
+        _, _, model = train_model(data.X_train, data.y_train, data.X_val, data.y_val, None, lcfg, run=run, resumable=True)
         m = test_metrics(model, data)
         m["train_seconds"] = time.time() - t0
         m["n_cases"] = model.case_count()
-        self.finish(ds=ds, seed=seed, cond_label="legacy", cond=cond, run=run, data=data, model=model, store=None, archive=None, metrics=m, history=[], events=[],
+        return self.finish(ds=ds, seed=seed, cond_label="legacy", cond=cond, run=run, data=data, model=model, store=None, archive=None, metrics=m, history=[], events=[],
                     components={"retrieve": "maintained core", "reuse_or_adapter": "off", "revise": "off", "retain": "none (full memory)", "mcb": "off", "component_synchronization": "off"},
                     budgets={"case_capacity": model.case_count(), "training_epochs_max": lcfg.get("training_epochs")}, maintenance={"policy": "none"}, model_desc={"baseline_or_nnknn_variant": "legacy maintained train_model", "cfg": lcfg})
 
     def run_retention(self, ds, seed):
         data = self.data_for(ds, seed)
-        base, cc, tr = self.trained_core(data, seed)
-        base_metrics = test_metrics(base, data, "fullmem")
+        units = [(f"{cond['policy']}_K{K_spec}", {**cond, "K": K_spec}) for cond in self.cfg["conditions"] for K_spec in self.cfg["K"]]
+        core = self.core_stage(ds, seed, data, units)
+        if core is not None:
+            base, cc, tr = core["model"], core["cc"], core["tr"]
+            base_metrics = test_metrics(base, data, "fullmem")
         proto = self.cfg["protocol"]
         for cond in self.cfg["conditions"]:
             for K_spec in self.cfg["K"]:
+                if self.skip(ds, seed, f"{cond['policy']}_K{K_spec}", {**cond, "K": K_spec}):
+                    continue
                 model = copy.deepcopy(base)
                 n = model.case_count()
                 K = resolve_K(K_spec, n)
@@ -743,11 +735,14 @@ class Runner:
     def run_reuse(self, ds, seed):
         data = self.data_for(ds, seed)
         for arm in self.arms():
-            model, cc, tr = self.trained_core(data, seed, **arm_core(arm))
-            store_a = CaseStatisticsStore(data.task_type)
-            audit(model, data, self.cfg, store_a, 0)
+            units = [self.reuse_unit(data.task_type, cond, arm) for cond in self.cfg["conditions"]]
+            core = self.core_stage(ds, seed, data, units, arm)
+            if core is not None:
+                store_a = CaseStatisticsStore(data.task_type)
+                audit(core["model"], data, self.cfg, store_a, 0)
             for cond in self.cfg["conditions"]:
-                self.reuse_condition(ds, seed, data, model, cc, tr, cond, arm)
+                if not self.skip(ds, seed, *self.reuse_unit(data.task_type, cond, arm)):
+                    self.reuse_condition(ds, seed, data, core["model"], core["cc"], core["tr"], cond, arm)
 
     def reuse_condition(self, ds, seed, data, model, cc, tr, cond, arm=None):
         """Train one frozen-retrieval adapter on ``model`` and record pre/post outcomes.
@@ -766,7 +761,7 @@ class Runner:
         vev = adapted_metrics(model, adapter, data, "val", self.cfg, rc)
         store_b = CaseStatisticsStore(data.task_type)
         ainfo = audit(model, data, self.cfg, store_b, 0, adapter=adapter)
-        label = arm_label(arm, cond.get("name", f"{output_mode}_{cond['loss']}"))
+        label = self.reuse_unit(data.task_type, cond, arm)[0]
         m = {**{f"test_{k}": v for k, v in ev.items() if not isinstance(v, dict)},
              **{f"test_flip_{k}": v for k, v in ev.get("flips", {}).items()},
              **{f"val_{k}": v for k, v in vev.items() if not isinstance(v, dict)},
@@ -796,40 +791,58 @@ class Runner:
             sync_maintenance_for(cond, self.cfg, seed)  # refuse a bad condition before any training
         data = self.data_for(ds, seed)
         for arm in self.cfg["arms"]:
-            base, cc, tr, tracker = self.observed_core(data, seed, **arm_core(arm))
-            m = {**test_metrics(base, data), **val_metrics(base, data), "n_cases": base.case_count(),
-                 "core_epochs_run": tr.epochs_run, "core_best_epoch": tr.best_epoch,
-                 **stability_summary(tracker.records, "core"), **online_ema_gap(base),
-                 "test_locality_input": input_locality(base, data.X_test)}
-            self.finish(ds=ds, seed=seed, cond_label=arm_label(arm, "retrieval_only"),
-                        cond={**arm_fields(arm), "setting": "retrieval_only"}, data=data, model=base,
-                        store=None, archive=None, metrics=m, history={"core": tr.history}, events=[],
-                        components={"retrieve": f"NN-kNN core ({cc.representation})", "reuse_or_adapter": "off", "revise": "off",
-                                    "retain": "none (full memory)", "mcb": "on" if cc.mcb_enabled else "off",
-                                    "component_synchronization": "off"},
-                        budgets={"case_capacity": base.case_count(), "core_epochs_max": cc.epochs,
-                                 "core_epochs_run": tr.epochs_run},
-                        maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "arm": arm},
-                        optimizer=tr.optimizer, optimizer_checkpoint_epoch={"retrieval": tr.best_epoch})
+            retrieval_only = (arm_label(arm, "retrieval_only"), {**arm_fields(arm), "setting": "retrieval_only"})
+            units = [retrieval_only, *(self.reuse_unit(data.task_type, cond, arm) for cond in self.cfg.get("reuse_conditions", [])),
+                     *(self.sync_unit(cond, arm) for cond in self.cfg.get("conditions") or [])]
+            core = self.core_stage(ds, seed, data, units, arm, observed=True)
+            if core is not None:
+                base, cc, tr, tracker = core["model"], core["cc"], core["tr"], core["tracker"]
+            if not self.skip(ds, seed, *retrieval_only):
+                self.retrieval_only(ds, seed, data, base, cc, tr, tracker, arm)
             for cond in self.cfg.get("reuse_conditions", []):
-                self.reuse_condition(ds, seed, data, base, cc, tr, cond, arm)
+                if not self.skip(ds, seed, *self.reuse_unit(data.task_type, cond, arm)):
+                    self.reuse_condition(ds, seed, data, base, cc, tr, cond, arm)
             if self.cfg.get("conditions"):
-                near_scale = near_scale_of(base)
+                near_scale = None if core is None else near_scale_of(base)
                 for cond in self.cfg["conditions"]:
-                    self.sync_condition(ds, seed, data, base, cc, tr, cond, arm, near_scale)
+                    if not self.skip(ds, seed, *self.sync_unit(cond, arm)):
+                        self.sync_condition(ds, seed, data, base, cc, tr, cond, arm, near_scale)
+
+    def retrieval_only(self, ds, seed, data, base, cc, tr, tracker, arm):
+        """Setting 1 of the encoder ablation: the trained core's retrieval-only output."""
+        m = {**test_metrics(base, data), **val_metrics(base, data), "n_cases": base.case_count(),
+             "core_epochs_run": tr.epochs_run, "core_best_epoch": tr.best_epoch,
+             **stability_summary(tracker.records, "core"), **online_ema_gap(base),
+             "test_locality_input": input_locality(base, data.X_test)}
+        self.finish(ds=ds, seed=seed, cond_label=arm_label(arm, "retrieval_only"),
+                    cond={**arm_fields(arm), "setting": "retrieval_only"}, data=data, model=base,
+                    store=None, archive=None, metrics=m, history={"core": tr.history}, events=[],
+                    components={"retrieve": f"NN-kNN core ({cc.representation})", "reuse_or_adapter": "off", "revise": "off",
+                                "retain": "none (full memory)", "mcb": "on" if cc.mcb_enabled else "off",
+                                "component_synchronization": "off"},
+                    budgets={"case_capacity": base.case_count(), "core_epochs_max": cc.epochs,
+                             "core_epochs_run": tr.epochs_run},
+                    maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "arm": arm},
+                    optimizer=tr.optimizer, optimizer_checkpoint_epoch={"retrieval": tr.best_epoch})
 
     def run_adapted_retrained_removal(self, ds, seed):
         """Optional high-cost final-output removal with actual continued adapters."""
         from model.t1.adapted_retraining import continued_adapted_trial, run_adapted_retrained_removal, matched_random_continuation
         from model.t1.retraining import reference_loss
         data = self.data_for(ds, seed)
-        base, cc, tr = self.trained_core(data, seed)
         rc = ReuseConfig(seed=seed, **self.cfg["reuse"])
         from model.t1.reuse import train_regression_adapter, evaluate_regression_reuse
-        initial_adapter, info = (train_classification_adapter(base, data, rc) if data.task_type == "classification"
-                                 else train_regression_adapter(base, data, rc))
+
+        def initial(core):  # the initial adapter is shared training too: part of the core's stage
+            adapter, info = (train_classification_adapter(core["model"], data, rc) if data.task_type == "classification"
+                             else train_regression_adapter(core["model"], data, rc))
+            return {"adapter": adapter, "info": info}
+        units = [(f"{cond['scope']}_K{kspec}", cond) for cond in self.cfg["conditions"] for kspec in self.cfg["K"]]
+        core = self.core_stage(ds, seed, data, units, extra=initial)
+        if core is not None:
+            base, cc, tr, initial_adapter, info = core["model"], core["cc"], core["tr"], core["adapter"], core["info"]
         actual_mode = rc.output_mode if data.task_type == "classification" else "aggregate_regression_residual"
-        model_desc = {"core": cc.__dict__, "adapter": rc.__dict__, "actual_adapter_mode": actual_mode}
+        model_desc = None if core is None else {"core": cc.__dict__, "adapter": rc.__dict__, "actual_adapter_mode": actual_mode}
         def evaluate_adapted(m, a):
             if data.task_type == "classification":
                 return evaluate_reuse(m, a, data.X_test, data.y_test, rc,
@@ -850,11 +863,14 @@ class Runner:
             reference_stream = cond.get("reference_stream", self.cfg["statistics"]["source"])
             condition_cfg["statistics"]["source"] = reference_stream
             # Validate a real independent stream before training any forks.
-            maintenance_reference(data, condition_cfg, initial_adapter).validate()
+            if core is not None:
+                maintenance_reference(data, condition_cfg, initial_adapter).validate()
             for kspec in self.cfg["K"]:
+                label = f"{cond['scope']}_K{kspec}"
+                if self.skip(ds, seed, label, cond):
+                    continue
                 store = CaseStatisticsStore(data.task_type)
                 audit(base, data, condition_cfg, store, 0, adapter=initial_adapter)
-                label = f"{cond['scope']}_K{kspec}"
                 model, opt, ad, ast, archive, result = run_adapted_retrained_removal(
                     base, tr.optimizer, initial_adapter, info["optimizer_state"], data, cc, rc,
                     maintenance_reference(data, condition_cfg, initial_adapter), store, score_cfg_for(condition_cfg),
@@ -914,11 +930,19 @@ class Runner:
         data = self.data_for(ds, seed)
         if data.task_type != "classification" or self.cfg["protocol"]["finetune_epochs"] != 0:
             raise ValueError("reuse_retention requires classification and frozen parameters (no finetune)")
-        base, cc, tr = self.trained_core(data, seed)
         rc = ReuseConfig(seed=seed, **self.cfg["reuse"])
-        adapter, info = train_classification_adapter(base, data, rc)
+
+        def adapter_stage(core):
+            adapter, info = train_classification_adapter(core["model"], data, rc)
+            return {"adapter": adapter, "info": info}
+        units = [(f"{cond['policy']}_K{kspec}", {**cond, "K": kspec}) for cond in self.cfg["conditions"] for kspec in self.cfg["K"]]
+        core = self.core_stage(ds, seed, data, units, extra=adapter_stage)
+        if core is not None:
+            base, cc, tr, adapter, info = core["model"], core["cc"], core["tr"], core["adapter"], core["info"]
         for cond in self.cfg["conditions"]:
             for kspec in self.cfg["K"]:
+                if self.skip(ds, seed, f"{cond['policy']}_K{kspec}", {**cond, "K": kspec}):
+                    continue
                 model = copy.deepcopy(base)
                 store, archive = CaseStatisticsStore(), CaseArchive()
                 ainfo = audit(model, data, self.cfg, store, 0, adapter=adapter)
@@ -950,30 +974,35 @@ class Runner:
         from model.t1.retraining import continued_trial, reference_loss, run_retrained_removal
 
         data = self.data_for(ds, seed)
-        base, cc, tr = self.trained_core(data, seed)
-        starting = {"model_state": base.state_dict(), "optimizer_state": tr.optimizer.state_dict(), "core": cc.__dict__}
-        if self.study is None:
-            initial = self.out / ds["name"] / f"starting_checkpoint_s{seed}.pt"
-            initial.parent.mkdir(parents=True, exist_ok=True)
-            torch.save(to_cpu(starting), initial)
-            starting_files = {}
-        else:  # recorded: every treatment unit keeps the starting weights as its named state starting_checkpoint
-            initial = "weights/starting_checkpoint.pt"
-            starting_files = {"starting_checkpoint.pt": starting}
+        units = [(f"{t}_K{kspec}", {"treatment": t, "K": kspec}) for kspec in self.cfg["K"] for t in self.cfg["treatments"]]
+        core = self.core_stage(ds, seed, data, units)
+        if core is not None:
+            base, cc, tr = core["model"], core["cc"], core["tr"]
+            starting = {"model_state": base.state_dict(), "optimizer_state": tr.optimizer.state_dict(), "core": cc.__dict__}
+        # every treatment unit keeps the starting weights as its named state starting_checkpoint
+        initial = "weights/starting_checkpoint.pt"
         budget = self.cfg["retraining"]
         for kspec in self.cfg["K"]:
-            K = resolve_K(kspec, base.case_count())
-            store = CaseStatisticsStore(data.task_type)
-            audit(base, data, self.cfg, store, 0)
-            ref = maintenance_reference(data, self.cfg)
-            scfg = score_cfg_for(self.cfg)
-            rcfg = retention_cfg_for({"policy": "removal_influence"}, self.cfg, seed)
-            trained, _, trained_archive, trained_res = run_retrained_removal(
-                base, tr.optimizer, data, cc, ref, store, scfg, rcfg, K,
-                epochs=int(budget["epochs_per_candidate"]), lr_scale=float(budget["lr_scale"]),
-                run_id=f"retrained-K{kspec}-s{seed}")
-            matched_epochs = trained_res["summary"]["accepted_model_training_epochs"]
+            if core is not None:
+                K = resolve_K(kspec, base.case_count())
+                ref = maintenance_reference(data, self.cfg)
+                scfg = score_cfg_for(self.cfg)
+                rcfg = retention_cfg_for({"policy": "removal_influence"}, self.cfg, seed)
+
+                def retrained():  # the retrained removal of this K: shared by its treatments, a stage of its own
+                    store = CaseStatisticsStore(data.task_type)
+                    audit(base, data, self.cfg, store, 0)
+                    model, _, archive, res = run_retrained_removal(
+                        base, tr.optimizer, data, cc, ref, store, scfg, rcfg, K,
+                        epochs=int(budget["epochs_per_candidate"]), lr_scale=float(budget["lr_scale"]),
+                        run_id=f"retrained-K{kspec}-s{seed}")
+                    return {"model": model, "archive": archive, "res": res}
+                removal = self.stage(ds, seed, f"retrained_K{kspec}", [u for u in units if u[1]["K"] == kspec], retrained)
+                if removal is not None:
+                    matched_epochs = removal["res"]["summary"]["accepted_model_training_epochs"]
             for treatment in self.cfg["treatments"]:
+                if self.skip(ds, seed, f"{treatment}_K{kspec}", {"treatment": treatment, "K": kspec}):
+                    continue
                 model = copy.deepcopy(base)
                 opt = clone_optimizer(tr.optimizer, model, cc)
                 local_store, archive = CaseStatisticsStore(data.task_type), CaseArchive()
@@ -982,7 +1011,7 @@ class Runner:
                 label = f"{treatment}_K{kspec}"
                 extra_seconds = 0.0
                 if treatment == "removal_retrained":
-                    model, archive, res = trained, trained_archive, trained_res
+                    model, archive, res = removal["model"], removal["archive"], removal["res"]
                 else:
                     policies = {"full_frozen": "full_memory", "full_matched": "full_memory",
                                 "random_frozen": "random", "random_matched": "random",
@@ -1029,17 +1058,19 @@ class Runner:
                             model_desc={"core": cc.__dict__},
                             extra_files={"maintenance_summary.json": res["summary"],
                                          "maintenance_scoring_trace.json": res.get("scoring_trace", [])},
-                            binary_files=starting_files)
+                            binary_files={"starting_checkpoint.pt": starting})
 
     def run_sync(self, ds, seed):
         for cond in self.cfg["conditions"]:
             sync_maintenance_for(cond, self.cfg, seed)  # refuse a bad condition before any training
         data = self.data_for(ds, seed)
         for arm in self.arms():
-            base, cc, tr = self.trained_core(data, seed, **arm_core(arm))
-            near_scale = near_scale_of(base)
+            units = [self.sync_unit(cond, arm) for cond in self.cfg["conditions"]]
+            core = self.core_stage(ds, seed, data, units, arm)
+            near_scale = None if core is None else near_scale_of(core["model"])
             for cond in self.cfg["conditions"]:
-                self.sync_condition(ds, seed, data, base, cc, tr, cond, arm, near_scale)
+                if not self.skip(ds, seed, *self.sync_unit(cond, arm)):
+                    self.sync_condition(ds, seed, data, core["model"], core["cc"], core["tr"], cond, arm, near_scale)
 
     def sync_condition(self, ds, seed, data, base, cc, tr, cond, arm=None, near_scale=None):
         """One synchronized condition continuing ``base`` or, with ``core_pretrain: false``,
@@ -1158,7 +1189,7 @@ class Runner:
                          for phase in ("retrieval", "adapter", "joint")}
         selected_updates = {phase: sum(h["optimizer_updates"] for h in info["history"]
             if h["phase"] == phase and h["epoch"] <= info["best_epoch"]) for phase in ("retrieval", "adapter", "joint")}
-        label = arm_label(arm, cond.get("name", cond["schedule"]) + (f"_matched_K{capacity_spec}" if capacity_match else ""))
+        label = self.sync_unit(cond, arm)[0]
         maintenance = {"policy": (self.cfg["retention"]["policy"] if rcfg is None else rcfg.policy) if events else "none"}
         if rcfg is not None:  # this condition's effective in-training settings (rows carry only its own keys)
             maintenance["in_training"] = {"K": K, "K_spec": k_spec, "maintenance_epochs": sorted(m_epochs),
@@ -1181,6 +1212,8 @@ class Runner:
     def run_mcb(self, ds, seed):
         data = self.data_for(ds, seed)
         for cond in self.cfg["conditions"]:
+            if self.skip(ds, seed, f"mcb{int(bool(cond['mcb']))}_{cond['policy']}_K{cond['K']}", cond):
+                continue
             cc = core_cfg_for(self.cfg, data.task_type, seed, mcb_enabled=bool(cond["mcb"]))
             model = build_model(data.X_train, data.y_train, cc, data.num_classes)
             store, archive, events = CaseStatisticsStore(data.task_type), CaseArchive(), []
@@ -1214,18 +1247,30 @@ class Runner:
         data = self.data_for(ds, seed)
         if not data.case_truth or "corrupted" not in data.case_truth:
             raise ValueError("revise experiment needs a synthetic dataset with known corruption")
-        model, cc, tr = self.trained_core(data, seed)
-        store = CaseStatisticsStore()
-        audit(model, data, self.cfg, store, 0)
-        ids = model.active_case_ids().cpu().numpy()
-        scores = score_cases(ids, active_cohorts(model), model.biases[: model.case_count()].detach().cpu().numpy(), store, score_cfg_for(self.cfg))
-        truth = data.case_truth["corrupted"]
         true_labels = data.meta.get("true_labels")
         if true_labels is None:
             raise ValueError("synthetic data must expose true labels for the simulated reviewer")
         rv = self.cfg["revise"]
-        rows = flagging_ablation(model, data, scores, cc, truth_corrupted=truth, true_labels=np.asarray(true_labels), budgets=rv["budgets"], methods=rv["methods"], retrain_epochs=rv["retrain_epochs"], run_id=f"{self.exp}-s{seed}", seed=seed, core_optimizer=tr.optimizer, retrain_lr_scale=float(rv["retrain_lr_scale"]), capture_artifacts=True, matched_training_control=bool(rv.get("matched_training_control", False)))
-        for r in rows:
+        units = [(f"{method}_b{b}", {"method": method, "review_budget": b}) for method in rv["methods"] for b in rv["budgets"]]
+        core = self.core_stage(ds, seed, data, units)
+
+        def ablation():  # every method and budget in one call: the revise stage
+            model, cc, tr = core["model"], core["cc"], core["tr"]
+            store = CaseStatisticsStore()
+            audit(model, data, self.cfg, store, 0)
+            ids = model.active_case_ids().cpu().numpy()
+            scores = score_cases(ids, active_cohorts(model), model.biases[: model.case_count()].detach().cpu().numpy(), store, score_cfg_for(self.cfg))
+            truth = data.case_truth["corrupted"]
+            return {"rows": flagging_ablation(model, data, scores, cc, truth_corrupted=truth, true_labels=np.asarray(true_labels), budgets=rv["budgets"], methods=rv["methods"], retrain_epochs=rv["retrain_epochs"], run_id=f"{self.exp}-s{seed}", seed=seed, core_optimizer=tr.optimizer, retrain_lr_scale=float(rv["retrain_lr_scale"]), capture_artifacts=True, matched_training_control=bool(rv.get("matched_training_control", False)))}
+        revised = None if core is None else self.stage(ds, seed, "revise", units, ablation)
+        if revised is None:  # every run is complete: restore their RNG states in order
+            for label, cond in units:
+                self.skip(ds, seed, label, cond)
+            return
+        cc, tr = core["cc"], core["tr"]
+        for r in revised["rows"]:
+            if self.skip(ds, seed, f"{r['method']}_b{r['review_budget']}", {"method": r["method"], "review_budget": r["review_budget"]}):
+                continue
             artifacts = r.pop("_artifacts")
             final_model = artifacts["final_model"]
             revised_data = copy.copy(data)
@@ -1273,29 +1318,27 @@ def check_unit_lengths(ap, runner, cfg, seeds, only_dataset) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("config")
-    ap.add_argument("--out", default=str(REPO / "results" / "t1_pi20260920"))
+    ap.add_argument("--out", default=str(REPO / "results" / "t1_pi20260920"),
+                    help="inputs only: the source snapshot zip and <dataset>/data_snapshot_s<seed>.pt")
     ap.add_argument("--only-dataset", default=None)
     ap.add_argument("--seeds", type=int, nargs="*", default=None)
-    ap.add_argument("--study", default=None,
-                    help="record every run as a unit under NN-KNN/runs/t1/<study>/<experiment>/ (or $NNKNN_RUNS) "
-                         "instead of writing per-run files and shard rows; off by default")
+    ap.add_argument("--study", required=True,
+                    help="every run is recorded as a unit under NN-KNN/runs/t1/<study>/<experiment>/ (or $NNKNN_RUNS)")
     args = ap.parse_args()
-    if args.study is not None:
-        try:  # the run root and the study name, before any data is loaded
-            records.check_study(args.study)
-        except (FileNotFoundError, ValueError) as exc:
-            ap.error(f"--study: {exc}")
+    try:  # the run root and the study name, before any data is loaded
+        records.check_study(args.study)
+    except (FileNotFoundError, ValueError) as exc:
+        ap.error(f"--study: {exc}")
     if os.environ.get("NNKNN_DETERMINISTIC") == "1":
         os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")  # required by deterministic cuBLAS
         torch.use_deterministic_algorithms(True)
     cfg = load_config(Path(args.config))
     if args.seeds is not None:
         cfg["seeds"] = args.seeds
-    runner = Runner(cfg, Path(args.out), **({} if args.study is None else {"study": args.study}))
+    runner = Runner(cfg, Path(args.out), args.study)
     fn = getattr(runner, f"run_{cfg['type']}")
     seeds = args.seeds if args.seeds else cfg["seeds"]
-    if args.study is not None:
-        check_unit_lengths(ap, runner, cfg, seeds, args.only_dataset)
+    check_unit_lengths(ap, runner, cfg, seeds, args.only_dataset)
     for ds in cfg["datasets"]:
         if args.only_dataset and ds["name"] != args.only_dataset:
             continue

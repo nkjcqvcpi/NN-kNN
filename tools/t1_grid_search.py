@@ -4,8 +4,8 @@ Screen every candidate on development validation streams, refit the declared
 number of finalists, freeze a winner, then evaluate it on fresh seeds. This is
 a matched local comparison, not certification against a live leaderboard.
 
-    python tools/t1_grid_search.py CONFIG --out DIR [--workers N]
-    python tools/t1_grid_search.py evaluate --grid DIR --families F.. --seeds S.. --out DIR2
+    python tools/t1_grid_search.py CONFIG --study S --out DIR [--workers N]
+    python tools/t1_grid_search.py evaluate --grid DIR --families F.. --seeds S.. --study S --out DIR2
         [--datasets TASK_KEY..] [--workers N]
 
 ``evaluate`` re-fits each frozen winner (``selection.json``) of an existing grid
@@ -15,14 +15,14 @@ NNKNN_DETERMINISTIC=1 turns on ``torch.use_deterministic_algorithms`` in workers
 (and sets CUBLAS_WORKSPACE_CONFIG as tools/t1_run.py); an output directory is
 resumed only under the setting it was started with.
 
-``--study S`` (both forms) records every trial as a run unit
-``NN-KNN/runs/t1/S/<task>/<family>/<stage>/<candidate>/s<seed>/`` instead of its trial directory: record
+``--study S`` (both forms, required) records every trial as the run unit
+``NN-KNN/runs/t1/S/<task>/<family>/<stage>/<candidate>/s<seed>/``; no trial file is written. Record
 ``trial`` (the receipt row), ``final/*`` numbers, arrays ``validation_prediction``/``validation_target`` (and on
 the test stream ``test_prediction``/``test_target``), named states ``model`` (a joblib model as its bytes) and ``data``.
 A unit complete with the same trial config (see ``trial_config``: data definition, source and runtime included) is
-reused like a receipt, one complete with another config raises ConfigMismatchError; a failed trial is marked failed in its unit (no failure.json) and
-refitted on the next run. The job and grid summaries (shortlist, selection, completed, evaluation, results,
-progress, study.json with ``"study": S``, training.log) are written as before.
+read back and never fitted again, one complete with another config raises ConfigMismatchError; a failed trial is
+marked failed in its unit and refitted on the next run. ``DIR`` holds the job and grid summaries (shortlist,
+selection, completed, evaluation, results, progress, study.json with ``"study": S``, training.log).
 """
 from __future__ import annotations
 
@@ -264,33 +264,8 @@ def compact_row(row):
     return {**row, "dataset": info}
 
 
-class TrialFiles:
-    """A trial's outputs as files in its trial directory (without ``--study``)."""
-
-    def __init__(self, path):
-        self.path = path
-
-    def predictions(self, name, prediction, target):
-        torch.save(dict(prediction=torch.as_tensor(prediction), target=target), self.path / f"{name}_predictions.pt")
-
-    def data(self, obj):
-        torch.save(obj, self.path / "data.pt")
-
-    def model(self, model, family, info):
-        if family in {"knn", "catboost"}:
-            joblib.dump(model, self.path / "model.joblib")
-        else:
-            torch.save(dict(model_state=model.state_dict(), info=info), self.path / "model.pt")
-
-    def receipt(self, row):
-        write_json(self.path / "receipt.json", row)
-
-    def failure(self, failure, exc):
-        write_json(self.path / "failure.json", failure)
-
-
 class TrialUnit:
-    """The same outputs recorded into the trial's run unit (``--study``)."""
+    """A trial's outputs recorded into its run unit."""
 
     def __init__(self, run):
         self.run = run
@@ -342,34 +317,27 @@ def trial_config(job, family, cid, params, stage, data, seed, epochs, patience, 
                 test=test, data=data_definition(data), source_sha256=source, runtime=trial_runtime(torch_threads))
 
 
-def run_trial(job, family, cid, params, stage, data, seed, epochs, patience, source, test=False, study=None):
-    """One receipt-backed fit of candidate ``cid``; an existing receipt is reused. ``data(seed)`` gives the splits.
-
-    With ``study`` the trial is the run unit ``t1/<study>/<task>/<family>/<stage>/<cid>/s<seed>`` instead
-    (task and family are the job directory's names); a unit complete with the same ``trial_config`` is reused like a
-    receipt (another config raises ConfigMismatchError).
+def run_trial(job, family, cid, params, stage, data, seed, epochs, patience, source, test=False, *, study):
+    """One fit of candidate ``cid``, recorded as the run unit ``t1/<study>/<task>/<family>/<stage>/<cid>/s<seed>``
+    (task and family are the job directory's names). ``data(seed)`` gives the splits. A unit complete with the same
+    ``trial_config`` is read back before anything is fitted (another config raises ConfigMismatchError).
     """
-    if study is not None:
-        key = records.key(study, Path(job).parent.name, Path(job).name, stage, cid, f"s{seed}")
-        config = trial_config(job, family, cid, params, stage, data, seed, epochs, patience, source, test)
-        info = resolve_unit(key, config=config)
-        if info is not None:
-            return compact_row(records.unordered(load_run(info.path, arrays=False).record("trial")))
-        run = open_run(key, config=config)
-        row = fit_trial(TrialUnit(run), family, cid, params, stage, data, seed, epochs, patience, source, test)
-        if row["status"] == "completed":
-            run.complete()
-        return row
-    path = Path(job) / stage / cid / f"s{seed}"
-    path.mkdir(parents=True, exist_ok=True)
-    receipt = path / "receipt.json"
-    if receipt.exists():
-        return compact_row(json.loads(receipt.read_text()))
-    return fit_trial(TrialFiles(path), family, cid, params, stage, data, seed, epochs, patience, source, test)
+    if not study:
+        raise TypeError("run_trial needs a study: every grid trial is recorded as a run unit")
+    key = records.key(study, Path(job).parent.name, Path(job).name, stage, cid, f"s{seed}")
+    config = trial_config(job, family, cid, params, stage, data, seed, epochs, patience, source, test)
+    info = resolve_unit(key, config=config)
+    if info is not None:
+        return compact_row(records.unordered(load_run(info.path, arrays=False).record("trial")))
+    run = open_run(key, config=config)
+    row = fit_trial(TrialUnit(run), family, cid, params, stage, data, seed, epochs, patience, source, test)
+    if row["status"] == "completed":
+        run.complete()
+    return row
 
 
 def fit_trial(out, family, cid, params, stage, data, seed, epochs, patience, source, test):
-    """Fit, evaluate and write one trial through ``out`` (TrialFiles or TrialUnit); returns its row or failure."""
+    """Fit, evaluate and record one trial through ``out`` (a TrialUnit); returns its row or failure."""
     started = time.perf_counter()
     try:
         full = data(seed)
@@ -408,7 +376,7 @@ def fit_trial(out, family, cid, params, stage, data, seed, epochs, patience, sou
         return failure
 
 
-def dataset_family(study, ds, family, out, run_study=None):
+def dataset_family(study, ds, family, out, run_study):
     out = Path(out)
     job = out / task_key(ds) / family
     job.mkdir(parents=True, exist_ok=True)
@@ -452,7 +420,7 @@ def dataset_family(study, ds, family, out, run_study=None):
         return result
 
 
-def evaluate_family(grid_dir, study, ds, family, seeds, out, run_study=None):
+def evaluate_family(grid_dir, study, ds, family, seeds, out, run_study):
     """Re-fit one task's frozen grid winner on ``seeds`` through the grid's evaluation stage.
 
     The winner comes from the grid's selection.json and must be a candidate of the
@@ -489,17 +457,16 @@ def evaluate_family(grid_dir, study, ds, family, seeds, out, run_study=None):
 
 
 def check_run_study(parser, run_study):
-    if run_study is not None:
-        try:  # the run root and the study name, before any trial runs
-            records.check_study(run_study)
-        except (FileNotFoundError, ValueError) as exc:
-            parser.error(f"--study: {exc}")
+    try:  # the run root and the study name, before any trial runs
+        records.check_study(run_study)
+    except (FileNotFoundError, ValueError) as exc:
+        parser.error(f"--study: {exc}")
 
 
 def check_trial_paths(parser, run_study, tasks, seeds):
     """Refuse, before any trial runs, a study whose deepest trial unit (stage ``evaluation``, a 16-character
     candidate id, the longest seed) would have too long an event file path."""
-    if run_study is not None and tasks and seeds:
+    if tasks and seeds:
         seed = f"s{max(seeds, key=lambda s: len(str(s)))}"
         try:
             records.check_unit_paths(run_study, [(task_key(ds), fam, "evaluation", "0" * 16, seed) for ds, fam in tasks])
@@ -550,7 +517,7 @@ def evaluate_main(argv):
     parser.add_argument("--out", required=True)
     parser.add_argument("--datasets", nargs="+", help="task keys <task_type>__<name>; default: every grid task")
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--study", help="record every trial as a run unit under NN-KNN/runs/t1/<study>/")
+    parser.add_argument("--study", required=True, help="every trial is recorded as a run unit under NN-KNN/runs/t1/<study>/")
     args = parser.parse_args(argv)
     check_run_study(parser, args.study)
     grid, out = Path(args.grid).resolve(), Path(args.out).resolve()
@@ -588,7 +555,7 @@ def evaluate_main(argv):
         record = dict(grid=str(grid), grid_configuration_id=frozen["configuration_id"],
             grid_source_sha256=frozen["source_sha256"], source_sha256=source, environment=baseline_environment(),
             git=git_state(REPO), test_based_selection=False, selection_source="grid selection.json, frozen",
-            invocations=[invocation], **({"study": args.study} if args.study else {}))
+            invocations=[invocation], study=args.study)
         write_source_zip(out / "source.zip")
     write_json(record_path, record)
     study.update(source_sha256=source, grid_source_sha256=frozen["source_sha256"])
@@ -606,7 +573,7 @@ def main(argv=None):
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--only-dataset")
     parser.add_argument("--only-family")
-    parser.add_argument("--study", help="record every trial as a run unit under NN-KNN/runs/t1/<study>/")
+    parser.add_argument("--study", required=True, help="every trial is recorded as a run unit under NN-KNN/runs/t1/<study>/")
     args = parser.parse_args(argv)
     check_run_study(parser, args.study)
     study = yaml.safe_load(Path(args.config).read_text())
@@ -620,7 +587,6 @@ def main(argv=None):
     frozen = out / "study.json"
     # Recorded only when on, so default study.json files are unchanged; a resume may not switch it.
     deterministic = dict(deterministic_algorithms=True) if deterministic_requested() else {}
-    recorded = {"study": args.study} if args.study else {}  # like deterministic: absent by default
     if frozen.exists():
         old = json.loads(frozen.read_text())
         if old["source_sha256"] != source or old["configuration_id"] != config_id(study):
@@ -632,7 +598,7 @@ def main(argv=None):
     else:
         write_json(frozen, dict(configuration=study, configuration_id=config_id(study), source_sha256=source,
             environment=baseline_environment(), git=git_state(REPO), test_based_selection=False,
-            expected_jobs=len(study["datasets"])*len(study["families"]), **deterministic, **recorded))
+            expected_jobs=len(study["datasets"])*len(study["families"]), **deterministic, study=args.study))
         write_source_zip(out / "source.zip")
     study["source_sha256"] = source
     run_jobs(lambda pool, ds, fam: pool.submit(dataset_family, study, ds, fam, str(out), args.study), tasks, out, args.workers)
