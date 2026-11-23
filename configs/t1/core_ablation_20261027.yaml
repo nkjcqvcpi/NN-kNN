@@ -71,3 +71,123 @@ variants:
   # H. budget and normaliser
   - {name: long, override: {epochs: 1000, patience: 100}}
   - {name: sparsemax, override: {case_normalizer: sparsemax}}
+# Grid winners copied from <grid>/<task>/nnknn/selection.json (2026-11-22), so the variants no longer read the
+# grid's files; sha256 is that of the selection file. The baseline rows of the summary still come from the grid.
+grid_winners:
+  regression__car:
+    candidate_id: d29e4c1ca62b28d3
+    parameters:
+      representation: raw
+      top_k: 3
+      lr_case: 0.001
+      glocal_fw_set_num: 1
+      tau: 0.5
+    sha256: fac873764974ba4466230f25c17069c4d51795f9adb528cf81085ee71f19737a
+  classification__digits:
+    candidate_id: aa075cee4e3123a2
+    parameters:
+      representation: raw
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 4
+      tau: 0.5
+    sha256: 9dd33cb5215df41a78d8fa6e4ea7dcdce7fe3a38bdb9b7589d663461f181aa5e
+  regression__tabarena_363625:
+    candidate_id: 0a343ea25204a673
+    parameters:
+      representation: mlp
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 4
+      tau: 1.0
+    sha256: e77b9b896b70161ae012068e922959b37d2c7fc1ec5361f98a5e4ae785690884
+  regression__energy_efficiency:
+    candidate_id: ce9562187fd7d8b9
+    parameters:
+      representation: raw
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 1
+      tau: 0.5
+    sha256: 62bf06b8d9854a9e74226135483cf55ddea2104723268915b66980b80766f0aa
+  classification__balance:
+    candidate_id: 44e9fa6324bade1d
+    parameters:
+      representation: mlp
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 1
+      tau: 0.5
+    sha256: 62b9937fe17e16d9ee7f4297d30f68b755e1195f9e1ed8dc75db8ff441955cac
+  classification__tabarena_363626:
+    candidate_id: 247e106f78401d72
+    parameters:
+      representation: raw
+      top_k: 10
+      lr_case: 0.001
+      glocal_fw_set_num: 4
+      tau: 0.5
+    sha256: ff5626f54ff8f14e0142320a24b22dda087535b8fb6862074c25a3759cccd90c
+  regression__student_performance:
+    candidate_id: e447bf3607f00eef
+    parameters:
+      representation: raw
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 4
+      tau: 1.0
+    sha256: dfcd16262828a5b985bc84a2dc715d63fb52b12ec4cd52b7da0f2da63cc7d6b4
+  regression__tabarena_363675:
+    candidate_id: e447bf3607f00eef
+    parameters:
+      representation: raw
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 4
+      tau: 1.0
+    sha256: dfcd16262828a5b985bc84a2dc715d63fb52b12ec4cd52b7da0f2da63cc7d6b4
+  classification__breast_cancer:
+    candidate_id: 442364a5bdcf9305
+    parameters:
+      representation: raw
+      top_k: 3
+      lr_case: 0.01
+      glocal_fw_set_num: 1
+      tau: 1.0
+    sha256: 4510bb3fccd343aacee29756e61828683eecf5ebec6e771c155489fea3ba8928
+  regression__yacht:
+    candidate_id: 442364a5bdcf9305
+    parameters:
+      representation: raw
+      top_k: 3
+      lr_case: 0.01
+      glocal_fw_set_num: 1
+      tau: 1.0
+    sha256: 4510bb3fccd343aacee29756e61828683eecf5ebec6e771c155489fea3ba8928
+  classification__zebra_special:
+    candidate_id: ce9562187fd7d8b9
+    parameters:
+      representation: raw
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 1
+      tau: 0.5
+    sha256: 62bf06b8d9854a9e74226135483cf55ddea2104723268915b66980b80766f0aa
+  classification__wine:
+    candidate_id: 804048d94537e789
+    parameters:
+      representation: mlp
+      top_k: 3
+      lr_case: 0.01
+      glocal_fw_set_num: 4
+      tau: 1.0
+    sha256: 6fbdb6d8b93a591cf0385b494a0e52405ef386650451d6be131a09e783f2e6bd
+  classification__zebra:
+    candidate_id: 08dfe959a43b1837
+    parameters:
+      representation: raw
+      top_k: 3
+      lr_case: 0.01
+      glocal_fw_set_num: 4
+      tau: 0.5
+    sha256: 1de89d470956621c5a9b389111ed8f33690c8d9ae25514a75b27c41084da2b03
