@@ -18,6 +18,7 @@ import torch.optim as optim
 
 from datasets.rl_tasks import get_rl_task_spec
 from model.cnn_encoders import NATURE_CNN_FEATURE_DIM, NatureCNNEncoder
+from model.t2 import runs as t2runs
 from model.rl_workflow import (
     ObservationSpec,
     _build_early_stopping_tracker,
@@ -612,8 +613,15 @@ def train_nec(
     output_dir: str | Path | None = None,
     device: str | torch.device | None = None,
     progress: bool = True,
+    run: Any = None,
+    resumable: bool = False,
 ) -> dict[str, Any]:
-    """Train an NEC baseline and write reproducible run artifacts."""
+    """Train an NEC baseline and write reproducible run artifacts.
+
+    ``run`` and ``resumable`` as in ``train_dqn`` (model/t2/runs.py): with an open tracking run the artifacts are
+    records and named states of the run, no file is written; ``resumable=True`` checkpoints at episode
+    boundaries (network, optimizer, DND, replay buffer, candidate and best states, rows, RNG, action sampler).
+    """
 
     spec = get_rl_task_spec(task_name)
     cfg = config or make_nec_config(spec.default_profile)
@@ -644,14 +652,19 @@ def train_nec(
                            **adam_kwargs_for_device(run_device))
     replay_buffer = NECReplayBuffer.create_for_observation(cfg.replay_size, obs_spec)
 
-    run_dir = Path(output_dir) if output_dir is not None else make_nec_output_dir(spec.name)
-    run_dir.mkdir(parents=True, exist_ok=True)
+    if t2runs.is_recording(run):
+        out = t2runs.RunOutput(run, None, resumable=resumable)
+        run_dir = out.dir
+    else:
+        run_dir = Path(output_dir) if output_dir is not None else make_nec_output_dir(spec.name)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        out = t2runs.RunOutput(None, run_dir, resumable=resumable)
     checkpoint_path = run_dir / "checkpoint.pt"
     created_at = datetime.now(timezone.utc)
 
-    training_rows: list[dict[str, Any]] = []
-    loss_rows: list[dict[str, Any]] = []
-    eval_rows: list[dict[str, Any]] = []
+    training_rows = out.rows("training_metrics.csv")
+    loss_rows = out.rows("loss_metrics.csv")
+    eval_rows = out.rows("eval_metrics.csv")
     latest_loss: float | None = None
     latest_q_value: float | None = None
     best_eval: dict[str, Any] | None = None
@@ -675,9 +688,48 @@ def train_nec(
     episode_return = 0.0
     episode_length = 0
     episode_index = 0
+    start_step = 0
+
+    def resume_state() -> dict[str, Any]:
+        return t2runs.tensorize({
+            "model": model.state_dict(), "optimizer": optimizer.state_dict(), "dnd": dnd.to_state(),
+            "replay": t2runs.replay_state(replay_buffer),
+            "action_space_rng": t2runs.space_rng_state(env.action_space),
+            "latest_loss": latest_loss, "latest_q_value": latest_q_value,
+            "best_eval": best_eval, "best_eval_step": best_eval_step,
+            "best_model_state": best_model_state, "best_dnd_state": best_dnd_state,
+            "candidate_episode_return": candidate_episode_return, "candidate_model_state": candidate_model_state,
+            "candidate_dnd_state": candidate_dnd_state, "candidate_step": candidate_step,
+            "candidate_episode": candidate_episode,
+            "early_stopping": t2runs.tracker_state(early_stopping),
+            "episode_index": episode_index, "actual_timesteps": actual_timesteps,
+        })
+
+    payload = out.load_resume()
+    if payload is not None:
+        saved = payload.state
+        model.load_state_dict(saved["model"])
+        optimizer.load_state_dict(saved["optimizer"])
+        dnd = DifferentiableNeuralDictionary.from_state(t2runs.numpyize(saved["dnd"]))
+        t2runs.load_replay_state(replay_buffer, saved["replay"])
+        latest_loss, latest_q_value = saved["latest_loss"], saved["latest_q_value"]
+        best_eval, best_eval_step = saved["best_eval"], saved["best_eval_step"]
+        best_model_state = saved["best_model_state"]
+        best_dnd_state = None if saved["best_dnd_state"] is None else t2runs.numpyize(saved["best_dnd_state"])
+        candidate_episode_return = saved["candidate_episode_return"]
+        candidate_model_state = saved["candidate_model_state"]
+        candidate_dnd_state = (None if saved["candidate_dnd_state"] is None
+                               else t2runs.numpyize(saved["candidate_dnd_state"]))
+        candidate_step, candidate_episode = saved["candidate_step"], saved["candidate_episode"]
+        t2runs.load_tracker_state(early_stopping, saved["early_stopping"])
+        episode_index, actual_timesteps = saved["episode_index"], saved["actual_timesteps"]
+        start_step = payload.step  # checkpoints are taken right after an episode ended and the env was reset
+        obs, _ = env.reset(seed=cfg.seed + episode_index)
+        t2runs.set_space_rng_state(env.action_space, saved["action_space_rng"])
+        payload.restore_rng()
 
     try:
-        for global_step in range(cfg.total_timesteps):
+        for global_step in range(start_step, cfg.total_timesteps):
             completed_step = global_step + 1
             stop_requested = False
             epsilon = _linear_schedule(
@@ -788,6 +840,10 @@ def train_nec(
                         "q_values": json.dumps(q_values),
                     }
                 )
+                out.curve(completed_step, {"episode/return": episode_return, "episode/length": episode_length,
+                                           "episode/epsilon": epsilon,
+                                           "episode/dictionary_entries": dnd.total_size(),
+                                           "train/loss": latest_loss, "train/mean_q_value": latest_q_value})
                 if progress and (episode_index <= 5 or episode_index % 10 == 0):
                     print(
                         "[nec] "
@@ -834,6 +890,8 @@ def train_nec(
                         "dictionary_entries": dnd.total_size(),
                     }
                     eval_rows.append(eval_row)
+                    out.curve(completed_step, {"eval/mean_return": eval_row["mean_return"],
+                                               "eval/std_return": eval_row["std_return"]})
                     if best_eval is None or eval_metrics["mean_return"] > best_eval["mean_return"]:
                         best_eval = eval_metrics
                         best_eval_step = int(candidate_step or completed_step)
@@ -892,6 +950,8 @@ def train_nec(
                     "dictionary_entries": dnd.total_size(),
                 }
                 eval_rows.append(eval_row)
+                out.curve(completed_step, {"eval/mean_return": eval_row["mean_return"],
+                                           "eval/std_return": eval_row["std_return"]})
                 if best_eval is None or eval_metrics["mean_return"] > best_eval["mean_return"]:
                     best_eval = eval_metrics
                     best_eval_step = completed_step
@@ -911,6 +971,9 @@ def train_nec(
                             flush=True,
                         )
                     break
+
+            if episode_done and out.checkpoint_due(completed_step):
+                out.save_resume(resume_state(), step=completed_step)
 
         if episode_observations:
             partial_returns = _compute_n_step_returns(
@@ -1001,10 +1064,10 @@ def train_nec(
         "early_stopping": early_stopping.to_dict(),
         "passed": passed,
     }
-    torch.save(checkpoint, checkpoint_path)
+    checkpoint_path = out.save_checkpoint("checkpoint.pt", checkpoint)
 
-    _write_json(
-        run_dir / "config.json",
+    out.write_json(
+        "config.json",
         {
             "created_at_utc": created_at.isoformat(),
             "task": spec.to_dict(),
@@ -1015,11 +1078,11 @@ def train_nec(
             "runtime": runtime_env_fingerprint(),
         },
     )
-    _write_csv(run_dir / "training_metrics.csv", training_rows)
-    _write_csv(run_dir / "loss_metrics.csv", loss_rows)
-    _write_csv(run_dir / "eval_metrics.csv", eval_rows)
-    _write_csv(run_dir / "final_eval_episodes.csv", selected_eval["episode_metrics"])
-    _write_csv(run_dir / "last_eval_episodes.csv", last_eval["episode_metrics"])
+    out.write_csv("training_metrics.csv", training_rows)
+    out.write_csv("loss_metrics.csv", loss_rows)
+    out.write_csv("eval_metrics.csv", eval_rows)
+    out.write_csv("final_eval_episodes.csv", selected_eval["episode_metrics"])
+    out.write_csv("last_eval_episodes.csv", last_eval["episode_metrics"])
     summary = {
         "task": spec.name,
         "env_id": spec.env_id,
@@ -1038,30 +1101,32 @@ def train_nec(
         "training_efficiency": training_efficiency,
         "early_stopping": early_stopping.to_dict(),
         "dictionary_entries": dnd.total_size(),
-        "checkpoint_path": str(checkpoint_path),
-        "run_dir": str(run_dir),
+        "checkpoint_path": out.where(checkpoint_path),
+        "run_dir": out.where(),
     }
-    _write_json(run_dir / "summary.json", summary)
-    _write_json(
-        run_dir / "manifest.json",
-        {
-            "created_at_utc": created_at.isoformat(),
-            "task": spec.name,
-            "env_id": spec.env_id,
-            "profile": cfg.profile,
-            "outputs": [
-                "config.json",
-                "training_metrics.csv",
-                "loss_metrics.csv",
-                "eval_metrics.csv",
-                "final_eval_episodes.csv",
-                "last_eval_episodes.csv",
-                "summary.json",
-                "manifest.json",
-                "checkpoint.pt",
-            ],
-        },
-    )
+    out.write_json("summary.json", summary)
+    out.finish(t2runs.headline(summary))
+    if not out.recording:
+        _write_json(
+            run_dir / "manifest.json",
+            {
+                "created_at_utc": created_at.isoformat(),
+                "task": spec.name,
+                "env_id": spec.env_id,
+                "profile": cfg.profile,
+                "outputs": [
+                    "config.json",
+                    "training_metrics.csv",
+                    "loss_metrics.csv",
+                    "eval_metrics.csv",
+                    "final_eval_episodes.csv",
+                    "last_eval_episodes.csv",
+                    "summary.json",
+                    "manifest.json",
+                    "checkpoint.pt",
+                ],
+            },
+        )
     if progress:
         print(
             "[nec] finished "
@@ -1092,8 +1157,11 @@ def load_nec_checkpoint(
     device: str | torch.device | None = None,
 ) -> dict[str, Any]:
     run_device = _resolve_device_arg(device)
-    checkpoint_path = Path(checkpoint_path)
-    checkpoint = torch.load(checkpoint_path, map_location=run_device, weights_only=False)
+    checkpoint_path, checkpoint = t2runs.checkpoint_source(checkpoint_path)  # a run unit: its checkpoint state
+    if checkpoint is None:
+        checkpoint = torch.load(checkpoint_path, map_location=run_device, weights_only=False)
+    else:
+        checkpoint["dnd_state"] = t2runs.numpyize(checkpoint["dnd_state"])
     config_data = dict(checkpoint["config"])
     config_data["hidden_sizes"] = tuple(config_data["hidden_sizes"])
     cfg = NECConfig(**config_data)

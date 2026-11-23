@@ -22,6 +22,7 @@ from datasets.rl_tasks import (
 )
 from model.cnn_encoders import NATURE_CNN_FEATURE_DIM, NatureCNNEncoder
 from model.device_utils import runtime_env_fingerprint, adam_kwargs_for_device, resolve_runtime_device
+from model.t2 import runs as t2runs
 
 
 # Eval episodes on image (ALE) tasks are capped: a single Atari episode is
@@ -753,8 +754,16 @@ def train_dqn(
     output_dir: str | Path | None = None,
     device: str | torch.device | None = None,
     progress: bool = True,
+    run: Any = None,
+    resumable: bool = False,
 ) -> dict[str, Any]:
-    """Train a DQN baseline and write reproducible run artifacts."""
+    """Train a DQN baseline and write reproducible run artifacts.
+
+    Without ``run`` the artifacts are files in ``output_dir`` (as always). With an open tracking run they are
+    records and named states of that run instead, and no file is written (``model/t2/runs.py``); the caller
+    completes the run. ``resumable=True`` (recording only) checkpoints at episode boundaries (networks, optimizer,
+    replay buffer, best state, rows, RNG and the action-space sampler) and resumes from the last checkpoint.
+    """
 
     spec = get_rl_task_spec(task_name)
     cfg = config or make_dqn_config(spec.default_profile)
@@ -771,14 +780,19 @@ def train_dqn(
                            **adam_kwargs_for_device(run_device))
     replay_buffer = ReplayBuffer.create_for_observation(cfg.buffer_size, obs_spec)
 
-    run_dir = Path(output_dir) if output_dir is not None else make_dqn_output_dir(spec.name)
-    run_dir.mkdir(parents=True, exist_ok=True)
+    if t2runs.is_recording(run):
+        out = t2runs.RunOutput(run, None, resumable=resumable)
+        run_dir = out.dir
+    else:
+        run_dir = Path(output_dir) if output_dir is not None else make_dqn_output_dir(spec.name)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        out = t2runs.RunOutput(None, run_dir, resumable=resumable)
     checkpoint_path = run_dir / "checkpoint.pt"
     created_at = datetime.now(timezone.utc)
 
-    training_rows: list[dict[str, Any]] = []
-    loss_rows: list[dict[str, Any]] = []
-    eval_rows: list[dict[str, Any]] = []
+    training_rows = out.rows("training_metrics.csv")
+    loss_rows = out.rows("loss_metrics.csv")
+    eval_rows = out.rows("eval_metrics.csv")
     latest_loss: float | None = None
     latest_q_value: float | None = None
     best_eval: dict[str, Any] | None = None
@@ -792,9 +806,39 @@ def train_dqn(
     episode_return = 0.0
     episode_length = 0
     episode_index = 0
+    start_step = 0
+
+    def resume_state() -> dict[str, Any]:
+        return {
+            "q_network": q_network.state_dict(), "target_network": target_network.state_dict(),
+            "optimizer": optimizer.state_dict(), "replay": t2runs.replay_state(replay_buffer),
+            "action_space_rng": t2runs.space_rng_state(env.action_space),
+            "latest_loss": latest_loss, "latest_q_value": latest_q_value,
+            "best_eval": best_eval, "best_eval_step": best_eval_step,
+            "best_model_state": best_model_state, "best_target_state": best_target_state,
+            "early_stopping": t2runs.tracker_state(early_stopping),
+            "episode_index": episode_index, "actual_timesteps": actual_timesteps,
+        }
+
+    payload = out.load_resume()
+    if payload is not None:
+        saved = payload.state
+        q_network.load_state_dict(saved["q_network"])
+        target_network.load_state_dict(saved["target_network"])
+        optimizer.load_state_dict(saved["optimizer"])
+        t2runs.load_replay_state(replay_buffer, saved["replay"])
+        latest_loss, latest_q_value = saved["latest_loss"], saved["latest_q_value"]
+        best_eval, best_eval_step = saved["best_eval"], saved["best_eval_step"]
+        best_model_state, best_target_state = saved["best_model_state"], saved["best_target_state"]
+        t2runs.load_tracker_state(early_stopping, saved["early_stopping"])
+        episode_index, actual_timesteps = saved["episode_index"], saved["actual_timesteps"]
+        start_step = payload.step  # checkpoints are taken right after an episode ended and the env was reset
+        obs, _ = env.reset(seed=cfg.seed + episode_index)
+        t2runs.set_space_rng_state(env.action_space, saved["action_space_rng"])
+        payload.restore_rng()
 
     try:
-        for global_step in range(cfg.total_timesteps):
+        for global_step in range(start_step, cfg.total_timesteps):
             completed_step = global_step + 1
             epsilon = _linear_schedule(
                 cfg.start_e,
@@ -864,6 +908,9 @@ def train_dqn(
                         "mean_q_value": latest_q_value,
                     }
                 )
+                out.curve(global_step + 1, {"episode/return": episode_return, "episode/length": episode_length,
+                                            "episode/epsilon": epsilon, "train/loss": latest_loss,
+                                            "train/mean_q_value": latest_q_value})
                 if progress and (episode_index <= 5 or episode_index % 10 == 0):
                     print(
                         "[dqn] "
@@ -897,6 +944,8 @@ def train_dqn(
                     "episodes": cfg.eval_episodes,
                 }
                 eval_rows.append(eval_row)
+                out.curve(completed_step, {"eval/mean_return": eval_row["mean_return"],
+                                           "eval/std_return": eval_row["std_return"]})
                 if best_eval is None or eval_metrics["mean_return"] > best_eval["mean_return"]:
                     best_eval = eval_metrics
                     best_eval_step = completed_step
@@ -916,6 +965,9 @@ def train_dqn(
                             flush=True,
                         )
                     break
+
+            if episode_done and out.checkpoint_due(completed_step):
+                out.save_resume(resume_state(), step=completed_step)
     finally:
         env.close()
 
@@ -983,10 +1035,10 @@ def train_dqn(
         "early_stopping": early_stopping.to_dict(),
         "passed": passed,
     }
-    torch.save(checkpoint, checkpoint_path)
+    checkpoint_path = out.save_checkpoint("checkpoint.pt", checkpoint)
 
-    _write_json(
-        run_dir / "config.json",
+    out.write_json(
+        "config.json",
         {
             "created_at_utc": created_at.isoformat(),
             "task": spec.to_dict(),
@@ -997,11 +1049,11 @@ def train_dqn(
             "runtime": runtime_env_fingerprint(),
         },
     )
-    _write_csv(run_dir / "training_metrics.csv", training_rows)
-    _write_csv(run_dir / "loss_metrics.csv", loss_rows)
-    _write_csv(run_dir / "eval_metrics.csv", eval_rows)
-    _write_csv(run_dir / "final_eval_episodes.csv", selected_eval["episode_metrics"])
-    _write_csv(run_dir / "last_eval_episodes.csv", last_eval["episode_metrics"])
+    out.write_csv("training_metrics.csv", training_rows)
+    out.write_csv("loss_metrics.csv", loss_rows)
+    out.write_csv("eval_metrics.csv", eval_rows)
+    out.write_csv("final_eval_episodes.csv", selected_eval["episode_metrics"])
+    out.write_csv("last_eval_episodes.csv", last_eval["episode_metrics"])
     summary = {
         "task": spec.name,
         "env_id": spec.env_id,
@@ -1019,30 +1071,32 @@ def train_dqn(
         "selected_source": selected_source,
         "training_efficiency": training_efficiency,
         "early_stopping": early_stopping.to_dict(),
-        "checkpoint_path": str(checkpoint_path),
-        "run_dir": str(run_dir),
+        "checkpoint_path": out.where(checkpoint_path),
+        "run_dir": out.where(),
     }
-    _write_json(run_dir / "summary.json", summary)
-    _write_json(
-        run_dir / "manifest.json",
-        {
-            "created_at_utc": created_at.isoformat(),
-            "task": spec.name,
-            "env_id": spec.env_id,
-            "profile": cfg.profile,
-            "outputs": [
-                "config.json",
-                "training_metrics.csv",
-                "loss_metrics.csv",
-                "eval_metrics.csv",
-                "final_eval_episodes.csv",
-                "last_eval_episodes.csv",
-                "summary.json",
-                "manifest.json",
-                "checkpoint.pt",
-            ],
-        },
-    )
+    out.write_json("summary.json", summary)
+    out.finish(t2runs.headline(summary))
+    if not out.recording:
+        _write_json(
+            run_dir / "manifest.json",
+            {
+                "created_at_utc": created_at.isoformat(),
+                "task": spec.name,
+                "env_id": spec.env_id,
+                "profile": cfg.profile,
+                "outputs": [
+                    "config.json",
+                    "training_metrics.csv",
+                    "loss_metrics.csv",
+                    "eval_metrics.csv",
+                    "final_eval_episodes.csv",
+                    "last_eval_episodes.csv",
+                    "summary.json",
+                    "manifest.json",
+                    "checkpoint.pt",
+                ],
+            },
+        )
     if progress:
         print(
             "[dqn] finished "
@@ -1072,7 +1126,9 @@ def load_dqn_checkpoint(
     device: str | torch.device | None = None,
 ) -> dict[str, Any]:
     run_device = _resolve_device_arg(device)
-    checkpoint = torch.load(checkpoint_path, map_location=run_device)
+    checkpoint_path, checkpoint = t2runs.checkpoint_source(checkpoint_path)  # a run unit: its checkpoint state
+    if checkpoint is None:
+        checkpoint = torch.load(checkpoint_path, map_location=run_device)
     config_data = dict(checkpoint["config"])
     config_data["hidden_sizes"] = tuple(config_data["hidden_sizes"])
     cfg = DQNConfig(**config_data)

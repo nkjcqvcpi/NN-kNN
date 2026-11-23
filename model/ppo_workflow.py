@@ -70,6 +70,7 @@ import torch.optim as optim
 
 from datasets.rl_tasks import RLTaskSpec, get_rl_task_spec
 from model.cnn_encoders import NATURE_CNN_FEATURE_DIM, NatureCNNEncoder, orthogonal_layer_init
+from model.t2 import runs as t2runs
 from model.rl_workflow import (
     ObservationSpec,
     _build_early_stopping_tracker,
@@ -880,8 +881,16 @@ def train_ppo(
     output_dir: str | Path | None = None,
     device: str | torch.device | None = None,
     progress: bool = True,
+    run: Any = None,
+    resumable: bool = False,
 ) -> dict[str, Any]:
-    """Train a PPO baseline and write the shared run artifacts."""
+    """Train a PPO baseline and write the shared run artifacts.
+
+    ``run`` and ``resumable`` as in ``train_dqn`` (model/t2/runs.py): with an open tracking run the artifacts are
+    records and named states of the run, no file is written; ``resumable=True`` checkpoints at episode
+    boundaries, also in the middle of a rollout (agent, optimizer with its annealed learning rate, the partial
+    rollout buffers, best state, rows, RNG).
+    """
 
     spec = get_rl_task_spec(task_name)
     cfg = config or make_ppo_config(spec.default_profile)
@@ -900,14 +909,19 @@ def train_ppo(
     optimizer = optim.Adam(agent.parameters(), lr=cfg.learning_rate, eps=1e-5,
                            **adam_kwargs_for_device(run_device))
 
-    run_dir = Path(output_dir) if output_dir is not None else make_ppo_output_dir(spec.name)
-    run_dir.mkdir(parents=True, exist_ok=True)
+    if t2runs.is_recording(run):
+        out = t2runs.RunOutput(run, None, resumable=resumable)
+        run_dir = out.dir
+    else:
+        run_dir = Path(output_dir) if output_dir is not None else make_ppo_output_dir(spec.name)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        out = t2runs.RunOutput(None, run_dir, resumable=resumable)
     checkpoint_path = run_dir / "checkpoint.pt"
     created_at = datetime.now(timezone.utc)
 
-    training_rows: list[dict[str, Any]] = []
-    loss_rows: list[dict[str, Any]] = []
-    eval_rows: list[dict[str, Any]] = []
+    training_rows = out.rows("training_metrics.csv")
+    loss_rows = out.rows("loss_metrics.csv")
+    eval_rows = out.rows("eval_metrics.csv")
     latest_update: dict[str, Any] | None = None
     best_eval: dict[str, Any] | None = None
     best_eval_step: int | None = None
@@ -922,25 +936,69 @@ def train_ppo(
     episode_length = 0
     global_step = 0
     stop_requested = False
+    resumed_rollout: dict[str, Any] | None = None
+
+    def resume_state(next_step: int) -> dict[str, Any]:
+        return {
+            "agent": agent.state_dict(), "optimizer": optimizer.state_dict(),
+            "latest_update": latest_update, "best_eval": best_eval, "best_eval_step": best_eval_step,
+            "best_model_state": best_model_state, "early_stopping": t2runs.tracker_state(early_stopping),
+            "actual_timesteps": actual_timesteps, "update_index": update_index, "episode_index": episode_index,
+            "global_step": global_step,
+            "rollout": {  # the rollout in progress; next_step is the index of its next environment step
+                "learning_rate": learning_rate, "rollout_steps": rollout_steps,
+                "rollout_start_step": rollout_start_step, "next_step": next_step,
+                "obs": torch.from_numpy(np.asarray(buf_obs)), "next_obs": torch.from_numpy(np.asarray(buf_next_obs)),
+                "actions": (torch.from_numpy(np.asarray(buf_actions)) if agent.is_continuous else list(buf_actions)),
+                "log_probs": list(buf_log_probs), "rewards": list(buf_rewards),
+                "terminated": list(buf_terminated), "boundaries": list(buf_boundaries),
+            },
+        }
+
+    payload = out.load_resume()
+    if payload is not None:
+        saved = payload.state
+        agent.load_state_dict(saved["agent"])
+        optimizer.load_state_dict(saved["optimizer"])
+        latest_update, best_eval, best_eval_step = saved["latest_update"], saved["best_eval"], saved["best_eval_step"]
+        best_model_state = saved["best_model_state"]
+        t2runs.load_tracker_state(early_stopping, saved["early_stopping"])
+        actual_timesteps, update_index = saved["actual_timesteps"], saved["update_index"]
+        episode_index, global_step = saved["episode_index"], saved["global_step"]
+        resumed_rollout = saved["rollout"]
+        # checkpoints are taken right after an episode ended and the env was reset with this seed
+        obs, _ = env.reset(seed=cfg.seed + episode_index)
+        t2runs.set_space_rng_state(env.action_space, saved["action_space_rng"])
+        payload.restore_rng()
 
     try:
         while global_step < cfg.total_timesteps:
-            learning_rate = _annealed_learning_rate(cfg, global_step)
-            for group in optimizer.param_groups:
-                group["lr"] = learning_rate
+            if resumed_rollout is None:
+                learning_rate = _annealed_learning_rate(cfg, global_step)
+                for group in optimizer.param_groups:
+                    group["lr"] = learning_rate
 
-            rollout_steps = min(int(cfg.rollout_length), int(cfg.total_timesteps) - global_step)
-            buf_obs: list[np.ndarray] = []
-            buf_next_obs: list[np.ndarray] = []
-            buf_actions: list[Any] = []
-            buf_log_probs: list[float] = []
-            buf_rewards: list[float] = []
-            buf_terminated: list[bool] = []
-            buf_boundaries: list[bool] = []
-            rollout_start_step = global_step
+                rollout_steps = min(int(cfg.rollout_length), int(cfg.total_timesteps) - global_step)
+                buf_obs: list[np.ndarray] = []
+                buf_next_obs: list[np.ndarray] = []
+                buf_actions: list[Any] = []
+                buf_log_probs: list[float] = []
+                buf_rewards: list[float] = []
+                buf_terminated: list[bool] = []
+                buf_boundaries: list[bool] = []
+                rollout_start_step = global_step
+                first_step = 0
+            else:  # continue the rollout of the resume checkpoint (the optimizer state holds its learning rate)
+                r, resumed_rollout = resumed_rollout, None
+                learning_rate, rollout_steps = r["learning_rate"], r["rollout_steps"]
+                rollout_start_step, first_step = r["rollout_start_step"], r["next_step"]
+                buf_obs, buf_next_obs = list(r["obs"].numpy()), list(r["next_obs"].numpy())
+                buf_actions = list(r["actions"].numpy()) if agent.is_continuous else list(r["actions"])
+                buf_log_probs, buf_rewards = list(r["log_probs"]), list(r["rewards"])
+                buf_terminated, buf_boundaries = list(r["terminated"]), list(r["boundaries"])
 
             agent.eval()
-            for _step in range(rollout_steps):
+            for _step in range(first_step, rollout_steps):
                 obs_array = observation_to_array(obs, obs_spec)
                 obs_tensor = torch.as_tensor(obs_array, dtype=torch.float32, device=run_device).unsqueeze(0)
                 with torch.no_grad():
@@ -981,6 +1039,8 @@ def train_ppo(
                             "approx_kl": None if latest_update is None else latest_update["approx_kl"],
                         }
                     )
+                    out.curve(completed_step, {"episode/return": episode_return, "episode/length": episode_length,
+                                               "episode/learning_rate": learning_rate})
                     if progress and (episode_index <= 5 or episode_index % 10 == 0):
                         print(
                             "[ppo] "
@@ -1016,6 +1076,8 @@ def train_ppo(
                         "episodes": cfg.eval_episodes,
                     }
                     eval_rows.append(eval_row)
+                    out.curve(completed_step, {"eval/mean_return": eval_row["mean_return"],
+                                               "eval/std_return": eval_row["std_return"]})
                     if best_eval is None or eval_metrics["mean_return"] > best_eval["mean_return"]:
                         best_eval = eval_metrics
                         best_eval_step = completed_step
@@ -1033,6 +1095,11 @@ def train_ppo(
 
                 if stop_requested:
                     break
+
+                if episode_done and out.checkpoint_due(completed_step):
+                    out.save_resume(dict(resume_state(_step + 1),
+                                         action_space_rng=t2runs.space_rng_state(env.action_space)),
+                                    step=completed_step)
 
             # Train the collected rollout, including the final partial rollout
             # at the budget (or early-stopping) boundary.
@@ -1060,6 +1127,8 @@ def train_ppo(
                         **latest_update,
                     }
                 )
+                out.curve(global_step, {f"train/{k}": v for k, v in latest_update.items()
+                                        if isinstance(v, (int, float)) and not isinstance(v, bool)})
 
             if stop_requested:
                 if progress:
@@ -1135,10 +1204,10 @@ def train_ppo(
         "early_stopping": early_stopping.to_dict(),
         "passed": passed,
     }
-    torch.save(checkpoint, checkpoint_path)
+    checkpoint_path = out.save_checkpoint("checkpoint.pt", checkpoint)
 
-    _write_json(
-        run_dir / "config.json",
+    out.write_json(
+        "config.json",
         {
             "created_at_utc": created_at.isoformat(),
             "algorithm": ALGORITHM_NAME,
@@ -1180,11 +1249,11 @@ def train_ppo(
             },
         },
     )
-    _write_csv(run_dir / "training_metrics.csv", training_rows)
-    _write_csv(run_dir / "loss_metrics.csv", loss_rows)
-    _write_csv(run_dir / "eval_metrics.csv", eval_rows)
-    _write_csv(run_dir / "final_eval_episodes.csv", selected_eval["episode_metrics"])
-    _write_csv(run_dir / "last_eval_episodes.csv", last_eval["episode_metrics"])
+    out.write_csv("training_metrics.csv", training_rows)
+    out.write_csv("loss_metrics.csv", loss_rows)
+    out.write_csv("eval_metrics.csv", eval_rows)
+    out.write_csv("final_eval_episodes.csv", selected_eval["episode_metrics"])
+    out.write_csv("last_eval_episodes.csv", last_eval["episode_metrics"])
     summary = {
         "task": spec.name,
         "env_id": spec.env_id,
@@ -1206,31 +1275,33 @@ def train_ppo(
         "selected_source": selected_source,
         "training_efficiency": training_efficiency,
         "early_stopping": early_stopping.to_dict(),
-        "checkpoint_path": str(checkpoint_path),
-        "run_dir": str(run_dir),
+        "checkpoint_path": out.where(checkpoint_path),
+        "run_dir": out.where(),
     }
-    _write_json(run_dir / "summary.json", summary)
-    _write_json(
-        run_dir / "manifest.json",
-        {
-            "created_at_utc": created_at.isoformat(),
-            "task": spec.name,
-            "env_id": spec.env_id,
-            "algorithm": ALGORITHM_NAME,
-            "profile": cfg.profile,
-            "outputs": [
-                "config.json",
-                "training_metrics.csv",
-                "loss_metrics.csv",
-                "eval_metrics.csv",
-                "final_eval_episodes.csv",
-                "last_eval_episodes.csv",
-                "summary.json",
-                "manifest.json",
-                "checkpoint.pt",
-            ],
-        },
-    )
+    out.write_json("summary.json", summary)
+    out.finish(t2runs.headline(summary))
+    if not out.recording:
+        _write_json(
+            run_dir / "manifest.json",
+            {
+                "created_at_utc": created_at.isoformat(),
+                "task": spec.name,
+                "env_id": spec.env_id,
+                "algorithm": ALGORITHM_NAME,
+                "profile": cfg.profile,
+                "outputs": [
+                    "config.json",
+                    "training_metrics.csv",
+                    "loss_metrics.csv",
+                    "eval_metrics.csv",
+                    "final_eval_episodes.csv",
+                    "last_eval_episodes.csv",
+                    "summary.json",
+                    "manifest.json",
+                    "checkpoint.pt",
+                ],
+            },
+        )
     if progress:
         print(
             "[ppo] finished "
@@ -1262,7 +1333,9 @@ def load_ppo_checkpoint(
     device: str | torch.device | None = None,
 ) -> dict[str, Any]:
     run_device = _resolve_device_arg(device)
-    checkpoint = torch.load(checkpoint_path, map_location=run_device, weights_only=False)
+    checkpoint_path, checkpoint = t2runs.checkpoint_source(checkpoint_path)  # a run unit: its checkpoint state
+    if checkpoint is None:
+        checkpoint = torch.load(checkpoint_path, map_location=run_device, weights_only=False)
     recorded_algorithm = checkpoint.get("algorithm")
     if recorded_algorithm != ALGORITHM_NAME:
         raise ValueError(

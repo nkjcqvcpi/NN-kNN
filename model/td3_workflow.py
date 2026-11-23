@@ -70,6 +70,7 @@ import numpy as np
 import torch
 
 from model.device_utils import runtime_env_fingerprint
+from model.t2 import runs as t2runs
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -724,8 +725,15 @@ def train_td3(
     output_dir: str | Path | None = None,
     device: str | torch.device | None = None,
     progress: bool = True,
+    run: Any = None,
+    resumable: bool = False,
 ) -> dict[str, Any]:
-    """Train a TD3 baseline and write the shared run artifacts."""
+    """Train a TD3 baseline and write the shared run artifacts.
+
+    ``run`` and ``resumable`` as in ``train_dqn`` (model/t2/runs.py): with an open tracking run the artifacts are
+    records and named states of the run, no file is written; ``resumable=True`` checkpoints at episode
+    boundaries (agent, target, both optimizers, replay buffer, best state, rows, RNG, action sampler).
+    """
 
     spec = get_rl_task_spec(task_name)
     require_continuous_task(spec)
@@ -742,14 +750,19 @@ def train_td3(
     actor_optimizer = optim.Adam(agent.actor.parameters(), lr=cfg.actor_learning_rate)
     replay_buffer = ContinuousReplayBuffer.create(cfg.buffer_size, obs_dim, action_spec.dim)
 
-    run_dir = Path(output_dir) if output_dir is not None else make_td3_output_dir(spec.name)
-    run_dir.mkdir(parents=True, exist_ok=True)
+    if t2runs.is_recording(run):
+        out = t2runs.RunOutput(run, None, resumable=resumable)
+        run_dir = out.dir
+    else:
+        run_dir = Path(output_dir) if output_dir is not None else make_td3_output_dir(spec.name)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        out = t2runs.RunOutput(None, run_dir, resumable=resumable)
     checkpoint_path = run_dir / "checkpoint.pt"
     created_at = datetime.now(timezone.utc)
 
-    training_rows: list[dict[str, Any]] = []
-    loss_rows: list[dict[str, Any]] = []
-    eval_rows: list[dict[str, Any]] = []
+    training_rows = out.rows("training_metrics.csv")
+    loss_rows = out.rows("loss_metrics.csv")
+    eval_rows = out.rows("eval_metrics.csv")
     latest_update: dict[str, Any] | None = None
     latest_actor_loss: float | None = None
     best_eval: dict[str, Any] | None = None
@@ -765,9 +778,43 @@ def train_td3(
     episode_return = 0.0
     episode_length = 0
     episode_index = 0
+    start_step = 0
+
+    def resume_state() -> dict[str, Any]:
+        return {
+            "agent": agent.state_dict(), "target_agent": target_agent.state_dict(),
+            "critic_optimizer": critic_optimizer.state_dict(), "actor_optimizer": actor_optimizer.state_dict(),
+            "replay": t2runs.replay_state(replay_buffer),
+            "action_space_rng": t2runs.space_rng_state(env.action_space),
+            "latest_update": latest_update, "latest_actor_loss": latest_actor_loss,
+            "best_eval": best_eval, "best_eval_step": best_eval_step,
+            "best_model_state": best_model_state, "best_target_state": best_target_state,
+            "early_stopping": t2runs.tracker_state(early_stopping),
+            "episode_index": episode_index, "actual_timesteps": actual_timesteps,
+            "critic_updates": critic_updates, "policy_updates": policy_updates,
+        }
+
+    payload = out.load_resume()
+    if payload is not None:
+        saved = payload.state
+        agent.load_state_dict(saved["agent"])
+        target_agent.load_state_dict(saved["target_agent"])
+        critic_optimizer.load_state_dict(saved["critic_optimizer"])
+        actor_optimizer.load_state_dict(saved["actor_optimizer"])
+        t2runs.load_replay_state(replay_buffer, saved["replay"])
+        latest_update, latest_actor_loss = saved["latest_update"], saved["latest_actor_loss"]
+        best_eval, best_eval_step = saved["best_eval"], saved["best_eval_step"]
+        best_model_state, best_target_state = saved["best_model_state"], saved["best_target_state"]
+        t2runs.load_tracker_state(early_stopping, saved["early_stopping"])
+        episode_index, actual_timesteps = saved["episode_index"], saved["actual_timesteps"]
+        critic_updates, policy_updates = saved["critic_updates"], saved["policy_updates"]
+        start_step = payload.step  # checkpoints are taken right after an episode ended and the env was reset
+        obs, _ = env.reset(seed=cfg.seed + episode_index)
+        t2runs.set_space_rng_state(env.action_space, saved["action_space_rng"])
+        payload.restore_rng()
 
     try:
-        for global_step in range(cfg.total_timesteps):
+        for global_step in range(start_step, cfg.total_timesteps):
             completed_step = global_step + 1
             if global_step < cfg.learning_starts:
                 action = np.asarray(env.action_space.sample(), dtype=np.float32)
@@ -832,6 +879,10 @@ def train_td3(
                         "mean_q1_value": None if latest_update is None else latest_update["mean_q1_value"],
                     }
                 )
+                out.curve(completed_step, {"episode/return": episode_return, "episode/length": episode_length,
+                                           "train/critic_loss": None if latest_update is None else latest_update["critic_loss"],
+                                           "train/actor_loss": latest_actor_loss,
+                                           "train/mean_q1_value": None if latest_update is None else latest_update["mean_q1_value"]})
                 if progress and (episode_index <= 5 or episode_index % 10 == 0):
                     print(
                         "[td3] "
@@ -863,6 +914,8 @@ def train_td3(
                     "episodes": cfg.eval_episodes,
                 }
                 eval_rows.append(eval_row)
+                out.curve(completed_step, {"eval/mean_return": eval_row["mean_return"],
+                                           "eval/std_return": eval_row["std_return"]})
                 if best_eval is None or eval_metrics["mean_return"] > best_eval["mean_return"]:
                     best_eval = eval_metrics
                     best_eval_step = completed_step
@@ -883,6 +936,9 @@ def train_td3(
                             flush=True,
                         )
                     break
+
+            if episode_done and out.checkpoint_due(completed_step):
+                out.save_resume(resume_state(), step=completed_step)
     finally:
         env.close()
 
@@ -952,10 +1008,10 @@ def train_td3(
         "early_stopping": early_stopping.to_dict(),
         "passed": passed,
     }
-    torch.save(checkpoint, checkpoint_path)
+    checkpoint_path = out.save_checkpoint("checkpoint.pt", checkpoint)
 
-    _write_json(
-        run_dir / "config.json",
+    out.write_json(
+        "config.json",
         {
             "created_at_utc": created_at.isoformat(),
             "algorithm": ALGORITHM_NAME,
@@ -984,11 +1040,11 @@ def train_td3(
             },
         },
     )
-    _write_csv(run_dir / "training_metrics.csv", training_rows)
-    _write_csv(run_dir / "loss_metrics.csv", loss_rows)
-    _write_csv(run_dir / "eval_metrics.csv", eval_rows)
-    _write_csv(run_dir / "final_eval_episodes.csv", selected_eval["episode_metrics"])
-    _write_csv(run_dir / "last_eval_episodes.csv", last_eval["episode_metrics"])
+    out.write_csv("training_metrics.csv", training_rows)
+    out.write_csv("loss_metrics.csv", loss_rows)
+    out.write_csv("eval_metrics.csv", eval_rows)
+    out.write_csv("final_eval_episodes.csv", selected_eval["episode_metrics"])
+    out.write_csv("last_eval_episodes.csv", last_eval["episode_metrics"])
     summary = {
         "task": spec.name,
         "env_id": spec.env_id,
@@ -1011,31 +1067,33 @@ def train_td3(
         "selected_source": selected_source,
         "training_efficiency": training_efficiency,
         "early_stopping": early_stopping.to_dict(),
-        "checkpoint_path": str(checkpoint_path),
-        "run_dir": str(run_dir),
+        "checkpoint_path": out.where(checkpoint_path),
+        "run_dir": out.where(),
     }
-    _write_json(run_dir / "summary.json", summary)
-    _write_json(
-        run_dir / "manifest.json",
-        {
-            "created_at_utc": created_at.isoformat(),
-            "task": spec.name,
-            "env_id": spec.env_id,
-            "algorithm": ALGORITHM_NAME,
-            "profile": cfg.profile,
-            "outputs": [
-                "config.json",
-                "training_metrics.csv",
-                "loss_metrics.csv",
-                "eval_metrics.csv",
-                "final_eval_episodes.csv",
-                "last_eval_episodes.csv",
-                "summary.json",
-                "manifest.json",
-                "checkpoint.pt",
-            ],
-        },
-    )
+    out.write_json("summary.json", summary)
+    out.finish(t2runs.headline(summary))
+    if not out.recording:
+        _write_json(
+            run_dir / "manifest.json",
+            {
+                "created_at_utc": created_at.isoformat(),
+                "task": spec.name,
+                "env_id": spec.env_id,
+                "algorithm": ALGORITHM_NAME,
+                "profile": cfg.profile,
+                "outputs": [
+                    "config.json",
+                    "training_metrics.csv",
+                    "loss_metrics.csv",
+                    "eval_metrics.csv",
+                    "final_eval_episodes.csv",
+                    "last_eval_episodes.csv",
+                    "summary.json",
+                    "manifest.json",
+                    "checkpoint.pt",
+                ],
+            },
+        )
     if progress:
         print(
             "[td3] finished "
@@ -1068,7 +1126,9 @@ def load_td3_checkpoint(
     device: str | torch.device | None = None,
 ) -> dict[str, Any]:
     run_device = _resolve_device_arg(device)
-    checkpoint = torch.load(checkpoint_path, map_location=run_device, weights_only=False)
+    checkpoint_path, checkpoint = t2runs.checkpoint_source(checkpoint_path)  # a run unit: its checkpoint state
+    if checkpoint is None:
+        checkpoint = torch.load(checkpoint_path, map_location=run_device, weights_only=False)
     recorded_algorithm = checkpoint.get("algorithm")
     if recorded_algorithm != ALGORITHM_NAME:
         raise ValueError(
