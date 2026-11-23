@@ -2,6 +2,11 @@
 
     python tools/t1_summarize.py results/t1/<experiment> --metric test_accuracy_pre \
         --reference random_K0.5 [--metric test_accuracy_post ...]
+    python tools/t1_summarize.py <NN-KNN/runs/t1/<study>/<experiment>> --out <dir> --metric ...
+
+The input is a legacy experiment directory (its ``runs*.jsonl`` shards) or the run-unit tree that
+``tools/t1_run.py --study`` recorded, whose ``row`` records are read in the order the shards would hold them.
+The outputs go to the experiment directory, or to ``--out`` (required for a run-unit tree).
 
 Writes ``summary.csv`` (mean, sd, n, 95% t-interval per dataset x condition x metric)
 and, with ``--reference``, ``paired_vs_<reference>.csv`` (per-seed paired differences,
@@ -12,13 +17,16 @@ beats the reference). Conclusions are left to the reader; nothing is hard-coded.
 from __future__ import annotations
 
 import argparse
-import json
 import math
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from scipy import stats
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from model.t1.records import experiment_rows, has_shards  # noqa: E402
 
 
 def t_interval(x: np.ndarray) -> tuple[float, float]:
@@ -36,9 +44,14 @@ def main() -> None:
     ap.add_argument("--metric", action="append", required=True)
     ap.add_argument("--reference", default=None, help="condition label used as the paired reference")
     ap.add_argument("--higher-is-better", action="store_true", default=True)
+    ap.add_argument("--out", default=None, help="output directory (default: the experiment directory)")
     args = ap.parse_args()
-    exp = Path(args.exp_dir)
-    rows = [json.loads(l) for f in sorted(exp.glob("runs*.jsonl")) for l in f.read_text(encoding="utf-8").splitlines() if l.strip()]
+    src = Path(args.exp_dir)
+    if args.out is None and not has_shards(src, "runs*.jsonl"):
+        ap.error("a run-unit tree needs --out (summaries are not written into the run root)")
+    exp = Path(args.out) if args.out else src
+    exp.mkdir(parents=True, exist_ok=True)
+    rows = experiment_rows(src, "runs*.jsonl")
     df = pd.DataFrame(rows)
     # the latest run per (dataset, condition, seed) wins if a config was re-run
     df = df.drop_duplicates(subset=["dataset", "condition", "seed"], keep="last")

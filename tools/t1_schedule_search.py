@@ -28,6 +28,7 @@ from scipy import stats
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
+from model.t1.records import experiment_rows  # noqa: E402
 from tools.t1_grid_search import nnknn_core_settings  # noqa: E402
 from tools.t1_run import load_config  # noqa: E402
 from tools.t1_seed_audit import FORBIDDEN_ROLES, load_prereg, seed_roles  # noqa: E402
@@ -36,11 +37,11 @@ from tools.t1_seed_audit import FORBIDDEN_ROLES, load_prereg, seed_roles  # noqa
 # ----------------------------------------------------------------------------- rows
 
 def load_rows(exp_dir: Path) -> list[dict]:
-    rows = []
-    for shard in sorted(exp_dir.glob("runs__*.jsonl")):
-        rows += [json.loads(line) for line in shard.read_text(encoding="utf-8").splitlines() if line.strip()]
+    """Rows of one experiment: its legacy ``runs__*.jsonl`` shards, or the rows of its run units
+    (``NN-KNN/runs/t1/<study>/<experiment>``, written by ``tools/t1_run.py --study``)."""
+    rows = experiment_rows(exp_dir)
     if not rows:
-        raise SystemExit(f"no runs__*.jsonl rows in {exp_dir}")
+        raise SystemExit(f"no runs__*.jsonl rows and no run units in {exp_dir}")
     return rows
 
 
@@ -134,7 +135,8 @@ def prepare(args) -> None:
         if sel["test_stream_used"]:
             raise SystemExit(f"{key}: test-based selection is prohibited")
         core_by_dataset[key] = nnknn_core_settings(sel["parameters"])
-        sources[key] = {"selection": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        # the selection itself is copied into the config, so the config does not depend on the grid's files
+        sources[key] = {"path": str(path), "selection": sel, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
     if args.experiment:
         template["experiment"] = args.experiment
     template["core_by_dataset"] = core_by_dataset

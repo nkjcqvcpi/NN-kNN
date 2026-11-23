@@ -4,7 +4,8 @@
         [--seeds 20 21 ... | --all-seeds] [--draws 200] [--tie-seed 0] [--json OUT] [--md OUT]
 
 Every ``<task>/<condition>/s<seed>/`` under ``<runs dir>`` with a nonempty case_statistics.jsonl
-and a run_manifest.json is read; nothing is trained, no model or checkpoint is loaded and nothing
+and a run_manifest.json is read (or, for a run-unit tree of ``tools/t1_run.py --study``, every condition unit's
+``case_statistics``, ``manifest``, ``history`` and ``case_maintenance`` records); nothing is trained, no model or checkpoint is loaded and nothing
 under ``<runs dir>`` is written. The scores are rebuilt from the run's final train-LOO audit with
 ``model.t1.provenance.score_cases`` and its statistics settings, over the active cases, as
 ``maintenance.run_maintenance`` scores them. Per run, at capacity K (``t1_run.resolve_K``):
@@ -43,6 +44,8 @@ sys.path.insert(0, str(REPO))
 
 from model.t1.provenance import CaseScores, CaseStatisticsStore, CaseStats, ScoreConfig, score_cases  # noqa: E402
 from model.t1.retention import RetentionConfig, candidate_rank, protection_requirements, select_active_set  # noqa: E402
+from model.t1.records import is_unit_tree, record as read_record, rows as read_rows, unordered  # noqa: E402
+from model.common.tracking import iter_runs, load_run  # noqa: E402
 
 POLICIES = ("provenance_only", "bias_current", "exposure_only")
 PAIRS = (("provenance_only", "bias_current"), ("provenance_only", "exposure_only"), ("bias_current", "exposure_only"))
@@ -266,7 +269,36 @@ def maintenance_steps(history: dict) -> int:
                for r in recs if isinstance(r, dict) and r.get("maintenance") is not None)
 
 
+class UnitSource:
+    """One run unit of ``tools/t1_run.py --study`` read like a legacy run directory: the records ``manifest``,
+    ``case_statistics``, ``history``, ``case_maintenance`` and ``row`` stand for the files of the same names."""
+
+    def __init__(self, data, root: Path):
+        self.data, self.row = data, unordered(data.record("row"))
+        self.rel = Path(data.path).relative_to(root).as_posix()
+        self.condition, self.task_dir = self.row["condition"], Path(data.path).parent.parent.name
+
+
+def find_units(root: Path, conditions=None, seeds=None):
+    for info in sorted(iter_runs(root), key=lambda i: Path(i.path)):  # the order rglob gives run directories
+        data = load_run(info.path, arrays=False)
+        try:
+            src = UnitSource(data, root)
+            data.record("manifest")
+        except KeyError:  # not a t1_run condition unit
+            continue
+        if conditions and not any(fnmatch.fnmatchcase(src.condition, c) for c in conditions):
+            continue
+        if seeds is not None and int(src.row["seed"]) not in seeds:
+            continue
+        yield src
+
+
 def find_runs(root: Path, conditions=None, seeds=None):
+    """Legacy run directories below ``root``, or (a tree of run units) their ``UnitSource``s."""
+    if is_unit_tree(root):
+        yield from find_units(root, conditions, seeds)
+        return
     for p in sorted(root.rglob("case_statistics.jsonl")):
         d = p.parent
         if not (d / "run_manifest.json").exists():
@@ -278,11 +310,20 @@ def find_runs(root: Path, conditions=None, seeds=None):
         yield d
 
 
-def analyse_run(d: Path, root: Path, K_spec, draws, tie_seed) -> dict:
-    manifest = json.loads((d / "run_manifest.json").read_text(encoding="utf-8"))
-    rows = read_jsonl(d / "case_statistics.jsonl")
-    out = {"task": manifest.get("task", {}).get("name", d.parent.parent.name), "condition": d.parent.name,
-           "seed": int(manifest["run"]["seed"]), "run_dir": d.relative_to(root).as_posix()}
+def analyse_run(d, root: Path, K_spec, draws, tie_seed) -> dict:
+    if isinstance(d, UnitSource):
+        manifest, rows = read_record(d.data, "manifest"), read_rows(d.data, "case_statistics")
+        task_dir, condition, rel = d.task_dir, d.condition, d.rel
+        history = read_record(d.data, "history")
+        events = read_rows(d.data, "case_maintenance")
+    else:
+        manifest = json.loads((d / "run_manifest.json").read_text(encoding="utf-8"))
+        rows = read_jsonl(d / "case_statistics.jsonl")
+        task_dir, condition, rel = d.parent.parent.name, d.parent.name, d.relative_to(root).as_posix()
+        history = json.loads((d / "history.json").read_text(encoding="utf-8")) if (d / "history.json").exists() else None
+        events = read_jsonl(d / "case_maintenance.jsonl") if (d / "case_maintenance.jsonl").exists() else []
+    out = {"task": manifest.get("task", {}).get("name", task_dir), "condition": condition,
+           "seed": int(manifest["run"]["seed"]), "run_dir": rel}
     if not rows:
         return {**out, "skipped": "empty case_statistics.jsonl"}
     try:
@@ -292,9 +333,8 @@ def analyse_run(d: Path, root: Path, K_spec, draws, tie_seed) -> dict:
     ctx = res["context"]
     stats = manifest["resolved_config"]["config"]["statistics"]
     ctx.update(source=stats.get("source"), accumulation=stats.get("accumulation"))
-    if (d / "history.json").exists():
-        ctx["maintenance_steps"] = maintenance_steps(json.loads((d / "history.json").read_text(encoding="utf-8")))
-    events = read_jsonl(d / "case_maintenance.jsonl") if (d / "case_maintenance.jsonl").exists() else []
+    if history is not None:
+        ctx["maintenance_steps"] = maintenance_steps(history)
     if events:
         ctx["replay"] = replay(events, run_config(manifest)[1])
     return {**out, **res}
@@ -375,7 +415,8 @@ def _json_default(o):
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("runs", help="t1_run experiment directory (<task>/<condition>/s<seed>/ below it)")
+    ap.add_argument("runs", help="t1_run experiment directory (<task>/<condition>/s<seed>/ below it), or its run-unit "
+                                 "tree NN-KNN/runs/t1/<study>/<experiment> (tools/t1_run.py --study)")
     ap.add_argument("--K", type=parse_K, default=0.5, help="capacity: a float <= 1 is a fraction of the active cases")
     ap.add_argument("--condition", nargs="+", default=None, metavar="GLOB", help="condition directory names to include")
     ap.add_argument("--seeds", nargs="+", type=int, default=list(DEV_SEEDS), help="default: development seeds 20-25")

@@ -2,6 +2,9 @@
 
     python tools/t1_encoder_report.py <experiment dir> --out <dir> [--reference shared --reference raw]
 
+The experiment is a legacy result directory (``runs__*.jsonl`` shards) or the run-unit tree
+``NN-KNN/runs/t1/<study>/<experiment>`` that ``tools/t1_run.py --study`` recorded.
+
 Error is 1 - accuracy (classification) or train-standardized RMSE (regression);
 lower is better. Retrieval-only rows use the pre-adaptation output, all other
 settings the adapted output. Per setting, every arm is compared with each
@@ -14,11 +17,14 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
+import sys
 from pathlib import Path
 
 import numpy as np
 from scipy import stats
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from model.t1.records import experiment_rows  # noqa: E402
 
 
 def setting_of(row: dict) -> str:
@@ -54,9 +60,7 @@ def main() -> None:
     ap.add_argument("--ema-prefix", default="ema")
     args = ap.parse_args()
     refs = args.reference or ["shared", "raw"]
-    rows = []
-    for shard in sorted(Path(args.exp_dir).glob("runs__*.jsonl")):
-        rows += [json.loads(l) for l in shard.read_text(encoding="utf-8").splitlines() if l.strip()]
+    rows = experiment_rows(Path(args.exp_dir))  # legacy shards, or the run units of tools/t1_run.py --study
     if not rows:
         raise SystemExit("no rows")
     test, val, task_type = {}, {}, {}

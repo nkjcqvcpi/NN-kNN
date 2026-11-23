@@ -32,6 +32,13 @@ fingerprints; ``--expect-fingerprint`` (task key or dataset key, glob allowed; a
 pattern (exact task key, exact dataset key, then the first matching glob). Exits 1 when anything is missing,
 conflicting, malformed, crashed or unexpected, judged on a re-scan after ``--repair``. Identical
 duplicates (a bitwise-identical rerun) are reported but pass unless ``--fail-identical-duplicates``.
+
+A run-unit tree (``NN-KNN/runs/t1/<study>/<experiment>``, written by ``tools/t1_run.py --study``) holds one unit
+per run and no second copy of its row, so rows cannot go missing or be duplicated: the audit (``audit_units``)
+checks every unit's status (failed or incomplete units are crashed runs, unless they changed within the settle
+window; invalid ones fail), rebuilds each complete unit's row from its ``manifest`` and ``metrics`` records and
+requires the identical serialized ``row`` record, checks the unit path against the row, the source fingerprints
+and, with ``--logs``, the ``[done]`` lines. ``--repair`` does not apply to units.
 """
 from __future__ import annotations
 
@@ -45,6 +52,9 @@ import re
 import sys
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from model.t1.records import is_unit_tree  # noqa: E402
 
 SEED_DIR = re.compile(r"s(-?\d+)")
 RUN_FILES = ("run_manifest.json", "metrics.json")  # enough to rebuild the row
@@ -340,6 +350,87 @@ def audit(root, *, logs=None, exclude=(), settle_seconds: float = 300.0, expect=
     return report
 
 
+def audit_units(root, *, logs=None, exclude=(), settle_seconds: float = 300.0, expect=(),
+                fail_identical_duplicates: bool = False, now: float | None = None) -> dict:
+    """The audit of a run-unit tree (see the module docstring); the report has the keys of ``audit``."""
+    from model.common.tracking import iter_runs, load_run
+    from model.t1.records import record, unit_component
+    root = Path(root)
+    now = time.time() if now is None else now
+    rel = lambda p: Path(p).relative_to(root).as_posix()  # noqa: E731
+    if logs is not None and not Path(logs).is_dir():
+        raise SystemExit(f"job-log directory {logs} does not exist")
+    infos = [i for i in iter_runs(root, status=None) if not _matches(Path(i.path).relative_to(root).parts[0], exclude)]
+    if not infos:
+        raise SystemExit(f"no run units in {root}")
+    fingerprints, incomplete, rebuild_errors, changed, check = {}, [], [], [], {"rows": 0, "exact": 0, "mismatches": []}
+    index = None if logs is None else done_lines(Path(logs))
+    unproven = []
+    for info in infos:
+        path = Path(info.path)
+        if info.status in ("failed", "incomplete", "empty"):
+            age = now - max(f.stat().st_mtime for f in path.glob("events.out.tfevents.*")) if info.status != "empty" else 0.0
+            incomplete.append({"run": rel(path), "run_dir": rel(path), "status": info.status,
+                               "missing_files": [f"unit {info.status}" + (f": {info.reason}" if info.reason else "")],
+                               "recent": age < settle_seconds, "row": False})
+            continue
+        if info.status != "complete":
+            rebuild_errors.append({"run_dir": rel(path), "error": f"unit {info.status}: {info.reason}"})
+            continue
+        try:
+            data = load_run(path, arrays=False)
+            man, metrics, row = record(data, "manifest"), record(data, "metrics"), record(data, "row")
+            rc, run = man["resolved_config"], man["run"]
+            ds, seed, exp = rc["dataset"], rc["seed"], rc["experiment"]
+            key, label = dataset_key(rc["config"], ds), row["condition"]
+            cid = config_id(rc)
+            if run["configuration_id"] != cid or run["id"] != f"{exp}-{key}-{label}-s{seed}-{cid[:8]}":
+                raise RebuildError(f"run id {run['id']} does not match its configuration and condition {label}")
+            if path.parts[-3:] != (unit_component(key), unit_component(label), f"s{seed}"):
+                raise RebuildError(f"unit path does not match {key}/{label}/s{seed}")
+            rebuilt = {"run_id": run["id"], "experiment": exp, "dataset": key, "dataset_name": ds["name"],
+                       "task_type": man["task"]["task_type"], "seed": seed, "condition": label,
+                       **{k: v for k, v in rc["condition"].items() if not isinstance(v, (dict, list))},
+                       **{k: v for k, v in metrics.items() if not isinstance(v, (dict, list))}}
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            rebuild_errors.append({"run_dir": rel(path), "error": f"{type(e).__name__}: {e}"})
+            continue
+        task = f"{man['task']['task_type']}__{ds['name']}"
+        fp = str(run.get("source_fingerprint_sha256"))
+        entry = fingerprints.setdefault(task, {"dataset_keys": [], "fingerprints": {}})
+        if key not in entry["dataset_keys"]:
+            entry["dataset_keys"].append(key)
+        entry["fingerprints"][fp] = entry["fingerprints"].get(fp, 0) + 1
+        if run.get("source_changed_during_run"):
+            changed.append(rel(path))
+        check["rows"] += 1
+        if row_line(rebuilt) == row_line(row):
+            check["exact"] += 1
+        else:
+            check["mismatches"].append({"run_dir": rel(path), "reason": _value_diff(row, rebuilt)})
+        if index is not None:
+            evidence = done_evidence(index, run["id"], done_line(run["id"], metrics))
+            if not evidence["passed"]:
+                unproven.append({"run_dir": rel(path), "run_id": run["id"], "evidence": evidence})
+    check["passed"] = check["rows"] > 0 and check["exact"] == check["rows"]
+    report = {"root": str(root), "logs": None if logs is None else str(logs), "settle_seconds": settle_seconds,
+              "exclude": list(exclude), "fail_identical_duplicates": fail_identical_duplicates, "units": True,
+              "run_dirs": len(infos), "rebuildable_run_dirs": check["rows"] + len(rebuild_errors),
+              "rows": check["rows"], "shards": {}, "unit_self_check": check, "done_lines_missing": unproven,
+              "missing_rows": [], "pending_rows": [], "incomplete_run_dirs": incomplete,
+              "orphan_rows": [], "duplicates": {"identical": [], "conflicting": []}, "rebuild_errors": rebuild_errors,
+              "source_fingerprints": dict(sorted(fingerprints.items())),
+              "source_changed_during_run": changed,
+              "fingerprint_expectations": check_fingerprints(fingerprints, expect)}
+    report["problems"] = problems(report, fail_identical_duplicates)
+    if check["exact"] < check["rows"]:
+        report["problems"].append(f"unit self-check {check['exact']}/{check['rows']} rows rebuild exactly")
+    if unproven:
+        report["problems"].append(f"{len(unproven)} units without a matching [done] line in a job log with exit code 0")
+    report["ok"] = not report["problems"]
+    return report
+
+
 def check_fingerprints(fingerprints: dict, expect) -> list[dict]:
     """Each ``(pattern, fingerprint)``: the tasks it decides and their other fingerprints.
 
@@ -517,6 +608,13 @@ def repair(root, report: dict, *, lock_timeout: float = 60.0) -> dict:
 def print_report(report: dict) -> None:
     print(f"audit {report['root']}: {report['run_dirs']} run directories, {report['rows']} rows")
     print(f"{'shard':<40} {'rows':>5} {'exact':>5}  self-check")
+    if report.get("units"):
+        c = report["unit_self_check"]
+        print(f"{'run units':<40} {c['rows']:>5} {c['exact']:>5}  {'pass' if c['passed'] else 'FAIL'}")
+        for m in c["mismatches"][:5]:
+            print(f"    {m['run_dir']}: {m['reason']}")
+        for m in report["done_lines_missing"][:5]:
+            print(f"    {m['run_dir']}: {m['evidence']['reason']}")
     for s in report["shards"].values():
         c = s["self_check"]
         print(f"{s['path']:<40} {c['rows']:>5} {c['exact']:>5}  {'pass' if c['passed'] else 'FAIL'}")
@@ -568,7 +666,8 @@ def _expectation(text: str):
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("root", help="experiment directory holding runs__*.jsonl (<t1_run --out>/<experiment>)")
+    ap.add_argument("root", help="experiment directory holding runs__*.jsonl (<t1_run --out>/<experiment>), or its "
+                                 "run-unit tree NN-KNN/runs/t1/<study>/<experiment>")
     ap.add_argument("--logs", help="t1_parallel job-log directory (<name>__s<seed>.log and .json receipts)")
     ap.add_argument("--repair", action="store_true", help="append rebuilt rows for missing ones (see module doc)")
     ap.add_argument("--json", help="write the whole audit as JSON")
@@ -583,6 +682,15 @@ def main(argv=None) -> int:
         ap.error("--repair needs --logs: a row is rebuilt only for a run whose [done] line a job log holds")
     opts = dict(logs=args.logs, exclude=args.exclude, settle_seconds=args.settle_seconds,
                 expect=args.expect_fingerprint, fail_identical_duplicates=args.fail_identical_duplicates)
+    if is_unit_tree(Path(args.root)):
+        if args.repair:
+            ap.error("--repair applies to runs__*.jsonl shards; a run-unit tree has no second copy to repair")
+        report = audit_units(args.root, **opts)
+        print_report(report)
+        if args.json:
+            Path(args.json).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.json).write_text(json.dumps(report, indent=2), encoding="utf-8")
+        return 0 if report["ok"] else 1
     report = audit(args.root, **opts)
     if args.repair:
         done = repair(args.root, report, lock_timeout=args.lock_timeout)

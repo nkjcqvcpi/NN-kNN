@@ -42,8 +42,14 @@ import math
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import sys
+
 import numpy as np
 from scipy import optimize, stats
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from model.common.tracking import load_run  # noqa: E402  (numpy and tensorboard only)
+from model.t1.records import condition_units, record as read_record, rows as read_rows, trial_unit  # noqa: E402
 
 ALPHA = 0.05  # Holm family-wise level over {E1, E2, E3a, E3b}
 BH_Q = 0.10  # Benjamini-Hochberg level for secondary analyses
@@ -278,70 +284,64 @@ def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Condition
     expect = None if expect_fingerprints is None else {t.key: expected_fingerprints(expect_fingerprints, t) for t in tasks}
     bad_seed, conflicts, unexpected = [], [], []
     for d in dirs:
-        shards = sorted(d.glob("runs__*.jsonl"))
-        if not shards:
-            raise SystemExit(f"no runs__*.jsonl rows in {d}")
-        for shard in shards:
-            for line in shard.read_text(encoding="utf-8").splitlines():
-                if not line.strip():
-                    continue
-                row = json.loads(line)
-                t, c, s = by_key.get(row_task(row)), condition_id(row), int(row["seed"])
-                mapped = None if t is None else cond.final_map.get(t.key)
-                if mapped is not None and c == mapped:
-                    c = cond.final  # this task's frozen F (per-task selection)
-                elif (mapped is not None and c == cond.final) or (
-                        t is not None and c in cond.final_map.values() and c not in (cond.final, cond.retrieval_only, cond.default)):
-                    counts["rows_ignored"] += 1  # not this task's F
-                    continue
-                if t is None or c not in wanted:
-                    counts["rows_ignored"] += 1
-                    continue
-                if s not in t.seeds:
-                    bad_seed.append(f"{t.key} {c} seed {s} ({shard})")
-                    continue
-                seen = ev.rows.setdefault((t.key, c), {})
-                if s in seen:  # only bitwise-identical reruns are allowed
-                    counts["duplicate_rows"] += 1
-                    same = {k: v for k, v in seen[s].items() if k.startswith(("test_", "val_"))}
-                    if same != {k: v for k, v in row.items() if k.startswith(("test_", "val_"))}:
-                        conflicts.append(f"{t.key} {c} seed {s} ({shard})")
-                    continue
-                seen[s] = row
-                counts["rows_analysed"] += 1
-                if mapped is not None and c == cond.final:
-                    mapped_rows[t.key] = mapped_rows.get(t.key, 0) + 1
-                run_dir = d / row["dataset"] / row["condition"] / f"s{s}"
-                ev.run_dirs.setdefault((t.key, c), {})[s] = run_dir
-                if row.get("sync_no_eligible_checkpoint"):  # untrained adapter: the guard rejected every epoch
-                    ev.warnings.append(f"{t.key} {c} seed {s}: retrieval guard left no eligible checkpoint; "
-                                       "post-adaptation metrics come from the epoch-0 state")
-                ev.put(t.key, c, s, check_error(row_error(row), t, str(shard)))
-                if c != cond.retrieval_only:
-                    ev.put(t.key, c + PRE, s, check_error(row_error(row, "pre"), t, str(shard)))
-                if row.get("test_n") is not None:
-                    if ev.n_test.setdefault((t.key, s), int(row["test_n"])) != int(row["test_n"]):
-                        raise SystemExit(f"{t.key} seed {s}: rows disagree on test_n; the splits differ")
-                manifest = run_dir / "run_manifest.json"
-                device, fp = UNKNOWN_DEVICE, None
-                if manifest.exists():
-                    run = json.loads(manifest.read_text(encoding="utf-8"))["run"]
-                    fp = str(run.get("source_fingerprint_sha256"))
-                    per_cond, per_task = fingerprints.setdefault(fp, {}), by_task.setdefault(t.key, {})
-                    per_cond[c] = per_cond.get(c, 0) + 1
-                    per_task[fp] = per_task.get(fp, 0) + 1
-                    device = device_type(run.get("device"))
-                    counts["run_manifests_found"] += 1
-                else:
-                    counts["run_manifests_absent"] += 1
-                    absent[t.key] = absent.get(t.key, 0) + 1
-                ev.devices.setdefault((t.key, c), {})[s] = device
-                if expect is not None:
-                    pattern, allowed = expect[t.key]
-                    if fp is None or not fp.lower().startswith(allowed):
-                        unexpected.append(f"{t.key} {c} seed {s}: " + ("no run manifest" if fp is None else f"fingerprint {fp[:12]}")
-                                          + (f", allowed {list(allowed)} by {pattern!r}" if pattern is not None
-                                             else ", no --expect-fingerprints pattern matches the task"))
+        for shard, row, unit in experiment_rows(d):
+            t, c, s = by_key.get(row_task(row)), condition_id(row), int(row["seed"])
+            mapped = None if t is None else cond.final_map.get(t.key)
+            if mapped is not None and c == mapped:
+                c = cond.final  # this task's frozen F (per-task selection)
+            elif (mapped is not None and c == cond.final) or (
+                    t is not None and c in cond.final_map.values() and c not in (cond.final, cond.retrieval_only, cond.default)):
+                counts["rows_ignored"] += 1  # not this task's F
+                continue
+            if t is None or c not in wanted:
+                counts["rows_ignored"] += 1
+                continue
+            if s not in t.seeds:
+                bad_seed.append(f"{t.key} {c} seed {s} ({shard})")
+                continue
+            seen = ev.rows.setdefault((t.key, c), {})
+            if s in seen:  # only bitwise-identical reruns are allowed
+                counts["duplicate_rows"] += 1
+                same = {k: v for k, v in seen[s].items() if k.startswith(("test_", "val_"))}
+                if same != {k: v for k, v in row.items() if k.startswith(("test_", "val_"))}:
+                    conflicts.append(f"{t.key} {c} seed {s} ({shard})")
+                continue
+            seen[s] = row
+            counts["rows_analysed"] += 1
+            if mapped is not None and c == cond.final:
+                mapped_rows[t.key] = mapped_rows.get(t.key, 0) + 1
+            run_dir = d / row["dataset"] / row["condition"] / f"s{s}" if unit is None else unit.path
+            ev.run_dirs.setdefault((t.key, c), {})[s] = run_dir if unit is None else unit
+            if row.get("sync_no_eligible_checkpoint"):  # untrained adapter: the guard rejected every epoch
+                ev.warnings.append(f"{t.key} {c} seed {s}: retrieval guard left no eligible checkpoint; "
+                                   "post-adaptation metrics come from the epoch-0 state")
+            ev.put(t.key, c, s, check_error(row_error(row), t, str(shard)))
+            if c != cond.retrieval_only:
+                ev.put(t.key, c + PRE, s, check_error(row_error(row, "pre"), t, str(shard)))
+            if row.get("test_n") is not None:
+                if ev.n_test.setdefault((t.key, s), int(row["test_n"])) != int(row["test_n"]):
+                    raise SystemExit(f"{t.key} seed {s}: rows disagree on test_n; the splits differ")
+            manifest = run_dir / "run_manifest.json"
+            device, fp = UNKNOWN_DEVICE, None
+            if unit is not None or manifest.exists():
+                run = (read_record(unit, "manifest") if unit is not None else
+                       json.loads(manifest.read_text(encoding="utf-8")))["run"]
+                fp = str(run.get("source_fingerprint_sha256"))
+                per_cond, per_task = fingerprints.setdefault(fp, {}), by_task.setdefault(t.key, {})
+                per_cond[c] = per_cond.get(c, 0) + 1
+                per_task[fp] = per_task.get(fp, 0) + 1
+                device = device_type(run.get("device"))
+                counts["run_manifests_found"] += 1
+            else:
+                counts["run_manifests_absent"] += 1
+                absent[t.key] = absent.get(t.key, 0) + 1
+            ev.devices.setdefault((t.key, c), {})[s] = device
+            if expect is not None:
+                pattern, allowed = expect[t.key]
+                if fp is None or not fp.lower().startswith(allowed):
+                    unexpected.append(f"{t.key} {c} seed {s}: " + ("no run manifest" if fp is None else f"fingerprint {fp[:12]}")
+                                      + (f", allowed {list(allowed)} by {pattern!r}" if pattern is not None
+                                         else ", no --expect-fingerprints pattern matches the task"))
     if bad_seed:
         raise SystemExit(f"{len(bad_seed)} row(s) on seeds outside the pre-registered evaluation seeds, e.g. {bad_seed[:5]}")
     if conflicts:
@@ -368,6 +368,23 @@ def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Condition
             "patterns": expect_fingerprints, "rows_checked": counts["rows_analysed"],
             "pattern_by_task": {k: p for k, (p, _) in expect.items()}, "unmatched_patterns": unmatched}
     check_devices(ev, tasks, cond, allow_mixed_device)
+
+
+def experiment_rows(d: Path):
+    """``(source, row, unit)`` of an experiment: its legacy ``runs__*.jsonl`` shards (unit None), or the condition
+    units of a run-unit tree written by ``tools/t1_run.py --study`` (unit = its RunData, source = its path)."""
+    shards = sorted(d.glob("runs__*.jsonl"))
+    if shards:
+        for shard in shards:
+            for line in shard.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    yield shard, json.loads(line), None
+        return
+    units = condition_units(d) if d.is_dir() else []
+    if not units:
+        raise SystemExit(f"no runs__*.jsonl rows and no run units in {d}")
+    for row, data in units:
+        yield data.path, row, data
 
 
 def check_devices(ev: Evidence, tasks: list[Task], cond: Conditions, allow_mixed_device: bool) -> None:
@@ -530,11 +547,14 @@ def f1_record(y, pred, accuracy: float, n_test: int | None) -> dict:
     return {"macro_f1": macro_f1(y, pred), "macro_f1_note": None}
 
 
-def events_predictions(path: Path, key: str) -> tuple[list[int], list[int]]:
-    """(targets, ``key`` predictions) of the test stream, in query order, from a run's retrieval_events.jsonl."""
+def events_predictions(path, key: str) -> tuple[list[int], list[int]]:
+    """(targets, ``key`` predictions) of the test stream, in query order, from a run's retrieval_events.jsonl
+    (or the ``retrieval_events`` records of a run unit, given as its RunData)."""
+    events = (read_rows(path, "retrieval_events") if not isinstance(path, Path) else
+              [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()])
     rows = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip() and (e := json.loads(line)).get("stream") == "test":
+    for e in events:
+        if e.get("stream") == "test":
             rows.append((int(e["query_index"]), int(e["target"]), int(e[key])))
     rows.sort()
     if [i for i, _, _ in rows] != list(range(len(rows))):
@@ -543,13 +563,29 @@ def events_predictions(path: Path, key: str) -> tuple[list[int], list[int]]:
 
 
 def saved_predictions(path: Path) -> tuple[np.ndarray, np.ndarray]:
-    """(targets, argmax predictions) from a baseline's test_predictions.pt (class probabilities)."""
-    import torch  # only to read the saved baseline predictions; the analysis itself stays torch-free
-    data = torch.load(path, map_location="cpu", weights_only=True)
-    prob = np.asarray(data["prediction"].double().numpy())
+    """(targets, argmax predictions) from a baseline's test_predictions.pt (class probabilities), or from the
+    ``test_prediction``/``test_target`` arrays of a recorded grid trial unit (``path`` = the unit directory)."""
+    if path.is_dir():  # a run unit: numpy only
+        data = load_run(path)
+        prob, target = np.asarray(data.array("test_prediction"), dtype=np.float64), data.array("test_target")
+    else:
+        import torch  # only to read the saved baseline predictions; the analysis itself stays torch-free
+        data = torch.load(path, map_location="cpu", weights_only=True)
+        prob, target = np.asarray(data["prediction"].double().numpy()), data["target"].numpy()
     if prob.ndim != 2:
         raise ValueError(f"predictions of shape {prob.shape} are not class probabilities")
-    return np.asarray(data["target"].numpy()).astype(int), prob.argmax(1)
+    return np.asarray(target).astype(int), prob.argmax(1)
+
+
+def baseline_prediction_path(job: Path, e: dict, s: int) -> Path:
+    """Where a grid evaluation entry's test predictions are: its trial's test_predictions.pt, or, for a grid or
+    evaluate output that recorded run units (``"study"`` in its study.json or evaluate.json), its trial unit."""
+    stage, cid = str(e.get("stage", "evaluation")), str(e["candidate_id"])
+    root = job.parent.parent
+    for name in ("study.json", "evaluate.json"):
+        if (root / name).exists() and (study := json.loads((root / name).read_text(encoding="utf-8")).get("study")):
+            return trial_unit(study, job.parent.name, job.name, stage, cid, s)
+    return job / stage / cid / f"s{s}" / "test_predictions.pt"
 
 
 def _finite(x) -> float | None:
@@ -567,10 +603,13 @@ def load_extra_metrics(ev: Evidence, tasks: list[Task], cond: Conditions, famili
         for c in dict.fromkeys((cond.final, cond.retrieval_only, cond.default)):
             for s, row in sorted(ev.rows.get((t.key, c), {}).items()):
                 pre = condition_id(row).endswith("retrieval_only")  # as row_error: its output is pre-adaptation
-                path = ev.run_dirs[t.key, c][s] / "retrieval_events.jsonl"
+                ref = ev.run_dirs[t.key, c][s]
+                unit = None if isinstance(ref, Path) else ref
+                path = ref / "retrieval_events.jsonl" if unit is None else unit
                 rec = {"log_loss": _finite(row.get("test_loss_pre" if pre else "test_L_post")),
-                       "log_loss_T": None if pre else _finite(row.get("test_nll_post_T")), "macro_f1_source": str(path)}
-                if not path.exists():
+                       "log_loss_T": None if pre else _finite(row.get("test_nll_post_T")),
+                       "macro_f1_source": str(path) if unit is None else f"{unit.path}#retrieval_events"}
+                if unit is None and not path.exists():
                     rec.update(macro_f1=None, macro_f1_note="not recorded: no retrieval_events.jsonl")
                 else:
                     try:
@@ -581,8 +620,7 @@ def load_extra_metrics(ev: Evidence, tasks: list[Task], cond: Conditions, famili
                 ev.extra.setdefault((t.key, c), {})[s] = rec
         for fam in families:
             for s, found in sorted(ev.baseline_entries.get((t.key, f"baseline:{fam}"), {}).items()):
-                paths = [job / str(e.get("stage", "evaluation")) / str(e["candidate_id"]) / f"s{s}" / "test_predictions.pt"
-                         for e, job in found if e.get("candidate_id") is not None]
+                paths = [baseline_prediction_path(job, e, s) for e, job in found if e.get("candidate_id") is not None]
                 path = next((p for p in paths if p.exists()), None)
                 metrics = found[0][0]["test_metrics"]
                 rec = {"log_loss": _finite(metrics.get("loss")), "log_loss_T": None,
