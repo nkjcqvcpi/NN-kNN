@@ -1,13 +1,15 @@
 """Run the maintained NN-kNN classification benchmarks.
 
-The summary goes to a fresh folder ``<--output-dir>/classification_<suite>_<timestamp>/`` with
-``summary.csv``, ``runs.csv`` and ``manifest.json``. With ``--study S`` the training data of every
-(dataset, method, split) is also recorded as a run unit
-``NN-KNN/runs/core/S/<dataset>/<method>/<mode>-<index>`` (model/common/tracking.py): finals
+``--study S`` is required: the training data of every (dataset, method, split) is recorded as a run
+unit ``NN-KNN/runs/core/S/<dataset>/<method>/<mode>-<index>`` (model/common/tracking.py): finals
 ``accuracy`` (and ``best_metric`` for NN-kNN), the ``predictions`` array, and for NN-kNN the
-per-epoch curves and the named states of ``train_model`` (no checkpoint files). Rerunning the same
-study skips complete units, taking their recorded accuracy for the summary rows, and resumes
-incomplete NN-kNN units from their last checkpoint. The summary files are the same either way.
+per-epoch curves and the named states of ``train_model``. No checkpoint or per-run file is written
+outside the unit. Rerunning the same study skips complete units before any training and resumes
+incomplete NN-kNN units from their last checkpoint.
+
+The summary is then built from the run units only (their configs and recorded ``accuracy``) and
+written to a fresh folder ``<--output-dir>/classification_<suite>_<timestamp>/`` (default
+``<worktree>/results/``, git-ignored) with ``summary.csv``, ``runs.csv`` and ``manifest.json``.
 """
 from __future__ import annotations
 
@@ -24,13 +26,17 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+import pandas as pd  # noqa: E402
 import torch  # noqa: E402
 
 from model.classification_workflow import (  # noqa: E402
     make_classification_cfg,
     run_repeated_classification_model_benchmarks,
+    summarize_classification_benchmark_runs,
 )
-from model.common.tracking import RunKey, load_run, open_run, resolve_unit, unit_dir  # noqa: E402
+from model.common.tracking import RunKey, load_run, load_unit, open_run, unit_dir  # noqa: E402
+
+DEFAULT_OUTPUT_DIR = ROOT_DIR / "results"
 
 
 def unit_component(name: Any) -> str:
@@ -88,8 +94,8 @@ def study_unit_run(
         entry = {"run_id": key.run_id, "path": unit_dir(key, root), "source": "complete"}
         if log is not None:
             log.append(entry)
-        if resolve_unit(key, config=config, root=root) is not None:
-            yield load_run(entry["path"], arrays=False)
+        if (data := load_unit(key, config=config, root=root, arrays=False)) is not None:  # before any training
+            yield data
         else:
             with open_run(key, config=config, root=root) as run:
                 entry["source"] = "restarted" if run.restarted else ("resumed" if run.resumed_from else "fresh")
@@ -97,6 +103,24 @@ def study_unit_run(
         print(f"[classification benchmark] {key.run_id}: {entry['source']}", flush=True)
 
     return unit_run
+
+
+RUN_COLUMNS = ("dataset", "mode", "method", "run_index", "run_seed", "accuracy")
+
+
+def runs_frame_from_units(paths: list[Any]) -> pd.DataFrame:
+    """The per-run table (``runs.csv``) read from the given complete units, in that order: dataset, mode,
+    method, run_index and run_seed from each unit's config, accuracy from its final ``accuracy``."""
+    records = []
+    for path in paths:
+        data = load_run(path, arrays=False)
+        config = data.config or {}
+        if config.get("kind") != "classification_benchmark":
+            raise ValueError(f"{path} is not a classification benchmark unit")
+        records.append({"dataset": config["dataset"], "mode": config["mode"], "method": config["method"],
+                        "run_index": int(config["run_index"]), "run_seed": int(config["run_seed"]),
+                        "accuracy": float(data.final()["accuracy"])})
+    return pd.DataFrame(records, columns=list(RUN_COLUMNS)) if records else pd.DataFrame()
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -109,19 +133,19 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--normalizer", default="softmax", choices=["softmax", "sparsemax"])
-    parser.add_argument("--output-dir", default="results", help="Parent folder for a fresh timestamped run.")
-    parser.add_argument("--study", default=None,
-                        help="Also record the training data of every dataset, method and split as run units under "
-                             "NN-KNN/runs/core/<study>/; rerunning a study skips its complete units and resumes "
-                             "the others. Off by default.")
+    parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR),
+                        help="Parent folder for the fresh timestamped summary folder (default: <worktree>/results).")
+    parser.add_argument("--study", required=True,
+                        help="Required. Records every dataset, method and split as a run unit under "
+                             "NN-KNN/runs/core/<study>/; rerunning a study skips its complete units (no training) "
+                             "and resumes the others. The summary files are built from these units.")
     parser.add_argument("--max-train-samples", type=int, default=None)
     parser.add_argument("--max-eval-samples", type=int, default=None)
     args = parser.parse_args(argv)
-    if args.study is not None:  # check the run root and the study name before any data is loaded
-        try:
-            unit_dir(RunKey("core", args.study, ("check",)))
-        except (FileNotFoundError, ValueError) as exc:
-            parser.error(f"--study: {exc}")
+    try:  # check the run root and the study name before any data is loaded
+        unit_dir(RunKey("core", args.study, ("check",)))
+    except (FileNotFoundError, ValueError) as exc:
+        parser.error(f"--study: {exc}")
 
     cfg = make_classification_cfg(
         {
@@ -139,7 +163,8 @@ def main(argv: list[str] | None = None) -> None:
         for name in args.datasets
         if name.lower() in {"mnist", "cifar10", "cifar-10", "svhn"}
     }
-    summary, runs, _ = run_repeated_classification_model_benchmarks(
+    units: list[dict[str, Any]] = []
+    run_repeated_classification_model_benchmarks(
         args.datasets,
         cfg,
         methods=args.methods,
@@ -147,10 +172,11 @@ def main(argv: list[str] | None = None) -> None:
         mode=args.mode,
         base_seed=args.seed,
         dataset_kwargs_map=dataset_kwargs_map,
-        unit_run=None if args.study is None else study_unit_run(
-            args.study, cfg, mode=args.mode, runs=args.runs, seed=args.seed,
-            dataset_kwargs_map=dataset_kwargs_map),
+        unit_run=study_unit_run(args.study, cfg, mode=args.mode, runs=args.runs, seed=args.seed,
+                                dataset_kwargs_map=dataset_kwargs_map, log=units),
     )
+    runs = runs_frame_from_units([entry["path"] for entry in units])  # the summary reads the run units only
+    summary = summarize_classification_benchmark_runs(runs)
     image_names = {"mnist", "cifar10", "cifar-10", "cifar_10", "svhn"}
     normalized_names = {name.lower() for name in args.datasets}
     suite = "image" if normalized_names <= image_names else "mixed" if normalized_names & image_names else "tabular"
@@ -173,9 +199,8 @@ def main(argv: list[str] | None = None) -> None:
         "max_train_samples": args.max_train_samples,
         "max_eval_samples": args.max_eval_samples,
         "outputs": ["summary.csv", "runs.csv", "manifest.json"],
+        "study": args.study,
     }
-    if args.study is not None:
-        manifest["study"] = args.study
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print(summary.to_string(index=False))
     print(f"Wrote results to {output_dir}.")

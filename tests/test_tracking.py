@@ -880,3 +880,38 @@ def test_small_fixes(root, monkeypatch, capsys):
         run.log_array("big", np.zeros((10, 3)))  # a retry raises instead of appending duplicate chunks
     run.fail("test")
     assert tr.main(["ls", str(root)]) == 0 and "[core/study/u1]" in capsys.readouterr().out
+
+
+def test_load_unit_and_the_rng_of_a_skipped_unit(root, dead):
+    """O4 helpers: load_unit finds a complete unit before any training; Run.save_rng / RunData.restore_rng let the
+    code after a skipped unit continue from the RNG state the unit's training left; resume files stay (O5)."""
+    assert tr.load_unit(key("r"), config=CFG) is None
+    g = torch.Generator().manual_seed(3)
+
+    def training():
+        torch.manual_seed(1)
+        np.random.seed(1)
+        random.seed(1)
+        return torch.rand(3) + float(np.random.rand()) + random.random() + torch.rand(1, generator=g)
+
+    with op("r", every=1) as run:
+        run.load_resume()
+        trained = training()
+        run.save_resume({"w": trained}, step=0)
+        run.save_state("final", {"w": trained})
+        run.save_rng(generators={"g": g})
+        after = (torch.rand(2), np.random.rand(), random.random(), torch.rand(1, generator=g))
+    data = tr.load_unit(key("r"), config=CFG)
+    assert data is not None and data.states()["rng"]["meta"] == {"kind": "rng"}
+    assert torch.equal(data.load_state("final")["w"], trained)
+    torch.manual_seed(99), np.random.seed(99), random.seed(99), g.manual_seed(99)  # a rerun skips the training
+    data.restore_rng(generators={"g": g})
+    again = (torch.rand(2), np.random.rand(), random.random(), torch.rand(1, generator=g))
+    assert torch.equal(again[0], after[0]) and again[1:3] == after[1:3] and torch.equal(again[3], after[3])
+    with pytest.raises(tr.TrackingError):
+        data.restore_rng()  # the saved generators must all be supplied
+    with pytest.raises(tr.ConfigMismatchError):
+        tr.load_unit(key("r"), config={"other": 1})
+    assert (upath(root, "r") / "weights" / "resume" / "last.pt").is_file()  # not deleted when the unit completes
+    assert tr.verify_run(upath(root, "r")) == []
+    assert tr.NullRun().save_rng() is None
