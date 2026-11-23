@@ -117,6 +117,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--max-train-samples", type=int, default=None)
     parser.add_argument("--max-eval-samples", type=int, default=None)
     args = parser.parse_args(argv)
+    if args.study is not None:  # check the run root and the study name before any data is loaded
+        try:
+            unit_dir(RunKey("core", args.study, ("check",)))
+        except (FileNotFoundError, ValueError) as exc:
+            parser.error(f"--study: {exc}")
 
     cfg = make_classification_cfg(
         {

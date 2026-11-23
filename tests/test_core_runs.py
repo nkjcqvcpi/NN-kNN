@@ -498,3 +498,33 @@ def test_regression_benchmark_units_are_opt_in_and_complete_units_give_the_same_
     data = tr.load_run(root / "core" / "reg" / "nnknn" / "f1")
     assert "final" in data.states() and data.record("row") == first[1].to_dict("records")[0]
     assert second[2]["linear_regression"]["nnknn"][0]["recorded_unit"] == str(data.path)
+
+
+def test_plain_training_and_table1_do_not_load_tensorboard():
+    """R1: Table 1 and the plain training path import tracking only for NullRun; tensorboard loads on first use."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    code = ("import sys; import model.nnknn_model, model.regression_workflow, model.classification_workflow, "
+            "model.common.core, tools.table1_nnknn_kfold, tools.run_table1_kfold, tools.resume_table1_kfold, "
+            "tools.run_classification_benchmarks; "
+            "print(sorted(m for m in sys.modules if m.split('.')[0] == 'tensorboard'))")
+    repo = Path(__file__).resolve().parents[1]
+    out = subprocess.run([sys.executable, "-c", code], cwd=repo, capture_output=True, text=True, check=True,
+                         env={**os.environ, "PYTHONPATH": str(repo)}).stdout
+    assert out.strip().splitlines()[-1] == "[]"
+    assert tr.event_pb2.Event is not None and tr.masked_crc32c(b"x") == tr.masked_crc32c(b"x")
+
+
+def test_classification_cli_study_checks_the_run_root_before_loading_data(tmp_path, monkeypatch, capsys):
+    from tools import run_classification_benchmarks as cli
+
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "missing"))
+    monkeypatch.setattr(cli, "run_repeated_classification_model_benchmarks",
+                        lambda *a, **k: pytest.fail("data loaded before the run root was checked"))
+    for study in ("ok", "bad/name"):
+        with pytest.raises(SystemExit) as exc:
+            cli.main(["iris", "--study", study, "--output-dir", str(tmp_path / "out")])
+        assert exc.value.code == 2 and "--study" in capsys.readouterr().err
+    assert not (tmp_path / "out").exists()
