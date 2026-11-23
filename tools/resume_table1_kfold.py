@@ -1,13 +1,8 @@
-"""Resume a Table 1 k-fold study under ``runs/core/<study>/``.
-
-Complete units are skipped and read back from their event files, incomplete NN-kNN units
-resume from their last checkpoint, the others run from scratch. The tables are printed and
-recorded in a new report unit ``runs/core/<study>/_reports/table1/<timestamp>``; which units were
-skipped, resumed or run is printed (and recorded per unit in its ``_run/resume`` records).
-"""
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
+import json
 import os
 from pathlib import Path
 import sys
@@ -16,34 +11,49 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from tools.table1_nnknn_kfold import (  # noqa: E402
+from tools.table1_nnknn_kfold import (
     TABLE1_DEFAULT_DATASET_NAMES,
-    build_table1_transposed_df,
-    record_table1_report,
-    run_table1_kfold,
+    export_table1_outputs,
+    run_table1_kfold_resumable,
 )
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+def _parse_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    normalized = value.strip().replace("Z", "+00:00")
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone().replace(tzinfo=None)
+    return parsed
+
+
+def _default_outdir() -> Path:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return REPO_ROOT / "results" / f"table1_kfold_resume_{timestamp}"
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Resume a Table 1 NN-kNN k-fold study: skip complete units, resume the others.",
+        description="Resume a Table 1 NN-kNN k-fold run from existing checkpoints.",
     )
     parser.add_argument(
-        "--study",
-        required=True,
-        help="Existing study name under runs/core/ (for example table1_kfold_20260421_114800).",
+        "--outdir",
+        type=Path,
+        default=_default_outdir(),
+        help="Output folder for summary_long.csv, runs_long.csv, table1_like.csv, transposed.csv, and done.json.",
     )
     parser.add_argument(
         "--base-seed",
         type=int,
         default=42,
-        help="Base seed used for the k-fold split. Must match the study (units check their config).",
+        help="Base seed used for the k-fold split. Must match the interrupted run to reuse checkpoints.",
     )
     parser.add_argument(
         "--num-folds",
         type=int,
         default=5,
-        help="Number of CV folds. Must match the study (units check their config).",
+        help="Number of CV folds. Must match the interrupted run to reuse checkpoints.",
     )
     parser.add_argument(
         "--datasets",
@@ -52,9 +62,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Dataset names to run. Defaults to the repository Table 1 dataset list.",
     )
     parser.add_argument(
+        "--checkpoint-mtime-after",
+        default=None,
+        help=(
+            "Only reuse checkpoints modified at or after this ISO timestamp, e.g. "
+            "2026-04-21T11:48:00. Useful when old checkpoints share the same filenames."
+        ),
+    )
+    parser.add_argument(
+        "--no-reuse-checkpoints",
+        action="store_true",
+        help="Ignore existing NN-kNN checkpoints and train all NN-kNN entries from scratch.",
+    )
+    parser.add_argument(
         "--skip-baselines",
         action="store_true",
-        help="Only run/resume NN-kNN entries; do not run the Table 1 baselines.",
+        help="Only run/resume NN-kNN entries; do not rerun Table 1 baselines.",
     )
     parser.add_argument(
         "--scikit-learn-data",
@@ -62,11 +85,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Writable sklearn dataset cache directory. Defaults to scikit-learn's own location ($SCIKIT_LEARN_DATA if set, else ~/scikit_learn_data).",
     )
-    return parser.parse_args(argv)
+    return parser.parse_args()
 
 
-def main(argv: list[str] | None = None) -> Path:
-    args = parse_args(argv)
+def main() -> None:
+    args = parse_args()
+    outdir = args.outdir
+    if not outdir.is_absolute():
+        outdir = REPO_ROOT / outdir
+    outdir.mkdir(parents=True, exist_ok=True)
 
     # Library downloads stay in the library's default location: only an explicit
     # --scikit-learn-data overrides it; otherwise scikit-learn picks its own cache
@@ -75,38 +102,57 @@ def main(argv: list[str] | None = None) -> Path:
     if args.scikit_learn_data is not None:
         args.scikit_learn_data.mkdir(parents=True, exist_ok=True)
         os.environ["SCIKIT_LEARN_DATA"] = str(args.scikit_learn_data)
+    from sklearn.datasets import get_data_home
+
+    sklearn_data = Path(get_data_home())
 
     dataset_names = args.datasets or TABLE1_DEFAULT_DATASET_NAMES
+    checkpoint_mtime_after = _parse_datetime(args.checkpoint_mtime_after)
 
-    print("Resuming Table 1 study", flush=True)
-    print("Study: runs/core/" + args.study, flush=True)
+    print("Starting reusable Table 1 resume run", flush=True)
+    print("Output folder:", outdir, flush=True)
     print("Datasets:", dataset_names, flush=True)
     print("Base seed:", args.base_seed, flush=True)
+    print("Checkpoint mtime filter:", checkpoint_mtime_after, flush=True)
 
-    unit_log: list[dict] = []
-    summary_df, runs_df, _ = run_table1_kfold(
+    summary_df, runs_df, _, resume_info = run_table1_kfold_resumable(
         dataset_names=dataset_names,
         num_folds=args.num_folds,
         base_seed=args.base_seed,
-        study=args.study,
+        reuse_checkpoints=not args.no_reuse_checkpoints,
+        checkpoint_mtime_after=checkpoint_mtime_after,
         run_baselines=not args.skip_baselines,
-        unit_log=unit_log,
     )
-    counts = {source: sum(u["source"] == source for u in unit_log) for source in ("complete", "resumed", "restarted", "fresh")}
-    report = record_table1_report(
+
+    manifest_payload = {
+        "outdir": str(outdir),
+        "dataset_names": list(dataset_names),
+        "base_seed": args.base_seed,
+        "num_folds": args.num_folds,
+        "checkpoint_mtime_after": checkpoint_mtime_after.isoformat() if checkpoint_mtime_after else None,
+        "reuse_checkpoints": not args.no_reuse_checkpoints,
+        "run_baselines": not args.skip_baselines,
+        "scikit_learn_data": str(sklearn_data),
+        "resume_info": resume_info,
+    }
+    manifest_path = outdir / "resume_manifest.json"
+    manifest_path.write_text(json.dumps(manifest_payload, indent=2, default=str), encoding="utf-8")
+
+    export_table1_outputs(
         summary_df,
         runs_df,
-        study=args.study,
-        metadata={"datasets": list(dataset_names), "num_folds": int(args.num_folds), "base_seed": int(args.base_seed),
-                  "run_baselines": not args.skip_baselines, "resumed_invocation": True, "unit_sources": counts},
-        units=unit_log,
+        outdir,
+        metadata={
+            "base_seed": args.base_seed,
+            "num_folds": args.num_folds,
+            "resumed": True,
+            "run_baselines": not args.skip_baselines,
+            "resume_manifest": str(manifest_path),
+            "num_reused_checkpoints": resume_info["nnknn"]["num_reused_checkpoints"],
+            "num_trained_entries": resume_info["nnknn"]["num_trained_entries"],
+        },
     )
-    print(summary_df.to_string(index=False), flush=True)
-    print(build_table1_transposed_df(summary_df).to_string(index=False), flush=True)
-    print("Units:", ", ".join(f"{n} {source}" for source, n in counts.items()), flush=True)
-    print(f"Report unit: {report}", flush=True)
-    print("Finished Table 1 resume", flush=True)
-    return report
+    print("Finished reusable Table 1 resume run", flush=True)
 
 
 if __name__ == "__main__":
