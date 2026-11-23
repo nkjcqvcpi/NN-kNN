@@ -3,7 +3,7 @@
 This checkout is `rl/` on branch `rl`: the shared NN-kNN core plus RL (T2), including NN-kNN-RL. Keep T1/T3 stage implementations on neural-cbr and LLM, and standalone NN-kNN material on main. Read docs/BRANCH_ORGANIZATION.md.
 
 - The core files listed in `tools/check_nnknn_core.py` are owned by main. Do not edit them here; make the change on main and sync it (docs/NNKNN_CORE.md). `tests/test_nnknn_core.py` fails if they drift.
-- Results and logs are not in git; they live on the experiment host and will move to the shared `NN-KNN/runs/` directory with TensorBoard logging. On disk, file them by T2 handoff step under `results/t2/<step>/` and `logs/t2/<step>/` (see `results/README.md` beside them). Pass `--output-dir` explicitly; `results/rl/` is unfiled scratch.
+- Results and logs are not in git. New training runs are recorded with `--study S` as run units of the shared `NN-KNN/runs/t2/S/` (TensorBoard event files and weights; `docs/T2_RUN_RECORDING.md`). Without `--study` the tools write run directories as before; on disk those (and every historical result) are filed by T2 handoff step under `results/t2/<step>/` and `logs/t2/<step>/` (see `results/README.md` beside them). Pass `--output-dir` explicitly; `results/rl/` is unfiled scratch.
 
 # AGENTS.md
 
@@ -31,7 +31,7 @@ This checkout is `rl/` on branch `rl`: the shared NN-kNN core plus RL (T2), incl
 
 ## Setup
 
-- Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; experiment results are to be logged with TensorBoard (TODO, not built yet).
+- Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; training runs are recorded in TensorBoard event files (`model/common/tracking.py`, `model/t2/runs.py`).
 - This project has no README, CHANGELOG or LICENSE by owner decision (2026-11-21).
 
 ## Validation
@@ -46,6 +46,6 @@ This checkout is `rl/` on branch `rl`: the shared NN-kNN core plus RL (T2), incl
 ## Notes
 
 - `checkpoints/` and transient artifacts are expected and are gitignored.
-- RL runs write timestamped artifacts under `results/rl/` unless `--output-dir` is given; move finished campaigns under `results/t2/<step>/`.
+- RL runs record a run unit `NN-KNN/runs/t2/<study>/...` with `--study` (rerunning resumes or skips it); without it they write timestamped artifacts under `results/rl/` unless `--output-dir` is given; move finished campaigns under `results/t2/<step>/`. Summary and report scripts read both kinds through `model.t2.runs.RunFiles`.
 - `matplotlib` should run headlessly in cloud tasks with `MPLBACKEND=Agg`.
 - Avoid full multi-run benchmarks for routine verification; they are intentionally expensive.

@@ -5,7 +5,7 @@ Branch `rl` (`rl/`): shared NN-kNN core + RL (T2). Current scope: `tools/run_rl_
 ## Where things are
 
 - Specification: Xiaomeng Ye's `T2_RL_IMPLEMENTATION_PLAN.md` in `career-2027/03-research-architecture/implementation-handoff/` (a copy is in `docs/t1_spec/`).
-- Results and logs: not in git (on the experiment host; moving to the shared `NN-KNN/runs/` directory with TensorBoard logging). On disk they are filed by T2 handoff step under `results/t2/<step>/` and `logs/t2/<step>/`. `results/README.md` maps each step to its campaigns, documents, and gaps.
+- Results and logs: not in git. New training runs are recorded with `--study` as run units of the shared `NN-KNN/runs/t2/` (TensorBoard event files and weights; `docs/T2_RUN_RECORDING.md`). Historical results stay on the experiment host as files, filed by T2 handoff step under `results/t2/<step>/` and `logs/t2/<step>/`; `results/README.md` maps each step to its campaigns, documents, and gaps. Summary and report scripts read both.
 - Stage evidence write-ups: `docs/T2_*.md`; aggregate interpretation: `reports/experiment_log.md`.
 - Shared core: synced from `main`; see `docs/NNKNN_CORE.md`.
 
@@ -18,6 +18,12 @@ Branch `rl` (`rl/`): shared NN-kNN core + RL (T2). Current scope: `tools/run_rl_
 - Step 7 (nonstationarity) and step 10 (synthesis): not started.
 - Step 8 (continuous action): neural TD3/PPO baselines only.
 - Step 9 (MinAtar bridge, Atari Pong): seed-0 batteries plus PPO/DQN multi-seed references.
+
+## 2026-11-22: training runs recorded in TensorBoard run units
+
+- Every RL training entry point (`train_dqn`, `train_nec`, `train_ppo`, `train_td3`, `train_nnknn_rl`) takes `run=` and `resumable=`; the tools `run_rl_*.py`, `run_rl_mcb_and_capacity_experiments.py`, `run_case_maintenance_ablation.py`, `run_cartpole_all_variants.py` and `t2_role_pilot.py` take `--study`. A recorded run writes no run directory: its metric CSVs, JSONs, summary, checkpoint and snapshots are records and named states of the unit, and long runs (Atari) resume from their last episode-boundary checkpoint. Without `--study` everything is as before.
+- `make_phase4_report.py`, `t2_retention_pilot.py` and `scripts/harvest_p17.py` read run units as well as run directories, with the same outputs.
+- Checked on g234 (CPU): same numbers, files and weights as before the change; resumed runs equal uninterrupted ones (CartPole, Pendulum, ALE Pong); report outputs byte-identical from units and from directories. Details, layout and what a resume does not restore: `docs/T2_RUN_RECORDING.md`.
 
 ## 2026-11-21: repository layout cleanup
 
