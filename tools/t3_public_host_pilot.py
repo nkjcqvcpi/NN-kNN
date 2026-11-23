@@ -46,7 +46,7 @@ def main():
     from model.t3.orchestrator import Budget,run_loop
     from model.t3.retrieval import Access,Retriever
     from model.t3.host_schema import decision_schema,decoder_schema,validate_decision,request_prompt,request_decode
-    from model.t3.metric_provenance import load_metric_checkpoint,metric_checkpoint_sha256,metric_provenance
+    from model.t3.metric_provenance import load_metric_checkpoint,metric_provenance
     format_metadata=None
     if args.format_library is not None:
         sys.path.insert(0,str(args.format_library.resolve(strict=True)))
@@ -77,8 +77,8 @@ def main():
     metric=load_metric_checkpoint(args.metric_checkpoint)
     selected=metric['selected_metric']['feature_weights']
     assert selected.shape==(1,256) and bool(torch.isfinite(selected).all()) and bool((selected>0).all())
-    metric_sha=metric_checkpoint_sha256(args.metric_checkpoint)
     metric_binding=metric_provenance(args.metric_checkpoint)
+    metric_sha=metric_binding['checkpoint_sha256']  # legacy metric.pt bytes,or the unit's verified weights/metric.pt
     data=json.loads((args.data_root/'manifest_mirror_complete.json').read_text())
     files={r['name']:r for r in data['files']}
     samples=json.loads(args.sample_manifest.read_text())['samples']

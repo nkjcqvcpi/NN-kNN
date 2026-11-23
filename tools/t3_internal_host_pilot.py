@@ -24,8 +24,6 @@ def main():
         ap.add_argument('--'+name,type=Path,required=True)
     ap.add_argument('--alpha',type=float,default=.1)
     args=ap.parse_args()
-    from model.t3.metric_provenance import load_metric_checkpoint,metric_checkpoint_sha256
-    metric_sha=metric_checkpoint_sha256(args.metric_checkpoint)  # legacy metric.pt bytes,or a run unit's weights/metric.pt
     if not 0<args.alpha<1:ap.error('positive fixed alpha below1 required')
     verification=json.loads(args.source_verification.read_text())
     if not verification.get('all_recorded_retrieval_traces_verified') or verification.get('provisional_snapshot') or verification['counts']['trials']!=80:
@@ -34,19 +32,21 @@ def main():
         if Path(bound['path']).resolve()!=(args.source_run/name).resolve() or sha(args.source_run/name)!=bound['sha256']:
             raise ValueError('source trial/journal byte binding changed')
     reference=json.loads((args.source_run/'protocol.json').read_text())
-    if metric_sha!=reference['metric_checkpoint_sha256']:
-        raise ValueError('source retrieval checkpoint mismatch')
     native=args.runtime_library_bin.resolve(strict=True)
     os.environ['PATH']=str(native)+os.pathsep+os.environ.get('PATH','')
     handle=os.add_dll_directory(str(native)) if sys.platform=='win32' else None
     sys.path.insert(0,str(args.format_library.resolve(strict=True)))
     import torch
+    from model.t3.metric_provenance import load_metric_checkpoint,metric_provenance
+    metric_binding=metric_provenance(args.metric_checkpoint)  # legacy metric.pt,or a verified t3_need_matching run unit
+    metric_sha=metric_binding['checkpoint_sha256']  # legacy metric.pt bytes,or the unit's weights/metric.pt
+    if metric_sha!=reference['metric_checkpoint_sha256']:
+        raise ValueError('source retrieval checkpoint mismatch')
     from transformers import AutoModelForCausalLM,AutoTokenizer,LogitsProcessorList
     from lmformatenforcer import JsonSchemaParser
     from lmformatenforcer.integrations.transformers import build_token_enforcer_tokenizer_data,build_transformers_prefix_allowed_tokens_fn
     from model.common.artifacts import source_fingerprint
     from model.t3.internal import ArtifactLogitMixture
-    from model.t3.metric_provenance import metric_provenance
     from model.t3.host_schema import decoder_schema,validate_decision
     from model.t3.retrieval import Case,Request,Access,Retriever
     from model.t3.lexical import core_bank,HashQuery
@@ -69,7 +69,7 @@ def main():
     for dataset,name,loader in [('squad','squad_dev_v11.json',load_squad),('hotpot','hotpot_dev_distractor_converted.json',load_hotpot)]:
         _,golds[dataset]=loader(args.data_root/name,expected_sha256=files[name]['sha256'],**(dict(allow_unaligned_support=True) if dataset=='hotpot' else {}))
     metric=load_metric_checkpoint(args.metric_checkpoint)['selected_metric']['feature_weights']
-    metric_binding=metric_provenance(args.metric_checkpoint);tf=metric_binding['term_frequency']
+    tf=metric_binding['term_frequency']
     args.output.mkdir(parents=True,exist_ok=False)
     decode=dict(max_new_tokens=128,do_sample=False,temperature=None,top_p=None,top_k=None,use_cache=True)
     protocol=dict(source_fingerprint=source_fingerprint(Path(__file__).resolve().parents[1]),host=reference['host'],
