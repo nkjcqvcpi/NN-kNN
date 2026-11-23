@@ -33,8 +33,9 @@ checkpoints/regression_covid_anxious_reg.h5
 checkpoints/regression_covid_depressed_reg.h5
 checkpoints/regression_covid_lonely_reg.h5
 checkpoints/regression_covid_physical_reg.h5
-# Results, logs and generated report files are not in git. They stay on the experiment
-# host and will move to the shared NN-KNN/runs/ directory with TensorBoard logging.
+# Run units (training data, weights) live in the shared NN-KNN/runs/; generated summaries go to
+# results/ (ignored); hand-written reports in reports/ are tracked. Old generated files under
+# reports/ and docs/experiments/ on the experiment host stay ignored (owner's rules O1-O3, 2026-11-22).
 /results/
 /logs/
 /reports/figures/

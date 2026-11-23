@@ -35,6 +35,32 @@ The key practical distinction in the current Table 1 work is:
 - retrieval-only output before adaptation
 - post-adaptation output after NN-CDH
 
+## Recording And Where Results Go (owner's rules, 2026-11-22)
+
+The full rules are in `docs/NNKNN_CORE.md`, "Owner's rules". In short:
+
+- O1, recording is mandatory: every entry point that trains or evaluates a run
+  requires `--study` (an argparse error without it); library functions require
+  `run=` (an open `tracking.Run`) or `unit_run=`. Per-run data and weights go
+  only to the run unit under `NN-KNN/runs/`; nothing writes per-run
+  csv/json/checkpoint files elsewhere.
+- O2, summaries read `runs/` only and write to `<worktree>/results/`
+  (git-ignored); file names, formats and columns stay as they were. Old result
+  files on g234 are left alone and no code reads them.
+- O3, hand-written reports by agents or people go to `<worktree>/reports/` (in
+  git). Generated files never go to `reports/` or `docs/`.
+- O4, never retrain: check `tracking.load_unit(key, config=...)` before any
+  training; a complete unit is skipped and anything downstream loads its
+  weights (`RunData.load_state`). If later code depends on the global RNG state
+  the training left, record it (`Run.save_rng`) and restore it on a rerun
+  (`RunData.restore_rng`), so a partly rerun study gives the numbers of an
+  uninterrupted one.
+- O5, resume files (`weights/resume/*`) stay after a unit completes; the device
+  is not part of a unit's identity.
+- Exception R1: Table 1 (`tools/table1_nnknn_kfold.py`, `tools/run_table1_kfold.py`,
+  `tools/resume_table1_kfold.py`) is published work and keeps its own output
+  folder and checkpoint files, without run tracking.
+
 ## Core Model Files
 
 - [model/nnknn_model.py](../model/nnknn_model.py)
@@ -102,17 +128,20 @@ removed from the maintained core.
 Routine classification check:
 
 ```bash
-uv run python codex/smoke_test.py --mode classification
-uv run python tools/run_classification_benchmarks.py iris --mode kfold --runs 3 --epochs 20
+uv run python codex/smoke_test.py --mode classification --study smoke
+uv run python tools/run_classification_benchmarks.py iris --mode kfold --runs 3 --epochs 20 --study iris-k3
 ```
 
-The benchmark CLI creates a fresh timestamped folder under `results/` with
-`summary.csv`, `runs.csv`, and `manifest.json`. With `--study S` it also
-records the training data of every dataset, method and split as a run unit
-under `NN-KNN/runs/core/S/` (curves, final accuracy, predictions, weights; no
-checkpoint files); the summary files are the same, and rerunning the study
-skips complete units and resumes the others (`docs/NNKNN_CORE.md`). The notebook keeps repeated
-tabular and image benchmark sections opt-in so its default path stays quick.
+`--study` is required (owner's rule O1). The benchmark CLI records the
+training data of every dataset, method and split as a run unit under
+`NN-KNN/runs/core/<study>/` (curves, final accuracy, predictions, weights; no
+checkpoint files), then builds `summary.csv`, `runs.csv` and `manifest.json`
+from those units and writes them to a fresh timestamped folder under
+`<worktree>/results/` (git-ignored). Rerunning the study skips complete units
+without training and resumes the others (`docs/NNKNN_CORE.md`). The notebook
+keeps repeated tabular and image benchmark sections opt-in so its default path
+stays quick; its cells that train without a run now raise (notebooks were not
+converted to mandatory recording).
 
 For manual small-data classification debugging, use
 [nnknn_sample_classification.ipynb](../notebooks/nnknn_sample_classification.ipynb). Run the
@@ -197,7 +226,9 @@ Table 1 is the upstream authors' published regression benchmark. By the
 owner's rule R1 (2026-11-22, `docs/NNKNN_CORE.md`) its code path, its outputs
 and its numbers do not change and it has no run tracking: do not convert it to
 run units or reseed it, and keep its CSV/JSON outputs and checkpoint files as
-described below.
+described below. It is the only exception to mandatory recording (O1-O4): it
+calls `train_nnknn_regression_state` and the regression baselines without a
+run, and nothing else may.
 
 Current Table 1 reruns are driven by:
 
@@ -411,7 +442,8 @@ Legacy or specialized files:
 
 - For regression Table 1 reruns, prefer `run_table1_kfold(...)`.
 - For general repeated regression benchmarks, prefer
-  `run_repeated_regression_model_benchmarks(...)`.
+  `run_repeated_regression_model_benchmarks(...)` with a `unit_run`
+  (required whenever `nnknn` is benchmarked; see `docs/NNKNN_CORE.md`).
 - For single interactive notebook work:
   1. Run `Basic Setup`
   2. Choose/load dataset
@@ -431,7 +463,7 @@ Legacy or specialized files:
 
 ## Environment
 
-Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; training data is recorded in TensorBoard event files by `model/common/tracking.py` when a caller asks for it (`docs/NNKNN_CORE.md`, "Run tracking"); summaries stay in files. The two notebooks must be launched with the repo root as the working
+Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; training data is always recorded in TensorBoard event files by `model/common/tracking.py` (`docs/NNKNN_CORE.md`, "Run tracking"); summaries are files under `results/`. The two notebooks must be launched with the repo root as the working
 directory.
 
 ## Machine-Specific Caveats
