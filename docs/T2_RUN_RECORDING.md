@@ -72,8 +72,8 @@ With `resumable=True` a run checkpoints (`save_resume`, every 300 s by default; 
 
 The rows logged so far are read back from the unit, not stored in the checkpoint. Checked on g234 (CPU): an
 interrupted and resumed run has the same result digest and named-state digests as an uninterrupted one for DQN,
-NEC, PPO (discrete and continuous), TD3 and NN-kNN-RL on CartPole/Pendulum, for DQN and PPO on ALE Pong, and after
-a hard process kill (`tests/test_t2_runs.py`).
+NEC, PPO (discrete and continuous), TD3 and NN-kNN-RL on CartPole/Pendulum, for DQN, NEC, PPO and NN-kNN-RL on
+ALE Pong (short runs, crash after the second checkpoint), and after a hard process kill (`tests/test_t2_runs.py`).
 
 Not restored, or not exact:
 
