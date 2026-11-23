@@ -15,6 +15,8 @@ import re
 import sys
 import time
 
+from model.t3.outputs import output_path
+
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
@@ -22,9 +24,13 @@ def main():
     p.add_argument("--files-manifest", type=Path, required=True)
     p.add_argument("--runtime-library-bin", type=Path, required=True)
     p.add_argument("--device", choices=["cpu", "xpu"], default="xpu")
-    p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--out", type=Path, help="output folder (default: results/t3/s1_single_hop_retrieval/t3-prompt-pilot-<UTC time>/; never reports/ or docs/)")
     p.add_argument("--direct-set-removal", action="store_true")
     args = p.parse_args()
+    try:
+        args.out = output_path(args.out, "s1_single_hop_retrieval", "t3-prompt-pilot")
+    except ValueError as exc:
+        p.error(f"--out: {exc}")
     args.out.mkdir(parents=True, exist_ok=False)
     native = args.runtime_library_bin.resolve(strict=True)
     os.environ["PATH"] = str(native)+os.pathsep+os.environ.get("PATH", "")

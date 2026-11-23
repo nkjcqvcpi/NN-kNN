@@ -14,6 +14,9 @@ from pathlib import Path
 import sys
 import time
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # run as a plain script: the repo root holds model/
+from model.t3.outputs import output_path  # noqa: E402
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -24,8 +27,12 @@ def main():
     parser.add_argument("--device", choices=("cpu", "xpu", "cuda"), default="cpu")
     parser.add_argument("--prompt", default="Reply with only the word READY.")
     parser.add_argument("--max-new-tokens", type=int, default=16)
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--out", type=Path, help="report file (default: results/t3/s0_host_setup/t3-host-smoke-<UTC time>.json; never reports/ or docs/)")
     args = parser.parse_args()
+    try:
+        args.out = output_path(args.out, "s0_host_setup", "t3-host-smoke", ".json")
+    except ValueError as exc:
+        parser.error(f"--out: {exc}")
     if not 1 <= args.max_new_tokens <= 128:
         parser.error("engineering smoke token budget must be within 1..128")
     native_handle = None

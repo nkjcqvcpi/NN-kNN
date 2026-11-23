@@ -54,6 +54,10 @@ python tools/t3_prepare_host.py --revision c1899de289a04d12100db370d81485cdf75e4
 python tools/t3_host_smoke.py --model-dir <local-model-dir> --files-manifest <local-files-manifest.json> --expected-revision c1899de289a04d12100db370d81485cdf75e47ca --device xpu --runtime-library-bin <torch-runtime-Library-bin> --out <host-smoke.json>
 ```
 
+`--manifest` and `--out` may be left out: the files then go to
+`results/t3/s0_host_setup/t3-host-manifest-<UTC time>.json` and `t3-host-smoke-<UTC time>.json`.
+A path inside `reports/` or `docs/` is refused (those folders hold only written reports).
+
 The later scoped prompt engineering fixture is documented separately in
 `T3_PROMPT_ENGINEERING_PILOT.md`: actual host requests and original-evidence
 reuse now run, while internal integration and public benchmark evidence remain

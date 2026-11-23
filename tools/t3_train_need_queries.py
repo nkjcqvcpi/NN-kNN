@@ -11,17 +11,22 @@ from pathlib import Path
 import sys
 import time
 
+from model.t3.outputs import output_path
+
 
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
-    for name in ('reference-run','reference-verification','data-root','samples','model-dir','runtime-library-bin','format-library','output'):
+    for name in ('reference-run','reference-verification','data-root','samples','model-dir','runtime-library-bin','format-library'):
         ap.add_argument('--'+name,type=Path,required=True)
+    ap.add_argument('--output',type=Path,help='output folder (default: results/t3/s1_single_hop_retrieval/t3-train-need-queries-<UTC time>/; never reports/ or docs/)')
     ap.add_argument('--request-token-ceiling',type=int,choices=(128,256,512),default=128)
     ap.add_argument('--request-profile',choices=('standard','bounded'),default='standard')
     args=ap.parse_args()
+    try:args.output=output_path(args.output,'s1_single_hop_retrieval','t3-train-need-queries')
+    except ValueError as exc:ap.error(f'--output: {exc}')
     verification=json.loads(args.reference_verification.read_text())
     if verification.get('provisional_snapshot') or not verification.get('all_recorded_retrieval_traces_verified') or verification['counts']['trials']!=80:
         raise ValueError('complete audited frozen-host reference required')

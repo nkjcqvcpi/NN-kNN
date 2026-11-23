@@ -7,14 +7,17 @@ Recording is mandatory: --study S is required and every seed is one run unit
 runs/t3/S/s<seed>/ (TensorBoard event files: per-epoch fit/tune curves,the per-step training
 events,the seed summary and the metric checkpoint as the named state 'metric'). No per-seed
 file is written. protocol.json and summary.json (built from the units) go to --output,by default
-<worktree>/results/t3/s1_single_hop_retrieval/need_matching/<study>/. A complete seed is detected before any training and
-is never trained again (its recorded summary fills summary.json); an interrupted seed resumes
-after its last checkpointed epoch.
+<worktree>/results/t3/s1_single_hop_retrieval/need_matching/<study>/ (never reports/ or docs/). Every seed's unit is
+checked against its config before any file is touched: a setting that differs from a recorded unit fails with
+ConfigMismatchError and leaves a reused output folder byte-unchanged. A complete seed is never trained again (its recorded
+summary fills summary.json); an interrupted seed resumes after its last checkpointed epoch. Both files are written
+together at the end,each through a temporary file,so the folder never holds a protocol without its summary.
 """
 import argparse
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import random
 import time
@@ -23,10 +26,11 @@ import torch
 
 from model.nnknn_model import GlocalFeatureWeight
 from model.common.artifacts import source_fingerprint
-from model.common.tracking import RunKey,load_run,load_unit,open_run,unit_dir
+from model.common.tracking import ConfigMismatchError,RunKey,load_run,load_unit,open_run,payload_sha256,resolve_unit,run_status,unit_dir
 from model.t3.benchmarks import load_squad
 from model.t3.lexical import artifact_text,bm25_rank,candidate_bank,core_bank,need_loss
 from model.t3.need_queries import load_need_queries
+from model.t3.outputs import refuse_tracked_output
 
 EVALUATION=('mean_need_loss','source_recall_at1','source_recall_at2')
 LEXICAL=('source_recall_at1','source_recall_at2')
@@ -65,12 +69,31 @@ def default_output(study):
     return RESULTS/study
 
 
+def check_units(study,configs):
+    """Before any file is touched: every seed's unit must match its config. A complete unit with another config raises
+    ConfigMismatchError (as load_unit would),and so does an interrupted one (as open_run would,unless NNKNN_RESUME=restart)."""
+    for seed,config in configs.items():
+        key=unit_key(study,seed)
+        if resolve_unit(key,config=config) is not None:continue
+        info=run_status(unit_dir(key))
+        if (info.sessions and info.config_sha256 not in (None,payload_sha256(config))
+                and os.environ.get('NNKNN_RESUME','').strip()!='restart'):
+            raise ConfigMismatchError(f'{info.run_id} was written with another config')
+
+
+def write_json(path,value):
+    """Write a JSON file through a temporary file in the same folder and os.replace,so it is never half written."""
+    temporary=path.with_name(path.name+'.tmp')
+    temporary.write_text(json.dumps(value,indent=2),encoding='utf-8')
+    os.replace(temporary,path)
+
+
 def prepare_output(output,study):
     """Create --output,or reuse it for the same study: it may hold only this tool's two summary files.
     Anything else (an old result folder with s<seed>/ files,another study) is refused,never overwritten."""
     if output.exists():
         found=sorted(p.name for p in output.iterdir())
-        if any(name not in SUMMARY_FILES for name in found):
+        if any(name not in SUMMARY_FILES and name.removesuffix('.tmp') not in SUMMARY_FILES for name in found):
             raise ValueError(f'{output} holds other files ({", ".join(found)}); choose another --output')
         if 'protocol.json' in found and json.loads((output/'protocol.json').read_text(encoding='utf-8')).get('study')!=study:
             raise ValueError(f'{output} holds the summary of another study; choose another --output')
@@ -98,6 +121,8 @@ def main(argv=None):
     try:unit_dir(unit_key(args.study,args.seeds[0]))  # run root and study name,before any data is loaded
     except (FileNotFoundError,ValueError) as exc:ap.error(f'--study: {exc}')
     if args.output is None:args.output=default_output(args.study)
+    try:refuse_tracked_output(args.output)
+    except ValueError as exc:ap.error(f'--output: {exc}')
     torch.set_num_threads(1)
     data=json.loads((args.data_root/'manifest_mirror_complete.json').read_text())
     source=next(r for r in data['files'] if r['name']=='squad_train_v11.json')
@@ -110,6 +135,8 @@ def main(argv=None):
     queries={t.question_id:t.question for t in fit+tune};query_binding=None
     if args.need_queries is not None:
         queries,query_binding=load_need_queries(args.need_queries,fit+tune,data_sha256=source['sha256'],sample_sha256=samples_sha256)
+    configs={seed:unit_config(args,seed,source=source,samples_sha256=samples_sha256,query_binding=query_binding) for seed in args.seeds}
+    check_units(args.study,configs)  # a changed setting fails here,before the output folder is created or touched
     try:prepare_output(args.output,args.study)
     except ValueError as exc:ap.error(f'--output: {exc}')
     corpus=tuple({c.case_id:c for t in tasks for c in t.cases}.values())
@@ -139,7 +166,6 @@ def main(argv=None):
         public_dev_annotations_used=False,global_promotion=False,query_binding=query_binding,
         query_source='actual frozen host request' if query_binding else 'original public question',query_texts=queries)
     protocol['study']=args.study
-    (args.output/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
     lexical={}
     for name,group in [('fit',fit),('tune',tune)]:
         count1=count2=0
@@ -223,7 +249,7 @@ def main(argv=None):
     runs=[]
     for seed in args.seeds:
         key=unit_key(args.study,seed)
-        config=unit_config(args,seed,source=source,samples_sha256=samples_sha256,query_binding=query_binding)
+        config=configs[seed]
         recorded=load_unit(key,config=config,arrays=False)  # a complete unit: never trained again
         if recorded is None:
             with open_run(key,config=config) as run:train(seed,run)
@@ -232,7 +258,8 @@ def main(argv=None):
         result['checkpoint_sha256']=recorded.states()['metric']['file']['sha256']
         runs.append(result)
         print(seed,result['selected_epoch'],result['selected']['tune'],result['parameter_delta_l2'],flush=True)
-    (args.output/'summary.json').write_text(json.dumps(dict(runs=runs,protocol=protocol),indent=2),encoding='utf-8')
+    write_json(args.output/'protocol.json',protocol)
+    write_json(args.output/'summary.json',dict(runs=runs,protocol=protocol))
 
 
 if __name__=='__main__':main()

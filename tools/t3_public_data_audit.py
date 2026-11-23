@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 
 from model.common.artifacts import source_fingerprint
+from model.t3.outputs import output_path
 from model.t3.benchmarks import answer_metrics,hotpot_metrics,load_hotpot,load_squad,select_by_id
 
 
@@ -30,8 +31,10 @@ def reference(path):
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--data-root',type=Path,required=True)
-    ap.add_argument('--output',type=Path,required=True)
+    ap.add_argument('--output',type=Path,help='output folder (default: results/t3/s1_single_hop_retrieval/t3-public-data-audit-<UTC time>/; never reports/ or docs/)')
     args=ap.parse_args()
+    try:args.output=output_path(args.output,'s1_single_hop_retrieval','t3-public-data-audit')
+    except ValueError as exc:ap.error(f'--output: {exc}')
     args.output.mkdir(parents=True,exist_ok=False)
     manifest=json.loads((args.data_root/'manifest_mirror_complete.json').read_text())
     assert manifest['complete']

@@ -7,14 +7,22 @@ import json
 import os
 from pathlib import Path
 import re
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # run as a plain script: the repo root holds model/
+from model.t3.outputs import output_path  # noqa: E402
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--revision", required=True, help="Exact 40-character Qwen3-0.6B commit")
     parser.add_argument("--model-dir", type=Path, required=True)
-    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path, help="host file manifest (default: results/t3/s0_host_setup/t3-host-manifest-<UTC time>.json; never reports/ or docs/)")
     args = parser.parse_args()
+    try:
+        args.manifest = output_path(args.manifest, "s0_host_setup", "t3-host-manifest", ".json")
+    except ValueError as exc:
+        parser.error(f"--manifest: {exc}")
     if not re.fullmatch("[0-9a-f]{40}", args.revision):
         parser.error("revision must be an immutable commit, not main or a branch")
     os.environ["HF_HUB_DISABLE_XET"] = "1"

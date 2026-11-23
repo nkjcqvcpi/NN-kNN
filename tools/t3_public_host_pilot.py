@@ -16,6 +16,8 @@ import sys
 import time
 import uuid
 
+from model.t3.outputs import output_path
+
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
@@ -26,13 +28,15 @@ def main():
     ap.add_argument('--sample-manifest',type=Path,required=True)
     ap.add_argument('--metric-checkpoint',type=Path,required=True,
                     help='the t3_need_matching run unit runs/t3/<study>/s<seed>/ whose recorded metric is evaluated (no training)')
-    ap.add_argument('--output',type=Path,required=True)
+    ap.add_argument('--output',type=Path,help='output folder (default: results/t3/s1_single_hop_retrieval/t3-public-host-<UTC time>/; never reports/ or docs/)')
     ap.add_argument('--conditions',nargs='+',choices=['none','bm25','fixed','learned','iterative'],default=['none','bm25','fixed','learned','iterative'])
     ap.add_argument('--format-library',type=Path)
     ap.add_argument('--strict-schema',action='store_true')
     ap.add_argument('--request-token-ceiling',type=int,choices=(128,256,512),default=128)
     ap.add_argument('--request-profile',choices=('standard','bounded'),default='standard')
     args=ap.parse_args()
+    try:args.output=output_path(args.output,'s1_single_hop_retrieval','t3-public-host')
+    except ValueError as exc:ap.error(f'--output: {exc}')
     if args.request_profile=='bounded':args.strict_schema=True
     args.output.mkdir(parents=True,exist_ok=False)
     native=args.runtime_library_bin.resolve(strict=True)

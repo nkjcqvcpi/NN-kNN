@@ -9,8 +9,10 @@ It learns provided-source-passage identity,not answer or downstream utility.
 `--study S` is required: each seed is recorded as the run unit `NN-KNN/runs/t3/S/s<seed>/`
 (TensorBoard curves,training events,seed summary,weights); no `s<seed>/` folder is written,
 a complete seed is never trained again,and protocol.json/summary.json go to
-`results/t3/s1_single_hop_retrieval/need_matching/S/` by default; see `HANDOFF.md`,
-"2026-11-22 (final)". The numbers are the same as the historical file-based runs below.
+`results/t3/s1_single_hop_retrieval/need_matching/S/` by default (never `reports/` or `docs/`).
+Every seed's unit is checked against the run's settings before any file is touched, so a changed
+setting fails with `ConfigMismatchError` and leaves a reused output folder byte-unchanged; both
+files are written together at the end. See `HANDOFF.md`, "2026-11-22 (final)". The numbers are the same as the historical file-based runs below.
 No public dev annotation trains or selects the model; no global promotion occurs.
 
 128 fitting and64 tuning SQuAD train questions use article-disjoint groups and

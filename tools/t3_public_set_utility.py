@@ -13,16 +13,21 @@ from pathlib import Path
 import sys
 import time
 
+from model.t3.outputs import output_path
+
 
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
-    for name in ('input-run','input-verification','model-dir','host-manifest','data-root','runtime-library-bin','format-library','output'):
+    for name in ('input-run','input-verification','model-dir','host-manifest','data-root','runtime-library-bin','format-library'):
         ap.add_argument('--'+name,type=Path,required=True)
+    ap.add_argument('--output',type=Path,help='output folder (default: results/t3/s1_single_hop_retrieval/t3-public-set-utility-<UTC time>/; never reports/ or docs/)')
     ap.add_argument('--conditions',nargs='+',choices=['fixed','learned'],default=['fixed','learned'])
     args=ap.parse_args()
+    try:args.output=output_path(args.output,'s1_single_hop_retrieval','t3-public-set-utility')
+    except ValueError as exc:ap.error(f'--output: {exc}')
     if len(set(args.conditions))!=len(args.conditions):ap.error('conditions must be unique')
     verification=json.loads(args.input_verification.read_text())
     if verification.get('provisional_snapshot') or not verification.get('all_recorded_retrieval_traces_verified') or verification['counts']['trials']!=80:

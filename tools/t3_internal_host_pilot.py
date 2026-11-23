@@ -14,16 +14,21 @@ from pathlib import Path
 import sys
 import time
 
+from model.t3.outputs import output_path
+
 
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
-    for name in ('source-run','source-verification','model-dir','runtime-library-bin','data-root','metric-checkpoint','format-library','output'):
+    for name in ('source-run','source-verification','model-dir','runtime-library-bin','data-root','metric-checkpoint','format-library'):
         ap.add_argument('--'+name,type=Path,required=True)
+    ap.add_argument('--output',type=Path,help='output folder (default: results/t3/s1_model_integration/t3-internal-host-<UTC time>/; never reports/ or docs/)')
     ap.add_argument('--alpha',type=float,default=.1)
     args=ap.parse_args()
+    try:args.output=output_path(args.output,'s1_model_integration','t3-internal-host')
+    except ValueError as exc:ap.error(f'--output: {exc}')
     if not 0<args.alpha<1:ap.error('positive fixed alpha below1 required')
     verification=json.loads(args.source_verification.read_text())
     if not verification.get('all_recorded_retrieval_traces_verified') or verification.get('provisional_snapshot') or verification['counts']['trials']!=80:

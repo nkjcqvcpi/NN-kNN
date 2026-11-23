@@ -137,6 +137,44 @@ def test_a_changed_setting_does_not_reuse_a_complete_unit(data,runs,tmp_path):
     with pytest.raises(tr.ConfigMismatchError):run(data,tmp_path/'longer','--study','tm','--epochs','4')
 
 
+def snapshot(folder):
+    return {p.relative_to(folder).as_posix():p.read_bytes() for p in sorted(folder.rglob('*')) if p.is_file()}
+
+
+def test_a_changed_setting_fails_before_a_reused_output_folder_or_any_unit_is_touched(data,runs,tmp_path,monkeypatch):
+    run(data,tmp_path/'study','--study','tm')
+    before,units=snapshot(tmp_path/'study'),snapshot(runs)
+    def no_training(*args,**kwargs):raise AssertionError('trained before the config check')
+    monkeypatch.setattr(nm,'need_loss',no_training)
+    with pytest.raises(tr.ConfigMismatchError):run(data,tmp_path/'study','--study','tm','--epochs','4')
+    with pytest.raises(tr.ConfigMismatchError):run(data,tmp_path/'study','--study','tm','--epochs','4',seeds=('5','3'))  # new seed 5 first
+    assert snapshot(tmp_path/'study')==before and snapshot(runs)==units
+    with pytest.raises(tr.ConfigMismatchError):run(data,tmp_path/'fresh','--study','tm','--epochs','4')
+    assert not (tmp_path/'fresh').exists()
+
+
+def test_an_interrupted_unit_with_another_config_fails_before_anything_is_written(data,runs,tmp_path,monkeypatch):
+    real,calls=nm.need_loss,[0]
+    def crash(*args,**kwargs):
+        calls[0]+=1
+        if calls[0]==5:raise RuntimeError('killed')
+        return real(*args,**kwargs)
+    monkeypatch.setattr(nm,'need_loss',crash)
+    with pytest.raises(RuntimeError,match='killed'):run(data,tmp_path/'out','--study','cut')
+    assert tr.run_status(runs/'t3'/'cut'/'s3').status=='failed' and not any((tmp_path/'out').iterdir())
+    units=snapshot(runs);calls[0]=-10**9
+    with pytest.raises(tr.ConfigMismatchError):run(data,tmp_path/'out','--study','cut','--epochs','4')
+    assert calls[0]==-10**9 and snapshot(runs)==units and not any((tmp_path/'out').iterdir())
+
+
+def test_an_output_inside_reports_or_docs_is_refused(data,runs,tmp_path):
+    root=Path(nm.__file__).resolve().parents[1]
+    for folder in ('reports','docs'):
+        with pytest.raises(SystemExit) as exc:run(data,root/folder/'t3-generated-test','--study','tm')
+        assert exc.value.code==2 and not (root/folder/'t3-generated-test').exists()
+    assert not any(runs.iterdir())
+
+
 def test_a_partly_complete_study_trains_only_the_missing_seed_and_equals_an_uninterrupted_one(data,runs,tmp_path,monkeypatch):
     run(data,tmp_path/'whole','--study','whole')
     counter=Counter(nm.need_loss)
