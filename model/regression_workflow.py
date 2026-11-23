@@ -17,7 +17,7 @@ from sklearn.model_selection import KFold
 
 from datasets.reg_data import DATATYPES, Reg_data, standardize_tensor
 from model.device_utils import resolve_runtime_device
-from model.common.tracking import NullRun, RunData
+from model.common.tracking import NullRun, Run, RunData
 from model.nnknn_model import default_args, train_model
 
 
@@ -920,10 +920,11 @@ def train_nnknn_regression_state(
         feature_extractor: Optional feature extractor passed to `train_model`.
         checkpoint_label: Optional suffix used to create a unique checkpoint path.
         clone_feature_extractor: When True, deep-copies the feature extractor per run.
-        run, resumable: Passed to `train_model` (default `NullRun`: nothing is recorded and
-            `train_model` writes its checkpoint files). With a real run the training, its named
-            states and weights go to the run, no checkpoint file is written and
-            `checkpoint_label` is not used.
+        run, resumable: Passed to `train_model`. The default `NullRun` (nothing is recorded,
+            `train_model` writes its checkpoint files) is kept only for Table 1, whose published
+            code path calls this without a run; every other caller passes an open run (recording
+            is mandatory). With a run the training, its named states and weights go to the run,
+            no checkpoint file is written and `checkpoint_label` is not used.
 
     Output:
         A new workflow state containing the trained model, best metric, and runtime config.
@@ -1548,12 +1549,11 @@ def run_nnknn_regression_workflow(
     standardize: bool | str = "auto",
     glocal_init_from_true: bool = False,
     glocal_init_alpha: float = 1.0,
-    checkpoint_label: str | None = None,
     include_eval: bool = True,
     include_pre_post: bool = False,
     show_plots: bool = False,
     print_metrics: bool = True,
-    run: Any = NullRun(),
+    run: Run,
     resumable: bool = False,
 ) -> dict[str, Any]:
     """Purpose: execute the NN-kNN dataset -> split -> train -> eval flow used by the notebook.
@@ -1570,17 +1570,21 @@ def run_nnknn_regression_workflow(
         standardize: `True`, `False`, or `"auto"` to standardize only real datasets.
         glocal_init_from_true: Whether to initialize glocal weights from true regime weights.
         glocal_init_alpha: Strength of that glocal-weight initialization blend.
-        checkpoint_label: Optional suffix used to create a unique checkpoint file.
         include_eval: When True, computes post-adaptation metrics after training.
         include_pre_post: When True, also computes pre/post adaptation metrics.
         show_plots: When True, evaluation helpers render figures.
         print_metrics: When True, evaluation helpers print RMSE summaries.
-        run, resumable: Passed to `train_model` through `train_nnknn_regression_state`
-            (default `NullRun`: nothing is recorded, checkpoint files as before).
+        run, resumable: Passed to `train_model` through `train_nnknn_regression_state`. `run` is
+            required (an open `tracking.Run`; recording is mandatory): the training, its named
+            states and weights go to the run and no checkpoint file is written. The caller skips a
+            complete unit before calling (`tracking.load_unit`).
 
     Output:
         A complete workflow state ready for notebook use or repeated-run aggregation.
     """
+    if not isinstance(run, Run):
+        raise TypeError("run_nnknn_regression_workflow needs an open tracking.Run (open_run); recording is mandatory, "
+                        f"got {type(run).__name__}")
     dataset_kwargs = dict(dataset_kwargs or {})
     bundle_seed = dataset_seed if dataset_seed is not None else dataset_kwargs.pop("seed", 42)
     seed_everything(run_seed)
@@ -1609,7 +1613,6 @@ def run_nnknn_regression_workflow(
         state,
         cfg_run,
         feature_extractor=feature_extractor,
-        checkpoint_label=checkpoint_label,
         run=run,
         resumable=resumable,
     )
@@ -1652,12 +1655,11 @@ def run_single_nnknn_regression_experiment(
     standardize: bool | str = "auto",
     glocal_init_from_true: bool = False,
     glocal_init_alpha: float = 1.0,
-    checkpoint_label: str | None = None,
-    run: Any = NullRun(),
+    run: Run,
     resumable: bool = False,
 ) -> dict[str, Any]:
-    """Purpose: single-run NN-kNN entry point built on the shared workflow helpers (`run` and
-    `resumable` as in `run_nnknn_regression_workflow`)."""
+    """Purpose: single-run NN-kNN entry point built on the shared workflow helpers (`run`, required,
+    and `resumable` as in `run_nnknn_regression_workflow`)."""
     return run_nnknn_regression_workflow(
         dataset_name,
         cfg,
@@ -1670,7 +1672,6 @@ def run_single_nnknn_regression_experiment(
         standardize=standardize,
         glocal_init_from_true=glocal_init_from_true,
         glocal_init_alpha=glocal_init_alpha,
-        checkpoint_label=checkpoint_label,
         include_eval=True,
         include_pre_post=False,
         show_plots=False,
@@ -1795,7 +1796,6 @@ def run_regression_benchmark_methods_on_state(
     methods: list[str] | None = None,
     method_cfgs: Mapping[str, Mapping[str, Any]] | None = None,
     run_seed: int = 42,
-    checkpoint_label_prefix: str | None = None,
     glocal_init_from_true: bool = False,
     glocal_init_alpha: float = 1.0,
     unit_run: Callable[[Mapping[str, Any], str], ContextManager[Any]] | None = None,
@@ -1809,17 +1809,19 @@ def run_regression_benchmark_methods_on_state(
         methods: Benchmark methods to run. Defaults to every supported method.
         method_cfgs: Optional per-method kwargs, keyed by method name.
         run_seed: Seed used to make each method deterministic on this split.
-        checkpoint_label_prefix: Optional prefix for per-run NN-kNN checkpoint files.
         glocal_init_from_true: Whether to initialize glocal weights from true regime weights.
         glocal_init_alpha: Strength of that glocal-weight initialization blend.
-        unit_run: Optional, off by default (then everything is as before run tracking). A
-            `unit_run(state, method)` returns a context manager per method that yields either a
-            `tracking.Run` to record that method in (`rec/row`, the run record of
-            `_build_run_record`; finals `rmse_raw`, `rmse_model_space`, `rmse_z`, `best_metric`;
-            array `y_pred_z`; NN-kNN training through `train_model`, resumable, without checkpoint
-            files), or the `tracking.RunData` of the method's complete unit: the method is then not
-            rerun and its entry is the recorded values (`recorded_unit` = the unit path, no model),
-            so the caller's rows and summaries are the same as when it ran.
+        unit_run: Required whenever `nnknn` is requested (recording is mandatory; `ValueError`
+            otherwise). It is optional only for the baseline methods, which Table 1 runs without a
+            run (published code path, unchanged). A `unit_run(state, method)` returns a context
+            manager per method that yields either a `tracking.Run` to record that method in
+            (`rec/row`, the run record of `_build_run_record`; finals `rmse_raw`,
+            `rmse_model_space`, `rmse_z`, `best_metric`; array `y_pred_z`; NN-kNN training through
+            `train_model`, resumable, without checkpoint files), or the `tracking.RunData` of the
+            method's complete unit, detected before any training: the method is then not rerun and
+            its entry is the recorded values (`recorded_unit` = the unit path, no model), so the
+            caller's rows and summaries are the same as when it ran. Every method starts from
+            `seed_everything(run_seed)`, so a skipped unit leaves no RNG state a later one needs.
 
     Output:
         A dictionary mapping canonical method names to method-specific workflow artifacts.
@@ -1831,6 +1833,7 @@ def run_regression_benchmark_methods_on_state(
         if canonical not in canonical_methods:
             canonical_methods.append(canonical)
 
+    _require_unit_run_for_nnknn(canonical_methods, unit_run)
     normalized_method_cfgs = {
         _normalize_benchmark_method(method_name): dict(method_cfg)
         for method_name, method_cfg in (method_cfgs or {}).items()
@@ -1843,15 +1846,20 @@ def run_regression_benchmark_methods_on_state(
             if isinstance(run, RunData):  # complete unit: not rerun (every method starts from its own seed)
                 results[method] = _recorded_regression_artifact(run)
                 continue
-            checkpoint_label = None
-            if checkpoint_label_prefix is not None and isinstance(run, NullRun):
-                checkpoint_label = f"{checkpoint_label_prefix}_{method}"
+            if unit_run is not None and not isinstance(run, Run):
+                raise TypeError(f"unit_run must yield a tracking.Run or RunData, got {type(run).__name__}")
             results[method] = _run_regression_method(
                 method, state, nnknn_cfg, normalized_method_cfgs, feature_extractor=feature_extractor,
-                run_seed=run_seed, run=run, checkpoint_label=checkpoint_label,
+                run_seed=run_seed, run=run,
                 glocal_init_from_true=glocal_init_from_true, glocal_init_alpha=glocal_init_alpha)
             _log_regression_unit(run, method, state, results[method])
     return results
+
+
+def _require_unit_run_for_nnknn(methods: list[str], unit_run: Any) -> None:
+    if unit_run is None and "nnknn" in methods:
+        raise ValueError("the nnknn benchmark method needs unit_run: recording is mandatory (owner's rule O1); only "
+                         "the baselines run without one (Table 1)")
 
 
 def _recorded_regression_artifact(data: RunData) -> dict[str, Any]:
@@ -1891,7 +1899,6 @@ def _run_regression_method(
     feature_extractor: Any,
     run_seed: int,
     run: Any,
-    checkpoint_label: str | None,
     glocal_init_from_true: bool,
     glocal_init_alpha: float,
 ) -> dict[str, Any]:
@@ -1926,9 +1933,8 @@ def _run_regression_method(
             base_state,
             cfg_run,
             feature_extractor=feature_extractor,
-            checkpoint_label=checkpoint_label,
             run=run,
-            resumable=not isinstance(run, NullRun),
+            resumable=True,
         )
         artifact = evaluate_nnknn_regression_state(
             artifact,
@@ -1987,9 +1993,9 @@ def run_repeated_regression_model_benchmarks(
         dataset_kwargs_map: Optional per-dataset loader/builder arguments.
         glocal_init_from_true: Whether to initialize glocal weights from true synthetic weights.
         glocal_init_alpha: Strength of that glocal-weight initialization blend.
-        unit_run: As in `run_regression_benchmark_methods_on_state`; a complete unit's row is
-            built from its recorded values, so `summary_df` and `runs_df` do not depend on which
-            units ran in this call.
+        unit_run: As in `run_regression_benchmark_methods_on_state` (required when `nnknn` is
+            requested); a complete unit's row is built from its recorded values, so `summary_df`
+            and `runs_df` do not depend on which units ran in this call.
 
     Output:
         A tuple of `(summary_df, run_df, artifacts)` where artifacts are nested as
@@ -2009,6 +2015,7 @@ def run_repeated_regression_model_benchmarks(
         canonical = _normalize_benchmark_method(method)
         if canonical not in canonical_methods:
             canonical_methods.append(canonical)
+    _require_unit_run_for_nnknn(canonical_methods, unit_run)
 
     run_records: list[dict[str, Any]] = []
     artifacts: dict[str, dict[str, list[dict[str, Any]]]] = {}
@@ -2065,7 +2072,6 @@ def run_repeated_regression_model_benchmarks(
                     methods=canonical_methods,
                     method_cfgs=method_cfgs,
                     run_seed=run_seed,
-                    checkpoint_label_prefix=f"fold_{fold_idx + 1}",
                     glocal_init_from_true=glocal_init_from_true,
                     glocal_init_alpha=glocal_init_alpha,
                     unit_run=unit_run,
@@ -2122,7 +2128,6 @@ def run_repeated_regression_model_benchmarks(
                     methods=canonical_methods,
                     method_cfgs=method_cfgs,
                     run_seed=run_seed,
-                    checkpoint_label_prefix=f"run_{run_idx + 1}",
                     glocal_init_from_true=glocal_init_from_true,
                     glocal_init_alpha=glocal_init_alpha,
                     unit_run=unit_run,
@@ -2160,6 +2165,7 @@ def run_repeated_nnknn_regression_experiments(
     dataset_kwargs_map: Mapping[str, Mapping[str, Any]] | None = None,
     glocal_init_from_true: bool = False,
     glocal_init_alpha: float = 1.0,
+    unit_run: Callable[[Mapping[str, Any], str], ContextManager[Any]],
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, list[dict[str, Any]]]]:
     """Purpose: rerun one or more experiments and summarize RMSE mean/std for tables.
 
@@ -2175,6 +2181,7 @@ def run_repeated_nnknn_regression_experiments(
         dataset_kwargs_map: Optional per-dataset loader/builder arguments.
         glocal_init_from_true: Whether to initialize glocal weights from true synthetic weights.
         glocal_init_alpha: Strength of that glocal-weight initialization blend.
+        unit_run: Required (recording is mandatory), as in `run_regression_benchmark_methods_on_state`.
 
     Output:
         A tuple of `(summary_df, run_df, artifacts)` containing paper-ready aggregates,
@@ -2193,6 +2200,7 @@ def run_repeated_nnknn_regression_experiments(
         dataset_kwargs_map=dataset_kwargs_map,
         glocal_init_from_true=glocal_init_from_true,
         glocal_init_alpha=glocal_init_alpha,
+        unit_run=unit_run,
     )
 
     nnknn_summary = summary_df.drop(columns=["method"], errors="ignore")
