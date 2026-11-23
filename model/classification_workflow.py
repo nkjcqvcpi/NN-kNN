@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import contextlib
 import copy
 import os
 import random
 import re
-from pathlib import Path
 from typing import Any, Callable, ContextManager, Mapping
 
 import numpy as np
@@ -26,7 +24,7 @@ from datasets.classification_data import (
 )
 from model.device_utils import resolve_runtime_device
 from model.feature_extractors import CIFAR10Classifier, MNISTClassifier, get_feature_extractor_from
-from model.common.tracking import NullRun, RunData, load_state
+from model.common.tracking import Run, RunData, TrackingError
 from model.nnknn_model import default_args, train_model
 
 
@@ -276,13 +274,10 @@ def split_classification_state(
     return new_state
 
 
-def _checkpoint_path_for_run(path: str, dataset_name: str, label: str) -> str:
-    checkpoint = Path(path)
-    suffix = checkpoint.suffix or ".pth"
-    stem = checkpoint.stem if checkpoint.suffix else checkpoint.name
-    safe_dataset = _normalize_name(dataset_name)
-    safe_label = _normalize_name(label)
-    return str(checkpoint.with_name(f"{stem}_{safe_dataset}_{safe_label}{suffix}"))
+def _require_run(run: Any, where: str) -> None:
+    """Recording is mandatory (owner's rule O1): training goes to a run unit, never to loose checkpoint files."""
+    if not isinstance(run, Run):
+        raise TypeError(f"{where} needs an open tracking.Run (open_run); recording is mandatory, got {type(run).__name__}")
 
 
 def build_image_classifier(dataset_name: str) -> nn.Module:
@@ -302,27 +297,18 @@ def train_nnknn_classification_state(
     state: Mapping[str, Any],
     cfg: Mapping[str, Any],
     *,
+    run: Run,
     feature_extractor: nn.Module | None = None,
-    checkpoint_label: str | None = None,
     clone_feature_extractor: bool = True,
-    run: Any = NullRun(),
     resumable: bool = False,
 ) -> dict[str, Any]:
-    """Train NN-kNN on a split state. ``run`` and ``resumable`` go to ``train_model``. Without a
-    run (the default) ``train_model`` writes its checkpoint files at ``cfg["checkpoint_path"]``,
-    made unique per dataset and ``checkpoint_label``; with a real run the training, its named
-    states and weights go to the run and no checkpoint file or folder is written."""
+    """Train NN-kNN on a split state into ``run`` (required: an open ``tracking.Run``). ``run`` and
+    ``resumable`` go to ``train_model``: the training, its named states (``best_retrieval``,
+    ``final``) and weights go to the run; no checkpoint file or folder is written
+    (``cfg["checkpoint_path"]`` is not used)."""
+    _require_run(run, "train_nnknn_classification_state")
     _validate_classification_cfg(cfg)
     cfg_run = copy.deepcopy(dict(cfg))
-    if isinstance(run, NullRun):
-        if checkpoint_label is not None:
-            cfg_run["checkpoint_path"] = _checkpoint_path_for_run(
-                str(cfg_run.get("checkpoint_path", "checkpoints/nnknn_classification_best.pth")),
-                str(state["display_name"]),
-                checkpoint_label,
-            )
-        checkpoint = Path(str(cfg_run["checkpoint_path"]))
-        checkpoint.parent.mkdir(parents=True, exist_ok=True)
     run_feature_extractor = (
         copy.deepcopy(feature_extractor) if feature_extractor is not None and clone_feature_extractor else feature_extractor
     )
@@ -423,10 +409,12 @@ def run_single_nnknn_classification_experiment(
     split_seed: int | None = None,
     train_ratio: float = 0.8,
     standardize: bool | None = None,
-    checkpoint_label: str | None = None,
-    run: Any = NullRun(),
+    run: Run,
     resumable: bool = False,
 ) -> dict[str, Any]:
+    """Load, split, train NN-kNN into ``run`` (required, see ``train_nnknn_classification_state``)
+    and evaluate. The caller skips a complete unit before calling (``tracking.load_unit``)."""
+    _require_run(run, "run_single_nnknn_classification_experiment")
     seed_everything(run_seed)
     state = load_classification_dataset_state(dataset_name, dataset_kwargs=dataset_kwargs)
     state = split_classification_state(
@@ -443,7 +431,6 @@ def run_single_nnknn_classification_experiment(
         state,
         cfg_run,
         feature_extractor=feature_extractor,
-        checkpoint_label=checkpoint_label,
         run=run,
         resumable=resumable,
     )
@@ -571,23 +558,22 @@ def run_classification_benchmark_methods_on_state(
     methods: list[str] | None = None,
     method_cfgs: Mapping[str, Mapping[str, Any]] | None = None,
     run_seed: int = 42,
-    checkpoint_label_prefix: str | None = None,
-    unit_run: Callable[[Mapping[str, Any], str], ContextManager[Any]] | None = None,
+    unit_run: Callable[[Mapping[str, Any], str], ContextManager[Any]],
 ) -> dict[str, dict[str, Any]]:
-    """Run the benchmark methods on one split. Without ``unit_run`` (the default) everything is as
-    before run tracking: NN-kNN writes its checkpoint files, labelled ``checkpoint_label_prefix``.
-
-    ``unit_run(state, method)`` (optional) returns a context manager per method that yields either
-    a ``tracking.Run`` to record that method in (final ``accuracy`` and ``best_metric``, the
-    ``predictions`` array, and NN-kNN training through ``train_model``, resumable, without
-    checkpoint files), or the ``tracking.RunData`` of the method's complete unit: the method is
-    then not rerun and its entry holds the recorded ``accuracy`` (and ``best_metric``) with
-    ``recorded_unit`` = the unit path and no model, so rows and summaries built from the result
-    are the same as when it ran. The unit whose method trains the shared image classifier also
-    saves it as the named state ``classifier``; when that unit is complete, the classifier is
-    loaded from it, or, for a unit without it, retrained from that method's seed, which keeps the
-    RNG stream of the later methods unchanged (bit for bit on CPU only).
+    """Run the benchmark methods on one split. Recording is mandatory: ``unit_run(state, method)``
+    (required) returns a context manager per method that yields either a ``tracking.Run`` to
+    record that method in (final ``accuracy`` and ``best_metric``, the ``predictions`` array, and
+    NN-kNN training through ``train_model``, resumable, without checkpoint files), or the
+    ``tracking.RunData`` of the method's complete unit, which it must detect before any training:
+    the method is then not rerun and its entry holds the recorded ``accuracy`` (and
+    ``best_metric``) with ``recorded_unit`` = the unit path and no model. The unit whose method
+    trains the shared image classifier also saves it as the named state ``classifier``; when that
+    unit is complete, the classifier is loaded from it, never retrained (a complete owner unit
+    without it raises ``TrackingError``). Every method starts from ``seed_everything(run_seed)``,
+    so a skipped unit leaves no RNG state that a later method depends on.
     """
+    if unit_run is None:
+        raise TypeError("unit_run is required: recording is mandatory (owner's rule O1)")
     is_image = state.get("dataset_kind") == "image"
     requested = methods or (_IMAGE_METHODS if is_image else _SMALL_METHODS)
     canonical = [_METHOD_ALIASES.get(_normalize_name(method), _normalize_name(method)) for method in requested]
@@ -601,42 +587,35 @@ def run_classification_benchmark_methods_on_state(
     }
     results: dict[str, dict[str, Any]] = {}
     pretrained_classifier: nn.Module | None = None
-    skipped_classifier_owner = False  # a skipped method would have trained the classifier first
 
     def get_pretrained_classifier() -> nn.Module:
         nonlocal pretrained_classifier
         if pretrained_classifier is None:
-            if skipped_classifier_owner:  # train it from the seed the skipped method started with
-                seed_everything(run_seed)
             kwargs = dict(cfgs.get("convnet", {}))
             pretrained_classifier, _ = _train_torch_classifier(
                 build_image_classifier(str(state["dataset_name"])), state, **kwargs
             )
-            if skipped_classifier_owner:  # then the current method starts from its seed again
-                seed_everything(run_seed)
         return pretrained_classifier
 
     for method in canonical:
-        scope = unit_run(state, method) if unit_run is not None else contextlib.nullcontext(NullRun())
-        with scope as run:
+        with unit_run(state, method) as run:
             if isinstance(run, RunData):  # complete unit: not rerun
                 if method in _CLASSIFIER_METHODS and pretrained_classifier is None:
-                    if "classifier" in run.states():  # the classifier this unit trained, exactly (no RNG consumed)
-                        pretrained_classifier = build_image_classifier(str(state["dataset_name"]))
-                        pretrained_classifier.load_state_dict(load_state(run.path, "classifier"))
-                        pretrained_classifier = pretrained_classifier.to(resolve_runtime_device()).eval()
-                    else:
-                        skipped_classifier_owner = True
+                    if "classifier" not in run.states():
+                        raise TrackingError(f"{run.path} is complete but holds no 'classifier' state; the shared "
+                                            "classifier is never retrained (owner's rule O4)")
+                    # the classifier this unit trained, exactly (no RNG consumed)
+                    pretrained_classifier = build_image_classifier(str(state["dataset_name"]))
+                    pretrained_classifier.load_state_dict(run.load_state("classifier"))
+                    pretrained_classifier = pretrained_classifier.to(resolve_runtime_device()).eval()
                 results[method] = _recorded_classification_artifact(state, run)
                 continue
+            _require_run(run, "unit_run")
             had_classifier = pretrained_classifier is not None
-            label = None
-            if isinstance(run, NullRun):
-                label = f"{checkpoint_label_prefix}_{method}" if checkpoint_label_prefix else method
             results[method] = _run_classification_method(
-                method, state, nnknn_cfg, cfgs, run_seed, run, is_image, get_pretrained_classifier, label)
+                method, state, nnknn_cfg, cfgs, run_seed, run, is_image, get_pretrained_classifier)
             _log_classification_unit(run, results[method])
-            if not had_classifier and pretrained_classifier is not None and not isinstance(run, NullRun):
+            if not had_classifier and pretrained_classifier is not None:
                 run.save_state("classifier", pretrained_classifier.state_dict())
     return results
 
@@ -652,9 +631,7 @@ def _recorded_classification_artifact(state: Mapping[str, Any], data: RunData) -
     return artifact
 
 
-def _log_classification_unit(run: Any, artifact: Mapping[str, Any]) -> None:
-    if isinstance(run, NullRun):
-        return
+def _log_classification_unit(run: Run, artifact: Mapping[str, Any]) -> None:
     finals = {"accuracy": float(artifact["accuracy"])}
     if artifact.get("best_metric") is not None:
         finals["best_metric"] = float(artifact["best_metric"])
@@ -670,10 +647,9 @@ def _run_classification_method(
     nnknn_cfg: Mapping[str, Any] | None,
     cfgs: Mapping[str, Mapping[str, Any]],
     run_seed: int,
-    run: Any,
+    run: Run,
     is_image: bool,
     get_pretrained_classifier: Callable[[], nn.Module],
-    checkpoint_label: str | None,
 ) -> dict[str, Any]:
     seed_everything(run_seed)
     print(f"[classification benchmark] {state['display_name']} method={method}", flush=True)
@@ -692,8 +668,7 @@ def _run_classification_method(
             else:
                 extractor = build_nnknn_image_feature_extractor(str(state["dataset_name"]))
         artifact = train_nnknn_classification_state(
-            state, cfg_run, feature_extractor=extractor, checkpoint_label=checkpoint_label,
-            run=run, resumable=not isinstance(run, NullRun),
+            state, cfg_run, feature_extractor=extractor, run=run, resumable=True,
         )
         artifact = evaluate_nnknn_classification_state(artifact, print_metrics=False)
         artifact["baseline_name"] = "NN-kNN" if not is_image else method
@@ -780,13 +755,15 @@ def run_repeated_classification_model_benchmarks(
     train_ratio: float = 0.8,
     standardize: bool | None = None,
     dataset_kwargs_map: Mapping[str, Mapping[str, Any]] | None = None,
-    unit_run: Callable[[Mapping[str, Any], str], ContextManager[Any]] | None = None,
+    unit_run: Callable[[Mapping[str, Any], str], ContextManager[Any]],
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, dict[str, list[dict[str, Any]]]]]:
-    """Repeated benchmark over datasets and splits. ``unit_run`` (optional, off by default) as in
+    """Repeated benchmark over datasets and splits. ``unit_run`` (required) as in
     ``run_classification_benchmark_methods_on_state``; the state it gets carries ``run_index``,
     ``run_seed``, ``run_mode`` and ``requested_name`` (the dataset name as passed). A complete
     unit's row holds its recorded accuracy, so the returned tables do not depend on which units
     ran in this call."""
+    if unit_run is None:
+        raise TypeError("unit_run is required: recording is mandatory (owner's rule O1)")
     names = [dataset_names] if isinstance(dataset_names, str) else list(dataset_names)
     normalized_mode = _normalize_name(mode)
     kwargs_map = dataset_kwargs_map or {}
@@ -841,10 +818,8 @@ def run_repeated_classification_model_benchmarks(
                 methods=method_names,
                 method_cfgs=method_cfgs,
                 run_seed=run_seed,
-                checkpoint_label_prefix=f"{run_mode}_{index}",
-                unit_run=None if unit_run is None else (
-                    lambda st, method, _mode=run_mode, _name=dataset_name: unit_run(
-                        {**st, "run_mode": _mode, "requested_name": _name}, method)),
+                unit_run=lambda st, method, _mode=run_mode, _name=dataset_name: unit_run(
+                    {**st, "run_mode": _mode, "requested_name": _name}, method),
             )
             for method, artifact in results.items():
                 artifacts[dataset_name].setdefault(method, []).append(artifact)

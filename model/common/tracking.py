@@ -475,6 +475,16 @@ class RunData:
         """Path of a named state's file, NOT hash-checked (run_status checks sizes only); load_state checks it."""
         return self.path / self.states()[name]["file"]["relpath"]
 
+    def load_state(self, name: str, map_location: Any = "cpu") -> Any:
+        """A named state of this unit, after checking its file's size and SHA-256 against the record."""
+        f = self.states()[name]["file"]
+        return _load_torch(self.path / f["relpath"], f["sha256"], f["bytes"], map_location)
+
+    def restore_rng(self, name: str = "rng", generators: Mapping[str, Any] | None = None) -> None:
+        """Restore the RNG snapshot that ``Run.save_rng(name)`` stored (python, numpy, torch CPU, CUDA/XPU, generators),
+        so code after a skipped unit continues from the RNG state the unit's training left."""
+        restore_rng(self.load_state(name), generators)
+
     def sessions(self) -> list[dict]:
         return [{"session": s.session, "file": s.file.name, "begin": s.begin,
                  "resume": s.records[1].value if s.session > 1 else None,
@@ -501,6 +511,15 @@ def resolve_unit(key: RunKey | str, *, config: Mapping | None, root: str | Path 
     if config is not None and info.config_sha256 != payload_sha256(config):
         raise ConfigMismatchError(f"{info.run_id} is complete with a different config")
     return info
+
+
+def load_unit(key: RunKey | str, *, config: Mapping | None, root: str | Path | None = None,
+              arrays: bool = True) -> RunData | None:
+    """RunData of the unit if it is complete (with this config), else None; ConfigMismatchError if it is complete
+    with another config. Call it before any training: a complete unit is never trained again, its data and weights
+    are read from the unit (``RunData.load_state``, ``RunData.restore_rng``)."""
+    info = resolve_unit(key, config=config, root=root)
+    return None if info is None else load_run(info.path, arrays=arrays)
 
 
 def _file_sha256(path: Path) -> tuple[str, int]:
@@ -821,6 +840,13 @@ class Run:
         self._emit_json(tag, record)
         self._singles.add(tag)
         return record
+
+    def save_rng(self, name: str = "rng", *, generators: Mapping[str, Any] | None = None,
+                 step: int | None = None) -> dict | None:
+        """Save ``capture_rng(generators)`` as the named state ``name`` (meta ``{"kind": "rng"}``); consumes nothing.
+        Record the RNG state the unit's training leaves when later code depends on it, so a rerun that skips the
+        complete unit restores it with ``RunData.restore_rng(name)`` and computes the same numbers."""
+        return self.save_state(name, capture_rng(generators), step=step, meta={"kind": "rng"})
 
     def checkpoint_due(self, step: int) -> bool:
         """True when a resume checkpoint is due (every N steps and/or every N seconds since the last one)."""
