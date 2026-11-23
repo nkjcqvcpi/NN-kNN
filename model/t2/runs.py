@@ -1,10 +1,10 @@
-"""Per-run output of the T2 RL workflows: plain files (as before) or a run unit (model/common/tracking.py).
+"""Per-run output of the T2 RL workflows: records of a run unit (model/common/tracking.py).
 
-Every RL training entry point (``train_dqn``, ``train_nec``, ``train_ppo``, ``train_td3``, ``train_nnknn_rl``) takes
-``run=None, resumable=False``. Without a run it writes its run directory exactly as before: ``config.json``, the
-metric CSVs, ``summary.json``, ``manifest.json``, ``checkpoint.pt`` and its extra event files and ``.pt`` snapshots.
-With a run (an open ``tracking.Run``; the caller opens and closes it) it writes no file of its own. Each per-run file
-becomes a record of the unit instead:
+Recording is mandatory (owner's rule, 2026-11-22). Every RL training entry point (``train_dqn``, ``train_nec``,
+``train_ppo``, ``train_td3``, ``train_nnknn_rl``) requires ``run``, an open ``tracking.Run`` (the caller opens and
+closes it; None or a NullRun raises TypeError), and takes ``resumable=False``. It writes no file of its own: what the
+retired file mode wrote as per-run files (metric CSVs, ``config.json``, ``summary.json``, ``checkpoint.pt``, event
+files and ``.pt`` snapshots) becomes records and named states of the unit:
 
 - ``<name>.csv`` -> row record ``rec/files/<name>.csv``; each row is a list of ``[column, value]`` pairs, so the
   column order of the CSV is kept (``ordered_row`` / ``plain_row``). Rows are flushed before every resume
@@ -18,7 +18,7 @@ becomes a record of the unit instead:
 
 Curves for TensorBoard go to ``x/`` tags (``episode/*``, ``eval/*``, ``train/*``, ``holdout/*``) at the environment
 step, and the headline numbers to ``x/final/*``. Readers rebuild the files' contents from the records:
-``RunFiles(path)`` reads a run unit or a legacy run directory with the same calls, so summary scripts read both.
+``RunFiles(path)`` reads a run unit (only a run unit: summary scripts read nothing but ``runs/``).
 """
 from __future__ import annotations
 
@@ -40,8 +40,15 @@ IMAGE_RESUME_EVERY_SECONDS = 1800.0  # resume cadence of image (ALE) tasks; flat
 
 
 def is_recording(run: Any) -> bool:
-    """True for an open tracking run; False for None and NullRun (plain files)."""
+    """True for an open tracking run; False for None and NullRun."""
     return run is not None and getattr(run, "path", None) is not None
+
+
+def require_run(run: Any, who: str) -> None:
+    """Raise TypeError unless ``run`` is an open tracking run (recording is mandatory)."""
+    if not is_recording(run):
+        raise TypeError(f"{who} needs run=<an open tracking.Run>: every T2 training is recorded as a run unit "
+                        f"of NN-KNN/runs (got {type(run).__name__})")
 
 
 def is_unit(path: str | Path) -> bool:
@@ -87,18 +94,6 @@ def csv_text(rows: list[Mapping[str, Any]]) -> str:
     return handle.getvalue()
 
 
-def write_json_file(path: Path, payload: Any) -> None:
-    path.write_text(json_text(payload), encoding="utf-8")
-
-
-def write_csv_file(path: Path, rows: list[Mapping[str, Any]]) -> None:
-    if not rows:
-        path.write_text("", encoding="utf-8")
-        return
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        handle.write(csv_text(rows))
-
-
 def tensorize(obj: Any) -> Any:
     """A checkpoint with numpy arrays as tensors and numpy scalars as numbers (what save_state stores)."""
     import torch
@@ -136,7 +131,7 @@ def state_name(relpath: str) -> str:
 
 
 class RowLog(list):
-    """The row list of one per-run file; in a recording run new rows go to its row record at each flush."""
+    """The row list of one per-run file; new rows go to its row record at each flush."""
 
     def __init__(self, name: str, ordered: bool = True):
         super().__init__()
@@ -150,14 +145,13 @@ class RowLog(list):
 
 
 class RunOutput:
-    """Where an RL workflow puts its per-run output: ``run_dir`` files (no run) or records of ``run``."""
+    """Where an RL workflow puts its per-run output: records and named states of ``run`` (required)."""
 
-    def __init__(self, run: Any, run_dir: Path | None, *, resumable: bool = False):
-        self.recording = is_recording(run)
-        self.run = run if self.recording else None
-        self.dir = Path(run.path) if self.recording else Path(run_dir)
-        if resumable and not self.recording:
-            raise ValueError("resumable=True needs a recording run")
+    def __init__(self, run: Any, *, resumable: bool = False):
+        require_run(run, "RunOutput")
+        self.recording = True
+        self.run = run
+        self.dir = Path(run.path)
         self.resumable = resumable
         self._logs: dict[str, RowLog] = {}
         self._last: dict[str, int] = {}
@@ -178,8 +172,6 @@ class RunOutput:
 
     def curve(self, step: int, values: Mapping[str, Any]) -> None:
         """Display curves (``x/<tag>``) at ``step``; None values and repeated steps are skipped (rows hold all)."""
-        if not self.recording:
-            return
         keep = {}
         for tag, value in values.items():
             if value is None or isinstance(value, str) or (isinstance(value, float) and not math.isfinite(value)):
@@ -193,16 +185,13 @@ class RunOutput:
                 self._last[tag] = int(step)
 
     def where(self, path: str | Path | None = None) -> str:
-        """``str(path)`` for files; in a recording run the path relative to the unit (``.`` for the unit itself),
-        so records depend neither on the run root nor on the unit name. RunFiles turns them back into full paths."""
-        if not self.recording:
-            return str(self.dir if path is None else path)
+        """The path relative to the unit (``.`` for the unit itself), so records depend neither on the run root
+        nor on the unit name. RunFiles turns them back into full paths."""
         return Path(self.dir if path is None else path).relative_to(self.dir).as_posix()
 
     def flush(self) -> None:
-        if self.recording:
-            for log in self._logs.values():
-                log.flush(self.run)
+        for log in self._logs.values():
+            log.flush(self.run)
 
     # ------------------------------------------------------------ resume
     def checkpoint_due(self, step: int) -> bool:
@@ -215,8 +204,6 @@ class RunOutput:
 
     def load_resume(self) -> Any:
         """The resume payload (None on a fresh unit); rebuilds the row lists and snapshot records from the stream."""
-        if not self.recording:
-            return None
         payload = self.run.load_resume()
         if payload is None:
             return None
@@ -235,9 +222,6 @@ class RunOutput:
 
     # ------------------------------------------------------------ files
     def write_csv(self, filename: str, rows: list[Mapping[str, Any]]) -> None:
-        if not self.recording:
-            write_csv_file(self.dir / filename, rows)
-            return
         log = self._logs.get(filename)
         if log is not None and rows is log:
             log.flush(self.run)
@@ -246,9 +230,6 @@ class RunOutput:
         self._outputs.append({"name": filename, "kind": "csv"})
 
     def write_json(self, filename: str, payload: Mapping[str, Any]) -> None:
-        if not self.recording:
-            write_json_file(self.dir / filename, payload)
-            return
         payload = dict(payload)
         events = payload.get("events")
         entry = {"name": filename, "kind": "json"}
@@ -264,31 +245,15 @@ class RunOutput:
         self._outputs.append(entry)
 
     def save_checkpoint(self, filename: str, checkpoint: Mapping[str, Any]) -> Path:
-        """``torch.save`` to ``run_dir/filename``, or the named state ``state_name(filename)``; returns the file."""
-        if not self.recording:
-            import torch
-
-            path = self.dir / filename
-            torch.save(checkpoint, path)
-            return path
+        """The named state ``state_name(filename)``; returns its file."""
         record = self.run.save_state(state_name(filename), tensorize(checkpoint))
         self._outputs.append({"name": filename, "kind": "state", "state": state_name(filename)})
         return self.dir / record["file"]["relpath"]
 
     def save_snapshot(self, relpath: str, state: Any, *, once: bool = True) -> tuple[Path, str]:
-        """A mid-training snapshot ``<dir>/<file>.pt`` (``state`` or a callable making it); returns (file, file
-        SHA-256). ``once``: an existing snapshot of that name is kept (files) / reused (records); without it a file
-        is overwritten, and a record name may not repeat."""
-        import hashlib
-
-        if not self.recording:
-            import torch
-
-            path = self.dir / relpath
-            path.parent.mkdir(exist_ok=True)
-            if not (once and path.exists()):
-                torch.save(state() if callable(state) else state, path)
-            return path, hashlib.sha256(path.read_bytes()).hexdigest()
+        """A mid-training snapshot ``<dir>/<file>.pt`` (``state`` or a callable making it) as the named state
+        ``<dir>.<file>``; returns (file, file SHA-256). ``once``: an existing snapshot of that name is reused;
+        without it a name may not repeat."""
         name = state_name(relpath)
         record = self.snapshots.get(name) if once else None
         if record is None:
@@ -298,8 +263,6 @@ class RunOutput:
     def finish(self, finals: Mapping[str, Any]) -> None:
         """Record the output list, the headline numbers and the training time over all sessions as
         ``x/sys/train_seconds`` at step 0 (``x/sys/*`` is outside the result digest); the caller completes the run."""
-        if not self.recording:
-            return
         self.flush()
         self.run.log_record("outputs", self._outputs)
         self.run.log_final({k: v for k, v in finals.items() if v is not None})
@@ -359,42 +322,39 @@ def load_tracker_state(tracker: Any, state: Mapping[str, Any]) -> None:
 
 # ---------------------------------------------------------------- readers
 class RunFiles:
-    """The per-run files of one RL run, from a run unit or from a legacy run directory, with the same calls.
+    """The per-run files of one RL run, rebuilt from the records of a complete run unit.
 
-    ``text(name)`` gives the file's text (for a unit rebuilt from its records: CSVs byte for byte as the workflow
-    writes them, JSON with sorted keys), ``json(name)`` the parsed JSON, ``frame(name)`` the CSV read by pandas from
-    that text, ``checkpoint_path()`` the checkpoint file (hash-checked for a unit) and ``load_checkpoint``.
+    ``text(name)`` gives the file's text (CSVs byte for byte as the retired file mode wrote them, JSON with sorted
+    keys), ``json(name)`` the parsed JSON, ``frame(name)`` the CSV read by pandas from that text,
+    ``checkpoint_path()`` the hash-checked checkpoint file and ``load_checkpoint``. Only run units are read: a
+    legacy run directory (the file-mode output under results/) raises FileNotFoundError.
     """
 
     def __init__(self, path: str | Path):
         self.path = Path(path)
-        self.unit = is_unit(self.path)
-        self.data = None
-        if self.unit:
-            from model.common.tracking import load_run
+        if not is_unit(self.path):
+            raise FileNotFoundError(f"{self.path} is not a run unit (summaries read only run units of NN-KNN/runs)")
+        from model.common.tracking import load_run
 
-            self.data = load_run(self.path, arrays=False)
-            self._outputs = {o["name"]: o for o in self.data.record("outputs")}
-        elif not self.path.is_dir():
-            raise FileNotFoundError(f"{self.path} is neither a run unit nor a run directory")
+        self.unit = True
+        self.data = load_run(self.path, arrays=False)
+        try:
+            outputs = self.data.record("outputs")
+        except KeyError:
+            raise FileNotFoundError(f"{self.path} is not an RL training unit (no record 'outputs')") from None
+        self._outputs = {o["name"]: o for o in outputs}
 
     def exists(self, name: str) -> bool:
-        if self.unit:
-            return name in self._outputs or (name == "manifest.json")
-        return (self.path / name).is_file()
+        return name in self._outputs or (name == "manifest.json")
 
     def names(self) -> list[str]:
-        if self.unit:
-            return list(self._outputs)
-        return sorted(p.name for p in self.path.iterdir() if p.is_file())
+        return list(self._outputs)
 
     def _rows(self, record: str, ordered: bool) -> list:
         rows = self.data.records(FILES + record)
         return [plain_row(r) for r in rows] if ordered else rows
 
     def json(self, name: str) -> Any:
-        if not self.unit:
-            return json.loads((self.path / name).read_text(encoding="utf-8"))
         if name == "manifest.json":
             return {"outputs": list(self._outputs)}
         entry = self._outputs.get(name)
@@ -412,47 +372,33 @@ class RunFiles:
 
     def resolve(self, where: str) -> str:
         """Full path of a path recorded by ``RunOutput.where``."""
-        if not self.unit:
-            return where
         return str(self.path if where == "." else self.path / where)
 
     def rows(self, name: str) -> list[dict[str, Any]]:
-        """The rows of a CSV file: python values for a unit, strings (csv.DictReader) for a legacy file."""
-        if not self.unit:
-            with (self.path / name).open(newline="", encoding="utf-8") as fh:
-                return list(csv.DictReader(fh))
+        """The rows of a CSV file (python values)."""
         if name not in self._outputs:
             raise FileNotFoundError(f"{self.path} has no {name}")
         return self._rows(name, ordered=True)
 
     def text(self, name: str) -> str:
         """The file's text without newline translation (CSV rows end in \\r\\n, as csv writes them)."""
-        if not self.unit:
-            with (self.path / name).open(encoding="utf-8", newline="") as fh:
-                return fh.read()
         if name.endswith(".csv"):
             return csv_text(self.rows(name))
         return json_text(self.json(name))
 
     def frame(self, name: str) -> Any:
-        """``pandas.read_csv`` of the file (a unit's CSV text is rebuilt first, so both parse the same text)."""
+        """``pandas.read_csv`` of the CSV text rebuilt from the records."""
         import pandas as pd
 
-        if not self.unit:
-            return pd.read_csv(self.path / name)
         return pd.read_csv(io.StringIO(self.text(name)))
 
     def train_seconds(self) -> float | None:
-        """Training time of the unit summed over its sessions (``RunOutput.train_seconds``): None for a legacy
-        directory. An interrupted session counts up to the checkpoint the next one resumed from."""
-        if not self.unit:
-            return None
+        """Training time of the unit summed over its sessions (``RunOutput.train_seconds``). An interrupted session
+        counts up to the checkpoint the next one resumed from."""
         points = self.data.series("sys/train_seconds")
         return float(points[-1][1]) if points else None
 
     def checkpoint_path(self, name: str = "checkpoint.pt") -> Path:
-        if not self.unit:
-            return self.path / name
         from model.common.tracking import TrackingError, _file_sha256
 
         f = self.data.states()[state_name(name)]["file"]
@@ -461,19 +407,14 @@ class RunFiles:
             raise TrackingError(f"{path} does not match its record")
         return path
 
-    def load_checkpoint(self, name: str = "checkpoint.pt", map_location: Any = "cpu", weights_only: bool = True) -> Any:
-        import torch
-
-        if not self.unit:
-            return torch.load(self.path / name, map_location=map_location, weights_only=weights_only)
-        from model.common.tracking import load_state
-
-        return load_state(self.path, state_name(name), map_location=map_location)
+    def load_checkpoint(self, name: str = "checkpoint.pt", map_location: Any = "cpu") -> Any:
+        return self.data.load_state(state_name(name), map_location=map_location)
 
 
 def checkpoint_source(path: str | Path) -> tuple[Path, Any | None]:
     """(path, unit checkpoint) for the ``load_*_checkpoint`` functions: a run unit directory loads its
-    hash-checked ``checkpoint`` state on the CPU; any other path is returned as is with None."""
+    hash-checked ``checkpoint`` state on the CPU; any other path (a weights file, e.g. a unit's
+    ``weights/checkpoint.pt`` from ``RunFiles.checkpoint_path``) is returned as is with None."""
     p = Path(path)
     if p.is_dir() and is_unit(p):
         return p, RunFiles(p).load_checkpoint()
@@ -555,21 +496,26 @@ def run_training(study: str, parts: Iterable[str], config: Mapping[str, Any], tr
 
 
 def add_study_arguments(parser: Any) -> None:
-    parser.add_argument("--study", default=None,
-                        help="Record the run as a unit of NN-KNN/runs/t2/<study>/ (TensorBoard event files and weights, "
-                             "no run directory); rerunning the same command skips a complete unit and resumes an "
-                             "interrupted one. Off by default.")
+    parser.add_argument("--study", required=True,
+                        help="Required: record the run as a unit of NN-KNN/runs/t2/<study>/ (TensorBoard event files "
+                             "and weights; no other file is written). Rerunning the same command skips a complete "
+                             "unit before any training and resumes an interrupted one.")
     parser.add_argument("--unit", default=None,
-                        help="Unit path inside the study (a/b/c); default <algorithm>/<task>/seed<seed>.")
+                        help="Unit path inside the study (a/b/c); default <algorithm>/<task>/seed<seed> "
+                             "(eval/<algorithm>/<task>/<checkpoint>_seed<eval seed>_ep<episodes> with --eval-only).")
 
 
-def train_or_record(args: Any, algorithm: str, cfg: Any, train: Any, make_output_dir: Any) -> tuple[dict, str]:
-    """The training step of tools/run_rl_*.py: a timestamped run directory as before, or with ``--study`` a run
-    unit. Returns (summary, checkpoint path)."""
-    if getattr(args, "study", None) is None:
-        state = train(args.task, cfg, output_dir=make_output_dir(args.task, parent=args.output_dir),
-                      device=args.device, progress=not args.quiet)
-        return state["summary"], str(state["checkpoint_path"])
+def check_study_or_exit(study: str) -> None:
+    """``check_study`` for a CLI: SystemExit with the reason (before any data is loaded or any training)."""
+    try:
+        check_study(study)
+    except (FileNotFoundError, ValueError) as exc:
+        raise SystemExit(f"--study: {exc}")
+
+
+def record_training(args: Any, algorithm: str, cfg: Any, train: Any) -> tuple[dict, str]:
+    """The training step of tools/run_rl_*.py: the run unit ``runs/t2/<study>/<algorithm>/<task>/seed<N>`` (or
+    ``--unit``); a complete unit is read back, not trained again. Returns (summary, checkpoint file)."""
     parts = unit_parts(args.unit) if args.unit else (algorithm, unit_component(args.task), f"seed{cfg.seed}")
     config = unit_config(algorithm, args.task, cfg.to_dict(), args.device)
     files = run_training(args.study, parts, config,
@@ -578,8 +524,72 @@ def train_or_record(args: Any, algorithm: str, cfg: Any, train: Any, make_output
     return files.json("summary.json"), str(files.checkpoint_path())
 
 
+def record_evaluation(args: Any, algorithm: str, load: Any, evaluate: Any, options: Any = None) -> dict[str, Any]:
+    """``--eval-only`` of tools/run_rl_*.py: evaluate the weights of the complete run unit ``--checkpoint`` and
+    record the evaluation as the unit ``runs/t2/<study>/eval/<algorithm>/<task>/<checkpoint>_seed<S>_ep<E>`` (or
+    ``--unit``): record ``files/eval_summary.json`` (what the file mode wrote as eval_summary.json, without
+    ``created_at_utc``), row record ``files/eval_episodes.csv`` and ``x/final/*``. A complete evaluation unit is
+    read back, not evaluated again. ``options(cfg)`` gives extra keyword arguments of ``evaluate`` (they are part of
+    the unit config). Returns the metrics (without the episode rows)."""
+    if not args.checkpoint:
+        raise SystemExit("--checkpoint is required with --eval-only")
+    source = Path(args.checkpoint)
+    if not is_unit(source):
+        raise SystemExit(f"--checkpoint {source}: not a run unit (evaluation reads only run units of NN-KNN/runs)")
+    files = RunFiles(source)
+    loaded = load(source, device=args.device)
+    cfg = loaded["config"]
+    task_name = loaded["task"]["name"]
+    episodes = args.eval_episodes if args.eval_episodes is not None else cfg.eval_episodes
+    eval_seed = args.eval_seed if args.eval_seed is not None else cfg.eval_seed
+    extra = dict(options(cfg)) if options is not None else {}
+    checkpoint_sha256 = files.data.states()["checkpoint"]["state_sha256"]
+    config = {"kind": "rl_evaluation", "algorithm": algorithm, "task": task_name,
+              "checkpoint_state_sha256": checkpoint_sha256, "episodes": int(episodes), "eval_seed": int(eval_seed),
+              "device": None if args.device is None else str(args.device), **extra}
+    parts = unit_parts(args.unit) if args.unit else (
+        "eval", algorithm, unit_component(task_name), f"{checkpoint_sha256[:12]}_seed{eval_seed}_ep{episodes}")
+    from model.common.tracking import RunKey, load_unit, open_run
+
+    key = RunKey("t2", args.study, tuple(parts))
+    done = load_unit(key, config=config, arrays=False)  # before any evaluation
+    if done is not None:
+        print(f"[{algorithm}-eval] {key.run_id}: complete, not rerun", flush=True)
+        return dict(done.record(FILES + "eval_summary.json")["metrics"])
+    with open_run(key, config=config) as run:
+        print(f"[{algorithm}-eval] {key.run_id}: {'restarted' if run.restarted else 'fresh'}", flush=True)
+        metrics = evaluate(task_name, loaded["model"], episodes=episodes, seed=eval_seed, device=loaded["device"],
+                           **extra)
+        summary = {k: v for k, v in metrics.items() if k != "episode_metrics"}
+        run.log_record(FILES + "eval_summary.json", {
+            "task": task_name, "checkpoint": str(source), "checkpoint_run_id": files.data.info.run_id,
+            "episodes": episodes, "eval_seed": eval_seed, "metrics": summary})
+        rows = metrics.get("episode_metrics") or []
+        if rows:
+            run.log_records(FILES + "eval_episodes.csv", [ordered_row(r) for r in rows])
+        run.log_final({k: v for k, v in summary.items() if isinstance(v, (int, float)) and not isinstance(v, bool)})
+    return summary
+
+
+def tool_main(args: Any, algorithm: str, *, config: Any, train: Any, load: Any, evaluate: Any,
+              eval_options: Any = None, before_training: Any = None) -> None:
+    """main() of tools/run_rl_*.py: ``--study`` is required (argparse); the study is checked before anything else.
+    ``before_training(args)`` runs checks before the unit is opened."""
+    check_study_or_exit(args.study)
+    if args.eval_only:
+        metrics = record_evaluation(args, algorithm, load, evaluate, eval_options)
+        print(json.dumps(metrics, indent=2))
+        return
+    cfg = config(args)
+    if before_training is not None:
+        before_training(args)
+    summary, checkpoint = record_training(args, algorithm, cfg, train)
+    print(json.dumps({k: v for k, v in summary.items() if k != "checkpoint_path"}, indent=2))
+    print(f"Checkpoint: {checkpoint}")
+
+
 def summary_of(state_or_files: Any) -> dict[str, Any]:
-    """``summary.json`` of a finished training: the state a ``train_*`` returned, or a RunFiles / run path."""
+    """``summary.json`` of a finished training: the state a ``train_*`` returned, or a RunFiles / run unit path."""
     if isinstance(state_or_files, Mapping):
         return dict(state_or_files["summary"])
     files = state_or_files if isinstance(state_or_files, RunFiles) else RunFiles(state_or_files)

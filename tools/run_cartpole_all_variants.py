@@ -1,3 +1,7 @@
+"""Train every maintained CartPole model variant; each variant is the run unit
+runs/t2/<study>/cartpole_all_variants_<profile>/<variant> (``--study`` is required, a complete unit is read back and
+never trained again). The sweep files (manifest.json, sweep_summary.csv/.json, <variant>_error.txt) are built from
+the units and go to <worktree>/<--output-dir>/cartpole_all_variants_<profile>_<timestamp>/ (default results/rl)."""
 from __future__ import annotations
 
 import argparse
@@ -32,7 +36,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--total-timesteps", type=int, default=None)
     parser.add_argument("--case-capacity", type=int, default=None)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
-    parser.add_argument("--output-dir", default="results/rl")
+    parser.add_argument("--output-dir", default="results/rl",
+                        help="Parent of the timestamped sweep folder, relative to the worktree (default results/rl).")
     parser.add_argument(
         "--variants",
         default=None,
@@ -40,10 +45,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--study",
-        default=None,
-        help="Record every variant as a run unit runs/t2/<study>/cartpole_all_variants_<profile>/<variant> instead of "
-        "a run directory; rerunning skips complete units and resumes interrupted ones. The sweep summary files still "
-        "go to the timestamped sweep folder.",
+        required=True,
+        help="Required: every variant is the run unit runs/t2/<study>/cartpole_all_variants_<profile>/<variant>; "
+        "rerunning skips complete units (no training) and resumes interrupted ones.",
     )
     return parser.parse_args()
 
@@ -144,10 +148,9 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
             "name": "dqn",
             "family": "dqn",
             "description": "Repo-native DQN baseline.",
-            "train": lambda out, **kw: train_dqn(
+            "train": lambda **kw: train_dqn(
                 "cartpole",
                 make_dqn_config(args.profile, **baseline),
-                output_dir=out,
                 device=args.device,
                 progress=False,
                 **kw,
@@ -157,10 +160,9 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
             "name": "nec",
             "family": "nec",
             "description": "Repo-native Neural Episodic Control baseline.",
-            "train": lambda out, **kw: train_nec(
+            "train": lambda **kw: train_nec(
                 "cartpole",
                 make_nec_config(args.profile, **baseline),
-                output_dir=out,
                 device=args.device,
                 progress=False,
                 **kw,
@@ -170,7 +172,7 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
             "name": "mlp_actor_mlp_critic",
             "family": "actor_critic",
             "description": "Standard stochastic MLP actor with MLP V(s) critic.",
-            "train": lambda out, **kw: train_nnknn_rl(
+            "train": lambda **kw: train_nnknn_rl(
                 "cartpole",
                 make_nnknn_rl_config(
                     args.profile,
@@ -178,7 +180,6 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
                     actor_type="mlp",
                     critic_type="mlp",
                 ),
-                output_dir=out,
                 device=args.device,
                 progress=False,
                 **kw,
@@ -188,7 +189,7 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
             "name": "nnknn_actor_mlp_critic",
             "family": "actor_critic",
             "description": "NN-kNN actor with MLP V(s) critic.",
-            "train": lambda out, **kw: train_nnknn_rl(
+            "train": lambda **kw: train_nnknn_rl(
                 "cartpole",
                 make_nnknn_rl_config(
                     args.profile,
@@ -196,7 +197,6 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
                     actor_type="nnknn",
                     critic_type="mlp",
                 ),
-                output_dir=out,
                 device=args.device,
                 progress=False,
                 **kw,
@@ -206,7 +206,7 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
             "name": "mcb_nnknn_actor_mlp_critic",
             "family": "actor_critic",
             "description": "Momentum Case Base (MCB) NN-kNN actor with MLP V(s) critic (AAAI 2027 MCB-R variant).",
-            "train": lambda out, **kw: train_nnknn_rl(
+            "train": lambda **kw: train_nnknn_rl(
                 "cartpole",
                 make_nnknn_rl_config(
                     args.profile,
@@ -214,7 +214,6 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
                     actor_type="mcb_nnknn",
                     critic_type="mlp",
                 ),
-                output_dir=out,
                 device=args.device,
                 progress=False,
                 **kw,
@@ -224,7 +223,7 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
             "name": "mcb_nnknn_actor_mcb_nnknn_critic",
             "family": "actor_critic",
             "description": "MCB NN-kNN actor with MCB NN-kNN critic (shared momentum representation).",
-            "train": lambda out, **kw: train_nnknn_rl(
+            "train": lambda **kw: train_nnknn_rl(
                 "cartpole",
                 make_nnknn_rl_config(
                     args.profile,
@@ -232,7 +231,6 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
                     actor_type="mcb_nnknn",
                     critic_type="mcb_nnknn",
                 ),
-                output_dir=out,
                 device=args.device,
                 progress=False,
                 **kw,
@@ -245,7 +243,6 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
             mode_overrides = _label_mode(label_mode)
 
             def train_variant(
-                out: Path | None,
                 *,
                 actor_type: str = actor_type,
                 mode_overrides: dict[str, bool] = mode_overrides,
@@ -260,7 +257,6 @@ def _build_variants(args: argparse.Namespace) -> list[dict[str, Any]]:
                         actor_type=actor_type,
                         critic_type="nnknn",
                     ),
-                    output_dir=out,
                     device=args.device,
                     progress=False,
                     **kw,
@@ -293,8 +289,7 @@ def _summary_row(
     run_dir: Path,
     elapsed_seconds: float,
 ) -> dict[str, Any]:
-    """One sweep row; ``state`` is what a train_* call returned or ``{"summary": ..., "config": <config dict>}``
-    read back from a run unit."""
+    """One sweep row; ``state`` is ``{"summary": ..., "config": <config dict>}`` read back from the run unit."""
     summary = state["summary"]
     final_eval = summary.get("final_eval") or {}
     last_eval = summary.get("last_eval") or {}
@@ -339,11 +334,7 @@ def main() -> None:
     args = parse_args()
     if args.device.startswith("cuda") and not torch.cuda.is_available():
         raise SystemExit("CUDA was requested but torch.cuda.is_available() is false")
-    if args.study is not None:
-        try:
-            t2runs.check_study(args.study)
-        except (FileNotFoundError, ValueError) as exc:
-            raise SystemExit(f"--study: {exc}")
+    t2runs.check_study_or_exit(args.study)
     variants = _build_variants(args)
     created_at = datetime.now(timezone.utc)
     sweep_dir = (
@@ -392,19 +383,16 @@ def main() -> None:
         started = time.perf_counter()
         try:
             train_fn: Callable[..., dict[str, Any]] = variant["train"]
-            if args.study is None:
-                state = train_fn(run_dir)
-                elapsed = time.perf_counter() - started
-            else:  # a run unit; a complete one is read back, not rerun
-                files = t2runs.run_training(
-                    args.study, (f"cartpole_all_variants_{args.profile}", name),
-                    {"kind": "rl_training", "tool": "run_cartpole_all_variants", "variant": name,
-                     "profile": args.profile, "seed": args.seed, "eval_episodes": args.eval_episodes,
-                     "total_timesteps": args.total_timesteps, "case_capacity": args.case_capacity,
-                     "device": args.device},
-                    lambda run: train_fn(None, run=run, resumable=True), label="cartpole-variants")
-                state = {"summary": files.json("summary.json"), "config": files.json("config.json")["config"]}
-                run_dir, elapsed = files.path, files.train_seconds() or float("nan")
+            # a run unit; a complete one is read back, not trained again
+            files = t2runs.run_training(
+                args.study, (f"cartpole_all_variants_{args.profile}", name),
+                {"kind": "rl_training", "tool": "run_cartpole_all_variants", "variant": name,
+                 "profile": args.profile, "seed": args.seed, "eval_episodes": args.eval_episodes,
+                 "total_timesteps": args.total_timesteps, "case_capacity": args.case_capacity,
+                 "device": args.device},
+                lambda run: train_fn(run=run, resumable=True), label="cartpole-variants")
+            state = {"summary": files.json("summary.json"), "config": files.json("config.json")["config"]}
+            run_dir, elapsed = files.path, files.train_seconds() or float("nan")
             row = _summary_row(
                 variant,
                 state,

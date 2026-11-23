@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import csv
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 import random
 from typing import Any
@@ -329,27 +327,6 @@ def make_dqn_config(profile: str = "fast", **overrides: Any) -> DQNConfig:
     return DQNConfig(**data)
 
 
-def make_dqn_output_dir(
-    task_name: str,
-    *,
-    parent: str | Path = "results/rl",
-    suffix: str | None = None,
-) -> Path:
-    created_at = datetime.now(timezone.utc)
-    stem = f"dqn_{task_name}_{created_at.strftime('%Y%m%d_%H%M%S_%f')}"
-    if suffix:
-        stem = f"{stem}_{suffix}"
-    parent_path = Path(parent)
-    for attempt in range(100):
-        candidate = parent_path / (stem if attempt == 0 else f"{stem}_{attempt + 1}")
-        try:
-            candidate.mkdir(parents=True, exist_ok=False)
-        except FileExistsError:
-            continue
-        return candidate
-    raise FileExistsError(f"Could not create a unique DQN output directory under {parent_path}")
-
-
 def seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -586,33 +563,6 @@ def _validate_env_spaces(env: Any, spec: RLTaskSpec) -> tuple[int, int]:
     return obs_spec.dim, action_dim
 
 
-def _json_default(obj: Any) -> Any:
-    if isinstance(obj, Path):
-        return str(obj)
-    if isinstance(obj, np.generic):
-        return obj.item()
-    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
-
-
-def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.write_text(json.dumps(payload, indent=2, default=_json_default) + "\n", encoding="utf-8")
-
-
-def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
-    if not rows:
-        path.write_text("", encoding="utf-8")
-        return
-    fieldnames: list[str] = []
-    for row in rows:
-        for key in row:
-            if key not in fieldnames:
-                fieldnames.append(key)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 def _copy_state_dict_to_cpu(model: nn.Module) -> dict[str, torch.Tensor]:
     return {key: value.detach().cpu().clone() for key, value in model.state_dict().items()}
 
@@ -751,19 +701,19 @@ def train_dqn(
     task_name: str = "cartpole",
     config: DQNConfig | None = None,
     *,
-    output_dir: str | Path | None = None,
     device: str | torch.device | None = None,
     progress: bool = True,
-    run: Any = None,
+    run: Any,
     resumable: bool = False,
 ) -> dict[str, Any]:
-    """Train a DQN baseline and write reproducible run artifacts.
+    """Train a DQN baseline and record it in a run unit.
 
-    Without ``run`` the artifacts are files in ``output_dir`` (as always). With an open tracking run they are
-    records and named states of that run instead, and no file is written (``model/t2/runs.py``); the caller
-    completes the run. ``resumable=True`` (recording only) checkpoints at episode boundaries (networks, optimizer,
+    ``run`` is required: an open tracking run (``model/common/tracking.py``); None or a NullRun raises TypeError.
+    The per-run artifacts are records and named states of that run and no file is written (``model/t2/runs.py``);
+    the caller completes the run. ``resumable=True`` checkpoints at episode boundaries (networks, optimizer,
     replay buffer, best state, rows, RNG and the action-space sampler) and resumes from the last checkpoint.
     """
+    t2runs.require_run(run, "train_dqn")
 
     spec = get_rl_task_spec(task_name)
     cfg = config or make_dqn_config(spec.default_profile)
@@ -780,13 +730,8 @@ def train_dqn(
                            **adam_kwargs_for_device(run_device))
     replay_buffer = ReplayBuffer.create_for_observation(cfg.buffer_size, obs_spec)
 
-    if t2runs.is_recording(run):
-        out = t2runs.RunOutput(run, None, resumable=resumable)
-        run_dir = out.dir
-    else:
-        run_dir = Path(output_dir) if output_dir is not None else make_dqn_output_dir(spec.name)
-        run_dir.mkdir(parents=True, exist_ok=True)
-        out = t2runs.RunOutput(None, run_dir, resumable=resumable)
+    out = t2runs.RunOutput(run, resumable=resumable)
+    run_dir = out.dir
     checkpoint_path = run_dir / "checkpoint.pt"
     created_at = datetime.now(timezone.utc)
 
@@ -1076,27 +1021,6 @@ def train_dqn(
     }
     out.write_json("summary.json", summary)
     out.finish(t2runs.headline(summary))
-    if not out.recording:
-        _write_json(
-            run_dir / "manifest.json",
-            {
-                "created_at_utc": created_at.isoformat(),
-                "task": spec.name,
-                "env_id": spec.env_id,
-                "profile": cfg.profile,
-                "outputs": [
-                    "config.json",
-                    "training_metrics.csv",
-                    "loss_metrics.csv",
-                    "eval_metrics.csv",
-                    "final_eval_episodes.csv",
-                    "last_eval_episodes.csv",
-                    "summary.json",
-                    "manifest.json",
-                    "checkpoint.pt",
-                ],
-            },
-        )
     if progress:
         print(
             "[dqn] finished "

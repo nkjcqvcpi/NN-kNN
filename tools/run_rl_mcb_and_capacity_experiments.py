@@ -4,16 +4,18 @@ Executes:
 1. Battery 1: AAAI 2027 Momentum Case Base (MCB) vs Vanilla NN-kNN & MLP on CartPole (across seeds).
 2. Battery 2: Capacity Scaling on Acrobot (harder task with non-saturated headroom) across capacities.
 3. Generates publication-ready markdown report and CSV data.
+
+Every training is a run unit runs/t2/<study>/<battery>/<run name> (``--study`` is required); a complete unit is read
+back before any training, never trained again. The raw CSVs and the report are built from the units only and go to
+``--output-dir`` (default ``<worktree>/results/t2/s06_case_memory_mechanisms/rl_mcb_campaign``).
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 import sys
-import time
 from typing import Any
 
 import numpy as np
@@ -25,6 +27,8 @@ if str(ROOT_DIR) not in sys.path:
 
 from model.nnknn_rl_workflow import make_nnknn_rl_config, train_nnknn_rl
 from model.t2 import runs as t2runs
+
+DEFAULT_OUTPUT_DIR = ROOT_DIR / "results" / "t2" / "s06_case_memory_mechanisms" / "rl_mcb_campaign"
 
 
 def run_single_experiment(
@@ -43,11 +47,12 @@ def run_single_experiment(
     critic_target_value_mode: str = "ema",
     profile: str = "fast",
     device: str = "cpu",
-    study: str | None = None,
+    *,
+    study: str,
 ) -> dict[str, Any]:
-    run_dir = output_dir / f"{task}_{actor_type}_{critic_type}_cap{case_capacity}_s{seed}"
-    if study is None:
-        run_dir.mkdir(parents=True, exist_ok=True)
+    """One training as the run unit runs/t2/<study>/<output_dir.name>/<run name>; a complete unit is read, not
+    trained again. Returns the raw-CSV row built from the unit."""
+    run_name = f"{task}_{actor_type}_{critic_type}_cap{case_capacity}_s{seed}"
 
     overrides: dict[str, Any] = {
         "seed": seed,
@@ -63,25 +68,13 @@ def run_single_experiment(
         "critic_target_value_mode": critic_target_value_mode,
     }
 
-    t0 = time.time()
     cfg = make_nnknn_rl_config(profile, **overrides)
-    if study is None:
-        summary_dict = train_nnknn_rl(task, cfg, output_dir=run_dir, device=device, progress=False)
-        elapsed = time.time() - t0
-
-        # Ensure we load the full structured summary from summary.json
-        s_file = run_dir / "summary.json"
-        if s_file.exists():
-            summary = json.loads(s_file.read_text(encoding="utf-8"))
-        else:
-            summary = summary_dict.get("summary", summary_dict)
-    else:  # one run unit runs/t2/<study>/<battery>/<run name>; a complete unit is read, not rerun
-        files = t2runs.run_training(
-            study, (output_dir.name, run_dir.name),
-            t2runs.unit_config("nnknn_rl", task, cfg.to_dict(), device, profile=profile),
-            lambda run: train_nnknn_rl(task, cfg, device=device, progress=False, run=run, resumable=True),
-            label="rl-mcb")
-        summary, elapsed, run_dir = files.json("summary.json"), files.train_seconds() or float("nan"), files.path
+    files = t2runs.run_training(
+        study, (output_dir.name, run_name),
+        t2runs.unit_config("nnknn_rl", task, cfg.to_dict(), device, profile=profile),
+        lambda run: train_nnknn_rl(task, cfg, device=device, progress=False, run=run, resumable=True),
+        label="rl-mcb")
+    summary, elapsed, run_dir = files.json("summary.json"), files.train_seconds() or float("nan"), files.path
     return experiment_row(summary, task=task, actor_type=actor_type, critic_type=critic_type,
                           use_mcb=use_mcb, case_capacity=case_capacity, seed=seed, elapsed=elapsed, run_dir=run_dir)
 
@@ -127,7 +120,8 @@ def run_mcb_rl_battery(
     seeds: list[int] = [0, 1, 2],
     device: str = "cpu",
     run_acrobot: bool = True,
-    study: str | None = None,
+    *,
+    study: str,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -315,20 +309,19 @@ def generate_rl_report(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run RL MCB and capacity experiment battery.")
-    parser.add_argument("--output-dir", default="results/t2/s06_case_memory_mechanisms/rl_mcb_campaign")
+    parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR),
+                        help="Where the raw CSVs and the report go (default under <worktree>/results/).")
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--skip-acrobot", action="store_true", help="Skip Acrobot capacity run.")
-    parser.add_argument("--study", default=None,
-                        help="Record every training as a run unit runs/t2/<study>/<battery>/<run name> instead of a "
-                             "run directory; rerunning skips complete units and resumes interrupted ones. The raw "
-                             "CSVs and the report still go to --output-dir.")
+    parser.add_argument("--study", required=True,
+                        help="Required: every training is the run unit runs/t2/<study>/<battery>/<run name>; "
+                             "rerunning skips complete units (no training) and resumes interrupted ones.")
     args = parser.parse_args()
-    if args.study is not None:
-        try:
-            t2runs.check_study(args.study)
-        except (FileNotFoundError, ValueError) as exc:
-            parser.error(f"--study: {exc}")
+    try:
+        t2runs.check_study(args.study)
+    except (FileNotFoundError, ValueError) as exc:
+        parser.error(f"--study: {exc}")
 
     run_mcb_rl_battery(
         Path(args.output_dir),

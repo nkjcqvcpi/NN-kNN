@@ -1,50 +1,30 @@
 """Harvest the p17 capacity CPU replication into a table + manifest.
 
-(capacity, seed) come from the nested config.config of each run. Wall clock is
-derived from the run itself -- the run-dir name carries the launch timestamp and
-summary.json is written at completion. The campaign_timing.csv ledger is NOT
-trusted: PowerShell's {N1} format emits thousands separators ("1,234.5"), and
-that comma corrupts the CSV column alignment.
+Reads only run units of NN-KNN/runs (model/t2/runs.py): every complete unit under
+RUNS_FOLDER (searched recursively, e.g. runs/t2/<study>/nnknn_rl/cartpole) is one
+run; its config.json and summary.json come from the unit's records and
+(capacity, seed) from the nested config.config. The legacy run directories under
+results/ are not read any more (their manifest, made by the earlier version of
+this script, stays where it is and is not regenerated).
 
-Usage: python scripts/harvest_p17.py [RUNS_FOLDER]; the default folder is where
-the campaign's runs live now, results/t2/s06_case_memory_mechanisms/
-g234_p17_p22_capacity_cpu. The manifest goes to reports/p17_capacity_cpu_manifest.json.
+"seconds" is the recorded training time (x/sys/train_seconds: the training call
+only, summed over the unit's sessions; an interrupted session counts up to its
+last checkpoint), not the launch-to-summary.json wall clock the legacy harvest
+derived from run-directory names. Do not compare the two in one throughput table.
 
-An entry of the folder may also be a run unit of NN-KNN/runs (model/t2/runs.py):
-its config.json and summary.json come from the unit's records. Its "seconds" is
-NOT the launch-to-summary.json wall clock of a run directory: it is the recorded
-training time (x/sys/train_seconds, the training call only, summed over the
-unit's sessions; an interrupted session counts up to its last checkpoint). Do not
-mix the two kinds in one throughput comparison. The run directories' wall clock
-needs summary.json's original mtime: the copies made when results/ was reorganised
-(2026-10-09) lost it, so for them "seconds" comes out in the millions; the earlier
-manifest in reports/ holds the original values.
+Usage: python scripts/harvest_p17.py RUNS_FOLDER [MANIFEST]; the manifest
+(generated, not in git) defaults to results/t2/p17_capacity_cpu_manifest.json in
+this worktree.
 """
-import datetime, io, json, os, re, statistics, sys
+import io, json, os, statistics, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # the repository (this file is in scripts/)
 sys.path.insert(0, ROOT)
 
-OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-    ROOT, "results", "t2", "s06_case_memory_mechanisms", "g234_p17_p22_capacity_cpu")
-DIRSTAMP = re.compile(r"_(\d{8})_(\d{6})_(\d{6})")
-
-def run_seconds(dirpath, name):
-    m = DIRSTAMP.search(name)
-    sump = os.path.join(dirpath, "summary.json")
-    if not m or not os.path.exists(sump):
-        return None
-    try:
-        start = datetime.datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S")
-        start += datetime.timedelta(microseconds=int(m.group(3)))
-    except ValueError:
-        return None
-    # The run-dir stamp is UTC (manifest.json calls it created_at_utc) but
-    # getmtime is local, so compare in UTC or the delta comes out negative.
-    end = datetime.datetime.fromtimestamp(
-        os.path.getmtime(sump), datetime.timezone.utc).replace(tzinfo=None)
-    secs = (end - start).total_seconds()
-    return secs if secs > 0 else None
+if len(sys.argv) < 2:
+    sys.exit("usage: python scripts/harvest_p17.py RUNS_FOLDER [MANIFEST]  (RUNS_FOLDER: a folder of run units)")
+OUT = sys.argv[1]
+MAN = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "results", "t2", "p17_capacity_cpu_manifest.json")
 
 
 # CUDA reference arms, quoted from reports/capacity_ablation.md (the r760
@@ -62,24 +42,21 @@ CUDA_REF = {
     2000: dict(n=5, mean=480.12, sd=15.96, per=[455.90, 484.10, 474.60, 498.20, 487.80]),
 }
 
+from model.common.tracking import iter_runs
+from model.t2.runs import RunFiles
+
 runs = []
-for name in sorted(os.listdir(OUT)):
-    d = os.path.join(OUT, name)
-    cfg_p, sum_p = os.path.join(d, "config.json"), os.path.join(d, "summary.json")
-    unit = None
-    if os.path.isdir(d) and any("tfevents" in f for f in os.listdir(d)):
-        from model.t2.runs import RunFiles
+for info in sorted(iter_runs(OUT), key=lambda i: str(i.path)):
+    d = str(info.path)
+    try:
         unit = RunFiles(d)
         cfg, s = unit.json("config.json"), unit.json("summary.json")
-    elif not (os.path.isdir(d) and os.path.exists(cfg_p) and os.path.exists(sum_p)):
-        continue
-    else:
-        cfg = json.load(io.open(cfg_p, encoding="utf-8"))
-        s = json.load(io.open(sum_p, encoding="utf-8"))
+    except FileNotFoundError as exc:  # e.g. an evaluation unit of the same study
+        print("  skip: %s" % exc); continue
     inner = cfg.get("config", cfg)
     cap, seed = inner.get("case_capacity"), inner.get("seed")
     if cap is None or seed is None:
-        print("  WARN: no capacity/seed in %s" % name); continue
+        print("  WARN: no capacity/seed in %s" % d); continue
     rel = os.path.relpath(d, ROOT)  # as the manifest names runs: relative to the repository when inside it
     runs.append(dict(
         run_dir=d if rel.startswith("..") else rel.replace(os.sep, "/"),
@@ -89,7 +66,7 @@ for name in sorted(os.listdir(OUT)):
         steps=s["actual_timesteps"],
         best_step=s["training_efficiency"]["best_model_step"],
         stop=s["early_stopping"]["stopping_reason"],
-        seconds=run_seconds(d, name) if unit is None else unit.train_seconds(),
+        seconds=unit.train_seconds(),
     ))
 
 if not runs:
@@ -116,15 +93,15 @@ for c in caps:
     rows[c] = dict(n=len(rs), mean=mean, sd=sd, stops=stops,
                    median_steps_per_s=med, median_wall_seconds=med_secs)
 
-man = os.path.join(ROOT, "reports", "p17_capacity_cpu_manifest.json")
+os.makedirs(os.path.dirname(os.path.abspath(MAN)), exist_ok=True)
 json.dump({"campaign": "p17", "host": "g234", "device": "cpu",
            "protocol": {"profile": "fast", "budget": 150000, "early_stopping": True,
                         "omp_num_threads": 2,
                         "concurrency": "4 jobs (one per capacity) per seed-batch"},
            "summary": rows,
            "runs": sorted(runs, key=lambda r: (r["capacity"], r["seed"]))},
-          io.open(man, "w", encoding="utf-8"), indent=2, sort_keys=True)
-print("\nwrote reports/p17_capacity_cpu_manifest.json  (%d runs)" % len(runs))
+          io.open(MAN, "w", encoding="utf-8"), indent=2, sort_keys=True)
+print("\nwrote %s  (%d runs)" % (MAN, len(runs)))
 print("\n## CPU replication (g234) vs the CUDA arms (r760, reports/capacity_ablation.md)\n")
 print("| capacity | CUDA r760 (n) | CPU g234 (n) | delta |")
 print("|---|---|---|---|")
@@ -142,7 +119,7 @@ print("\nNotes:")
 print("- The CUDA arms ran on a contended H100. The CPU arms ran on g234, a")
 print("  10-core i5-13400F, at up to 12 concurrent jobs with OMP_NUM_THREADS=2.")
 print("  Returns are comparable across hosts; steps/s and wall seconds are NOT --")
-print("  use reports/p17_throughput_controlled.csv (timing_pass.ps1) for that.")
+print("  use results/t2/p17_throughput_controlled.csv (timing_pass.ps1) for that.")
 print("- SURVIVORSHIP WARNING for any arm below n=5: runs that hit the target")
 print("  score stop early and therefore land in this table FIRST, biasing a")
 print("  partial arm upward. Do not read a partial mean as the arm's result.")

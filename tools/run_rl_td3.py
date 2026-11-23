@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
-import json
 from pathlib import Path
 import sys
 
@@ -18,7 +16,6 @@ from model.td3_workflow import (  # noqa: E402
     evaluate_td3,
     load_td3_checkpoint,
     make_td3_config,
-    make_td3_output_dir,
     require_continuous_task,
     train_td3,
 )
@@ -42,7 +39,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("task", nargs="?", default="pendulum", help="Continuous RL task key, such as pendulum.")
     parser.add_argument("--profile", choices=["smoke", "debug", "fast", "gold"], default="fast")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--output-dir", default="results/rl", help="Parent folder for timestamped run dirs.")
     parser.add_argument("--device", default=None, help="Optional torch device override, such as cpu or cuda.")
     parser.add_argument("--total-timesteps", type=int, default=None)
     parser.add_argument("--learning-rate", type=float, default=None, help="Critic (and default actor) learning rate.")
@@ -116,7 +112,7 @@ def parse_args() -> argparse.Namespace:
         help="Mean-return solve threshold; defaults to the task spec.",
     )
     parser.add_argument("--eval-only", action="store_true", help="Evaluate a saved checkpoint without training.")
-    parser.add_argument("--checkpoint", default=None, help="Checkpoint path for --eval-only: a checkpoint.pt or a run unit directory.")
+    parser.add_argument("--checkpoint", default=None, help="For --eval-only: the run unit directory whose weights are evaluated (recorded as a unit of --study).")
     parser.add_argument("--quiet", action="store_true", help="Disable progress logging during training.")
     t2runs.add_study_arguments(parser)
     return parser.parse_args()
@@ -194,53 +190,11 @@ def _apply_task_success_defaults(args: argparse.Namespace, overrides: dict) -> N
         overrides["early_stopping_target_score"] = spec.target_mean_return
 
 
-def _write_eval_only_summary(outdir: Path, payload: dict) -> None:
-    outdir.mkdir(parents=True, exist_ok=True)
-    (outdir / "eval_summary.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-
-
 def main() -> None:
     args = parse_args()
-    if args.eval_only:
-        if not args.checkpoint:
-            raise SystemExit("--checkpoint is required with --eval-only")
-        loaded = load_td3_checkpoint(args.checkpoint, device=args.device)
-        cfg = loaded["config"]
-        task_name = loaded["task"]["name"]
-        episodes = args.eval_episodes if args.eval_episodes is not None else cfg.eval_episodes
-        eval_seed = args.eval_seed if args.eval_seed is not None else cfg.eval_seed
-        metrics = evaluate_td3(
-            task_name,
-            loaded["model"],
-            episodes=episodes,
-            seed=eval_seed,
-            device=loaded["device"],
-        )
-        outdir = make_td3_output_dir(task_name, parent=args.output_dir, suffix="eval")
-        payload = {
-            "created_at_utc": datetime.now(timezone.utc).isoformat(),
-            "task": task_name,
-            "checkpoint": str(args.checkpoint),
-            "episodes": episodes,
-            "eval_seed": eval_seed,
-            "metrics": {k: v for k, v in metrics.items() if k != "episode_metrics"},
-        }
-        _write_eval_only_summary(outdir, payload)
-        print(json.dumps(payload["metrics"], indent=2))
-        print(f"Wrote eval-only results to {outdir}.")
-        return
-
-    if args.study is not None:  # check the run root and the study name before training
-        try:
-            t2runs.check_study(args.study)
-        except (FileNotFoundError, ValueError) as exc:
-            raise SystemExit(f"--study: {exc}")
-    cfg = _config_from_args(args)
-    # Reject discrete-action tasks before a run directory is created for them.
-    require_continuous_task(get_rl_task_spec(args.task))
-    summary, checkpoint = t2runs.train_or_record(args, "td3", cfg, train_td3, make_td3_output_dir)
-    print(json.dumps({k: v for k, v in summary.items() if k != "checkpoint_path"}, indent=2))
-    print(f"Checkpoint: {checkpoint}")
+    t2runs.tool_main(args, "td3", config=_config_from_args, train=train_td3, load=load_td3_checkpoint,
+                     evaluate=evaluate_td3,
+                     before_training=lambda a: require_continuous_task(get_rl_task_spec(a.task)))
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ def equal(a,b):
 
 
 @pytest.mark.parametrize('actor_type,critic_type',[('nnknn','nnknn'),('mlp','nnknn'),('nnknn','mlp'),('mlp','mlp')])
-def test_forced_earlier_checkpoint_restores_same_optimizer_and_target(monkeypatch,tmp_path,actor_type,critic_type):
+def test_forced_earlier_checkpoint_restores_same_optimizer_and_target(monkeypatch,tmp_path,unit_train,actor_type,critic_type):
     live={}
     build=w._build_actor_critic_models
     target_build=w._build_nnknn_target_value_model
@@ -52,7 +52,7 @@ def test_forced_earlier_checkpoint_restores_same_optimizer_and_target(monkeypatc
     cfg=w.make_nnknn_rl_config('smoke',seed=8,actor_type=actor_type,critic_type=critic_type,
         total_timesteps=256,case_capacity=16,critic_case_capacity=16,policy_update_episodes=1,
         eval_frequency=64,eval_episode_frequency=0,eval_episodes=1,critic_holdout_episode_frequency=0)
-    state=w.train_nnknn_rl('cartpole',cfg,output_dir=tmp_path/'run',device='cpu',progress=False)
+    state=unit_train('run',w.train_nnknn_rl,'cartpole',cfg,device='cpu',progress=False)
     assert state['summary']['selected_source']=='best_eval'
     assert state['summary']['selected_step']==64
     checkpoint=torch.load(state['checkpoint_path'],weights_only=True,map_location='cpu')

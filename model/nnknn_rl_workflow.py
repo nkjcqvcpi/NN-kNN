@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import csv
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 import json
@@ -28,7 +27,6 @@ from model.rl_workflow import (
     _finalize_early_stopping_tracker,
     _build_training_efficiency,
     _first_threshold_step,
-    _json_default,
     _linear_schedule,
     _make_env,
     _resolve_device_arg,
@@ -1753,46 +1751,6 @@ def make_nnknn_rl_config(profile: str = "fast", **overrides: Any) -> NNKNNRLConf
     return NNKNNRLConfig(**data)
 
 
-def make_nnknn_rl_output_dir(
-    task_name: str,
-    *,
-    parent: str | Path = "results/rl",
-    suffix: str | None = None,
-) -> Path:
-    created_at = datetime.now(timezone.utc)
-    stem = f"nnknn_rl_{task_name}_{created_at.strftime('%Y%m%d_%H%M%S_%f')}"
-    if suffix:
-        stem = f"{stem}_{suffix}"
-    parent_path = Path(parent)
-    for attempt in range(100):
-        candidate = parent_path / (stem if attempt == 0 else f"{stem}_{attempt + 1}")
-        try:
-            candidate.mkdir(parents=True, exist_ok=False)
-        except FileExistsError:
-            continue
-        return candidate
-    raise FileExistsError(f"Could not create a unique NN-kNN-RL output directory under {parent_path}")
-
-
-def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.write_text(json.dumps(payload, indent=2, default=_json_default) + "\n", encoding="utf-8")
-
-
-def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
-    if not rows:
-        path.write_text("", encoding="utf-8")
-        return
-    fieldnames: list[str] = []
-    for row in rows:
-        for key in row:
-            if key not in fieldnames:
-                fieldnames.append(key)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 def _model_state(model: PolicyActor) -> dict[str, Any]:
     state: dict[str, Any] = {
         "state_dict": {key: value.detach().cpu().clone() for key, value in model.state_dict().items()},
@@ -3066,20 +3024,20 @@ def train_nnknn_rl(
     task_name: str = "cartpole",
     config: NNKNNRLConfig | None = None,
     *,
-    output_dir: str | Path | None = None,
     device: str | torch.device | None = None,
     progress: bool = True,
-    run: Any = None,
+    run: Any,
     resumable: bool = False,
 ) -> dict[str, Any]:
     """Train a selectable actor with a selectable value critic and GAE advantages.
 
-    ``run`` and ``resumable`` as in ``train_dqn`` (model/t2/runs.py): with an open tracking run every per-run file
+    ``run`` and ``resumable`` as in ``train_dqn`` (model/t2/runs.py): ``run`` (an open tracking run) is required; every per-run file
     (metric CSVs, event JSONs, summary, checkpoint and the retention / case-audit snapshots) becomes a record or
     named state of the run and no file is written. ``resumable=True`` checkpoints at episode boundaries right
     after a policy update (no pending rollout): actor and critic with their case stores and insertion steps,
     target critic, optimizers, quality ledger, maintenance counters, best state, rows, RNG and action sampler.
     """
+    t2runs.require_run(run, "train_nnknn_rl")
 
     spec = get_rl_task_spec(task_name)
     cfg = config or make_nnknn_rl_config(spec.default_profile)
@@ -3124,13 +3082,8 @@ def train_nnknn_rl(
             case_lr=cfg.case_learning_rate,
         )
 
-    if t2runs.is_recording(run):
-        out = t2runs.RunOutput(run, None, resumable=resumable)
-        run_dir = out.dir
-    else:
-        run_dir = Path(output_dir) if output_dir is not None else make_nnknn_rl_output_dir(spec.name)
-        run_dir.mkdir(parents=True, exist_ok=True)
-        out = t2runs.RunOutput(None, run_dir, resumable=resumable)
+    out = t2runs.RunOutput(run, resumable=resumable)
+    run_dir = out.dir
     checkpoint_path = run_dir / "checkpoint.pt"
     created_at = datetime.now(timezone.utc)
 
@@ -3147,7 +3100,7 @@ def train_nnknn_rl(
     best_optimizer_states = None
     best_quality_state = None
     from model.t2.quality import QualityLedger
-    quality_ledger=QualityLedger(str(run_dir.resolve()) if not out.recording else out.where()) if cfg.case_quality_tracking else None
+    quality_ledger=QualityLedger(out.where()) if cfg.case_quality_tracking else None
     actor_cases_pruned = 0
     actor_cases_replaced = 0
     critic_cases_pruned = 0
@@ -3947,30 +3900,6 @@ def train_nnknn_rl(
     }
     out.write_json("summary.json", summary)
     out.finish(t2runs.headline(summary))
-    if not out.recording:
-        _write_json(
-            run_dir / "manifest.json",
-            {
-                "created_at_utc": created_at.isoformat(),
-                "algorithm": ALGORITHM_NAME,
-                "task": spec.name,
-                "env_id": spec.env_id,
-                "profile": cfg.profile,
-                "outputs": [
-                    "config.json",
-                    "training_metrics.csv",
-                    "loss_metrics.csv",
-                    "eval_metrics.csv",
-                    "critic_holdout_metrics.csv",
-                    "case_maintenance.csv",
-                    "final_eval_episodes.csv",
-                    "last_eval_episodes.csv",
-                    "summary.json",
-                    "manifest.json",
-                    "checkpoint.pt",
-                ],
-            },
-        )
     if progress:
         print(
             "[nnknn-rl] finished "

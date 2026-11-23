@@ -1,18 +1,18 @@
 """Build the Phase 4 fixed-budget comparison table and learning-curve figures.
 
 Usage:
-    .venv/bin/python tools/make_phase4_report.py --manifest reports/phase4_manifest.json
+    python tools/make_phase4_report.py --manifest <manifest.json>
 
-The manifest maps method -> {seed: run_dir}. A run_dir is a run directory of
-summary.json and eval_metrics.csv, or a run unit of NN-KNN/runs/ recorded with
---study (its records hold the same files; model/t2/runs.py). Manifests, run directories and
-figures are not in git: they are read from and written to disk on the
-experiment host (reports/*_manifest.json and results/ there), so the default
---manifest only works where those files exist. Which methods appear in the table
-and figures is driven by the manifest keys: every key must be one of the known
-methods below, and the known-method order fixes the plotting/table order, so a
-4-method manifest and a 6-method manifest both work with no code change.
-Emits a markdown table on stdout and writes PNGs under reports/figures/.
+The manifest maps method -> {seed: run_dir}. Every run_dir must be a complete run
+unit of NN-KNN/runs/ (recorded with --study; its records hold summary.json and
+eval_metrics.csv, model/t2/runs.py): the report reads nothing but run units, a
+legacy run directory under results/ is an error. Manifests, run units and
+figures are not in git. Which methods appear in the table and figures is driven
+by the manifest keys: every key must be one of the known methods below, and the
+known-method order fixes the plotting/table order, so a 4-method manifest and a
+6-method manifest both work with no code change.
+Emits a markdown table on stdout and writes PNGs under <worktree>/results/figures/
+(--outdir; generated figures no longer go to reports/).
 """
 
 from __future__ import annotations
@@ -31,8 +31,11 @@ import pandas as pd
 
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT_DIR))
 from model.t2.runs import RunFiles, is_unit  # noqa: E402
+
+DEFAULT_OUTDIR = ROOT_DIR / "results" / "figures"
 
 # Canonical presentation order. A manifest supplies a SUBSET of these keys;
 # unknown keys are a hard error (see resolve_method_order).
@@ -80,19 +83,13 @@ def load_runs(manifest: dict) -> dict:
         data[method] = {}
         for seed, run_dir in sorted(seeds.items(), key=lambda kv: int(kv[0])):
             d = Path(run_dir)
-            if is_unit(d):  # a run unit: the same two files, rebuilt from its records
-                files = RunFiles(d)
-                summary, evals = files.json("summary.json"), files.frame("eval_metrics.csv")
-                data[method][int(seed)] = {"summary": summary, "evals": evals, "dir": str(d)}
-                continue
-            missing = [name for name in ("summary.json", "eval_metrics.csv") if not (d / name).is_file()]
-            if missing:
+            if not is_unit(d):
                 raise SystemExit(
-                    f"{method} seed {seed}: {', '.join(missing)} not found in {d}. "
-                    "Run directories are not in git; run this on the experiment host that holds them."
+                    f"{method} seed {seed}: {d} is not a run unit. The report reads only run units of "
+                    "NN-KNN/runs (they are not in git; run this where they exist)."
                 )
-            summary = json.loads((d / "summary.json").read_text())
-            evals = pd.read_csv(d / "eval_metrics.csv")
+            files = RunFiles(d)  # the two files, rebuilt from the unit's records
+            summary, evals = files.json("summary.json"), files.frame("eval_metrics.csv")
             data[method][int(seed)] = {"summary": summary, "evals": evals, "dir": str(d)}
     return data
 
@@ -226,10 +223,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--manifest",
-        default="reports/phase4_manifest.json",
-        help="Run manifest read from disk (not in git; it exists only on the experiment host).",
+        required=True,
+        help="Run manifest: method -> {seed: run unit directory} (not in git).",
     )
-    parser.add_argument("--outdir", default="reports/figures", help="Figure directory (ignored by git).")
+    parser.add_argument("--outdir", default=str(DEFAULT_OUTDIR),
+                        help="Figure directory (default <worktree>/results/figures; ignored by git).")
     parser.add_argument("--task", default="CartPole-v1", help="Task label used in figure titles.")
     parser.add_argument("--success-threshold", type=float, default=SUCCESS_THRESHOLD)
     parser.add_argument("--ylim", type=float, nargs=2, default=(0.0, 525.0))
@@ -239,8 +237,8 @@ def main() -> None:
     manifest_path = Path(args.manifest)
     if not manifest_path.is_file():
         raise SystemExit(
-            f"manifest {manifest_path} not found. Run manifests and run directories are not in git; "
-            "run this on the experiment host that holds them, or pass --manifest."
+            f"manifest {manifest_path} not found. Run manifests and run units are not in git; "
+            "run this where they exist."
         )
     manifest = json.loads(manifest_path.read_text())
     order = resolve_method_order(manifest, source=args.manifest)

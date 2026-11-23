@@ -54,10 +54,8 @@ tasks with large reward scales may need `--vf-coef`/`--learning-rate` tuning.
 
 from __future__ import annotations
 
-import csv
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 from typing import Any
 
@@ -77,7 +75,6 @@ from model.rl_workflow import (
     _build_training_efficiency,
     _finalize_early_stopping_tracker,
     _first_threshold_step,
-    _json_default,
     _make_env,
     _require_gymnasium,
     _resolve_device_arg,
@@ -240,27 +237,6 @@ def _validate_ppo_config(data: dict[str, Any]) -> None:
         if target_kl <= 0.0:
             raise ValueError("target_kl must be None or positive")
         data["target_kl"] = target_kl
-
-
-def make_ppo_output_dir(
-    task_name: str,
-    *,
-    parent: str | Path = "results/rl",
-    suffix: str | None = None,
-) -> Path:
-    created_at = datetime.now(timezone.utc)
-    stem = f"ppo_{task_name}_{created_at.strftime('%Y%m%d_%H%M%S_%f')}"
-    if suffix:
-        stem = f"{stem}_{suffix}"
-    parent_path = Path(parent)
-    for attempt in range(100):
-        candidate = parent_path / (stem if attempt == 0 else f"{stem}_{attempt + 1}")
-        try:
-            candidate.mkdir(parents=True, exist_ok=False)
-        except FileExistsError:
-            continue
-        return candidate
-    raise FileExistsError(f"Could not create a unique PPO output directory under {parent_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -767,25 +743,6 @@ def _validate_ppo_env_spaces(env: Any, spec: RLTaskSpec) -> tuple[ObservationSpe
     return obs_spec, action_spec
 
 
-def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.write_text(json.dumps(payload, indent=2, default=_json_default) + "\n", encoding="utf-8")
-
-
-def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
-    if not rows:
-        path.write_text("", encoding="utf-8")
-        return
-    fieldnames: list[str] = []
-    for row in rows:
-        for key in row:
-            if key not in fieldnames:
-                fieldnames.append(key)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 def _copy_state_dict_to_cpu(model: nn.Module) -> dict[str, torch.Tensor]:
     return {key: value.detach().cpu().clone() for key, value in model.state_dict().items()}
 
@@ -878,19 +835,19 @@ def train_ppo(
     task_name: str = "cartpole",
     config: PPOConfig | None = None,
     *,
-    output_dir: str | Path | None = None,
     device: str | torch.device | None = None,
     progress: bool = True,
-    run: Any = None,
+    run: Any,
     resumable: bool = False,
 ) -> dict[str, Any]:
     """Train a PPO baseline and write the shared run artifacts.
 
-    ``run`` and ``resumable`` as in ``train_dqn`` (model/t2/runs.py): with an open tracking run the artifacts are
-    records and named states of the run, no file is written; ``resumable=True`` checkpoints at episode
+    ``run`` and ``resumable`` as in ``train_dqn`` (model/t2/runs.py): ``run`` (an open tracking run) is required, the
+    artifacts are records and named states of the run, no file is written; ``resumable=True`` checkpoints at episode
     boundaries, also in the middle of a rollout (agent, optimizer with its annealed learning rate, the partial
     rollout buffers, best state, rows, RNG).
     """
+    t2runs.require_run(run, "train_ppo")
 
     spec = get_rl_task_spec(task_name)
     cfg = config or make_ppo_config(spec.default_profile)
@@ -909,13 +866,8 @@ def train_ppo(
     optimizer = optim.Adam(agent.parameters(), lr=cfg.learning_rate, eps=1e-5,
                            **adam_kwargs_for_device(run_device))
 
-    if t2runs.is_recording(run):
-        out = t2runs.RunOutput(run, None, resumable=resumable)
-        run_dir = out.dir
-    else:
-        run_dir = Path(output_dir) if output_dir is not None else make_ppo_output_dir(spec.name)
-        run_dir.mkdir(parents=True, exist_ok=True)
-        out = t2runs.RunOutput(None, run_dir, resumable=resumable)
+    out = t2runs.RunOutput(run, resumable=resumable)
+    run_dir = out.dir
     checkpoint_path = run_dir / "checkpoint.pt"
     created_at = datetime.now(timezone.utc)
 
@@ -1280,28 +1232,6 @@ def train_ppo(
     }
     out.write_json("summary.json", summary)
     out.finish(t2runs.headline(summary))
-    if not out.recording:
-        _write_json(
-            run_dir / "manifest.json",
-            {
-                "created_at_utc": created_at.isoformat(),
-                "task": spec.name,
-                "env_id": spec.env_id,
-                "algorithm": ALGORITHM_NAME,
-                "profile": cfg.profile,
-                "outputs": [
-                    "config.json",
-                    "training_metrics.csv",
-                    "loss_metrics.csv",
-                    "eval_metrics.csv",
-                    "final_eval_episodes.csv",
-                    "last_eval_episodes.csv",
-                    "summary.json",
-                    "manifest.json",
-                    "checkpoint.pt",
-                ],
-            },
-        )
     if progress:
         print(
             "[ppo] finished "

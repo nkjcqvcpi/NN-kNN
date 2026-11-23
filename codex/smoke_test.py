@@ -41,75 +41,122 @@ def run_import_smoke() -> None:
     print(f"rl tasks: {rl_tasks}")
 
 
-def run_training_smoke() -> None:
-    from model.regression_workflow import make_regression_cfg, run_single_nnknn_regression_experiment
+def _smoke_unit(study: str, name: str, cfg: dict):
+    """The run unit of one smoke mode, ``runs/core/<study>/smoke/<name>``, and its RunData if it is complete
+    (recording is mandatory; a complete unit is never trained again)."""
+    from model.common.tracking import RunKey, load_unit
+    from tools.run_classification_benchmarks import plain_config
 
-    Path("checkpoints").mkdir(parents=True, exist_ok=True)
+    key = RunKey("core", study, ("smoke", name))
+    config = {"kind": "smoke_test", "mode": name, "cfg": plain_config(cfg)}
+    return key, config, load_unit(key, config=config, arrays=False)
+
+
+def run_training_smoke(study: str) -> None:
+    from model.common.tracking import open_run
+    from model.regression_workflow import make_regression_cfg, run_single_nnknn_regression_experiment
 
     cfg = make_regression_cfg(
         {
             "task_type": "regression",
             "training_epochs": 1,
-            "checkpoint_path": "checkpoints/tmp_codex_smoke.pth",
             "batch_size": 32,
             "top_k": 8,
             "bias_manual_set": True,
             "bias_manual_value": 1.0,
         }
     )
-
-    state = run_single_nnknn_regression_experiment(
-        "linear_regression",
-        cfg,
-        dataset_kwargs={"n": 96, "d": 5, "noise_scale": 0.1},
-        run_seed=0,
-        dataset_seed=0,
-        split_seed=0,
-        standardize=False,
-        checkpoint_label="codex_smoke",
-    )
-
-    rmse_raw = float(state["rmse_raw"])
-    best_metric = float(state["best_metric"])
+    key, config, done = _smoke_unit(study, "train", cfg)
+    if done is not None:
+        final = done.final()
+        print(f"training smoke: {key.run_id} is complete, not retrained")
+        print(f"rmse_raw={final['rmse_raw']:.6f}")
+        print(f"best_metric={final['best_metric']:.6f}")
+        return
+    with open_run(key, config=config) as run:
+        state = run_single_nnknn_regression_experiment(
+            "linear_regression",
+            cfg,
+            dataset_kwargs={"n": 96, "d": 5, "noise_scale": 0.1},
+            run_seed=0,
+            dataset_seed=0,
+            split_seed=0,
+            standardize=False,
+            run=run,
+        )
+        rmse_raw = float(state["rmse_raw"])
+        best_metric = float(state["best_metric"])
+        run.log_final({"rmse_raw": rmse_raw, "best_metric": best_metric})
     print("training smoke ok")
     print(f"rmse_raw={rmse_raw:.6f}")
     print(f"best_metric={best_metric:.6f}")
 
 
-def run_classification_smoke() -> None:
+def run_classification_smoke(study: str) -> None:
     from model.classification_workflow import make_classification_cfg, run_single_nnknn_classification_experiment
+    from model.common.tracking import open_run
 
-    Path("checkpoints").mkdir(parents=True, exist_ok=True)
     cfg = make_classification_cfg(
         {
             "training_epochs": 1,
-            "checkpoint_path": "checkpoints/tmp_codex_classification_smoke.pth",
             "batch_size": 32,
             "top_k": 3,
             "explanation_mode": True,
             "case_normalizer": "softmax",
         }
     )
-    state = run_single_nnknn_classification_experiment(
-        "iris",
-        cfg,
-        run_seed=0,
-        split_seed=0,
-        checkpoint_label="codex_smoke",
-    )
-    probabilities = state["class_probabilities"]
-    if not torch.allclose(probabilities.sum(dim=1), torch.ones(probabilities.size(0)), atol=1e-5):
-        raise AssertionError("Classification outputs do not sum to one.")
-    if state.get("most_activated_cases") is None:
-        raise AssertionError("Classification explanation outputs were not returned.")
-    if state.get("most_activated_class_ids") is None:
-        raise AssertionError("Classification explanation labels were not decoded.")
+    key, config, done = _smoke_unit(study, "classification", cfg)
+    if done is not None:
+        print(f"classification smoke: {key.run_id} is complete, not retrained")
+        print(f"accuracy={done.final()['accuracy']:.6f}")
+        return
+    with open_run(key, config=config) as run:
+        state = run_single_nnknn_classification_experiment(
+            "iris",
+            cfg,
+            run_seed=0,
+            split_seed=0,
+            run=run,
+        )
+        probabilities = state["class_probabilities"]
+        if not torch.allclose(probabilities.sum(dim=1), torch.ones(probabilities.size(0)), atol=1e-5):
+            raise AssertionError("Classification outputs do not sum to one.")
+        if state.get("most_activated_cases") is None:
+            raise AssertionError("Classification explanation outputs were not returned.")
+        if state.get("most_activated_class_ids") is None:
+            raise AssertionError("Classification explanation labels were not decoded.")
+        run.log_final({"accuracy": float(state["accuracy"])})
     print("classification training smoke ok")
     print(f"accuracy={float(state['accuracy']):.6f}")
 
 
-def run_rl_smoke() -> None:
-    from model.rl_workflow import EarlyStoppingTracker, make_dqn_config, train_dqn
+def _rl_unit(study: str, mode: str, name: str, task: str, cfg, train, load) -> dict:
+    """Train ``cfg`` as the run unit ``runs/t2/<study>/smoke/<mode>/<name>`` (recording is mandatory) and return the
+    training's state. A complete unit is never trained again: its state is rebuilt from the unit (weights loaded
+    with ``load``, summary and metric rows from the records; ``"complete": True``)."""
+    from model.t2 import runs as t2runs
+
+    trained = {}
+
+    def go(run):
+        trained["state"] = train(task, cfg, progress=False, run=run, resumable=True)
+
+    files = t2runs.run_training(study, ("smoke", mode, name), t2runs.unit_config(f"smoke_{mode}", task, cfg.to_dict(),
+                                                                                 None), go, label=f"smoke-{mode}")
+    if "state" in trained:
+        return {**trained["state"], "run_dir": files.path, "checkpoint_path": files.checkpoint_path()}
+    loaded = load(files.path)
+    summary = files.json("summary.json")
+    state = {k: loaded[k] for k in ("model", "value_model", "target_model", "dnd") if k in loaded}
+    state.update({name[:-4]: files.rows(name) for name in files.names() if name.endswith(".csv")})
+    state.update(summary=summary, final_eval=summary["final_eval"], last_eval=summary["last_eval"],
+                 passed=summary["passed"], run_dir=files.path, checkpoint_path=files.checkpoint_path(),
+                 config=cfg, complete=True)
+    return state
+
+
+def run_rl_smoke(study: str) -> None:
+    from model.rl_workflow import EarlyStoppingTracker, load_dqn_checkpoint, make_dqn_config, train_dqn
 
     cfg = make_dqn_config("smoke", seed=0)
     if cfg.early_stopping_patience != 30:
@@ -140,7 +187,7 @@ def run_rl_smoke() -> None:
         raise AssertionError("Patience should not count evaluations before early_stopping_min_steps.")
     if not gated_probe.update(10.0, 100):
         raise AssertionError("Patience should begin counting at early_stopping_min_steps.")
-    state = train_dqn("cartpole", cfg, progress=False)
+    state = _rl_unit(study, "rl", "main", "cartpole", cfg, train_dqn, load_dqn_checkpoint)
     final_eval = state["final_eval"]
     if final_eval["episodes"] != cfg.eval_episodes:
         raise AssertionError("RL smoke evaluation did not run the configured number of episodes.")
@@ -155,7 +202,7 @@ def run_rl_smoke() -> None:
         early_stopping=True,
         early_stopping_target_score=0.0,
     )
-    early_state = train_dqn("cartpole", early_cfg, progress=False)
+    early_state = _rl_unit(study, "rl", "early", "cartpole", early_cfg, train_dqn, load_dqn_checkpoint)
     if early_state["summary"]["actual_timesteps"] != 16:
         raise AssertionError("DQN did not stop at its first target-reaching evaluation.")
     if early_state["summary"]["early_stopping"]["stopping_reason"] != "target_score":
@@ -165,13 +212,13 @@ def run_rl_smoke() -> None:
     print(f"mean_return={float(final_eval['mean_return']):.6f}")
 
 
-def run_nec_smoke() -> None:
-    from model.nec_workflow import make_nec_config, train_nec
+def run_nec_smoke(study: str) -> None:
+    from model.nec_workflow import load_nec_checkpoint, make_nec_config, train_nec
 
     cfg = make_nec_config("smoke", seed=0)
     if cfg.early_stopping_patience != 30:
         raise AssertionError("NEC early-stopping patience should default to 30 evaluations.")
-    state = train_nec("cartpole", cfg, progress=False)
+    state = _rl_unit(study, "nec", "main", "cartpole", cfg, train_nec, load_nec_checkpoint)
     final_eval = state["final_eval"]
     if final_eval["episodes"] != cfg.eval_episodes:
         raise AssertionError("NEC smoke evaluation did not run the configured number of episodes.")
@@ -187,7 +234,7 @@ def run_nec_smoke() -> None:
         early_stopping=True,
         early_stopping_target_score=0.0,
     )
-    early_state = train_nec("cartpole", early_cfg, progress=False)
+    early_state = _rl_unit(study, "nec", "early", "cartpole", early_cfg, train_nec, load_nec_checkpoint)
     if early_state["summary"]["actual_timesteps"] != 5:
         raise AssertionError("NEC did not stop at its first target-reaching evaluation.")
     if early_state["summary"]["early_stopping"]["stopping_reason"] != "target_score":
@@ -197,7 +244,7 @@ def run_nec_smoke() -> None:
     print(f"mean_return={float(final_eval['mean_return']):.6f}")
 
 
-def run_nnknn_rl_smoke() -> None:
+def run_nnknn_rl_smoke(study: str) -> None:
     from model.nnknn_rl_workflow import (
         ALGORITHM_NAME,
         MLPPolicyNetwork,
@@ -507,7 +554,7 @@ def run_nnknn_rl_smoke() -> None:
     if _actor_exploration_epsilon(mlp_wrapper, cfg, 0) != 0.0:
         raise AssertionError("The standard stochastic MLP actor must not receive epsilon mixing.")
 
-    state = train_nnknn_rl("cartpole", cfg, progress=False)
+    state = _rl_unit(study, "nnknn_rl", "main", "cartpole", cfg, train_nnknn_rl, load_nnknn_rl_checkpoint)
     final_eval = state["final_eval"]
     if final_eval["episodes"] != cfg.eval_episodes:
         raise AssertionError("NN-kNN-RL smoke evaluation did not run the configured number of episodes.")
@@ -551,7 +598,7 @@ def run_nnknn_rl_smoke() -> None:
         eval_episodes=1,
         policy_update_episodes=10,
     )
-    partial_state = train_nnknn_rl("cartpole", partial_cfg, progress=False)
+    partial_state = _rl_unit(study, "nnknn_rl", "partial", "cartpole", partial_cfg, train_nnknn_rl, load_nnknn_rl_checkpoint)
     if partial_state["summary"]["partial_rollout_samples"] != 1:
         raise AssertionError("NN-kNN actor one-step run should train exactly one final partial rollout sample.")
     if int(partial_state["loss_metrics"][-1]["global_step"]) != partial_cfg.total_timesteps:
@@ -569,7 +616,7 @@ def run_nnknn_rl_smoke() -> None:
         early_stopping=True,
         early_stopping_target_score=0.0,
     )
-    early_state = train_nnknn_rl("cartpole", early_cfg, progress=False)
+    early_state = _rl_unit(study, "nnknn_rl", "early", "cartpole", early_cfg, train_nnknn_rl, load_nnknn_rl_checkpoint)
     if early_state["summary"]["actual_timesteps"] != 5:
         raise AssertionError("NN-kNN-RL did not stop at its first target-reaching evaluation.")
     if early_state["summary"]["partial_rollout_samples"] != 5:
@@ -582,9 +629,12 @@ def run_nnknn_rl_smoke() -> None:
     legacy_checkpoint["config"] = dict(legacy_checkpoint["config"])
     legacy_checkpoint["config"].pop("actor_type", None)
     legacy_checkpoint.pop("actor_type", None)
-    legacy_path = state["run_dir"] / "legacy_no_actor_type_checkpoint.pt"
-    torch.save(legacy_checkpoint, legacy_path)
-    legacy_loaded = load_nnknn_rl_checkpoint(legacy_path)
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as scratch:  # a test file, not run data: never inside the unit
+        legacy_path = Path(scratch) / "legacy_no_actor_type_checkpoint.pt"
+        torch.save(legacy_checkpoint, legacy_path)
+        legacy_loaded = load_nnknn_rl_checkpoint(legacy_path)
     if legacy_loaded["config"].actor_type != "nnknn":
         raise AssertionError("Legacy checkpoint without actor_type should reload as NN-kNN actor.")
 
@@ -594,7 +644,7 @@ def run_nnknn_rl_smoke() -> None:
         critic_type="nnknn",
         critic_target_sync_interval=1,
     )
-    nnknn_state = train_nnknn_rl("cartpole", nnknn_cfg, progress=False)
+    nnknn_state = _rl_unit(study, "nnknn_rl", "nnknn", "cartpole", nnknn_cfg, train_nnknn_rl, load_nnknn_rl_checkpoint)
     if not nnknn_state["checkpoint_path"].exists():
         raise AssertionError("NN-kNN critic smoke did not write a checkpoint.")
     if not isinstance(nnknn_state["model"], NNKNNPolicyNetwork):
@@ -667,7 +717,7 @@ def run_nnknn_rl_smoke() -> None:
         critic_holdout_episode_frequency=5,
         critic_holdout_episodes=1,
     )
-    mlp_state = train_nnknn_rl("cartpole", mlp_cfg, progress=False)
+    mlp_state = _rl_unit(study, "nnknn_rl", "mlp", "cartpole", mlp_cfg, train_nnknn_rl, load_nnknn_rl_checkpoint)
     mlp_loaded = load_nnknn_rl_checkpoint(mlp_state["checkpoint_path"])
     if mlp_loaded["config"].actor_type != "mlp" or mlp_loaded["config"].critic_type != "mlp":
         raise AssertionError("MLP actor + MLP critic checkpoint reload did not preserve actor/critic types.")
@@ -688,14 +738,16 @@ def run_nnknn_rl_smoke() -> None:
     mlp_holdout_row = mlp_state["critic_holdout_metrics"][0]
     if mlp_holdout_row["critic_holdout_behavior_epsilon"] != 0.0:
         raise AssertionError("MLP critic holdout should use standard stochastic policy sampling.")
-    if not (mlp_state["run_dir"] / "critic_holdout_metrics.csv").exists():
+    from model.t2.runs import RunFiles
+
+    if not RunFiles(mlp_state["run_dir"]).exists("critic_holdout_metrics.csv"):
         raise AssertionError("Periodic critic holdout evaluation did not write its CSV artifact.")
     mlp_eval = evaluate_nnknn_rl("cartpole", mlp_loaded["model"], episodes=mlp_cfg.eval_episodes, seed=mlp_cfg.eval_seed)
     if mlp_eval["episodes"] != mlp_cfg.eval_episodes:
         raise AssertionError("MLP actor checkpoint did not evaluate with the configured episode count.")
 
     mlp_nnknn_cfg = make_nnknn_rl_config("smoke", seed=3, actor_type="mlp", critic_type="nnknn")
-    mlp_nnknn_state = train_nnknn_rl("cartpole", mlp_nnknn_cfg, progress=False)
+    mlp_nnknn_state = _rl_unit(study, "nnknn_rl", "mlp_nnknn", "cartpole", mlp_nnknn_cfg, train_nnknn_rl, load_nnknn_rl_checkpoint)
     mlp_nnknn_loaded = load_nnknn_rl_checkpoint(mlp_nnknn_state["checkpoint_path"])
     if mlp_nnknn_loaded["config"].actor_type != "mlp" or mlp_nnknn_loaded["config"].critic_type != "nnknn":
         raise AssertionError("MLP actor + NN-kNN critic checkpoint reload did not preserve actor/critic types.")
@@ -712,7 +764,7 @@ def run_nnknn_rl_smoke() -> None:
         policy_update_episodes=1,
         eval_episodes=1,
     )
-    mlp_nnknn_capacity_state = train_nnknn_rl("cartpole", mlp_nnknn_capacity_cfg, progress=False)
+    mlp_nnknn_capacity_state = _rl_unit(study, "nnknn_rl", "mlp_nnknn_capacity", "cartpole", mlp_nnknn_capacity_cfg, train_nnknn_rl, load_nnknn_rl_checkpoint)
     if mlp_nnknn_capacity_state["summary"]["critic_case_entries"] != 32:
         raise AssertionError("Small-capacity NN-kNN critic should fill to its configured capacity.")
     if (
@@ -730,7 +782,7 @@ def run_nnknn_rl_smoke() -> None:
         total_timesteps=128,
         policy_update_episodes=2,
     )
-    separate_capacity_state = train_nnknn_rl("cartpole", separate_capacity_cfg, progress=False)
+    separate_capacity_state = _rl_unit(study, "nnknn_rl", "separate_capacity", "cartpole", separate_capacity_cfg, train_nnknn_rl, load_nnknn_rl_checkpoint)
     if not isinstance(separate_capacity_state["model"], NNKNNPolicyNetwork):
         raise AssertionError("Small-capacity NN-kNN smoke should retain a standalone actor store.")
     if separate_capacity_state["summary"]["critic_case_entries"] <= 0:
@@ -760,7 +812,7 @@ def run_nnknn_rl_smoke() -> None:
         critic_target_sync_interval=1,
         critic_target_ema_tau=0.5,
     )
-    target_ema_state = train_nnknn_rl("cartpole", target_ema_cfg, progress=False)
+    target_ema_state = _rl_unit(study, "nnknn_rl", "target_ema", "cartpole", target_ema_cfg, train_nnknn_rl, load_nnknn_rl_checkpoint)
     if target_ema_state["summary"]["critic_target_value_mode"] != "ema":
         raise AssertionError("NN-kNN EMA target smoke should record EMA target value mode.")
     if target_ema_state["summary"]["critic_target_value_syncs"] <= 1:
@@ -781,18 +833,27 @@ def main() -> None:
         choices=("imports", "train", "classification", "rl", "nec", "nnknn_rl"),
         help="Choose a lightweight import check or a tiny training run.",
     )
+    parser.add_argument(
+        "--study",
+        default=None,
+        help="Required for every mode except imports: each training is recorded as a run unit "
+        "(train, classification: NN-KNN/runs/core/<study>/smoke/<mode>; rl, nec, nnknn_rl: "
+        "NN-KNN/runs/t2/<study>/smoke/<mode>/<config>). A complete unit is reported, not retrained.",
+    )
     args = parser.parse_args()
+    if args.mode != "imports" and args.study is None:
+        parser.error(f"--mode {args.mode} requires --study (recording is mandatory)")
 
     if args.mode == "train":
-        run_training_smoke()
+        run_training_smoke(args.study)
     elif args.mode == "classification":
-        run_classification_smoke()
+        run_classification_smoke(args.study)
     elif args.mode == "rl":
-        run_rl_smoke()
+        run_rl_smoke(args.study)
     elif args.mode == "nec":
-        run_nec_smoke()
+        run_nec_smoke(args.study)
     elif args.mode == "nnknn_rl":
-        run_nnknn_rl_smoke()
+        run_nnknn_rl_smoke(args.study)
     else:
         run_import_smoke()
 

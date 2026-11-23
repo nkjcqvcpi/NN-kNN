@@ -6,16 +6,18 @@ Ablates:
 3. Diversity Admission Filter: Minimum distance threshold delta_diversity to suppress redundant cluster states.
 4. Cold-Start Grace Period: Time-window tenure protection against infant mortality of new states.
 5. Combined Architecture: In-Place Overwrite + Diversity Admission + Grace Period.
+
+Every training is a run unit runs/t2/<study>/<output folder name>/mech_<mechanism>_s<seed> (``--study`` is required);
+a complete unit is read back before any training, never trained again. The raw CSV and the report are built from the
+units only and go to ``--output-dir`` (default ``<worktree>/results/t2/s06_case_memory_mechanisms/rl_case_maintenance``).
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 import sys
-import time
 from typing import Any
 
 import numpy as np
@@ -28,12 +30,15 @@ if str(ROOT_DIR) not in sys.path:
 from model.nnknn_rl_workflow import make_nnknn_rl_config, train_nnknn_rl
 from model.t2 import runs as t2runs
 
+DEFAULT_OUTPUT_DIR = ROOT_DIR / "results" / "t2" / "s06_case_memory_mechanisms" / "rl_case_maintenance"
+
 
 def run_mechanism_ablation_battery(
     output_dir: Path,
     seeds: list[int] = [0, 1, 2],
     device: str = "cpu",
-    study: str | None = None,
+    *,
+    study: str,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -79,9 +84,7 @@ def run_mechanism_ablation_battery(
     for mech in mechanisms:
         for seed in seeds:
             slug = mech["name"].split()[0].lower().replace("(", "").replace(")", "")
-            run_dir = output_dir / f"mech_{slug}_s{seed}"
-            if study is None:
-                run_dir.mkdir(parents=True, exist_ok=True)
+            run_name = f"mech_{slug}_s{seed}"
             print(f"--> Testing {mech['name']} | Seed {seed}...")
 
             overrides: dict[str, Any] = {
@@ -94,32 +97,15 @@ def run_mechanism_ablation_battery(
                 "case_grace_period_steps": mech["case_grace_period_steps"],
             }
 
-            t0 = time.time()
             cfg = make_nnknn_rl_config("fast", **overrides)
-            if study is None:
-                summary_dict = train_nnknn_rl(
-                    "cartpole",
-                    cfg,
-                    output_dir=run_dir,
-                    device=device,
-                    progress=False,
-                )
-                elapsed = time.time() - t0
-
-                # Read structured summary
-                s_file = run_dir / "summary.json"
-                if s_file.exists():
-                    s = json.loads(s_file.read_text(encoding="utf-8"))
-                else:
-                    s = summary_dict.get("summary", summary_dict)
-            else:  # one run unit runs/t2/<study>/<output folder>/<run name>; a complete unit is read, not rerun
-                files = t2runs.run_training(
-                    study, (output_dir.name, run_dir.name),
-                    t2runs.unit_config("nnknn_rl", "cartpole", cfg.to_dict(), device, profile="fast"),
-                    lambda run, cfg=cfg: train_nnknn_rl("cartpole", cfg, device=device, progress=False, run=run,
-                                                        resumable=True),
-                    label="rl-case-maintenance")
-                s, elapsed, run_dir = files.json("summary.json"), files.train_seconds() or float("nan"), files.path
+            # one run unit runs/t2/<study>/<output folder>/<run name>; a complete unit is read, not trained again
+            files = t2runs.run_training(
+                study, (output_dir.name, run_name),
+                t2runs.unit_config("nnknn_rl", "cartpole", cfg.to_dict(), device, profile="fast"),
+                lambda run, cfg=cfg: train_nnknn_rl("cartpole", cfg, device=device, progress=False, run=run,
+                                                    resumable=True),
+                label="rl-case-maintenance")
+            s, elapsed, run_dir = files.json("summary.json"), files.train_seconds() or float("nan"), files.path
 
             final_eval = s.get("final_eval", {})
             eff = s.get("training_efficiency", {})
@@ -195,19 +181,18 @@ def generate_ablation_report(output_dir: Path, df: pd.DataFrame, seeds: list[int
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run case maintenance ablation study.")
-    parser.add_argument("--output-dir", default="results/t2/s06_case_memory_mechanisms/rl_case_maintenance")
+    parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR),
+                        help="Where the raw CSV and the report go (default under <worktree>/results/).")
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     parser.add_argument("--device", default="cpu")
-    parser.add_argument("--study", default=None,
-                        help="Record every training as a run unit runs/t2/<study>/<output folder>/<run name> instead "
-                             "of a run directory; rerunning skips complete units and resumes interrupted ones. The raw "
-                             "CSV and the report still go to --output-dir.")
+    parser.add_argument("--study", required=True,
+                        help="Required: every training is the run unit runs/t2/<study>/<output folder>/<run name>; "
+                             "rerunning skips complete units (no training) and resumes interrupted ones.")
     args = parser.parse_args()
-    if args.study is not None:
-        try:
-            t2runs.check_study(args.study)
-        except (FileNotFoundError, ValueError) as exc:
-            parser.error(f"--study: {exc}")
+    try:
+        t2runs.check_study(args.study)
+    except (FileNotFoundError, ValueError) as exc:
+        parser.error(f"--study: {exc}")
 
     run_mechanism_ablation_battery(Path(args.output_dir), seeds=args.seeds, device=args.device, study=args.study)
 
