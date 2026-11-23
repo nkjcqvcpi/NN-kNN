@@ -37,10 +37,35 @@ from pathlib import Path
 from typing import Any, Iterable, Iterator, Mapping, NamedTuple
 
 import numpy as np
-from tensorboard.backend.event_processing.event_file_loader import RawEventFileLoader  # no tensorboard: no tracking
-from tensorboard.compat.proto import event_pb2, summary_pb2, tensor_pb2, tensor_shape_pb2, types_pb2
-from tensorboard.compat.tensorflow_stub import dtypes as _tb_dtypes
-from tensorboard.compat.tensorflow_stub.pywrap_tensorflow import masked_crc32c
+
+# tensorboard is imported on first use (no tensorboard: no tracking), so importing this module for ``NullRun`` (the
+# default of the training code, used by Table 1 and every plain run) neither needs nor loads tensorboard. Code here
+# reaches these names as ``_tb.<name>``; tests may monkeypatch them on the module.
+_TB_NAMES = {
+    "RawEventFileLoader": ("tensorboard.backend.event_processing.event_file_loader", "RawEventFileLoader"),
+    "event_pb2": ("tensorboard.compat.proto.event_pb2", None),
+    "summary_pb2": ("tensorboard.compat.proto.summary_pb2", None),
+    "tensor_pb2": ("tensorboard.compat.proto.tensor_pb2", None),
+    "tensor_shape_pb2": ("tensorboard.compat.proto.tensor_shape_pb2", None),
+    "types_pb2": ("tensorboard.compat.proto.types_pb2", None),
+    "_tb_dtypes": ("tensorboard.compat.tensorflow_stub.dtypes", None),
+    "masked_crc32c": ("tensorboard.compat.tensorflow_stub.pywrap_tensorflow", "masked_crc32c"),
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name not in _TB_NAMES:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    import importlib
+
+    module, attr = _TB_NAMES[name]
+    value = importlib.import_module(module)
+    value = getattr(value, attr) if attr else value
+    globals()[name] = value
+    return value
+
+
+_tb = sys.modules[__name__]
 
 ENV_VAR = "NNKNN_RUNS"
 DEFAULT_ROOT = Path(__file__).resolve().parents[3] / "runs"  # <NN-KNN>/<worktree>/model/common/tracking.py
@@ -189,19 +214,19 @@ def _check_tag(tag: str) -> str:
 
 
 def _value(tag: str, payload: Any, plugin: str, content: bytes = b"") -> Any:
-    shape = tensor_shape_pb2.TensorShapeProto
+    shape = _tb.tensor_shape_pb2.TensorShapeProto
     if isinstance(payload, bytes):
-        tensor = tensor_pb2.TensorProto(dtype=types_pb2.DT_STRING, tensor_shape=shape(), string_val=[payload])
+        tensor = _tb.tensor_pb2.TensorProto(dtype=_tb.types_pb2.DT_STRING, tensor_shape=shape(), string_val=[payload])
     elif isinstance(payload, np.ndarray):
-        tensor = tensor_pb2.TensorProto(dtype=_tb_dtypes.as_dtype(payload.dtype).as_datatype_enum,
+        tensor = _tb.tensor_pb2.TensorProto(dtype=_tb._tb_dtypes.as_dtype(payload.dtype).as_datatype_enum,
                                         tensor_shape=shape(dim=[shape.Dim(size=n) for n in payload.shape]),
                                         tensor_content=payload.tobytes())
     else:
-        dtype, field = {"float64": (types_pb2.DT_DOUBLE, "double_val"), "int64": (types_pb2.DT_INT64, "int64_val"),
-                        "bool": (types_pb2.DT_BOOL, "bool_val")}[payload[0]]
-        tensor = tensor_pb2.TensorProto(dtype=dtype, tensor_shape=shape(), **{field: [payload[1]]})
-    meta = summary_pb2.SummaryMetadata(plugin_data={"plugin_name": plugin, "content": content})
-    return summary_pb2.Summary.Value(tag=tag, metadata=meta, tensor=tensor)
+        dtype, field = {"float64": (_tb.types_pb2.DT_DOUBLE, "double_val"), "int64": (_tb.types_pb2.DT_INT64, "int64_val"),
+                        "bool": (_tb.types_pb2.DT_BOOL, "bool_val")}[payload[0]]
+        tensor = _tb.tensor_pb2.TensorProto(dtype=dtype, tensor_shape=shape(), **{field: [payload[1]]})
+    meta = _tb.summary_pb2.SummaryMetadata(plugin_data={"plugin_name": plugin, "content": content})
+    return _tb.summary_pb2.Summary.Value(tag=tag, metadata=meta, tensor=tensor)
 
 
 _Rec = NamedTuple("_Rec", [("tag", str), ("step", int), ("kind", str), ("value", Any), ("raw", bytes)])  # raw: hashed
@@ -210,17 +235,17 @@ _Rec = NamedTuple("_Rec", [("tag", str), ("step", int), ("kind", str), ("value",
 def _decode(value: Any, step: int) -> _Rec:
     plugin, t = value.metadata.plugin_data.plugin_name, value.tensor
     if plugin == P_EXACT:
-        for kind, dtype, vals, fmt in (("float64", types_pb2.DT_DOUBLE, t.double_val, "<d"),
-                                       ("int64", types_pb2.DT_INT64, t.int64_val, "<q"),
-                                       ("bool", types_pb2.DT_BOOL, t.bool_val, "<q")):
+        for kind, dtype, vals, fmt in (("float64", _tb.types_pb2.DT_DOUBLE, t.double_val, "<d"),
+                                       ("int64", _tb.types_pb2.DT_INT64, t.int64_val, "<q"),
+                                       ("bool", _tb.types_pb2.DT_BOOL, t.bool_val, "<q")):
             if t.dtype == dtype and len(vals) == 1:
                 v = bool(vals[0]) if kind == "bool" else vals[0]
                 return _Rec(value.tag, step, kind, v, struct.pack(fmt, v))
-    elif plugin in (P_RUN, P_RECORD) and t.dtype == types_pb2.DT_STRING and len(t.string_val) == 1:
+    elif plugin in (P_RUN, P_RECORD) and t.dtype == _tb.types_pb2.DT_STRING and len(t.string_val) == 1:
         kind = "rows" if value.metadata.plugin_data.content == b"rows" else "json"
         return _Rec(value.tag, step, kind, decode_json(t.string_val[0]), t.string_val[0])
     elif plugin == P_ARRAY:
-        dtype = np.dtype(_tb_dtypes.as_dtype(t.dtype).as_numpy_dtype).newbyteorder("<")
+        dtype = np.dtype(_tb._tb_dtypes.as_dtype(t.dtype).as_numpy_dtype).newbyteorder("<")
         arr = np.frombuffer(t.tensor_content, dtype).reshape([d.size for d in t.tensor_shape.dim])  # read-only view
         return _Rec(value.tag, step, "array", arr, t.tensor_content)
     raise _Invalid(f"undecodable exact record {value.tag!r} ({plugin})")
@@ -272,9 +297,9 @@ def _read_segment(path: Path) -> _Segment:
     """One sequential pass with TensorBoard's raw loader; a torn tail (crash) is dropped, other damage reported."""
     seg, consumed, size = _Segment(path, []), 0, path.stat().st_size  # size first: the file may grow while read
     try:
-        for raw in RawEventFileLoader(str(path)).Load():  # stops silently at the first bad record
+        for raw in _tb.RawEventFileLoader(str(path)).Load():  # stops silently at the first bad record
             consumed += len(raw) + 16
-            event = event_pb2.Event.FromString(raw)
+            event = _tb.event_pb2.Event.FromString(raw)
             for value in event.summary.value if event.HasField("summary") else ():
                 if value.metadata.plugin_data.plugin_name.startswith("nnknn."):
                     seg.records.append(_decode(value, event.step))
@@ -284,7 +309,7 @@ def _read_segment(path: Path) -> _Segment:
     if (rest := size - consumed) > 0:  # a crash cuts the last record short or leaves zeros (power cut: a valid header,
         with path.open("rb") as fh:  # then zeros); a record failing its CRC is damage
             head = (tail := (fh.seek(consumed), fh.read(rest))[1])[:12]
-        cut = len(head) < 12 or not head.strip(b"\0") or (masked_crc32c(head[:8]) == struct.unpack("<I", head[8:])[0]
+        cut = len(head) < 12 or not head.strip(b"\0") or (_tb.masked_crc32c(head[:8]) == struct.unpack("<I", head[8:])[0]
                                                          and (16 + struct.unpack("<Q", head[:8])[0] > rest
                                                               or not tail[12:].strip(b"\0")))
         seg.damage = None if cut else f"{path.name}: corrupt record at byte {consumed}"
@@ -693,7 +718,7 @@ class Run:
         return not self._holding
 
     def _emit(self, values: list[Any], step: int = 0) -> None:
-        self._fw.add_summary(summary_pb2.Summary(value=values), step)
+        self._fw.add_summary(_tb.summary_pb2.Summary(value=values), step)
 
     def _emit_json(self, tag: str, obj: Any, plugin: str = P_RECORD, content: bytes = b"one", step: int = 0) -> None:
         self._emit([_value(tag, canonical_json(obj), plugin, content)], step)
@@ -955,7 +980,7 @@ def open_run(key: RunKey | str, *, config: Mapping, root: str | Path | None = No
         run._emit_json("_run/failed", {"status": "failed", "withdrawn": True, "error": "concurrent launch"}, P_RUN, b"")
         run._sync(close=True)
         raise UnitBusyError(f"{key.run_id}: another launch opened session {session} at the same time; this one stepped back")
-    run._fw.add_event(event_pb2.Event(session_log=event_pb2.SessionLog(status=event_pb2.SessionLog.START)), step=start)
+    run._fw.add_event(_tb.event_pb2.Event(session_log=_tb.event_pb2.SessionLog(status=_tb.event_pb2.SessionLog.START)), step=start)
     mode = "fresh" if pending is None else ("restart in place" if pending.get("restart") else f"resume after step {start - 1}")
     writer.add_text("card/session", f"session {session} on {host} (pid {pid}): {mode}", start)
     wdir = path / "weights"
