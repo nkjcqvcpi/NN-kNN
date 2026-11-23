@@ -486,3 +486,132 @@ def test_core_ablation_trials_are_reused_only_for_the_same_data(tmp_path, monkey
                              "abl")["status"] == "completed"
         with pytest.raises(tr.ConfigMismatchError):
             abl.run_trial(job, "base", settings, loader(lambda s: data, task_type="regression", val_frac=.5), 30, "src", "abl")
+
+
+def legacy_config(tmp_path, seeds=(0, 1), epochs=3):
+    import yaml
+    cfg = load_config(Path(__file__).resolve().parents[1] / "configs/t1/smoke_legacy.yaml")
+    cfg["legacy"]["overrides"].update(training_epochs=epochs, patience=epochs, batch_size=4)
+    cfg["datasets"], cfg["seeds"] = [{"name": "tiny", "task_type": "classification"}], list(seeds)
+    path = tmp_path / "legacy.yaml"
+    path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
+    return cfg, path
+
+
+def t1_main(monkeypatch, *argv):
+    from tools import t1_run
+    with monkeypatch.context() as mp, contextlib.redirect_stdout(io.StringIO()) as out:
+        mp.setattr(sys, "argv", ["t1_run.py", *map(str, argv)])
+        t1_run.main()
+    return out.getvalue()
+
+
+def test_seeds_option_does_not_change_the_unit_config(tmp_path, monkeypatch):
+    """A study started one job per seed (--seeds s, as t1_parallel) resumes with a plain t1_run, and the reverse."""
+    (tmp_path / "runs").mkdir()
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
+    monkeypatch.setattr(Runner, "data_for", lambda self, ds, seed: tiny_data(ds, seed))
+    cfg, path = legacy_config(tmp_path)
+    out = t1_main(monkeypatch, path, "--out", tmp_path / "out", "--study", "q", "--seeds", 0)
+    assert out.count("[done]") == 1
+    out = t1_main(monkeypatch, path, "--out", tmp_path / "out", "--study", "q")
+    assert out.count("[recorded]") == 1 and out.count("[done]") == 1
+    out = t1_main(monkeypatch, path, "--out", tmp_path / "out", "--study", "q", "--seeds", 1, 0)
+    assert out.count("[recorded]") == 2 and "[done]" not in out
+    unit = tmp_path / "runs/t1/q" / cfg["experiment"] / "tiny/legacy/s0"
+    data = tr.load_run(unit)
+    assert "seeds" not in data.config["config"] and data.config["seed"] == 0
+    assert records.record(data, "manifest")["resolved_config"]["config"]["seeds"] == [0]  # the manifest keeps the full config
+
+
+def test_another_config_is_refused_before_training(tmp_path, monkeypatch):
+    (tmp_path / "runs").mkdir()
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
+    monkeypatch.setattr(Runner, "data_for", lambda self, ds, seed: tiny_data(ds, seed))
+    cfg, path = legacy_config(tmp_path, seeds=(0,))
+    t1_main(monkeypatch, path, "--out", tmp_path / "out", "--study", "q")
+    cfg["status"] = "changed"
+    runner = Runner(cfg, tmp_path / "out", study="q")
+    runner.data_for = lambda ds, seed: pytest.fail("loaded data before the config check")
+    with pytest.raises(tr.ConfigMismatchError, match="before training"):
+        runner.check_recorded(cfg["datasets"][0], 0)
+    runner.check_recorded(cfg["datasets"][0], 1)  # nothing recorded for that seed yet
+    Runner(load_config(path), tmp_path / "out", study="q").check_recorded(cfg["datasets"][0], 0)
+
+
+def test_t1_run_refuses_unit_paths_that_are_too_long(tmp_path, monkeypatch):
+    root = deep_root(tmp_path)
+    monkeypatch.setenv("NNKNN_RUNS", str(root))
+    monkeypatch.setattr(Runner, "data_for", lambda self, ds, seed: pytest.fail("loaded data before the path check"))
+    _, path = legacy_config(tmp_path, seeds=(0,))
+    assert records.event_path_length("q", "smoke_legacy", "tiny", "x", "s0") >= tr.MAX_PATH
+    with pytest.raises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+        t1_main(monkeypatch, path, "--out", tmp_path / "out", "--study", "q")
+    assert not (root / "t1").exists()
+
+
+RESUME_SCRIPT = r"""
+import os, sys, time
+sys.path[:0] = [sys.argv[1], os.path.join(sys.argv[1], "tests")]
+import test_t1_records as t
+from model.common import tracking
+from tools.t1_run import Runner, load_config
+from pathlib import Path
+save = tracking.Run.save_resume
+def slow(self, *a, **k):
+    out = save(self, *a, **k)
+    time.sleep(0.4)  # leaves time to kill the job after its first resume checkpoint
+    return out
+tracking.Run.save_resume = slow
+cfg = load_config(Path(sys.argv[2]))
+runner = Runner(cfg, Path(sys.argv[3]), study="int")
+runner.data_for = t.tiny_data
+runner.run_legacy_reference(cfg["datasets"][0], 0)
+print("DONE", flush=True)
+"""
+
+
+def test_killed_legacy_reference_resumes_into_the_same_unit(tmp_path, monkeypatch):
+    """A recorded legacy_reference killed after a resume checkpoint resumes in its unit; records and weights equal
+    those of an uninterrupted unit."""
+    import subprocess
+    import time
+    (tmp_path / "runs").mkdir()
+    monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "runs"))
+    monkeypatch.setenv("NNKNN_RESUME_EVERY_STEPS", "1")
+    cfg, path = legacy_config(tmp_path, seeds=(0,), epochs=12)
+    ds = cfg["datasets"][0]
+    ref = Runner(cfg, tmp_path / "out-ref", study="ref")
+    ref.data_for = tiny_data
+    with contextlib.redirect_stdout(io.StringIO()):
+        ref.run_legacy_reference(ds, 0)
+    unit = tmp_path / "runs/t1/int" / cfg["experiment"] / "tiny/legacy/s0"
+    repo = Path(__file__).resolve().parents[1]
+    proc = subprocess.Popen([sys.executable, "-c", RESUME_SCRIPT, str(repo), str(path), str(tmp_path / "out-int")],
+                            cwd=repo, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    try:
+        deadline = time.time() + 120
+        while not (unit / "weights/resume/last.pt").exists():
+            assert proc.poll() is None, proc.stdout.read()
+            assert time.time() < deadline, "no resume checkpoint within 120 s"
+            time.sleep(0.05)
+        time.sleep(0.1)
+    finally:
+        proc.kill()
+        proc.wait()
+        proc.stdout.close()
+    assert tr.run_status(unit).status == "incomplete"
+    rerun = Runner(load_config(path), tmp_path / "out-int", study="int")
+    rerun.data_for = tiny_data
+    with contextlib.redirect_stdout(io.StringIO()):
+        rerun.run_legacy_reference(ds, 0)
+    new, old = tr.load_run(unit), tr.load_run(tmp_path / "runs/t1/ref" / cfg["experiment"] / "tiny/legacy/s0")
+    assert new.info.status == "complete" and new.info.resumed and new.info.sessions == 2
+    for name in ("metrics", "history", "row"):
+        assert same(records.record(new, name), records.record(old, name)), name
+    states_new, states_old = new.states(), old.states()
+    assert {"best_retrieval", "final", "checkpoint"} <= set(states_new) and set(states_new) == set(states_old)
+    for name in states_old:
+        assert same(tr.load_state(unit, name), tr.load_state(old.path, name)), name
+    for tag in ("val/loss", "train/stage"):
+        assert new.series(tag) and new.series(tag) == old.series(tag), tag

@@ -59,7 +59,7 @@ from model.t1.revise import flagging_ablation  # noqa: E402
 from model.t1.sync import SyncConfig, train_synchronized  # noqa: E402
 from model.t1 import records  # noqa: E402
 from model.common.nominal import encoded_queries  # noqa: E402
-from model.common.tracking import open_run, resolve_unit  # noqa: E402
+from model.common.tracking import ConfigMismatchError, load_run, payload_sha256, open_run, resolve_unit, run_status  # noqa: E402
 
 
 # --------------------------------------------------------------------------- config
@@ -567,9 +567,37 @@ class Runner:
     def run_config(self, ds, seed, cond):
         return {"experiment": self.exp, "dataset": ds, "seed": seed, "condition": cond, "config": self.cfg}
 
+    @staticmethod
+    def unit_config(run_cfg):
+        """The config a unit is opened and checked with: ``run_cfg`` without the config's ``seeds`` list.
+
+        ``--seeds`` rewrites that list (tools/t1_parallel.py and tools/t1_execute_study.py start one job per seed,
+        t1_launch.ps1 and a plain t1_run none), and the unit's own seed is already ``run_cfg["seed"]``; the manifest,
+        the row and the run id keep the full ``run_cfg``.
+        """
+        return records.jsonable({**run_cfg, "config": {k: v for k, v in run_cfg["config"].items() if k != "seeds"}})
+
+    def check_recorded(self, ds, seed) -> None:
+        """Before any training of ``(ds, seed)``: each complete unit of this experiment, dataset and seed must hold
+        the config this run would give it (its condition aside), else ConfigMismatchError now, not after training."""
+        if self.study is None:
+            return
+        expected = self.unit_config(self.run_config(ds, seed, {}))
+        expected.pop("condition")
+        expected = payload_sha256(expected)
+        tree = records.unit_tree(self.study, self.exp, self.dataset_key(ds))
+        for path in sorted(tree.glob(f"*/s{seed}")) if tree.is_dir() else ():
+            info = run_status(path)
+            if info.status != "complete":
+                continue
+            stored = dict(load_run(path, arrays=False).config or {})
+            stored.pop("condition", None)
+            if payload_sha256(stored) != expected:
+                raise ConfigMismatchError(f"{info.run_id} is complete with a different config (checked before training)")
+
     def recorded(self, key, run_cfg) -> bool:
         """True (and say so) when the unit is complete with this config; ConfigMismatchError for another config."""
-        info = resolve_unit(key, config=records.jsonable(run_cfg))
+        info = resolve_unit(key, config=self.unit_config(run_cfg))
         if info is not None:
             print(f"[recorded] {key.run_id} is complete; not written again", flush=True)
         return info is not None
@@ -584,7 +612,7 @@ class Runner:
         key, run_cfg = self.unit_key(ds, cond_label, seed), self.run_config(ds, seed, cond)
         if self.recorded(key, run_cfg):
             return
-        with open_run(key, config=records.jsonable(run_cfg)) as unit:
+        with open_run(key, config=self.unit_config(run_cfg)) as unit:
             self._finish(RunSink(unit), ds=ds, seed=seed, cond_label=cond_label, cond=cond, **kw)
 
     def _finish(self, sink, *, ds, seed, cond_label, cond, data, model, store, archive, metrics, history, events, components, budgets, maintenance, model_desc, extra_files=None, prediction_adapter=None, binary_files=None, optimizer=None, adapter_optimizer_state=None, optimizer_checkpoint_epoch=None):
@@ -642,6 +670,11 @@ class Runner:
 
     def run_legacy_reference(self, ds, seed):
         """Phase 0: the maintained NN-kNN trainer (current behavior) on the same splits."""
+        cond = {"variant": "maintained_train_model"}
+        if self.study is not None:
+            key, run_cfg = self.unit_key(ds, "legacy", seed), self.run_config(ds, seed, cond)
+            if self.recorded(key, run_cfg):  # before the data is loaded
+                return None
         data = self.data_for(ds, seed)
         if data.task_type == "classification":
             from model.classification_workflow import make_classification_cfg
@@ -651,7 +684,6 @@ class Runner:
             from model.regression_workflow import make_regression_cfg
 
             lcfg = make_regression_cfg({**self.cfg["legacy"].get("overrides", {}), **self.cfg["legacy"]["regression_overrides"]})
-        cond = {"variant": "maintained_train_model"}
         if self.study is None:
             run_dir = self.out / ds["name"] / "legacy" / f"s{seed}"
             run_dir.mkdir(parents=True, exist_ok=True)
@@ -659,10 +691,7 @@ class Runner:
             return self._legacy_reference(ds, seed, data, lcfg, cond, None)
         # recorded: train_model writes no checkpoint file; it records its curves and best/final states into the
         # unit and can resume an interrupted training from the unit's resume checkpoint
-        key, run_cfg = self.unit_key(ds, "legacy", seed), self.run_config(ds, seed, cond)
-        if self.recorded(key, run_cfg):
-            return None
-        with open_run(key, config=records.jsonable(run_cfg)) as run:
+        with open_run(key, config=self.unit_config(run_cfg)) as run:
             self._legacy_reference(ds, seed, data, lcfg, cond, run)
 
     def _legacy_reference(self, ds, seed, data, lcfg, cond, run):
@@ -1222,6 +1251,25 @@ class Runner:
                         budgets={"review_budget": r["review_budget"], "retrain_epochs": rv["retrain_epochs"], "matched_control_epochs": r.get("matched_control_epochs", 0)}, maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "stage": "M2", "statistics_training_targets": "M2.pt:training_targets"}, extra_files={"interventions.json": r["interventions"]}, binary_files={**{f"{stage}.pt": checkpoint for stage, checkpoint in stages.items()}, "intervention_state.pt": artifacts["intervention_log"]}, optimizer=artifacts["final_optimizer"])
 
 
+def check_unit_lengths(ap, runner, cfg, seeds, only_dataset) -> None:
+    """Refuse a study whose unit paths are too long even for a one-character condition label; warn when a label
+    of the longest kept length (``records.MAX_COMPONENT``, longer ones are hashed down to it) would be too long,
+    since the condition labels are only known when each condition is reached, after its training."""
+    from model.common.tracking import MAX_PATH
+    dsets = [ds for ds in cfg["datasets"] if not only_dataset or ds["name"] == only_dataset]
+    seed = f"s{max(seeds, key=lambda s: len(str(s)))}" if seeds else "s0"
+    try:
+        records.check_unit_paths(runner.study, [(runner.exp, runner.dataset_key(ds), "x", seed) for ds in dsets])
+    except ValueError as exc:
+        ap.error(f"--study: {exc}")
+    longest = max((records.event_path_length(runner.study, runner.exp, runner.dataset_key(ds), "x" * records.MAX_COMPONENT, seed)
+                   for ds in dsets), default=0)
+    if longest >= MAX_PATH:
+        print(f"[warning] a condition label longer than {records.MAX_COMPONENT - (longest - MAX_PATH + 1)} characters "
+              f"would give an event file path over the limit ({MAX_PATH}) after its training; a shorter study name avoids it",
+              file=sys.stderr, flush=True)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("config")
@@ -1246,11 +1294,14 @@ def main() -> None:
     runner = Runner(cfg, Path(args.out), **({} if args.study is None else {"study": args.study}))
     fn = getattr(runner, f"run_{cfg['type']}")
     seeds = args.seeds if args.seeds else cfg["seeds"]
+    if args.study is not None:
+        check_unit_lengths(ap, runner, cfg, seeds, args.only_dataset)
     for ds in cfg["datasets"]:
         if args.only_dataset and ds["name"] != args.only_dataset:
             continue
         for seed in seeds:
             t0 = time.time()
+            runner.check_recorded(ds, int(seed))
             fn(ds, int(seed))
             print(f"[timing] {cfg['experiment']} {ds['name']} s{seed}: {time.time() - t0:.1f}s", flush=True)
 
