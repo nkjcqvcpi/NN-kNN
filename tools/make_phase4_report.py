@@ -3,7 +3,9 @@
 Usage:
     .venv/bin/python tools/make_phase4_report.py --manifest reports/phase4_manifest.json
 
-The manifest maps method -> {seed: run_dir}. Manifests, run directories and
+The manifest maps method -> {seed: run_dir}. A run_dir is a run directory of
+summary.json and eval_metrics.csv, or a run unit of NN-KNN/runs/ recorded with
+--study (its records hold the same files; model/t2/runs.py). Manifests, run directories and
 figures are not in git: they are read from and written to disk on the
 experiment host (reports/*_manifest.json and results/ there), so the default
 --manifest only works where those files exist. Which methods appear in the table
@@ -26,6 +28,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from model.t2.runs import RunFiles, is_unit  # noqa: E402
 
 # Canonical presentation order. A manifest supplies a SUBSET of these keys;
 # unknown keys are a hard error (see resolve_method_order).
@@ -73,6 +80,11 @@ def load_runs(manifest: dict) -> dict:
         data[method] = {}
         for seed, run_dir in sorted(seeds.items(), key=lambda kv: int(kv[0])):
             d = Path(run_dir)
+            if is_unit(d):  # a run unit: the same two files, rebuilt from its records
+                files = RunFiles(d)
+                summary, evals = files.json("summary.json"), files.frame("eval_metrics.csv")
+                data[method][int(seed)] = {"summary": summary, "evals": evals, "dir": str(d)}
+                continue
             missing = [name for name in ("summary.json", "eval_metrics.csv") if not (d / name).is_file()]
             if missing:
                 raise SystemExit(

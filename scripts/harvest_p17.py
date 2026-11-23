@@ -5,8 +5,14 @@ derived from the run itself -- the run-dir name carries the launch timestamp and
 summary.json is written at completion. The campaign_timing.csv ledger is NOT
 trusted: PowerShell's {N1} format emits thousands separators ("1,234.5"), and
 that comma corrupts the CSV column alignment.
+
+An entry of OUT may also be a run unit of NN-KNN/runs (model/t2/runs.py): its
+config.json and summary.json come from the unit's records and its wall clock
+from the recorded training time (x/sys/train_seconds).
 """
 import datetime, io, json, os, re, statistics, sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(ROOT, "results", "rl_capacity_cpu_g234")
@@ -49,11 +55,17 @@ runs = []
 for name in sorted(os.listdir(OUT)):
     d = os.path.join(OUT, name)
     cfg_p, sum_p = os.path.join(d, "config.json"), os.path.join(d, "summary.json")
-    if not (os.path.isdir(d) and os.path.exists(cfg_p) and os.path.exists(sum_p)):
+    unit = None
+    if os.path.isdir(d) and any("tfevents" in f for f in os.listdir(d)):
+        from model.t2.runs import RunFiles
+        unit = RunFiles(d)
+        cfg, s = unit.json("config.json"), unit.json("summary.json")
+    elif not (os.path.isdir(d) and os.path.exists(cfg_p) and os.path.exists(sum_p)):
         continue
-    cfg = json.load(io.open(cfg_p, encoding="utf-8"))
+    else:
+        cfg = json.load(io.open(cfg_p, encoding="utf-8"))
+        s = json.load(io.open(sum_p, encoding="utf-8"))
     inner = cfg.get("config", cfg)
-    s = json.load(io.open(sum_p, encoding="utf-8"))
     cap, seed = inner.get("case_capacity"), inner.get("seed")
     if cap is None or seed is None:
         print("  WARN: no capacity/seed in %s" % name); continue
@@ -65,7 +77,7 @@ for name in sorted(os.listdir(OUT)):
         steps=s["actual_timesteps"],
         best_step=s["training_efficiency"]["best_model_step"],
         stop=s["early_stopping"]["stopping_reason"],
-        seconds=run_seconds(d, name),
+        seconds=run_seconds(d, name) if unit is None else unit.train_seconds(),
     ))
 
 if not runs:

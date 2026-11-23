@@ -26,6 +26,10 @@ def main():
     from model.t2.retention import TrainingReference,constrained_retain
     from model.t2.audit import evaluation,policy_output
     from model.common.artifacts import source_fingerprint
+    try:  # a run_dir may also be a run unit of NN-KNN/runs (model/t2/runs.py) when --source has that module
+        from model.t2.runs import RunFiles
+    except ImportError:
+        RunFiles = None
     torch.set_num_threads(1)
     args.output.mkdir(parents=True,exist_ok=False)
     manifest=dict(source_fingerprint=source_fingerprint(args.source),runs=[],skips=[],
@@ -52,9 +56,17 @@ def main():
                 episodes=2,seed=40000+2*cfg.seed,global_step=cp['selected_step'],device='cpu'))
 
     for run_record in json.loads(args.runs.read_text())['runs']:
-        run=Path(run_record['run_dir']);checkpoint=run/'checkpoint.pt'
+        run=Path(run_record['run_dir'])
+        files=RunFiles(run) if RunFiles is not None and run.is_dir() and any('tfevents' in p.name for p in run.iterdir()) else None
+        if files is None:
+            checkpoint=run/'checkpoint.pt'
+            events=json.loads((run/'case_audit_events.json').read_text())['events']
+            resolve=lambda path:path
+        else:  # run unit: hash-checked weights/checkpoint.pt, events from the records, snapshots relative to the unit
+            checkpoint=files.checkpoint_path()
+            events=files.json('case_audit_events.json')['events']
+            resolve=files.resolve
         cp=torch.load(checkpoint,weights_only=True,map_location='cpu')
-        events=json.loads((run/'case_audit_events.json').read_text())['events']
         baseline=w.load_nnknn_rl_checkpoint(checkpoint,device='cpu',restore_optimizers=True)
         base_metrics=diagnostic(baseline,cp)
         for role,stream in [('critic','training_gae'),('actor','actor_policy_surrogate')]:
@@ -67,7 +79,7 @@ def main():
             step=max(steps)
             selected=[e for e in role_events if e['global_step'] in steps]
             for e in selected:
-                assert hashlib.sha256(Path(e['snapshot']).read_bytes()).hexdigest()==e['snapshot_sha256']
+                assert hashlib.sha256(Path(resolve(e['snapshot'])).read_bytes()).hexdigest()==e['snapshot_sha256']
                 if role=='actor':assert e['executed_under_ready_policy']
             ref=TrainingReference(torch.tensor([e['query'] for e in selected]),stream,
                 targets=torch.tensor([e['target'] for e in selected]) if role=='critic' else None,
