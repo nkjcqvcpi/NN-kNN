@@ -141,3 +141,18 @@ def test_public_pilots_read_the_metric_from_a_unit_like_from_metric_pt(data,runs
     assert equal(load_metric_checkpoint(unit),load_metric_checkpoint(legacy))
     weights=unit/'weights'/'metric.pt';blob=bytearray(weights.read_bytes());blob[-1]^=1;weights.write_bytes(bytes(blob))
     with pytest.raises(ValueError,match='not complete and verified'):metric_provenance(unit)
+
+
+@pytest.mark.parametrize('field,value',[('selection','tune_recall'),('need_objective','hard_negative'),('term_frequency','binary'),
+                                        ('dimensions',64),('epochs',4),('query_binding',dict(sha256='0'*64))])
+def test_unit_provenance_rejects_a_protocol_record_that_differs_from_the_unit_config(data,runs,tmp_path,monkeypatch,field,value):
+    run(data,tmp_path/'study','--study','tm')
+    unit=runs/'t3'/'tm'/'s3';real=tr.load_run
+    class Changed:
+        def __init__(self,data):self._data=data
+        def __getattr__(self,name):return getattr(self._data,name)
+        def record(self,name):
+            value_=self._data.record(name)
+            return {**value_,field:value} if name=='protocol' else value_
+    monkeypatch.setattr(tr,'load_run',lambda *a,**k:Changed(real(*a,**k)))
+    with pytest.raises(ValueError,match='protocol differs from its config'):metric_provenance(unit)

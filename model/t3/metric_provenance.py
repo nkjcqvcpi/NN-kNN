@@ -55,7 +55,11 @@ def _unit_provenance(path):
     run=dict(seed=final['seed'],selected_epoch=final['selected_epoch'])
     if run['seed']!=config['seed'] or Path(path).name!=f"s{run['seed']}" or run['seed'] not in protocol['seeds']:
         raise ValueError('metric checkpoint seed directory mismatch')
-    if protocol['epochs']!=config['epochs'] or protocol['data_source']['sha256']!=config['data_sha256']:
+    binding=protocol.get('query_binding')
+    if (protocol['epochs']!=config['epochs'] or protocol['data_source']['sha256']!=config['data_sha256']
+            or protocol['selection']!=config['selection'] or protocol.get('need_objective','softmax')!=config['objective']
+            or protocol.get('term_frequency','count')!=config['term_frequency'] or protocol['dimensions']!=config['dimensions']
+            or (binding['sha256'] if binding else None)!=config['need_queries_sha256']):
         raise ValueError('metric unit protocol differs from its config')
     artifacts=dict(run_unit=dict(path=str(Path(path).resolve()),run_id=data.info.run_id,result_digest=data.info.result_digest,
         config_sha256=data.info.config_sha256,state_sha256=state['state_sha256']))
