@@ -30,6 +30,6 @@
     "tests/test_nnknn_core.py": "d4170894c0cceac39b3e0841e39affd7a352d26c750a6c376532b2ebb693c1c8",
     "tests/test_tracking.py": "175ca0cc93afcf0b826ed667ad53e25cfbc1bea87e1c7d41dd3d3136e6c19321",
     "tests/test_core_runs.py": "b0dce9cd0e12bb786236fa9c6ddfad28ae7319a0e7dcc47e1793c926823e59ae",
-    "docs/NNKNN_CORE.md": "8378ec65016ddbdcab212a70219615fc9b1362d7b0283ad7470e14c6dd160208"
+    "docs/NNKNN_CORE.md": "6e4b10ec135e1db95d507c9fe50da7aa3970964377d9e9fc49c95fbf8e77aaf1"
   }
 }

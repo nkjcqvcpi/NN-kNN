@@ -106,11 +106,12 @@ uv run python codex/smoke_test.py --mode classification
 uv run python tools/run_classification_benchmarks.py iris --mode kfold --runs 3 --epochs 20
 ```
 
-The benchmark CLI records one run unit per dataset, method and split under
-`NN-KNN/runs/core/<study>/` (`--study`, default
-`classification_<suite>_<timestamp>`) and the summary in a report unit
-`runs/core/<study>/_reports/summary/<timestamp>`; it prints the summary and
-writes no CSV or JSON files (`docs/NNKNN_CORE.md`). The notebook keeps repeated
+The benchmark CLI creates a fresh timestamped folder under `results/` with
+`summary.csv`, `runs.csv`, and `manifest.json`. With `--study S` it also
+records the training data of every dataset, method and split as a run unit
+under `NN-KNN/runs/core/S/` (curves, final accuracy, predictions, weights; no
+checkpoint files); the summary files are the same, and rerunning the study
+skips complete units and resumes the others (`docs/NNKNN_CORE.md`). The notebook keeps repeated
 tabular and image benchmark sections opt-in so its default path stays quick.
 
 For manual small-data classification debugging, use
@@ -191,6 +192,12 @@ The repeated benchmark runner is new orchestration:
 - improves consistency and fairness without changing individual model formulas
 
 ## Table 1 Reporting Files
+
+Table 1 is the upstream authors' published regression benchmark. By the
+owner's rule R1 (2026-11-22, `docs/NNKNN_CORE.md`) its code path, its outputs
+and its numbers do not change and it has no run tracking: do not convert it to
+run units or reseed it, and keep its CSV/JSON outputs and checkpoint files as
+described below.
 
 Current Table 1 reruns are driven by:
 
@@ -294,20 +301,23 @@ Output objects:
 - `table_artifacts`: nested as `{"baselines": ..., "nnknn": ...}` with
   detailed per-run objects
 
-Called without `study`, `run_table1_kfold` records nothing and returns the
-tables in memory. To keep a run, pass a study: every NN-kNN family and
-baseline method per dataset and fold becomes a run unit under
-`NN-KNN/runs/core/<study>/`, and `record_table1_report` stores the tables
-(`summary_long`, `runs_long`, `table1_like`, `transposed`) in a report unit
-that `read_table1_report` reads back. No CSV, JSON or checkpoint files are
-written. Rerunning the same study skips complete units and resumes
-incomplete ones:
+Recommended export files after a full run:
+
+- `summary_long.csv`
+- `runs_long.csv`
+- `table1_like.csv`
+- `transposed.csv`
+- `done.json`
+
+Restart pattern for fresh Table 1 runs:
 
 ```python
-from tools.table1_nnknn_kfold import record_table1_report, run_table1_kfold
+from pathlib import Path
+from tools.table1_nnknn_kfold import run_table1_kfold
 
-study = "table1_kfold_YYYYMMDD_HHMMSS"
-unit_log = []
+outdir = Path("results/table1_kfold_YYYYMMDD_HHMMSS")
+outdir.mkdir(parents=True, exist_ok=True)
+
 summary_df, runs_df, artifacts = run_table1_kfold(
     dataset_names=[
         "califonia_housing",
@@ -324,14 +334,20 @@ summary_df, runs_df, artifacts = run_table1_kfold(
     ],
     num_folds=5,
     base_seed=42,
-    study=study,
-    unit_log=unit_log,
 )
-report = record_table1_report(summary_df, runs_df, study=study, units=unit_log)
+
+summary_df.to_csv(outdir / "summary_long.csv", index=False)
+runs_df.to_csv(outdir / "runs_long.csv", index=False)
+summary_df.pivot(
+    index="dataset",
+    columns="entry_label",
+    values="rmse_raw_table",
+).reset_index().to_csv(outdir / "table1_like.csv", index=False)
 ```
 
-The CLIs `tools/run_table1_kfold.py --study S` and
-`tools/resume_table1_kfold.py --study S` do the same.
+Do not overwrite an existing run folder. Create a fresh timestamped folder
+under `results/`, redirect stdout/stderr into that folder, and keep failed or
+older folders for postmortem comparison.
 
 ## Dataset Files
 
@@ -415,7 +431,7 @@ Legacy or specialized files:
 
 ## Environment
 
-Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; runs are recorded in TensorBoard event files by `model/common/tracking.py` (`docs/NNKNN_CORE.md`, "Run tracking"). The two notebooks must be launched with the repo root as the working
+Environment and dependencies are managed by uv only. The single `pyproject.toml`, `uv.lock` and `.python-version` (Python 3.14) live on `main`; one venv at `NN-KNN/.venv` is shared by all worktrees (`NN-KNN/{main,rl,llm,neural-cbr}`). Set the user environment variable `UV_PROJECT_ENVIRONMENT` to its absolute path once per device. In `main` run `uv sync` and `uv run python ...`; in another worktree run `uv run --project ../main --no-sync python ...`. torch is the Intel Arc XPU build (Windows x86_64 only; `environments` in the toml). No pip, no `requirements*.txt`, no hand-made venv. wandb was removed; training data is recorded in TensorBoard event files by `model/common/tracking.py` when a caller asks for it (`docs/NNKNN_CORE.md`, "Run tracking"); summaries stay in files. The two notebooks must be launched with the repo root as the working
 directory.
 
 ## Machine-Specific Caveats
@@ -424,8 +440,8 @@ directory.
   operations.
 - The current Table 1 helper therefore pins `kNN(X)` and `MLP` baselines to
   CPU for reproducible repeated runs.
-- Long experiments record their progress and results in their run units under
-  `NN-KNN/runs/`; console output is not kept unless the launcher redirects it.
+- Long experiments write progress to `stdout.log` and errors to `stderr.log`
+  under timestamped folders in `results/`.
 - `MLKR` depends on `metric-learn` and `scikit-learn`.
 - `bike_sharing` depends on `ucimlrepo`; verify the active environment before
   launching a full Table 1 run that includes it.
@@ -442,12 +458,12 @@ directory.
 ## If You Are Picking Up Mid-Run
 
 - Check [HANDOFF.md](../HANDOFF.md) first.
-- Then list the study's units: `python -m model.common.tracking ls ../runs/core/<study>`
-  shows which are complete, failed or incomplete; rerunning the same `--study`
-  skips the complete ones and resumes the others. A report unit under
-  `_reports/table1/` means the tables were recorded.
-- Older runs under `results/` (for example `results/prior_baseline/`, see
-  `results/README.md`) are legacy and stay as they are.
+- Then check the newest `results/table1_kfold_*` folder (completed reruns are
+  filed under `results/prior_baseline/`; see `results/README.md`).
+- Tail:
+  - `stdout.log`
+  - `stderr.log`
+- If `done.json` exists, the run finished and exports should already be there.
 
 ## Default Reading Order
 
