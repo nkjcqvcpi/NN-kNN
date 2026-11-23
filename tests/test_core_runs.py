@@ -291,6 +291,67 @@ def test_train_model_resume_keeps_the_patience_counter_and_the_case_bias(root, c
     assert data.info.result_digest == b.info.result_digest
 
 
+def _early_stopped_post_mlp(task, run):
+    """Trainable post-MLP whose best epoch lies before the last one (random validation targets, patience 2)."""
+    torch.manual_seed(0)
+    X, Xv = torch.randn(64, 5), torch.randn(24, 5)
+    if task == "classification":
+        y, yv = (X[:, 0] > 0).long() + (X[:, 1] > 0.5).long(), torch.randint(0, 3, (24,))
+    else:
+        y, yv = X @ torch.tensor([1.0, -2.0, 0.5, 0.0, 1.5]), 3 * torch.randn(24)
+    cfg = _train_model_cfg(task)
+    cfg.update({"training_epochs": 20, "patience": 2, "freeze_feature_extractor_epochs": 0,
+                "feature_extractor_lr": 5e-3, "use_nn_cdh": False})
+    metric, _, model = train_model(X, y, Xv, yv, None, cfg, run=run, resumable=True)
+    return metric, model, Xv, yv, cfg["batch_size"]
+
+
+@pytest.mark.parametrize("task", ["classification", "regression"])
+def test_train_model_returned_model_predicts_like_the_final_state(root, task):
+    """Restoring the best state also restores the extractor the cases are evaluated with: the returned model,
+    a model rebuilt from the saved "final" state and the best validation epoch all give the same predictions."""
+    import copy
+
+    with open_unit(f"{task}-final") as run:
+        metric, model, Xv, yv, bs = _early_stopped_post_mlp(task, run)
+    data = tr.load_run(root / "core" / "s2" / f"{task}-final")
+    assert data.states()["best_retrieval"]["step"] < len(data.series("train/stage")) - 1  # an earlier state was restored
+    rebuilt = copy.deepcopy(model)
+    rebuilt._invalidate_case_cache()
+    rebuilt.load_state_dict(tr.load_state(data.path, "final"))
+    model.eval()
+    rebuilt.eval()
+    with torch.no_grad():
+        outs = [[m(Xv[s:s + bs]) for s in range(0, len(Xv), bs)] for m in (model, rebuilt)]
+    scores, preds = ([torch.cat([o[i] for o in out]) for out in outs] for i in (0, 1))
+    assert torch.equal(scores[0], scores[1]) and torch.equal(preds[0], preds[1])
+    if task == "classification":  # the recorded best validation accuracy is the returned model's
+        assert int((preds[0] == yv).sum()) / len(yv) == metric
+    else:
+        r2 = 1 - torch.sum((yv - preds[0]) ** 2).item() / torch.sum((yv - yv.mean()) ** 2).item()
+        assert r2 == metric
+
+
+def test_train_model_early_stopped_post_mlp_resumes_exactly(root, crash_at):
+    import copy
+
+    with open_unit("classification-esref", every=1) as run:
+        m_ref, ref, Xv, _, _ = _early_stopped_post_mlp("classification", run)
+    n = len(tr.load_run(root / "core" / "s2" / "classification-esref").series("train/stage"))
+    crash_at(n - 2)
+    with pytest.raises(Crash), open_unit("classification-escut", every=1) as run:
+        _early_stopped_post_mlp("classification", run)
+    with open_unit("classification-escut", every=1) as run:
+        assert run.resumed_from is not None
+        m_cut, cut, _, _, _ = _early_stopped_post_mlp("classification", run)
+    a, b = (tr.load_run(root / "core" / "s2" / u) for u in ("classification-esref", "classification-escut"))
+    assert m_ref == m_cut and sd_digest(ref) == sd_digest(cut) and a.info.result_digest == b.info.result_digest
+    fresh = copy.deepcopy(cut)
+    fresh._invalidate_case_cache()
+    with torch.no_grad():
+        assert torch.equal(ref.eval()(Xv)[0], cut.eval()(Xv)[0]) and torch.equal(cut(Xv)[0], fresh.eval()(Xv)[0])
+
+
 def test_train_model_with_nan_validation_completes_its_run(root):
     """A diverged unit (NaN val loss, so NaN best-state meta) must complete, not fail in save_state."""
     with open_unit("regression-nan") as run:
