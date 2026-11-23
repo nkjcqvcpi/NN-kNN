@@ -1,8 +1,10 @@
 """Run tracking at the shared-core call sites (train_retrieval, train_model, workflows, benchmark tools; CPU).
 
 A real run must not change what is computed, and an interrupted and resumed training must equal the
-uninterrupted one bit for bit (result_digest and the state digests of the named states). Without a run
-everything stays as before run tracking (checkpoint files, summary files). Table 1 has no run tracking.
+uninterrupted one bit for bit (result_digest and the state digests of the named states). Recording is
+mandatory for the workflows and tools (owner's rules O1-O4): they require a run, never write checkpoint files,
+skip complete units without training, and a partly rerun study equals an uninterrupted one. Only train_model
+without a run (the Table 1 path, which has no run tracking) still writes its checkpoint files.
 """
 from __future__ import annotations
 
@@ -382,48 +384,125 @@ def _summary_folder(parent):
     return folder
 
 
-def test_classification_cli_summary_files_are_unchanged_and_a_study_also_records_units(root, tmp_path, capsys):
+def _units(base):
+    return {str(i.path.relative_to(base)): i for i in tr.iter_runs(base)}
+
+
+def _assert_same_units(a, b):
+    """Same unit set, result digests and state digests: the two studies recorded the same results and weights."""
+    ua, ub = _units(a), _units(b)
+    assert ua and sorted(ua) == sorted(ub)
+    for rel, info in ua.items():
+        assert info.result_digest == ub[rel].result_digest, rel
+        sa = {k: v["state_sha256"] for k, v in tr.load_run(info.path, arrays=False).states().items()}
+        sb = {k: v["state_sha256"] for k, v in tr.load_run(ub[rel].path, arrays=False).states().items()}
+        assert sa == sb, rel
+
+
+def test_classification_cli_requires_a_study_and_builds_the_summary_from_the_units(root, tmp_path, capsys,
+                                                                                   monkeypatch):
     import json
 
-    from tools.run_classification_benchmarks import main
+    from tools import run_classification_benchmarks as cli
 
     args = ["iris", "--methods", "nnknn", "knn", "mlp", "--runs", "2", "--epochs", "3", "--batch-size", "16",
             "--seed", "3"]
-    main(args + ["--output-dir", str(tmp_path / "plain")])
-    plain = _summary_folder(tmp_path / "plain")
-    assert sorted(p.name for p in plain.iterdir()) == ["manifest.json", "runs.csv", "summary.csv"]
-    ckpt = sorted(p.name for p in (tmp_path / "checkpoints").iterdir())  # as before run tracking
-    assert ckpt == sorted(f"nnknn_classification_best_iris_holdout_{i}_nnknn{s}.pth" for i in (1, 2) for s in ("", "_retr"))
-    ckpt_state = {p: p.stat().st_mtime_ns for p in (tmp_path / "checkpoints").iterdir()}
-    capsys.readouterr()
-
-    main(args + ["--output-dir", str(tmp_path / "s1"), "--study", "cls"])  # records the units
+    with pytest.raises(SystemExit) as exc:  # O1: --study is required
+        cli.main(args + ["--output-dir", str(tmp_path / "plain")])
+    assert exc.value.code == 2 and "--study" in capsys.readouterr().err
+    monkeypatch.setattr(cli, "DEFAULT_OUTPUT_DIR", tmp_path / "res")  # stands in for <worktree>/results
+    cli.main(args + ["--study", "cls"])  # records the units
     assert capsys.readouterr().out.count(": fresh") == 6
-    main(args + ["--output-dir", str(tmp_path / "s2"), "--study", "cls"])  # every unit complete: nothing trains
+    cli.main(args + ["--output-dir", str(tmp_path / "s2"), "--study", "cls"])  # every unit complete: nothing trains
     assert capsys.readouterr().out.count(": complete") == 6
-    assert {p: p.stat().st_mtime_ns for p in (tmp_path / "checkpoints").iterdir()} == ckpt_state
-    manifest = json.loads((plain / "manifest.json").read_text())
-    for d in ("s1", "s2"):
-        folder = _summary_folder(tmp_path / d)
-        for name in ("summary.csv", "runs.csv"):
-            assert (folder / name).read_bytes() == (plain / name).read_bytes()
-        other = json.loads((folder / "manifest.json").read_text())
-        assert other.pop("study") == "cls" and other.pop("created_at_utc") and other == {
-            k: v for k, v in manifest.items() if k != "created_at_utc"}
+    assert not (tmp_path / "checkpoints").exists() and not list(tmp_path.glob("*.pth"))  # no checkpoint files
+    first, second = _summary_folder(tmp_path / "res"), _summary_folder(tmp_path / "s2")
+    assert sorted(p.name for p in first.iterdir()) == ["manifest.json", "runs.csv", "summary.csv"]
+    for name in ("summary.csv", "runs.csv"):
+        assert (first / name).read_bytes() == (second / name).read_bytes()
+    manifest = json.loads((first / "manifest.json").read_text())
+    assert manifest["study"] == "cls" and manifest["outputs"] == ["summary.csv", "runs.csv", "manifest.json"]
+    rows = (first / "runs.csv").read_text().splitlines()
+    assert rows[0] == "dataset,mode,method,run_index,run_seed,accuracy" and len(rows) == 7
+    for row in rows[1:]:  # each row is what its unit recorded
+        dataset, mode, method, index, seed, acc = row.split(",")
+        data = tr.load_run(root / "core" / "cls" / dataset / method / f"{mode}-{index}", arrays=False)
+        assert float(acc) == data.final()["accuracy"] and int(seed) == data.config["run_seed"]
 
     unit = root / "core" / "cls" / "iris" / "nnknn" / "holdout-1"
     data = tr.load_run(unit)
     assert set(data.states()) == {"best_retrieval", "final"} and len(data.series("val/acc")) == 3
     assert data.array("predictions").shape == (30,)
     with pytest.raises(tr.ConfigMismatchError):
-        main(["iris", "--methods", "nnknn", "--runs", "2", "--epochs", "4", "--batch-size", "16", "--seed", "3",
-              "--output-dir", str(tmp_path / "bad"), "--study", "cls"])
+        cli.main(["iris", "--methods", "nnknn", "--runs", "2", "--epochs", "4", "--batch-size", "16", "--seed", "3",
+                  "--output-dir", str(tmp_path / "bad"), "--study", "cls"])
     capsys.readouterr()
-    main(args[:6] + ["3"] + args[7:] + ["--output-dir", str(tmp_path / "s3"), "--study", "cls"])  # a holdout study grows
+    cli.main(args[:6] + ["3"] + args[7:] + ["--output-dir", str(tmp_path / "s3"), "--study", "cls"])  # a study grows
     out = capsys.readouterr().out
     assert out.count(": complete") == 6 and out.count(": fresh") == 3
     grown = (_summary_folder(tmp_path / "s3") / "runs.csv").read_text().splitlines()
-    assert grown[:7] == (plain / "runs.csv").read_text().splitlines()
+    assert grown[:7] == rows
+
+
+def test_classification_study_interrupted_and_rerun_equals_an_uninterrupted_one(root, tmp_path, capsys,
+                                                                               monkeypatch):
+    """O4: a rerun skips the complete units before any training and resumes the interrupted one; summary files,
+    result digests and weights equal those of a study that ran straight through."""
+    from tools import run_classification_benchmarks as cli
+
+    monkeypatch.setenv("NNKNN_RESUME_EVERY_STEPS", "1")
+    args = ["iris", "wine", "--methods", "nnknn", "knn", "mlp", "--runs", "2", "--epochs", "4", "--batch-size", "16",
+            "--seed", "5"]
+    cli.main(args + ["--output-dir", str(tmp_path / "ref"), "--study", "ref"])
+    original = tr.Run.log_step
+
+    def crashing(self, step, values):
+        if str(self.path).replace("\\", "/").endswith("wine/nnknn/holdout-1") and step == 2:
+            raise Crash("interrupted")
+        return original(self, step, values)
+
+    monkeypatch.setattr(tr.Run, "log_step", crashing)
+    with pytest.raises(Crash):
+        cli.main(args + ["--output-dir", str(tmp_path / "cut"), "--study", "cut"])
+    monkeypatch.setattr(tr.Run, "log_step", original)
+    capsys.readouterr()
+    cli.main(args + ["--output-dir", str(tmp_path / "cut"), "--study", "cut"])
+    out = capsys.readouterr().out
+    assert out.count(": complete") == 6 and out.count(": resumed") == 1 and out.count(": fresh") == 5
+    for name in ("summary.csv", "runs.csv"):
+        assert (_summary_folder(tmp_path / "ref") / name).read_bytes() == \
+            (_summary_folder(tmp_path / "cut") / name).read_bytes()
+    _assert_same_units(root / "core" / "ref", root / "core" / "cut")
+    assert (root / "core" / "cut" / "wine" / "nnknn" / "holdout-1" / "weights" / "resume" / "last.pt").is_file()  # O5
+
+
+def test_workflows_require_a_run(root):
+    from model.classification_workflow import (
+        make_classification_cfg,
+        run_repeated_classification_model_benchmarks,
+        run_single_nnknn_classification_experiment,
+    )
+    from model.regression_workflow import (
+        make_regression_cfg,
+        run_repeated_nnknn_regression_experiments,
+        run_repeated_regression_model_benchmarks,
+        run_single_nnknn_regression_experiment,
+    )
+
+    ccfg = make_classification_cfg({"training_epochs": 1})
+    rcfg = make_regression_cfg({"task_type": "regression", "training_epochs": 1})
+    with pytest.raises(TypeError, match="Run"):
+        run_single_nnknn_classification_experiment("iris", ccfg, run=tr.NullRun())
+    with pytest.raises(TypeError):
+        run_single_nnknn_classification_experiment("iris", ccfg)
+    with pytest.raises(TypeError):
+        run_repeated_classification_model_benchmarks(["iris"], ccfg, num_runs=1)
+    with pytest.raises(TypeError, match="Run"):
+        run_single_nnknn_regression_experiment("linear_regression", rcfg, run=tr.NullRun())
+    with pytest.raises(TypeError):
+        run_repeated_nnknn_regression_experiments(["linear_regression"], rcfg, num_runs=1)
+    with pytest.raises(ValueError, match="unit_run"):
+        run_repeated_regression_model_benchmarks(["linear_regression"], rcfg, methods=["nnknn"], num_runs=1)
 
 
 def test_image_units_reuse_the_classifier_stored_by_a_complete_unit(root, monkeypatch):
@@ -440,15 +519,13 @@ def test_image_units_reuse_the_classifier_stored_by_a_complete_unit(root, monkey
 
     def bench(study, methods):
         log: list = []
-        unit_run = None if study is None else study_unit_run(study, cfg, mode="holdout", runs=1, seed=4, log=log, **common)
+        unit_run = study_unit_run(study, cfg, mode="holdout", runs=1, seed=4, log=log, **common)
         _, runs_df, art = run_repeated_classification_model_benchmarks(["mnist"], cfg, methods=methods, num_runs=1,
                                                                        base_seed=4, unit_run=unit_run, **common)
         return runs_df, art, log
 
     methods = ["nnknn_conv_frozen", "convnet", "knn_conv_frozen"]
-    plain, _, _ = bench(None, methods)
     ref, _, _ = bench("imgref", methods)
-    assert ref.equals(plain)
     owner = root / "core" / "imgref" / "mnist" / "nnknn_conv_frozen" / "official-1"
     assert set(tr.load_run(owner).states()) == {"best_retrieval", "final", "classifier"}
 
@@ -458,46 +535,66 @@ def test_image_units_reuse_the_classifier_stored_by_a_complete_unit(root, monkey
     cut, art, log = bench("imgcut", methods)
     assert [u["source"] for u in log] == ["complete", "fresh", "fresh"] and calls == []  # loaded, not retrained
     recorded = art["mnist"]["nnknn_conv_frozen"][0]["recorded_unit"]
-    assert cut.equals(plain) and recorded == str(root / "core" / "imgcut" / "mnist" / "nnknn_conv_frozen" / "official-1")
-    for method in methods[1:]:
-        a, b = (tr.load_run(root / "core" / s / "mnist" / method / "official-1") for s in ("imgref", "imgcut"))
-        assert np.array_equal(a.array("predictions"), b.array("predictions"))
+    assert cut.equals(ref) and recorded == str(root / "core" / "imgcut" / "mnist" / "nnknn_conv_frozen" / "official-1")
+    _assert_same_units(root / "core" / "imgref", root / "core" / "imgcut")
+
+    bench("imgold", methods[:1])  # a complete owner unit without its classifier is an error, not a retraining
+    calls.clear()  # the owner unit above trained it
+    states = tr.RunData.states
+    monkeypatch.setattr(tr.RunData, "states", lambda self: {k: v for k, v in states(self).items() if k != "classifier"})
+    with pytest.raises(tr.TrackingError, match="classifier"):
+        bench("imgold", methods)
+    assert calls == []
 
 
-def test_regression_benchmark_units_are_opt_in_and_complete_units_give_the_same_rows(root, tmp_path):
+def test_regression_benchmark_units_skip_complete_units_and_a_partial_rerun_equals_a_full_one(root, tmp_path):
     from model.regression_workflow import make_regression_cfg, run_repeated_regression_model_benchmarks
 
     cfg = make_regression_cfg({"task_type": "regression", "training_epochs": 2, "top_k": 8, "batch_size": 16,
                                "checkpoint_path": "reg.pth"})
-    kw = dict(methods=["nnknn", "knn_x", "mlp"], method_cfgs={"mlp": {"epochs": 3}}, num_runs=2, mode="kfold",
+    kw = dict(method_cfgs={"mlp": {"epochs": 3}}, num_runs=2, mode="kfold",
               base_seed=7, dataset_kwargs_map={"linear_regression": {"n": 80, "d": 5}})
-    plain_summary, plain_runs, _ = run_repeated_regression_model_benchmarks(["linear_regression"], cfg, **kw)
-    ckpt = {p.name: p.stat().st_mtime_ns for p in (tmp_path / "checkpoints").iterdir()}  # as before run tracking
-    assert sorted(ckpt) == sorted(f"reg_linear_regression_fold_{i}_nnknn{s}.pth" for i in (1, 2) for s in ("", "_retr"))
-
+    methods = ["nnknn", "knn_x", "mlp"]
+    # the baselines still run without a run (Table 1 calls them so): same rows as with units, no files
+    _, plain_runs, _ = run_repeated_regression_model_benchmarks(["linear_regression"], None,
+                                                                methods=["knn_x", "mlp"], **kw)
     sources: list = []
 
-    @contextlib.contextmanager
-    def unit_run(state, method):
-        key, config = tr.RunKey("core", "reg", (method, f"f{state['fold']}")), {"method": method}
-        if tr.resolve_unit(key, config=config) is not None:
-            sources.append("complete")
-            yield tr.load_run(tr.unit_dir(key))
-            return
-        with tr.open_run(key, config=config) as run:
-            sources.append("fresh")
-            yield run
+    def make_unit_run(study):
+        @contextlib.contextmanager
+        def unit_run(state, method):
+            key, config = tr.RunKey("core", study, (method, f"f{state['fold']}")), {"method": method}
+            if (data := tr.load_unit(key, config=config)) is not None:
+                sources.append("complete")
+                yield data
+                return
+            with tr.open_run(key, config=config) as run:
+                sources.append("fresh")
+                yield run
+        return unit_run
 
-    first = run_repeated_regression_model_benchmarks(["linear_regression"], cfg, unit_run=unit_run, **kw)
-    second = run_repeated_regression_model_benchmarks(["linear_regression"], cfg, unit_run=unit_run, **kw)
+    first = run_repeated_regression_model_benchmarks(["linear_regression"], cfg, methods=methods,
+                                                     unit_run=make_unit_run("reg"), **kw)
+    second = run_repeated_regression_model_benchmarks(["linear_regression"], cfg, methods=methods,
+                                                      unit_run=make_unit_run("reg"), **kw)
     assert sources == ["fresh"] * 6 + ["complete"] * 6
-    for summary, runs_df, _ in (first, second):
-        assert runs_df.to_dict("records") == plain_runs.to_dict("records")
-        assert summary.to_dict("records") == plain_summary.to_dict("records")
-    assert {p.name: p.stat().st_mtime_ns for p in (tmp_path / "checkpoints").iterdir()} == ckpt
+    assert second[1].to_dict("records") == first[1].to_dict("records")
+    assert second[0].to_dict("records") == first[0].to_dict("records")
+    baseline_rows = [r for r in first[1].to_dict("records") if r["method"] != "nnknn"]
+    assert baseline_rows == plain_runs.to_dict("records")
     data = tr.load_run(root / "core" / "reg" / "nnknn" / "f1")
     assert "final" in data.states() and data.record("row") == first[1].to_dict("records")[0]
     assert second[2]["linear_regression"]["nnknn"][0]["recorded_unit"] == str(data.path)
+
+    sources.clear()  # O4: a study run in two parts equals the one that ran straight through
+    run_repeated_regression_model_benchmarks(["linear_regression"], cfg, methods=["mlp"],
+                                             unit_run=make_unit_run("regcut"), **kw)
+    cut = run_repeated_regression_model_benchmarks(["linear_regression"], cfg, methods=methods,
+                                                   unit_run=make_unit_run("regcut"), **kw)
+    assert sources == ["fresh"] * 2 + ["fresh", "fresh", "complete"] * 2
+    assert cut[1].to_dict("records") == first[1].to_dict("records")
+    _assert_same_units(root / "core" / "reg", root / "core" / "regcut")
+    assert not (tmp_path / "checkpoints").exists() and not list(tmp_path.glob("*.pth"))
 
 
 def test_plain_training_and_table1_do_not_load_tensorboard():
@@ -523,6 +620,9 @@ def test_classification_cli_study_checks_the_run_root_before_loading_data(tmp_pa
     monkeypatch.setenv("NNKNN_RUNS", str(tmp_path / "missing"))
     monkeypatch.setattr(cli, "run_repeated_classification_model_benchmarks",
                         lambda *a, **k: pytest.fail("data loaded before the run root was checked"))
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["iris", "--output-dir", str(tmp_path / "out")])
+    assert exc.value.code == 2 and "--study" in capsys.readouterr().err
     for study in ("ok", "bad/name"):
         with pytest.raises(SystemExit) as exc:
             cli.main(["iris", "--study", study, "--output-dir", str(tmp_path / "out")])
