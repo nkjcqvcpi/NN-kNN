@@ -25,7 +25,7 @@ def main():
     ap.add_argument('--data-root',type=Path,required=True)
     ap.add_argument('--sample-manifest',type=Path,required=True)
     ap.add_argument('--metric-checkpoint',type=Path,required=True,
-                    help='legacy s<seed>/metric.pt of t3_need_matching,or its run unit runs/t3/<study>/s<seed>/ (--study)')
+                    help='the t3_need_matching run unit runs/t3/<study>/s<seed>/ whose recorded metric is evaluated (no training)')
     ap.add_argument('--output',type=Path,required=True)
     ap.add_argument('--conditions',nargs='+',choices=['none','bm25','fixed','learned','iterative'],default=['none','bm25','fixed','learned','iterative'])
     ap.add_argument('--format-library',type=Path)
@@ -78,7 +78,7 @@ def main():
     selected=metric['selected_metric']['feature_weights']
     assert selected.shape==(1,256) and bool(torch.isfinite(selected).all()) and bool((selected>0).all())
     metric_binding=metric_provenance(args.metric_checkpoint)
-    metric_sha=metric_binding['checkpoint_sha256']  # legacy metric.pt bytes,or the unit's verified weights/metric.pt
+    metric_sha=metric_binding['checkpoint_sha256']  # the unit's verified weights/metric.pt
     data=json.loads((args.data_root/'manifest_mirror_complete.json').read_text())
     files={r['name']:r for r in data['files']}
     samples=json.loads(args.sample_manifest.read_text())['samples']

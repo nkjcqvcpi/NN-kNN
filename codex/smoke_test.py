@@ -41,77 +41,93 @@ def run_import_smoke() -> None:
     print(f"classification methods: {cls_methods}")
 
 
-def run_training_smoke() -> None:
-    from model.regression_workflow import make_regression_cfg, run_single_nnknn_regression_experiment
+def _smoke_unit(study: str, name: str, cfg: dict):
+    """The run unit of one smoke mode, ``runs/core/<study>/smoke/<name>``, and its RunData if it is complete
+    (recording is mandatory; a complete unit is never trained again)."""
+    from model.common.tracking import RunKey, load_unit
+    from tools.run_classification_benchmarks import plain_config
 
-    Path("checkpoints").mkdir(parents=True, exist_ok=True)
+    key = RunKey("core", study, ("smoke", name))
+    config = {"kind": "smoke_test", "mode": name, "cfg": plain_config(cfg)}
+    return key, config, load_unit(key, config=config, arrays=False)
+
+
+def run_training_smoke(study: str) -> None:
+    from model.common.tracking import open_run
+    from model.regression_workflow import make_regression_cfg, run_single_nnknn_regression_experiment
 
     cfg = make_regression_cfg(
         {
             "task_type": "regression",
             "training_epochs": 1,
-            "checkpoint_path": "checkpoints/tmp_codex_smoke.pth",
             "batch_size": 32,
             "top_k": 8,
             "bias_manual_set": True,
             "bias_manual_value": 1.0,
         }
     )
-
-    state = run_single_nnknn_regression_experiment(
-        "linear_regression",
-        cfg,
-        dataset_kwargs={"n": 96, "d": 5, "noise_scale": 0.1},
-        run_seed=0,
-        dataset_seed=0,
-        split_seed=0,
-        standardize=False,
-        checkpoint_label="codex_smoke",
-    )
-
-    rmse_raw = float(state["rmse_raw"])
-    best_metric = float(state["best_metric"])
+    key, config, done = _smoke_unit(study, "train", cfg)
+    if done is not None:
+        final = done.final()
+        print(f"training smoke: {key.run_id} is complete, not retrained")
+        print(f"rmse_raw={final['rmse_raw']:.6f}")
+        print(f"best_metric={final['best_metric']:.6f}")
+        return
+    with open_run(key, config=config) as run:
+        state = run_single_nnknn_regression_experiment(
+            "linear_regression",
+            cfg,
+            dataset_kwargs={"n": 96, "d": 5, "noise_scale": 0.1},
+            run_seed=0,
+            dataset_seed=0,
+            split_seed=0,
+            standardize=False,
+            run=run,
+        )
+        rmse_raw = float(state["rmse_raw"])
+        best_metric = float(state["best_metric"])
+        run.log_final({"rmse_raw": rmse_raw, "best_metric": best_metric})
     print("training smoke ok")
     print(f"rmse_raw={rmse_raw:.6f}")
     print(f"best_metric={best_metric:.6f}")
 
 
-def run_classification_smoke() -> None:
+def run_classification_smoke(study: str) -> None:
     from model.classification_workflow import make_classification_cfg, run_single_nnknn_classification_experiment
+    from model.common.tracking import open_run
 
-    Path("checkpoints").mkdir(parents=True, exist_ok=True)
     cfg = make_classification_cfg(
         {
             "training_epochs": 1,
-            "checkpoint_path": "checkpoints/tmp_codex_classification_smoke.pth",
             "batch_size": 32,
             "top_k": 3,
             "explanation_mode": True,
             "case_normalizer": "softmax",
         }
     )
-    state = run_single_nnknn_classification_experiment(
-        "iris",
-        cfg,
-        run_seed=0,
-        split_seed=0,
-        checkpoint_label="codex_smoke",
-    )
-    probabilities = state["class_probabilities"]
-    if not torch.allclose(probabilities.sum(dim=1), torch.ones(probabilities.size(0)), atol=1e-5):
-        raise AssertionError("Classification outputs do not sum to one.")
-    if state.get("most_activated_cases") is None:
-        raise AssertionError("Classification explanation outputs were not returned.")
-    if state.get("most_activated_class_ids") is None:
-        raise AssertionError("Classification explanation labels were not decoded.")
+    key, config, done = _smoke_unit(study, "classification", cfg)
+    if done is not None:
+        print(f"classification smoke: {key.run_id} is complete, not retrained")
+        print(f"accuracy={done.final()['accuracy']:.6f}")
+        return
+    with open_run(key, config=config) as run:
+        state = run_single_nnknn_classification_experiment(
+            "iris",
+            cfg,
+            run_seed=0,
+            split_seed=0,
+            run=run,
+        )
+        probabilities = state["class_probabilities"]
+        if not torch.allclose(probabilities.sum(dim=1), torch.ones(probabilities.size(0)), atol=1e-5):
+            raise AssertionError("Classification outputs do not sum to one.")
+        if state.get("most_activated_cases") is None:
+            raise AssertionError("Classification explanation outputs were not returned.")
+        if state.get("most_activated_class_ids") is None:
+            raise AssertionError("Classification explanation labels were not decoded.")
+        run.log_final({"accuracy": float(state["accuracy"])})
     print("classification training smoke ok")
     print(f"accuracy={float(state['accuracy']):.6f}")
-
-
-
-
-
-
 
 
 def main() -> None:
@@ -122,12 +138,20 @@ def main() -> None:
         choices=("imports", "train", "classification"),
         help="Choose a lightweight import check or a tiny training run.",
     )
+    parser.add_argument(
+        "--study",
+        default=None,
+        help="Required for train and classification: the training is recorded as the run unit "
+        "NN-KNN/runs/core/<study>/smoke/<mode> (a complete unit is reported, not retrained).",
+    )
     args = parser.parse_args()
+    if args.mode != "imports" and args.study is None:
+        parser.error(f"--mode {args.mode} requires --study (recording is mandatory)")
 
     if args.mode == "train":
-        run_training_smoke()
+        run_training_smoke(args.study)
     elif args.mode == "classification":
-        run_classification_smoke()
+        run_classification_smoke(args.study)
     else:
         run_import_smoke()
 

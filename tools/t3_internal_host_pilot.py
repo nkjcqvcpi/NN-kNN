@@ -38,8 +38,8 @@ def main():
     sys.path.insert(0,str(args.format_library.resolve(strict=True)))
     import torch
     from model.t3.metric_provenance import load_metric_checkpoint,metric_provenance
-    metric_binding=metric_provenance(args.metric_checkpoint)  # legacy metric.pt,or a verified t3_need_matching run unit
-    metric_sha=metric_binding['checkpoint_sha256']  # legacy metric.pt bytes,or the unit's weights/metric.pt
+    metric_binding=metric_provenance(args.metric_checkpoint)  # a verified t3_need_matching run unit
+    metric_sha=metric_binding['checkpoint_sha256']  # the unit's verified weights/metric.pt
     if metric_sha!=reference['metric_checkpoint_sha256']:
         raise ValueError('source retrieval checkpoint mismatch')
     from transformers import AutoModelForCausalLM,AutoTokenizer,LogitsProcessorList

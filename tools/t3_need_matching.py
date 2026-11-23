@@ -3,12 +3,13 @@
 Need-match supervision is provided passage identity,not downstream usefulness.
 Public dev annotations are never loaded here. This is a sandbox experiment.
 
-Without --study the tool writes protocol.json and summary.json to --output and,per seed,
-s<seed>/{metric.pt,training_events.json,summary.json}. With --study S every seed is one run
-unit runs/t3/S/s<seed>/ (TensorBoard event files: per-epoch fit/tune curves,the per-step
-training events,the seed summary and the metric checkpoint as the named state 'metric');
-the s<seed>/ folders are then not written and summary.json is built from the units.
-Rerunning a study skips complete seeds and resumes an interrupted seed after its last epoch.
+Recording is mandatory: --study S is required and every seed is one run unit
+runs/t3/S/s<seed>/ (TensorBoard event files: per-epoch fit/tune curves,the per-step training
+events,the seed summary and the metric checkpoint as the named state 'metric'). No per-seed
+file is written. protocol.json and summary.json (built from the units) go to --output,by default
+<worktree>/results/t3/s1_single_hop_retrieval/need_matching/<study>/. A complete seed is detected before any training and
+is never trained again (its recorded summary fills summary.json); an interrupted seed resumes
+after its last checkpointed epoch.
 """
 import argparse
 import copy
@@ -22,7 +23,7 @@ import torch
 
 from model.nnknn_model import GlocalFeatureWeight
 from model.common.artifacts import source_fingerprint
-from model.common.tracking import NullRun,RunKey,load_run,open_run,resolve_unit,unit_dir
+from model.common.tracking import RunKey,load_run,load_unit,open_run,unit_dir
 from model.t3.benchmarks import load_squad
 from model.t3.lexical import artifact_text,bm25_rank,candidate_bank,core_bank,need_loss
 from model.t3.need_queries import load_need_queries
@@ -30,6 +31,8 @@ from model.t3.need_queries import load_need_queries
 EVALUATION=('mean_need_loss','source_recall_at1','source_recall_at2')
 LEXICAL=('source_recall_at1','source_recall_at2')
 GROUPS=('fit','tune')
+RESULTS=Path(__file__).resolve().parents[1]/'results'/'t3'/'s1_single_hop_retrieval'/'need_matching'
+SUMMARY_FILES=('protocol.json','summary.json')
 
 
 def unit_key(study,seed):
@@ -57,11 +60,29 @@ def seed_result(data):
         training_seconds=final['training_seconds'],history=[dict(epoch=epoch,**point(epoch)) for epoch in epochs])
 
 
+def default_output(study):
+    """Where protocol.json and summary.json go without --output (results/ is not in git)."""
+    return RESULTS/study
+
+
+def prepare_output(output,study):
+    """Create --output,or reuse it for the same study: it may hold only this tool's two summary files.
+    Anything else (an old result folder with s<seed>/ files,another study) is refused,never overwritten."""
+    if output.exists():
+        found=sorted(p.name for p in output.iterdir())
+        if any(name not in SUMMARY_FILES for name in found):
+            raise ValueError(f'{output} holds other files ({", ".join(found)}); choose another --output')
+        if 'protocol.json' in found and json.loads((output/'protocol.json').read_text(encoding='utf-8')).get('study')!=study:
+            raise ValueError(f'{output} holds the summary of another study; choose another --output')
+    output.mkdir(parents=True,exist_ok=True)
+
+
 def main(argv=None):
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--data-root',type=Path,required=True)
     ap.add_argument('--samples',type=Path,required=True)
-    ap.add_argument('--output',type=Path,required=True)
+    ap.add_argument('--output',type=Path,default=None,help='folder for protocol.json and summary.json '
+                    '(default: <worktree>/results/t3/s1_single_hop_retrieval/need_matching/<study>/)')
     ap.add_argument('--seeds',type=int,nargs='+',default=[8,9,10])
     ap.add_argument('--epochs',type=int,default=20)
     ap.add_argument('--dimensions',type=int,default=256)
@@ -69,14 +90,14 @@ def main(argv=None):
     ap.add_argument('--selection',choices=['tune_loss','tune_recall'],default='tune_loss')
     ap.add_argument('--need-queries',type=Path)
     ap.add_argument('--term-frequency',choices=('count','sublinear','binary'),default='count')
-    ap.add_argument('--study',default=None,help='record every seed as a run unit under NN-KNN/runs/t3/<study>/s<seed>/ '
-                    '(TensorBoard event files and weights); skips complete seeds and resumes interrupted ones')
+    ap.add_argument('--study',required=True,help='record every seed as a run unit under NN-KNN/runs/t3/<study>/s<seed>/ '
+                    '(TensorBoard event files and weights); complete seeds are not trained again,interrupted ones resume')
     args=ap.parse_args(argv)
     if args.epochs<1:ap.error('positive fixed epoch budget required')
-    if args.study is not None:
-        if len(set(args.seeds))!=len(args.seeds):ap.error('--study: seeds must be unique')
-        try:unit_dir(unit_key(args.study,args.seeds[0]))  # run root and study name,before any data is loaded
-        except (FileNotFoundError,ValueError) as exc:ap.error(f'--study: {exc}')
+    if len(set(args.seeds))!=len(args.seeds):ap.error('--study: seeds must be unique')
+    try:unit_dir(unit_key(args.study,args.seeds[0]))  # run root and study name,before any data is loaded
+    except (FileNotFoundError,ValueError) as exc:ap.error(f'--study: {exc}')
+    if args.output is None:args.output=default_output(args.study)
     torch.set_num_threads(1)
     data=json.loads((args.data_root/'manifest_mirror_complete.json').read_text())
     source=next(r for r in data['files'] if r['name']=='squad_train_v11.json')
@@ -89,7 +110,8 @@ def main(argv=None):
     queries={t.question_id:t.question for t in fit+tune};query_binding=None
     if args.need_queries is not None:
         queries,query_binding=load_need_queries(args.need_queries,fit+tune,data_sha256=source['sha256'],sample_sha256=samples_sha256)
-    args.output.mkdir(parents=True,exist_ok=False)
+    try:prepare_output(args.output,args.study)
+    except ValueError as exc:ap.error(f'--output: {exc}')
     corpus=tuple({c.case_id:c for t in tasks for c in t.cases}.values())
     banks={t.question_id:candidate_bank(t,corpus,size=64) for t in fit+tune}
     metric=GlocalFeatureWeight(args.dimensions,1)
@@ -116,7 +138,7 @@ def main(argv=None):
         representation=f'fixed SHA256 lexical {args.term_frequency} L2; encoder and case biases untrained',term_frequency=args.term_frequency,
         public_dev_annotations_used=False,global_promotion=False,query_binding=query_binding,
         query_source='actual frozen host request' if query_binding else 'original public question',query_texts=queries)
-    if args.study is not None:protocol['study']=args.study
+    protocol['study']=args.study
     (args.output/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
     lexical={}
     for name,group in [('fit',fit),('tune',tune)]:
@@ -136,14 +158,14 @@ def main(argv=None):
                            'train/mean_gradient_norm':sum(e['gradient_norm'] for e in epoch_events)/len(epoch_events)})
             run.log_records('training_events',epoch_events)
         run.log_step(row['epoch'],values)
-    def train(seed,run=NullRun(),resumable=False):
-        """One seed; with a run it logs curves and events at step=epoch and checkpoints after epochs (resumable)."""
-        tracking=not isinstance(run,NullRun)
-        if tracking:run.log_record('protocol',protocol)
+    def train(seed,run):
+        """One seed in its open run unit: curves and events at step=epoch,a resume checkpoint after epochs,
+        then the seed summary as finals and the checkpoint dict as the named state 'metric'."""
+        run.log_record('protocol',protocol)
         random_stream=random.Random(seed)
         metric.feature_weights.data.fill_(1)
         optimizer=torch.optim.Adam(metric.parameters(),lr=.03)
-        payload=run.load_resume() if resumable else None
+        payload=run.load_resume()
         if payload is None:
             initial=metric.feature_weights.detach().clone()
             baseline=dict(fit=evaluate(fit),tune=evaluate(tune))
@@ -151,7 +173,7 @@ def main(argv=None):
             best=selection_key(baseline);best_epoch=0
             selected=copy.deepcopy(metric.state_dict());selected_optimizer=copy.deepcopy(optimizer.state_dict())
             events=[];start=time.perf_counter();first=1
-            if tracking:log_epoch(run,history[0])
+            log_epoch(run,history[0])
         else:
             state=payload.state
             metric.load_state_dict(state['metric']);optimizer.load_state_dict(state['optimizer'])
@@ -179,8 +201,8 @@ def main(argv=None):
             if selection_key(row)<best:
                 best=selection_key(row);best_epoch=epoch
                 selected=copy.deepcopy(metric.state_dict());selected_optimizer=copy.deepcopy(optimizer.state_dict())
-            if tracking:log_epoch(run,row,events[epoch_start:])
-            if resumable and epoch<args.epochs and run.checkpoint_due(epoch):
+            log_epoch(run,row,events[epoch_start:])
+            if epoch<args.epochs and run.checkpoint_due(epoch):
                 version,internal,gauss=random_stream.getstate()
                 run.save_resume(dict(metric=metric.state_dict(),optimizer=optimizer.state_dict(),initial=initial,history=history,
                     events=events,best=list(best),best_epoch=best_epoch,selected=selected,selected_optimizer=selected_optimizer,
@@ -192,31 +214,22 @@ def main(argv=None):
             training_seconds=time.perf_counter()-start,history=history)
         checkpoint=dict(selected_metric=selected,selected_optimizer=selected_optimizer,final_metric=final,
                         final_optimizer=optimizer.state_dict(),initial_metric=dict(feature_weights=initial))
-        if not tracking:return result,checkpoint,events
         finals={key:result[key] for key in ('seed','selected_epoch','actual_training_steps','nonzero_gradient_steps',
                                             'parameter_delta_l2','trainable_parameters','training_seconds')}
         finals.update({f'selected/{group}/{name}':result['selected'][group][name] for group in GROUPS for name in EVALUATION})
         finals.update({f'bm25/{group}/{name}':lexical[group][name] for group in GROUPS for name in LEXICAL})
         run.log_final(finals)
         run.save_state('metric',checkpoint,step=args.epochs)
-        return result,checkpoint,events
     runs=[]
     for seed in args.seeds:
-        if args.study is None:
-            result,checkpoint,events=train(seed)
-            folder=args.output/f's{seed}';folder.mkdir()
-            torch.save(checkpoint,folder/'metric.pt')
-            (folder/'training_events.json').write_text(json.dumps(events),encoding='utf-8')
-            (folder/'summary.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
-            result['checkpoint_sha256']=hashlib.sha256((folder/'metric.pt').read_bytes()).hexdigest()
-        else:
-            key=unit_key(args.study,seed)
-            config=unit_config(args,seed,source=source,samples_sha256=samples_sha256,query_binding=query_binding)
-            if resolve_unit(key,config=config) is None:
-                with open_run(key,config=config) as run:train(seed,run,resumable=True)
+        key=unit_key(args.study,seed)
+        config=unit_config(args,seed,source=source,samples_sha256=samples_sha256,query_binding=query_binding)
+        recorded=load_unit(key,config=config,arrays=False)  # a complete unit: never trained again
+        if recorded is None:
+            with open_run(key,config=config) as run:train(seed,run)
             recorded=load_run(unit_dir(key),arrays=False)
-            result=seed_result(recorded)
-            result['checkpoint_sha256']=recorded.states()['metric']['file']['sha256']
+        result=seed_result(recorded)
+        result['checkpoint_sha256']=recorded.states()['metric']['file']['sha256']
         runs.append(result)
         print(seed,result['selected_epoch'],result['selected']['tune'],result['parameter_delta_l2'],flush=True)
     (args.output/'summary.json').write_text(json.dumps(dict(runs=runs,protocol=protocol),indent=2),encoding='utf-8')

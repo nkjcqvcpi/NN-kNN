@@ -8,14 +8,16 @@ SHA256 to exactly one recorded run. It records the actual seed, selected epoch,
 objective, selection rule, query source/binding and training source/data hashes.
 Epoch0 remains explicitly recorded; it is not described as a trained improvement.
 The retriever version also uses the actual recorded seed.
-Since 2026-11-22 the checkpoint may also be a `t3_need_matching --study` run unit
-(`runs/t3/<study>/s<seed>/`): its weight file is verified against the unit's record,
-and protocol,seed and selected epoch come from the unit's TensorBoard records; the
-recorded protocol must agree with the unit config (epochs,data,selection,objective,
-term frequency,dimensions,need-query file). The bound checkpoint SHA256 is then that
-of the unit's `weights/metric.pt`, whose bytes differ from a legacy `metric.pt` with
-equal tensors. A unit therefore binds only to pilots run from that unit; an existing
-audited pilot run still needs the legacy `metric.pt` it recorded.
+Since 2026-11-22 recording is mandatory and the checkpoint must be a `t3_need_matching`
+run unit (`runs/t3/<study>/s<seed>/`); a legacy `s<seed>/metric.pt` is no longer read.
+The unit's weight file is verified against its record, and protocol,seed and selected
+epoch come from the unit's TensorBoard records; the recorded protocol must agree with
+the unit config (epochs,data,selection,objective,term frequency,dimensions,need-query
+file). The bound checkpoint SHA256 is that of the unit's `weights/metric.pt`, whose
+bytes differ from a legacy `metric.pt` with equal tensors. A unit therefore binds only
+to pilots run from that unit; an existing audited pilot run made from a legacy
+`metric.pt` cannot be continued. The legacy literal selection text described below
+belonged to the historical file records and cannot occur in a unit.
 
 The public driver rejects training-data or fit/tune split differences from the
 experiment manifest and requires recorded absence of public dev annotation
