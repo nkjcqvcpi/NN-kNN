@@ -185,6 +185,23 @@ def payload_sha256(obj: Any) -> str:
     return hashlib.sha256(canonical_json(obj)).hexdigest()
 
 
+# Top-level config keys that record where a unit came from (which code, checkout or snapshot), not what it is. They
+# stay in the recorded config as information but are left out of a unit's identity (config_identity), so units written
+# by another code state are the same units: a complete one is never trained again, an incomplete one resumes.
+PROVENANCE_KEYS = frozenset({"source_sha256", "source_fingerprint", "source_fingerprint_sha256", "source_snapshot",
+                             "code_repository", "git_commit", "git", "dirty"})
+
+
+def config_identity(config: Any) -> str:
+    """SHA-256 of what a unit is: its canonical config without the top-level PROVENANCE_KEYS (equal to
+    payload_sha256(config) for a config without them)."""
+    canon = canonicalize(config)
+    if isinstance(canon, dict):
+        canon = {k: v for k, v in canon.items() if k not in PROVENANCE_KEYS}
+    return hashlib.sha256(json.dumps(canon, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+                                     allow_nan=False).encode()).hexdigest()
+
+
 def decode_json(raw: bytes) -> Any:
     hook = lambda d: float(d["$nonfinite"]) if len(d) == 1 and "$nonfinite" in d else d  # noqa: E731
     return json.loads(raw.decode("utf-8"), object_hook=hook)
@@ -328,6 +345,7 @@ class RunInfo:
     n_exact: int
     config_sha256: str | None
     reason: str | None
+    config_identity: str | None = None  # config_identity of the unit's config (see _stored_identity)
 
 
 @dataclass
@@ -339,6 +357,22 @@ class _Unit:
     info: RunInfo
     max_seq: int = 0
     digest: str = ""
+
+
+def _stored_identity(segments: list[_Segment], stream: list[_Rec]) -> str | None:
+    """config_identity of a unit: from its last session header (``config_identity``, written since 2026-11-23), else
+    recomputed from its ``rec/config`` record (units written before), else None."""
+    if not segments:
+        return None
+    if isinstance(ident := segments[-1].begin.get("config_identity"), str):
+        return ident
+    stored = next((r.value for r in reversed(stream) if r.tag == "rec/config" and r.kind == "json"), None)
+    return None if stored is None else config_identity(stored)
+
+
+def _same_config(identity: str | None, sha: str | None, config: Mapping) -> bool:
+    """True when a unit with this stored identity (or, without one, this config_sha256) is the unit of ``config``."""
+    return identity == config_identity(config) if identity is not None else sha == payload_sha256(config)
 
 
 def _logical(segments: list[_Segment], pending: Mapping | None = None) -> tuple[list[_Rec], list[dict]]:
@@ -416,8 +450,13 @@ def _scan(path: Path) -> _Unit:
     except _Invalid as exc:
         status, reason, kw = "invalid", str(exc), {}
     begin = unit.segments[-1].begin if unit.segments else {}
+    try:
+        identity = _stored_identity(unit.segments, unit.stream)
+    except (TypeError, ValueError):
+        identity = None
     unit.info = RunInfo(path, begin.get("run_id", str(path)), status, len(unit.segments), kw.get("resumed", False),
-                        kw.get("restarts", 0), kw.get("digest"), kw.get("n", 0), begin.get("config_sha256"), reason)
+                        kw.get("restarts", 0), kw.get("digest"), kw.get("n", 0), begin.get("config_sha256"), reason,
+                        identity)
     return unit
 
 
@@ -502,13 +541,14 @@ def load_run(path: str | Path, arrays: bool = True, allow_incomplete: bool = Fal
 
 
 def resolve_unit(key: RunKey | str, *, config: Mapping | None, root: str | Path | None = None) -> RunInfo | None:
-    """The unit's RunInfo if it is complete, else None; ConfigMismatchError if complete with another config."""
+    """The unit's RunInfo if it is complete, else None; ConfigMismatchError if complete with another config.
+    Configs are compared by config_identity: provenance keys (PROVENANCE_KEYS) never make a unit another one."""
     info = run_status(unit_dir(key := _as_key(key), root))
     if info.status != "complete":
         return None
     if info.run_id != key.run_id:  # e.g. case aliasing on Windows
         raise TrackingError(f"{info.path} holds run {info.run_id}, not {key.run_id}")
-    if config is not None and info.config_sha256 != payload_sha256(config):
+    if config is not None and not _same_config(info.config_identity, info.config_sha256, config):
         raise ConfigMismatchError(f"{info.run_id} is complete with a different config")
     return info
 
@@ -967,7 +1007,7 @@ def open_run(key: RunKey | str, *, config: Mapping, root: str | Path | None = No
         last = prev.segments[-1]
         if last.terminal is None and _session_alive(last.begin):
             raise UnitBusyError(f"{key.run_id}: session {last.session} (pid {last.begin.get('pid')}) is still running")
-        if last.begin.get("config_sha256") != config_sha and resume != "restart":
+        if not _same_config(prev.info.config_identity, last.begin.get("config_sha256"), config) and resume != "restart":
             raise ConfigMismatchError(f"{key.run_id} was written with another config; pass resume='restart'")
         session, run_uuid = last.session + 1, last.begin["run_uuid"]
         ckpt = prev.live_checkpoints[-1] if prev.live_checkpoints else None
@@ -991,7 +1031,7 @@ def open_run(key: RunKey | str, *, config: Mapping, root: str | Path | None = No
     begin = {"schema": SCHEMA, "run_id": key.run_id, "workstream": key.workstream, "study": key.study,
              "unit": list(key.unit), "run_uuid": run_uuid, "session": session, "host": host, "pid": pid,
              "proc_id": _proc_id(pid), "argv": list(sys.argv), "started_utc": datetime.now(timezone.utc).isoformat(),
-             "config_sha256": config_sha, "git_commit": commit, "dirty": dirty, "source_fingerprint": fingerprint,
+             "config_sha256": config_sha, "config_identity": config_identity(config), "git_commit": commit, "dirty": dirty, "source_fingerprint": fingerprint,
              "event_file": event_file.name}
     run = Run(key=key, path=path, writer=writer, event_file=event_file, session=session, run_uuid=run_uuid, kept=kept,
               resume_from=resume_from, restarted=bool(pending and pending.get("restart")), max_seq=prev.max_seq,

@@ -590,6 +590,48 @@ def test_resolve_unit(root, dead):
     assert [i.run_id for i in tr.iter_runs(root)] == ["core/study/x"]
 
 
+def test_identity_is_the_config_without_provenance(root, dead, monkeypatch):
+    """Provenance keys (source fingerprint, checkout, git) are recorded but are not part of a unit's identity: a unit
+    written by other code is the same unit, complete or resumed; any other config change is still a mismatch. Units
+    written before ``config_identity`` existed (no field in ``_run/begin``) are compared through their ``rec/config``."""
+    cfg = {**CFG, "source_sha256": "a" * 64, "code_repository": "/old/checkout"}
+    with op("p", config=cfg) as run:
+        run.log_step(0, {"a": 1})
+    info = tr.resolve_unit(key("p"), config={**CFG, "source_sha256": "b" * 64})
+    assert info is not None and info.config_identity == tr.config_identity(CFG) == tr.payload_sha256(CFG)
+    assert tr.resolve_unit(key("p"), config=CFG) is not None  # the new code may drop the key altogether
+    assert tr.load_run(upath(root, "p")).config == cfg  # recorded as written
+    for other in ({**CFG, "lr": 0.5}, {**cfg, "lr": 0.5}, {"source_sha256": "a" * 64}):
+        with pytest.raises(tr.ConfigMismatchError):
+            tr.resolve_unit(key("p"), config=other)
+    with pytest.raises(tr.ConfigMismatchError):
+        tr.load_unit(key("p"), config={**CFG, "lr": 0.5})
+    with pytest.raises(tr.ConfigMismatchError):  # only top-level provenance keys are ignored
+        tr.resolve_unit(key("p"), config={**CFG, "nested": {"source_sha256": "a"}})
+    # a unit written before 2026-11-23: no config_identity in its session header
+    real = tr.config_identity
+    monkeypatch.setattr(tr, "config_identity", lambda config: None)
+    with op("old", config=cfg) as run:
+        run.log_step(0, {"a": 1})
+    run = op("old_incomplete", every=1, config=cfg)
+    run.log_step(0, {"a": 1})
+    run.save_resume({"w": torch.zeros(2)}, step=0)
+    crash(run)
+    monkeypatch.setattr(tr, "config_identity", real)
+    assert "config_identity" not in tr.load_run(upath(root, "old")).identity or \
+        tr.load_run(upath(root, "old")).identity["config_identity"] is None
+    assert tr.resolve_unit(key("old"), config={**CFG, "source_sha256": "c" * 64}).config_identity == real(CFG)
+    with pytest.raises(tr.ConfigMismatchError):
+        tr.resolve_unit(key("old"), config={**CFG, "lr": 0.5})
+    with pytest.raises(tr.ConfigMismatchError):  # an incomplete unit refuses another config too
+        op("old_incomplete", config={**CFG, "lr": 0.5})
+    run = op("old_incomplete", every=1, config={**CFG, "source_sha256": "d" * 64})  # resumes across code states
+    assert run.load_resume() is not None and not run.restarted
+    run.complete()
+    data = tr.load_run(upath(root, "old_incomplete"))
+    assert data.config == cfg and data.info.config_identity == real(CFG) and data.info.sessions == 2
+
+
 def test_checkpoint_cadence(root, monkeypatch):
     run = op(every=4)
     assert [s for s in range(10) if run.checkpoint_due(s) and run.save_resume({}, step=s)] == [3, 7]
