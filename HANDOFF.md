@@ -32,6 +32,21 @@ Branch `neural-cbr` (`neural-cbr/`): shared NN-kNN core + T1. Current scope: `to
 - Review fixes (2026-11-23): the grid's `completed.json`/`evaluation.json` and the ablation's `completed.json`/`partial.json` only name their trials (status, stage, candidate or variant, seed); the core-ablation summary reads every variant row from its trial units and `t1_confirm_report` and the ablation read every baseline row from the grid's evaluation trial units (`records.grid_study`, `records.trial_row`; a grid output without a recorded study is refused by the report, gives no baselines in the ablation). The reviewer session's manifest is the unit record `session_manifest` (no `session_manifest.json`). `tests/conftest.py` gives pytest a short temp root on Windows, so the suite passes without `--basetemp`.
 - Tests: `tests/test_t1_never_retrain.py`, `tests/test_t1_records.py`, `tests/test_t1_parallel.py`; test helpers `tests/t1_units.py` (fixtures written in the old file layout are recorded as units there).
 
+## 2026-11-23 (later): identity is the configuration; Linux primary
+
+- Owner's orders: Linux (r760, CPU) is the primary platform, g234 is no longer used for tests or runs; "comparison is by
+  same configuration, not same code"; speed before bitwise identity.
+- Core (from main, "Sync shared core"): `tracking.config_identity` and `PROVENANCE_KEYS`; units are compared by identity
+  (config without top-level provenance keys), and units recorded earlier with `source_sha256` in their config are the
+  same units (checked on copies of real r760 units of `baselines_r760`, `plan_full_r760` and `grid_bigreg_r760`).
+- T1: grid and core-ablation trial configs no longer hold the source fingerprint (`run_trial`/`trial_config` lost their
+  `source` argument; trial rows record the fitting process's source); `t1_grid_search` resumes a grid or evaluate output
+  under any code state; `t1_grid_prefill` takes any `--grid-repo` (default: this checkout); `t1_confirm_report` no longer
+  refuses mixed code; `t1_confirm_audit` no longer fails on a source that changed during a run. See
+  `docs/T1_RUN_RECORDS.md`, "Identity".
+- Tests: the Windows-only exact golden became Linux CPU goldens (`tests/goldens/t1_tuning_toy_linux_cpu.json`) checked
+  with relative tolerance 1e-5 and equal best epochs.
+
 ## History
 
 The original mixed handoff is preserved in the pre-reorganization Git bundle at `../recovery-20261009/before-repair.bundle`. See `docs/BRANCH_ORGANIZATION.md` and `docs/REORGANIZATION_MANIFEST.json` for the 2026-10-09 split, and `results/t1/PATH_MAP.json` (on disk with the results) for the 2026-10-10 results filing.

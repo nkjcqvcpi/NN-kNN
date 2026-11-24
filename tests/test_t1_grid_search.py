@@ -112,7 +112,7 @@ def test_trials_hash_split_indices(tmp_path, monkeypatch):
     def load(seed):
         return data
     load.definition = {"dataset": {"name": "tiny", "task_type": "regression"}, "splits": {}}
-    row = search.run_trial(job, "knn", "c", params, "screen", load, 20, 1, 1, "src", study="g")
+    row = search.run_trial(job, "knn", "c", params, "screen", load, 20, 1, 1, study="g")
     stored = record(load_run(trial_unit("g", "regression__tiny", "knn", "screen", "c", 20)), "trial")
     assert row == stored and "deterministic_algorithms" not in stored
     assert "split_indices" not in stored["dataset"]
@@ -124,9 +124,9 @@ def test_trials_hash_split_indices(tmp_path, monkeypatch):
     def no_data(seed):
         raise AssertionError("a complete trial must not reload data")
     no_data.definition = load.definition
-    assert search.run_trial(job, "knn", "c", params, "screen", no_data, 20, 1, 1, "src", study="g") == stored
+    assert search.run_trial(job, "knn", "c", params, "screen", no_data, 20, 1, 1, study="g") == stored
     monkeypatch.setattr(search.torch, "are_deterministic_algorithms_enabled", lambda: True)
-    flagged = search.run_trial(job, "knn", "e", params, "screen", load, 20, 1, 1, "src", study="g")
+    flagged = search.run_trial(job, "knn", "e", params, "screen", load, 20, 1, 1, study="g")
     assert flagged["deterministic_algorithms"] is True
 
 
@@ -178,6 +178,7 @@ def test_evaluate_refits_the_frozen_winner_without_reselection(tmp_path, monkeyp
         fits.append((family, params, seed, epochs, patience))
         return original_fit(family, params, allowed, seed, epochs, patience)
     monkeypatch.setattr(search, "fit_candidate", fit)
+    ranked = search.rank_candidates
     monkeypatch.setattr(search, "rank_candidates", lambda *args: pytest.fail("evaluate must not rank"))
     evaluate = ["evaluate", "--grid", str(grid), "--out", str(out), "--workers", "1", "--study", "E"]
     search.main(evaluate + ["--families", "knn", "mlp", "catboost", "--seeds", "30", "31"])
@@ -250,6 +251,19 @@ def test_evaluate_refits_the_frozen_winner_without_reselection(tmp_path, monkeyp
         search.main([str(config), "--out", str(deterministic_grid), "--workers", "1", "--only-dataset", "none",
                      "--study", "D"])
     assert determinism == []
-    monkeypatch.setattr(search, "source_fingerprint", lambda repo: "changed")
-    with pytest.raises(ValueError, match="fresh output"):
-        search.main(evaluate + ["--families", "knn", "--seeds", "30"])
+    # Another code state resumes both outputs (same configuration, not same code): nothing is fitted again, the source
+    # fingerprints stay as provenance, and the grid's selection keeps the source it was made with.
+    monkeypatch.setattr(search, "current_source", lambda: "changed")
+    fits.clear()
+    search.main(evaluate + ["--families", "knn", "--seeds", "30"])
+    record = json.loads((out / "evaluate.json").read_text())
+    assert fits == [] and record["invocations"][-1]["source_sha256"] == "changed" != record["source_sha256"]
+    selection = (grid / key / "knn/selection.json").read_bytes()
+    (grid / key / "knn/completed.json").unlink()  # the grid's own run reads every trial back
+    monkeypatch.setattr(search, "rank_candidates", ranked)
+    search.main([str(config), "--out", str(grid), "--workers", "1", "--only-family", "knn", "--study", "G"])
+    assert fits == [] and (grid / key / "knn/selection.json").read_bytes() == selection
+    assert json.loads((grid / "study.json").read_text())["source_sha256"] != "changed"
+    with pytest.raises(ValueError, match="Configuration changed"):
+        config.write_text(yaml.safe_dump({**study, "screen_epochs": 3}))
+        search.main([str(config), "--out", str(grid), "--workers", "1", "--only-family", "knn", "--study", "G"])

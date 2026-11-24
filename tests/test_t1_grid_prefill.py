@@ -75,21 +75,27 @@ def test_prefilled_receipts_reproduce_the_sequential_grid(tmp_path, monkeypatch,
         prefill.main(["--grid-repo", str(REPO), "--out", str(parallel), "--jobs", f"{KEY}/knn"])
 
 
-def test_refuses_another_source_or_an_unknown_job(tmp_path, monkeypatch):
+def test_another_source_is_accepted_an_unknown_job_refused(tmp_path, monkeypatch):
+    """The grid's recorded source is provenance (owner's order 2026-11-23): another code state prefills the same
+    grid; unknown jobs and another determinism setting are still refused."""
     monkeypatch.delenv("NNKNN_DETERMINISTIC", raising=False)
     gs = prefill.grid_module(REPO)
     study = dict(development_seeds=[20], families=["knn"], datasets=[dict(name="iris", task_type="classification")],
                  grids=dict(knn=dict(n_neighbors=[1])))
     (tmp_path / "study.json").write_text(json.dumps(dict(configuration=study, configuration_id=gs.config_id(study),
                                                          source_sha256="not this source", study="S")))
-    with pytest.raises(ValueError, match="not the source"):
-        prefill.main(["--grid-repo", str(REPO), "--out", str(tmp_path), "--jobs", f"{KEY}/knn"])
-    monkeypatch.setattr(gs, "source_fingerprint", lambda repo: "not this source")
+    loaded = prefill.load_study(gs, REPO, tmp_path)
+    assert loaded["source_sha256"] == "not this source" and gs.current_source() != "not this source"
     with pytest.raises(ValueError, match="not a job"):
         prefill.main(["--grid-repo", str(REPO), "--out", str(tmp_path), "--jobs", f"{KEY}/tabm"])
     monkeypatch.setenv("NNKNN_DETERMINISTIC", "1")
     with pytest.raises(ValueError, match="NNKNN_DETERMINISTIC"):
         prefill.main(["--grid-repo", str(REPO), "--out", str(tmp_path), "--jobs", f"{KEY}/knn"])
+    path = tmp_path / "selection.json"  # a selection recorded under another source is the same selection
+    path.write_text(json.dumps(dict(candidate_id="c", source_sha256="old")))
+    prefill.write_frozen(gs, path, dict(candidate_id="c", source_sha256="new"))
+    with pytest.raises(ValueError, match="disagrees"):
+        prefill.write_frozen(gs, path, dict(candidate_id="d", source_sha256="old"))
 
 
 def test_a_grid_that_records_no_study_is_refused(tmp_path, monkeypatch):
@@ -100,6 +106,5 @@ def test_a_grid_that_records_no_study_is_refused(tmp_path, monkeypatch):
                  grids=dict(knn=dict(n_neighbors=[1])))
     (tmp_path / "study.json").write_text(json.dumps(dict(configuration=study, configuration_id=gs.config_id(study),
                                                          source_sha256="src")))
-    monkeypatch.setattr(gs, "source_fingerprint", lambda repo: "src")
     with pytest.raises(ValueError, match="no run study"):
         prefill.main(["--grid-repo", str(REPO), "--out", str(tmp_path), "--jobs", f"{KEY}/knn"])

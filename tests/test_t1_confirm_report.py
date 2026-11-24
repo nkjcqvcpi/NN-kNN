@@ -256,16 +256,18 @@ def test_small_task_seeds_need_a_small_task_listing(tmp_path):
         main(argv("--small-tasks", "tabarena_363702"))
 
 
-def test_mixed_run_code_is_refused_unless_allowed(tmp_path):
+def test_mixed_run_code_is_analysed_together(tmp_path):
+    """Rows are compared by configuration, not by code (owner's order 2026-11-23): several source fingerprints are
+    analysed together and listed; --allow-mixed-code is accepted and changes nothing."""
     argv = synth(tmp_path)
     for d, cond, fp in ((argv.runs, "tuned__joint_summed_w5", "a" * 64), (argv.alt, "tuned__alternating_default", "b" * 64)):
         for s in SEEDS[:3]:
             path = d / "iris" / cond / f"s{s}" / "run_manifest.json"
             path.parent.mkdir(parents=True)
             path.write_text(json.dumps({"run": {"source_fingerprint_sha256": fp, "device": "cpu"}}))
-    with pytest.raises(SystemExit, match="fingerprints"):
-        main(argv())
-    pv = main(argv("--allow-mixed-code"))["provenance"]
+    pv = main(argv())["provenance"]
+    assert main(argv("--allow-mixed-code"))["provenance"] == pv
+    assert pv["source_fingerprints"]["b" * 64] == {"tuned::alternating_default": 3}
     assert pv["run_manifests_found"] == 6 and pv["run_manifests_absent"] == pv["rows_analysed"] - 6
     assert pv["source_fingerprints"]["a" * 64] == {F: 3}
 
@@ -497,9 +499,7 @@ def write_all_manifests(argv, fingerprint):
 def test_fingerprints_are_recorded_per_task_and_can_be_required(tmp_path):
     argv = synth(tmp_path)
     write_all_manifests(argv, lambda name: ("b" if name.startswith("tabarena_") else "a") * 64)
-    with pytest.raises(SystemExit, match="run source fingerprints"):
-        main(argv())
-    rep = main(argv("--allow-mixed-code"))
+    rep = main(argv())
     by_task = rep["provenance"]["source_fingerprints_by_task"]
     assert by_task["classification__iris"] == {"a" * 64: 30} and by_task["regression__tabarena_363705"] == {"b" * 64: 30}
     assert len(by_task) == 8 and not rep["provenance"]["rows_without_manifest_by_task"]
@@ -522,8 +522,7 @@ def test_fingerprints_are_recorded_per_task_and_can_be_required(tmp_path):
               "regression__tabarena_363705=cccc,bbbb", "tabarena_363686=bbbb"))
     with pytest.raises(SystemExit, match="no --expect-fingerprints pattern matches"):
         main(argv("--allow-mixed-code", "--expect-fingerprints", "tabarena_*=bbbb"))
-    with pytest.raises(SystemExit, match="run source fingerprints"):  # expectations do not replace --allow-mixed-code
-        main(argv("--expect-fingerprints", str(spec)))
+    main(argv("--expect-fingerprints", str(spec)))  # no --allow-mixed-code needed
     (argv.runs / "yacht" / "tuned__retrieval_only" / f"s{SEEDS[0]}" / "run_manifest.json").unlink()
     with pytest.raises(SystemExit, match="no run manifest"):
         main(argv("--allow-mixed-code", "--expect-fingerprints", str(spec)))

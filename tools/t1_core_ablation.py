@@ -42,19 +42,19 @@ import numpy as np
 import torch
 import yaml
 
-from model.common.artifacts import config_id, environment_info, source_fingerprint, write_json
+from model.common.artifacts import config_id, environment_info, write_json
 from model.common.core import CoreConfig, build_model, evaluate, train_retrieval
 from model.common.tracking import load_run, open_run, resolve_unit, run_status, unit_dir
 from model.t1 import records
-from tools.t1_grid_search import (apply_determinism, compact_row, data_definition, nnknn_core_settings, numeric_metrics,
-                                  prediction, split_loader, task_key, trial_runtime)
+from tools.t1_grid_search import (apply_determinism, compact_row, current_source, data_definition, nnknn_core_settings,
+                                  numeric_metrics, prediction, split_loader, task_key, trial_runtime)
 
 CORE_FIELDS = {f.name for f in dataclasses.fields(CoreConfig)}
 
 
 def load_study(path):
     study = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-    study["source_sha256"] = source_fingerprint(REPO)
+    study["source_sha256"] = current_source()  # provenance of this invocation, not part of any unit's identity
     study["config_path"] = str(path)
     return study
 
@@ -174,29 +174,29 @@ def trial_rows(run_study, task, variant, seeds, settings=None):
     return out
 
 
-def run_trial(job, variant, settings, data, seed, source, *, study):
+def run_trial(job, variant, settings, data, seed, *, study):
     """One fit of a variant on one seed, recorded as the run unit ``t1/<study>/<task>/<variant>/s<seed>`` (record
     ``trial``, arrays ``test_prediction``/``test_target``, named state ``model``). A unit complete with the same
-    config (settings, data definition, source and runtime) is read back before anything is fitted; another config
-    raises ConfigMismatchError."""
+    config (settings, data definition and runtime) is read back before anything is fitted; another config raises
+    ConfigMismatchError. The source fingerprint is provenance (in the trial row), not part of the config (owner's
+    order 2026-11-23); units recorded with ``source_sha256`` in their config match through tracking.config_identity."""
     if not study:
         raise TypeError("run_trial needs a study: every core ablation trial is recorded as a run unit")
     key = trial_key(study, Path(job).parent.name, Path(job).name, seed)
-    # the data definition, source and runtime belong to the config: a unit is reused only for the same fit
+    # the data definition and runtime belong to the config: a unit is reused only for the same configuration
     config = dict(kind="t1_core_ablation_trial", task=Path(job).parent.name, variant=variant,
-                  settings=records.jsonable(settings), seed=seed, data=data_definition(data), source_sha256=source,
-                  runtime=trial_runtime())
+                  settings=records.jsonable(settings), seed=seed, data=data_definition(data), runtime=trial_runtime())
     info = resolve_unit(key, config=config)
     if info is not None:
         return records.unordered(load_run(info.path, arrays=False).record("trial"))
     with open_run(key, config=config) as run:
-        row = fit_trial(run, variant, settings, data, seed, source)
+        row = fit_trial(run, variant, settings, data, seed)
         if row["status"] != "completed":
             run.fail(row["error"])
     return row
 
 
-def fit_trial(run, variant, settings, data, seed, source):
+def fit_trial(run, variant, settings, data, seed):
     """Fit and evaluate one trial and record it into ``run`` (its run unit)."""
     started = time.perf_counter()
     try:
@@ -215,7 +215,8 @@ def fit_trial(run, variant, settings, data, seed, source):
             train_resubstitution_error=(1.0 - train_fit["accuracy_pre"]) if full.num_classes else train_fit["rmse_pre"],
             best_epoch=tr.best_epoch, epochs_run=tr.epochs_run, best_val_loss=tr.best_val,
             training_seconds=training_seconds, inference_seconds=inference_seconds,
-            diagnostics=retrieval_diagnostics(model, full.X_test), source_sha256=source, dataset=full.describe()))
+            diagnostics=retrieval_diagnostics(model, full.X_test), source_sha256=current_source(),
+            dataset=full.describe()))
         run.log_array("test_prediction", torch.as_tensor(pred).numpy())
         run.log_array("test_target", full.y_test.numpy())
         run.save_state("model", records.storable(dict(model_state=model.state_dict(), core=dataclasses.asdict(cc))))
@@ -245,7 +246,7 @@ def task_variant(study, ds, variant, out, run_study):
     settings = resolve_variant(base, variant, study)
     data = split_loader(study, ds)
     with (job / "training.log").open("a", encoding="utf-8") as log, contextlib.redirect_stdout(log):
-        rows = [run_trial(job, variant["name"], settings, data, seed, study["source_sha256"], study=run_study)
+        rows = [run_trial(job, variant["name"], settings, data, seed, study=run_study)
                 for seed in study["evaluation_seeds"]]
     # a done marker: the trial rows themselves are only in the trial units (summarize reads them there)
     result = dict(task=task_key(ds), variant=variant["name"], override=variant.get("override") or {}, base_parameters=base,

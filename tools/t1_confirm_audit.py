@@ -7,7 +7,8 @@
 duplicated. The audit checks every unit's status (failed or incomplete units are crashed runs, unless they changed
 within ``--settle-seconds``; invalid ones fail), rebuilds each complete run's row from its ``manifest`` and
 ``metrics`` records and requires the identical serialized ``row`` record, checks the unit path against the row and
-the source fingerprints and, with ``--logs`` (the t1_parallel job-log directory), that a job log whose receipt has
+the source fingerprints (provenance: several fingerprints, or a source that changed during a run, are listed, not
+failed; owner's order 2026-11-23) and, with ``--logs`` (the t1_parallel job-log directory), that a job log whose receipt has
 exit code 0 holds the run's ``[done]`` line, equal to the line rebuilt from its metrics. Stage units (``_<stage>``:
 shared training such as the trained core, no row) are checked for their status only. Run manifests map each task
 (``<task_type>__<name>``) to its source fingerprints; ``--expect-fingerprint`` (task key or dataset key, glob
@@ -240,7 +241,6 @@ def problems(report: dict, fail_identical_duplicates: bool = False) -> list[str]
     count([i for i in report["incomplete_run_dirs"] if not i["recent"]],
           f"failed or incomplete units, unchanged for {report['settle_seconds']:.0f}s (crashed and not rerun)")
     count(report["rebuild_errors"], "units whose records cannot rebuild a row")
-    count(report["source_changed_during_run"], "runs whose source changed during the run")
     for e in report["fingerprint_expectations"]:
         if not e["tasks"] and not e["overridden"]:
             out.append(f"--expect-fingerprint {e['pattern']} matched no task")

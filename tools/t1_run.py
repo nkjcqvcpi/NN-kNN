@@ -58,7 +58,7 @@ from model.t1.revise import flagging_ablation  # noqa: E402
 from model.t1.sync import SyncConfig, train_synchronized  # noqa: E402
 from model.t1 import records  # noqa: E402
 from model.common.nominal import encoded_queries  # noqa: E402
-from model.common.tracking import (ConfigMismatchError, load_run, load_unit, open_run, payload_sha256,  # noqa: E402
+from model.common.tracking import (ConfigMismatchError, config_identity, load_run, load_unit, open_run,  # noqa: E402
                                    resolve_unit, run_status)
 
 
@@ -510,7 +510,7 @@ class Runner:
         the config this run would give it (its condition aside), else ConfigMismatchError now, not after training."""
         expected = self.unit_config(self.run_config(ds, seed, {}))
         expected.pop("condition")
-        expected = payload_sha256(expected)
+        expected = config_identity(expected)
         tree = records.unit_tree(self.study, self.exp, self.dataset_key(ds))
         for path in sorted(tree.glob(f"*/s{seed}")) if tree.is_dir() else ():
             info = run_status(path)
@@ -518,7 +518,7 @@ class Runner:
                 continue
             stored = dict(load_run(path, arrays=False).config or {})
             stored.pop("condition", None)
-            if payload_sha256(stored) != expected:
+            if config_identity(stored) != expected:  # provenance keys aside (tracking.PROVENANCE_KEYS)
                 raise ConfigMismatchError(f"{info.run_id} is complete with a different config (checked before training)")
 
     def recorded(self, key, run_cfg) -> bool:
@@ -616,6 +616,7 @@ class Runner:
             run_id=run_id, repo=REPO, cfg=run_cfg, data_desc=data.describe(), components=components, budgets=budgets,
             maintenance=maintenance, evaluation={"confirmatory_or_exploratory": self.cfg["status"], "number_of_seeds": len(self.cfg["seeds"]), "uncertainty_method": "per-seed runs; summarized by tools/t1_summarize.py"}, model_desc=model_desc,
         )
+        # provenance only (owner's order 2026-11-23: units are compared by configuration, not by code)
         man["run"]["source_changed_during_run"] = man["run"]["source_fingerprint_sha256"] != self.source_hash
         man["run"]["source_fingerprint_sha256"] = self.source_hash
         man["run"]["source_snapshot"] = str(self.source_path)

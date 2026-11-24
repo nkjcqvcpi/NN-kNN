@@ -307,12 +307,12 @@ def test_grid_trial_units_reuse_and_failures(tmp_path, monkeypatch):
     job_units = tmp_path / "grid/classification__tiny/knn"
     params = {"n_neighbors": 3, "weights": "uniform"}
     with pytest.raises(TypeError):  # every trial is recorded: no study, no trial
-        search.run_trial(job_units, "knn", "c1", params, "evaluation", loader(lambda s: data), 30, 1, 1, "src",
+        search.run_trial(job_units, "knn", "c1", params, "evaluation", loader(lambda s: data), 30, 1, 1,
                          test=True, study=None)
     with contextlib.redirect_stdout(io.StringIO()):
-        new = search.run_trial(job_units, "knn", "c1", params, "evaluation", loader(lambda s: data), 30, 1, 1, "src",
+        new = search.run_trial(job_units, "knn", "c1", params, "evaluation", loader(lambda s: data), 30, 1, 1,
                                test=True, study="g")
-        again = search.run_trial(job_units, "knn", "c1", params, "evaluation", loader(lambda s: None), 30, 1, 1, "src",
+        again = search.run_trial(job_units, "knn", "c1", params, "evaluation", loader(lambda s: None), 30, 1, 1,
                                  test=True, study="g")
     assert new["status"] == "completed" and json.dumps(again) == json.dumps(new)
     assert not job_units.exists()
@@ -330,11 +330,11 @@ def test_grid_trial_units_reuse_and_failures(tmp_path, monkeypatch):
     def broken(seed):
         raise RuntimeError("no data")
     with contextlib.redirect_stdout(io.StringIO()):
-        failed = search.run_trial(job_units, "knn", "c2", params, "screen", broken, 20, 1, 1, "src", study="g")
+        failed = search.run_trial(job_units, "knn", "c2", params, "screen", broken, 20, 1, 1, study="g")
         assert failed["status"] == "failed"
         bad = records.trial_unit("g", "classification__tiny", "knn", "screen", "c2", 20)
         assert tr.run_status(bad).status == "failed"
-        refit = search.run_trial(job_units, "knn", "c2", params, "screen", loader(lambda s: data), 20, 1, 1, "src",
+        refit = search.run_trial(job_units, "knn", "c2", params, "screen", loader(lambda s: data), 20, 1, 1,
                                  study="g")
     assert refit["status"] == "completed" and tr.run_status(bad).status == "complete"
 
@@ -349,13 +349,13 @@ def test_grid_prefill_reads_trial_units(tmp_path, monkeypatch):
     data = T1Data("tiny", "regression", x[:6], y[:6], x[6:9], y[6:9], x[9:], y[9:])
     job = tmp_path / "grid/regression__tiny/knn"
     load = loader(lambda s: data, task_type="regression")
-    config = search.trial_config(job, "knn", "c", {"n_neighbors": 2}, "screen", load, 20, 1, 1, "src")
+    config = search.trial_config(job, "knn", "c", {"n_neighbors": 2}, "screen", load, 20, 1, 1)
     assert receipt(job, "screen", "c", 20, run_study="g", config=config) is None
     with contextlib.redirect_stdout(io.StringIO()):
-        row = search.run_trial(job, "knn", "c", {"n_neighbors": 2}, "screen", load, 20, 1, 1, "src", study="g")
+        row = search.run_trial(job, "knn", "c", {"n_neighbors": 2}, "screen", load, 20, 1, 1, study="g")
     assert json.dumps(receipt(job, "screen", "c", 20, run_study="g", config=config)) == json.dumps(row)
     other = search.trial_config(job, "knn", "c", {"n_neighbors": 2}, "screen",
-                                loader(lambda s: data, task_type="regression", val_frac=.3), 20, 1, 1, "src")
+                                loader(lambda s: data, task_type="regression", val_frac=.3), 20, 1, 1)
     with pytest.raises(tr.ConfigMismatchError):  # a unit fitted on other splits is not this grid's trial
         receipt(job, "screen", "c", 20, run_study="g", config=other)
     (tmp_path / "grid").mkdir(exist_ok=True)
@@ -372,11 +372,11 @@ def test_core_ablation_trial_unit(tmp_path, monkeypatch):
     settings = dict(epochs=2, patience=2, batch_size=4, top_k=3, bias_init_k=3)
     load = loader(lambda s: data, task_type="regression")
     with pytest.raises(TypeError):
-        abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings, load, 30, "src", study=None)
+        abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings, load, 30, study=None)
     with contextlib.redirect_stdout(io.StringIO()):
-        new = abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings, load, 30, "src", study="abl")
+        new = abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings, load, 30, study="abl")
         again = abl.run_trial(tmp_path / "u/regression__tiny/base", "base", settings,
-                              loader(lambda s: None, task_type="regression"), 30, "src", study="abl")
+                              loader(lambda s: None, task_type="regression"), 30, study="abl")
     assert new["status"] == "completed" and json.dumps(again) == json.dumps(new)
     unit = tr.unit_dir(records.key("abl", "regression__tiny", "base", "s30"))
     run = tr.load_run(unit)
@@ -441,16 +441,30 @@ def test_grid_trials_are_reused_only_for_the_same_data(tmp_path, monkeypatch):
     job = tmp_path / "grid/classification__tiny/knn"
     params = {"n_neighbors": 3}
     with contextlib.redirect_stdout(io.StringIO()):
-        row = search.run_trial(job, "knn", "c", params, "screen", loader(lambda s: data), 20, 1, 1, "src", study="g")
-        assert json.dumps(search.run_trial(job, "knn", "c", params, "screen", loader(lambda s: None), 20, 1, 1, "src",
+        row = search.run_trial(job, "knn", "c", params, "screen", loader(lambda s: data), 20, 1, 1, study="g")
+        assert json.dumps(search.run_trial(job, "knn", "c", params, "screen", loader(lambda s: None), 20, 1, 1,
                                            study="g")) == json.dumps(row)
-        for changed in (dict(data=loader(lambda s: data, test_frac=.4)), dict(data=loader(lambda s: data, name="other")),
-                        dict(source="other source")):
-            args = {"data": loader(lambda s: data), "source": "src", **changed}
+        for changed in (loader(lambda s: data, test_frac=.4), loader(lambda s: data, name="other")):
             with pytest.raises(tr.ConfigMismatchError):
-                search.run_trial(job, "knn", "c", params, "screen", args["data"], 20, 1, 1, args["source"], study="g")
+                search.run_trial(job, "knn", "c", params, "screen", changed, 20, 1, 1, study="g")
+        # another code state is the same trial (owner's order 2026-11-23): reused, not fitted again
+        monkeypatch.setattr(search, "current_source", lambda: "other source")
+        assert json.dumps(search.run_trial(job, "knn", "c", params, "screen", loader(lambda s: None), 20, 1, 1,
+                                           study="g")) == json.dumps(row)
+        # a trial recorded before 2026-11-23, with the source fingerprint in its config, is the same trial too
+        new_config = search.trial_config
+        monkeypatch.setattr(search, "trial_config", lambda *a, **k: {**new_config(*a, **k), "source_sha256": "f" * 64})
+        old = search.run_trial(job, "knn", "old", params, "screen", loader(lambda s: data), 20, 1, 1, study="g")
+        monkeypatch.setattr(search, "trial_config", new_config)
+        unit = records.trial_unit("g", "classification__tiny", "knn", "screen", "old", 20)
+        assert tr.load_run(unit).config["source_sha256"] == "f" * 64
+        assert json.dumps(search.run_trial(job, "knn", "old", params, "screen", loader(lambda s: None), 20, 1, 1,
+                                           study="g")) == json.dumps(old)
+        with pytest.raises(tr.ConfigMismatchError):  # a configuration change still is another trial
+            search.run_trial(job, "knn", "old", params, "screen", loader(lambda s: data, test_frac=.4), 20, 1, 1,
+                             study="g")
         with pytest.raises(ValueError, match="data loader"):  # a loader without its definition cannot be recorded
-            search.run_trial(job, "knn", "c", params, "screen", lambda s: data, 20, 1, 1, "src", study="g")
+            search.run_trial(job, "knn", "c", params, "screen", lambda s: data, 20, 1, 1, study="g")
     assert search.split_loader({"splits": {"test_frac": .2}}, {"name": "iris", "task_type": "classification",
                                                                "max_train": 50}).definition == \
         {"dataset": {"name": "iris", "task_type": "classification", "max_train": 50},
@@ -500,10 +514,10 @@ def test_core_ablation_trials_are_reused_only_for_the_same_data(tmp_path, monkey
     settings = dict(epochs=2, patience=2, batch_size=4, top_k=3, bias_init_k=3)
     job = tmp_path / "u/regression__tiny/base"
     with contextlib.redirect_stdout(io.StringIO()):
-        assert abl.run_trial(job, "base", settings, loader(lambda s: data, task_type="regression"), 30, "src",
+        assert abl.run_trial(job, "base", settings, loader(lambda s: data, task_type="regression"), 30,
                              study="abl")["status"] == "completed"
         with pytest.raises(tr.ConfigMismatchError):
-            abl.run_trial(job, "base", settings, loader(lambda s: data, task_type="regression", val_frac=.5), 30, "src",
+            abl.run_trial(job, "base", settings, loader(lambda s: data, task_type="regression", val_frac=.5), 30,
                           study="abl")
 
 

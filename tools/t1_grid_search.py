@@ -13,13 +13,16 @@ on further seeds through the grid's own evaluation stage; it never re-selects.
 Its --out must be new, empty or an earlier evaluate output of the same grid.
 NNKNN_DETERMINISTIC=1 turns on ``torch.use_deterministic_algorithms`` in workers
 (and sets CUBLAS_WORKSPACE_CONFIG as tools/t1_run.py); an output directory is
-resumed only under the setting it was started with.
+resumed only under the setting it was started with. A grid or evaluate output resumes under any code state (owner's
+order 2026-11-23: same configuration, not same code); study.json and evaluate.json keep the source fingerprints as
+provenance, and ``--out`` is refused only for another configuration, grid or study.
 
 ``--study S`` (both forms, required) records every trial as the run unit
 ``NN-KNN/runs/t1/S/<task>/<family>/<stage>/<candidate>/s<seed>/``; no trial file is written. Record
 ``trial`` (the receipt row), ``final/*`` numbers, arrays ``validation_prediction``/``validation_target`` (and on
 the test stream ``test_prediction``/``test_target``), named states ``model`` (a joblib model as its bytes) and ``data``.
-A unit complete with the same trial config (see ``trial_config``: data definition, source and runtime included) is
+A unit complete with the same trial config (see ``trial_config``: data definition and runtime included; the source
+fingerprint is provenance, recorded in the trial row and the unit's session header, not part of the config) is
 read back and never fitted again, one complete with another config raises ConfigMismatchError; a failed trial is
 marked failed in its unit and refitted on the next run. ``DIR`` holds the job and grid summaries (shortlist,
 selection, completed, evaluation, results, progress, study.json with ``"study": S``, training.log). The
@@ -43,6 +46,7 @@ import sys
 import time
 import traceback
 import zipfile
+from functools import lru_cache
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 REPO = Path(__file__).resolve().parents[1]
@@ -310,16 +314,23 @@ def trial_model(path):
     return state
 
 
-def trial_config(job, family, cid, params, stage, data, seed, epochs, patience, source, test=False, torch_threads=None):
-    """Config of a recorded trial unit: everything its numbers depend on. The data definition (dataset entry and
-    splits), the source fingerprint and the runtime settings are part of it, so a study shared by several grids or
-    evaluate runs reuses a trial only when it would be fitted exactly the same way (else ConfigMismatchError)."""
+@lru_cache(maxsize=None)
+def current_source():
+    """Source fingerprint of this checkout (provenance of the trials this process fits)."""
+    return source_fingerprint(REPO)
+
+
+def trial_config(job, family, cid, params, stage, data, seed, epochs, patience, test=False, torch_threads=None):
+    """Config of a recorded trial unit: the configuration its numbers depend on. The data definition (dataset entry
+    and splits) and the runtime settings are part of it, so a study shared by several grids or evaluate runs reuses a
+    trial only when it is configured the same way (else ConfigMismatchError). The source fingerprint is not (owner's
+    order 2026-11-23): units recorded with ``source_sha256`` in their config match through tracking.config_identity."""
     return dict(kind="t1_grid_trial", task=Path(job).parent.name, family=family, candidate_id=cid,
                 parameters=records.jsonable(params), stage=stage, seed=seed, epochs=epochs, patience=patience,
-                test=test, data=data_definition(data), source_sha256=source, runtime=trial_runtime(torch_threads))
+                test=test, data=data_definition(data), runtime=trial_runtime(torch_threads))
 
 
-def run_trial(job, family, cid, params, stage, data, seed, epochs, patience, source, test=False, *, study):
+def run_trial(job, family, cid, params, stage, data, seed, epochs, patience, test=False, *, study):
     """One fit of candidate ``cid``, recorded as the run unit ``t1/<study>/<task>/<family>/<stage>/<cid>/s<seed>``
     (task and family are the job directory's names). ``data(seed)`` gives the splits. A unit complete with the same
     ``trial_config`` is read back before anything is fitted (another config raises ConfigMismatchError).
@@ -327,18 +338,18 @@ def run_trial(job, family, cid, params, stage, data, seed, epochs, patience, sou
     if not study:
         raise TypeError("run_trial needs a study: every grid trial is recorded as a run unit")
     key = records.key(study, Path(job).parent.name, Path(job).name, stage, cid, f"s{seed}")
-    config = trial_config(job, family, cid, params, stage, data, seed, epochs, patience, source, test)
+    config = trial_config(job, family, cid, params, stage, data, seed, epochs, patience, test)
     info = resolve_unit(key, config=config)
     if info is not None:
         return compact_row(records.unordered(load_run(info.path, arrays=False).record("trial")))
     run = open_run(key, config=config)
-    row = fit_trial(TrialUnit(run), family, cid, params, stage, data, seed, epochs, patience, source, test)
+    row = fit_trial(TrialUnit(run), family, cid, params, stage, data, seed, epochs, patience, test)
     if row["status"] == "completed":
         run.complete()
     return row
 
 
-def fit_trial(out, family, cid, params, stage, data, seed, epochs, patience, source, test):
+def fit_trial(out, family, cid, params, stage, data, seed, epochs, patience, test):
     """Fit, evaluate and record one trial through ``out`` (a TrialUnit); returns its row or failure."""
     started = time.perf_counter()
     try:
@@ -351,7 +362,7 @@ def fit_trial(out, family, cid, params, stage, data, seed, epochs, patience, sou
         row = compact_row(dict(status="completed", family=family, candidate_id=cid, parameters=params,
             seed=seed, stage=stage, validation_error=1.-metrics["accuracy"] if full.num_classes else metrics["rmse_standardized"],
             validation_loss=metrics["loss"], validation_metrics=metrics, test_stream_evaluated=test,
-            training_seconds=time.perf_counter()-started, source_sha256=source,
+            training_seconds=time.perf_counter()-started, source_sha256=current_source(),
             dataset=full.describe()))
         if torch.are_deterministic_algorithms_enabled():
             row["deterministic_algorithms"] = True
@@ -391,8 +402,7 @@ def dataset_family(study, ds, family, out, run_study):
     data = split_loader(study, ds)
     with (job / "training.log").open("a", encoding="utf-8") as log, contextlib.redirect_stdout(log):
         def trial(stage, cid, seed, epochs, patience, test=False):
-            return run_trial(job, family, cid, grid[cid], stage, data, seed, epochs, patience, study["source_sha256"], test,
-                             study=run_study)
+            return run_trial(job, family, cid, grid[cid], stage, data, seed, epochs, patience, test, study=run_study)
         for cid in grid:
             for seed in study["development_seeds"]:
                 rows.append(trial("screen", cid, seed, study["screen_epochs"], study["screen_patience"]))
@@ -447,7 +457,7 @@ def evaluate_family(grid_dir, study, ds, family, seeds, out, run_study):
     data = split_loader(study, ds)
     with (job / "training.log").open("a", encoding="utf-8") as log, contextlib.redirect_stdout(log):
         evaluations = [run_trial(job, family, winner, grid[winner], "evaluation", data, seed, study["refit_epochs"],
-                                 study["refit_patience"], study["source_sha256"], test=True, study=run_study)
+                                 study["refit_patience"], test=True, study=run_study)
                        for seed in seeds]
     complete = all(r["status"] == "completed" for r in evaluations)
     result = dict(dataset=ds, family=family, status="completed" if complete else "partial", winner=winner,
@@ -539,15 +549,16 @@ def evaluate_main(argv):
     if not record_path.exists() and out.is_dir() and any(out.iterdir()):
         raise ValueError(f"--out {out} is not empty and holds no evaluate.json; use a fresh output directory")
     out.mkdir(parents=True, exist_ok=True)
-    source = source_fingerprint(REPO)
+    source = current_source()
     deterministic = deterministic_requested()
     invocation = dict(families=args.families, seeds=args.seeds, datasets=args.datasets,
-                      deterministic_algorithms=deterministic, started=time.strftime("%Y-%m-%dT%H:%M:%S%z"))
+                      deterministic_algorithms=deterministic, started=time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                      source_sha256=source)
     if record_path.exists():
         record = json.loads(record_path.read_text())
-        if (record["source_sha256"] != source or record["grid_configuration_id"] != frozen["configuration_id"]
-                or record["grid"] != str(grid)):
-            raise ValueError("Source or grid changed; use a fresh output directory")
+        # the source fingerprint is provenance (each invocation records its own), never a reason to refuse
+        if record["grid_configuration_id"] != frozen["configuration_id"] or record["grid"] != str(grid):
+            raise ValueError("Grid changed; use a fresh output directory")
         if any(i["deterministic_algorithms"] != deterministic for i in record["invocations"]):
             raise ValueError("NNKNN_DETERMINISTIC differs from earlier invocations; use a fresh output directory")
         if record.get("study") != args.study:
@@ -560,7 +571,7 @@ def evaluate_main(argv):
             invocations=[invocation], study=args.study)
         write_source_zip(out / "source.zip")
     write_json(record_path, record)
-    study.update(source_sha256=source, grid_source_sha256=frozen["source_sha256"])
+    study.update(source_sha256=record["source_sha256"], grid_source_sha256=frozen["source_sha256"])
     run_jobs(lambda pool, ds, fam: pool.submit(evaluate_family, str(grid), study, ds, fam, args.seeds, str(out), args.study),
              tasks, out, args.workers, skipped=("no_selection",))
 
@@ -585,14 +596,15 @@ def main(argv=None):
     check_trial_paths(parser, args.study, tasks, [*study["development_seeds"], *study["evaluation_seeds"]])
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    source = source_fingerprint(REPO)
+    source = current_source()
     frozen = out / "study.json"
     # Recorded only when on, so default study.json files are unchanged; a resume may not switch it.
     deterministic = dict(deterministic_algorithms=True) if deterministic_requested() else {}
-    if frozen.exists():
+    if frozen_old := frozen.exists():
         old = json.loads(frozen.read_text())
-        if old["source_sha256"] != source or old["configuration_id"] != config_id(study):
-            raise ValueError("Source or configuration changed; use a fresh output directory")
+        # same configuration, not same code (owner's order 2026-11-23): another source is provenance only
+        if old["configuration_id"] != config_id(study):
+            raise ValueError("Configuration changed; use a fresh output directory")
         if old.get("deterministic_algorithms", False) != bool(deterministic):
             raise ValueError("NNKNN_DETERMINISTIC differs from the grid's study.json; resume with the same setting")
         if old.get("study") != args.study:
@@ -602,7 +614,8 @@ def main(argv=None):
             environment=baseline_environment(), git=git_state(REPO), test_based_selection=False,
             expected_jobs=len(study["datasets"])*len(study["families"]), **deterministic, study=args.study))
         write_source_zip(out / "source.zip")
-    study["source_sha256"] = source
+    # the grid's source as recorded (selection.json keeps it); every trial records the source that fitted it
+    study["source_sha256"] = old["source_sha256"] if frozen_old else source
     run_jobs(lambda pool, ds, fam: pool.submit(dataset_family, study, ds, fam, str(out), args.study), tasks, out, args.workers)
 
 

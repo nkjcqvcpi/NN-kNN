@@ -48,9 +48,12 @@ grid's and the ablation's job files (`shortlist.json`, `selection.json`, `comple
 `completed.json`/`partial.json` only name their trials (`records.pointer`: status, stage, candidate id or variant,
 seed); every number is read from the trial unit (`records.trial_row` for grid trials).
 
-Tests on Windows: `tests/conftest.py` gives pytest a short temp root (`%TEMP%\nk<random>`, or below
-`NNKNN_TEST_TMP`) when `--basetemp` is not given, since pytest's default root
-(`%TEMP%\pytest-of-<user>\pytest-<n>\<test name>`) puts some units' event file paths over the 240-character limit.
+Platform (owner, 2026-11-23): Linux is the primary platform; T1 studies and tests run on r760 on CPU
+(`/mnt/largedata/NN-KNN`, `source env.sh`; TMPDIR on local disk). g234 (Windows, XPU) is no longer used for tests or
+runs. `tests/conftest.py` still gives pytest a short temp root on Windows (`%TEMP%\nk<random>`, or below
+`NNKNN_TEST_TMP`) when `--basetemp` is not given. Float goldens (`tests/goldens/t1_tuning_toy_linux_cpu.json`) were
+recorded on r760 and are checked with a relative tolerance of 1e-5 and equal best epochs, since the owner does not
+require bitwise identity and an allocator or BLAS change may move the last digits.
 
 Notebooks are left as they are (none in this worktree). Table 1 (`tools/*table1*`) is published work and keeps
 writing its own files without a run.
@@ -102,6 +105,34 @@ The other tools: a complete grid, ablation or pilot trial is read back before an
 `pretrain_mask<m>` and trains it only when one of its two continuations is incomplete. The legacy reference resumes
 an interrupted `train_model` inside its unit.
 
+## Identity: configuration, not code (owner, 2026-11-23)
+
+A unit is identified by its configuration (and data definition) only. The source fingerprint, the checkout path
+(`code_repository`), the git commit, the source snapshot name and timestamps are provenance: they are recorded (each
+session header holds `git_commit`, `dirty`, `source_fingerprint`; `t1_run` manifests hold
+`source_fingerprint_sha256`, `source_changed_during_run`, `source_snapshot`; grid and ablation trial rows hold
+`source_sha256`) but they are not part of a unit's identity and never block resuming a study, reading units or
+summarising a study that spans several code states. `tracking.config_identity` (core, `docs/NNKNN_CORE.md`) hashes the
+config without the top-level provenance keys (`tracking.PROVENANCE_KEYS`, among them `source_sha256`), and
+`resolve_unit`/`load_unit`/`open_run` compare identities. Units recorded before 2026-11-23 carry `source_sha256` in
+their grid or ablation trial config and no `config_identity` in their session header; they are compared through
+their recorded config with that key left out, so they are the same units for the new code: complete ones are read
+back and never trained again, incomplete ones resume. A change of anything else (epochs, seeds, parameters, splits,
+dataset entry, runtime) still raises `ConfigMismatchError`.
+
+- `t1_grid_search`: a grid output (`study.json`) resumes when its configuration (`configuration_id`), determinism
+  setting and study match; an evaluate output (`evaluate.json`) when its grid and grid configuration match. Another
+  source fingerprint is recorded (each evaluate invocation holds its `source_sha256`), not refused. The grid's
+  `selection.json` keeps the source of the grid's `study.json`.
+- `t1_grid_prefill`: `--grid-repo` (default: this checkout) may be any code state; `selection.json` and
+  `shortlist.json` are compared without their `source_sha256`.
+- `t1_confirm_report` analyses rows of several source fingerprints together and lists them per task
+  (`--allow-mixed-code` has no effect); `--expect-fingerprints` remains an opt-in check.
+- `t1_confirm_audit` lists source fingerprints and runs whose source changed during the run; neither fails the
+  audit (`--expect-fingerprint` remains an opt-in check).
+- Drivers: the receipts of `t1_parallel` and `t1_execute_study` hold no source hash, so a job with exit code 0 stays
+  finished after the code moves. `execution_plan.json` records the source of the plan as provenance only.
+
 What a unit's config holds, and so when a unit is reused:
 
 - `tools/t1_run.py`: the run config (experiment, dataset entry, seed, condition, resolved config) without the
@@ -111,9 +142,9 @@ What a unit's config holds, and so when a unit is reused:
   Device is not part of a unit's identity.
 - Grid trials (`t1_grid_search`, `evaluate`, `t1_grid_prefill`): task, family, candidate id and parameters, stage,
   seed, epochs, patience, test flag, the data definition (the dataset entry and its make_splits options, carried
-  by `split_loader`), the source fingerprint and the runtime (`torch_threads`, deterministic kernels). A trial
-  fitted on other splits or another dataset entry raises `ConfigMismatchError`.
-- Core ablation trials: task, variant, resolved settings, seed, data definition, source fingerprint, runtime.
+  by `split_loader`) and the runtime (`torch_threads`, deterministic kernels); not the source fingerprint (see
+  Identity). A trial fitted on other splits or another dataset entry raises `ConfigMismatchError`.
+- Core ablation trials: task, variant, resolved settings, seed, data definition, runtime (not the source fingerprint).
 
 Unit paths: the tracking module refuses an event file path of 240 characters or more. `t1_grid_search` and
 `t1_core_ablation` check every unit path of the job before any trial runs. `t1_run` refuses a study whose paths
@@ -129,7 +160,7 @@ are too long even for a one-character condition label, and warns when a 48-chara
 | `tools/t1_block_accept.py rules|block|split` | rows through `t1_schedule_search.load_rows` | `results/t1/S/<experiment>/block_accept_<command>.json` of the first pool tree (`--out` overrides) |
 | `tools/t1_freeze.py` | rows through `t1_schedule_search.load_rows` | record: `results/t1/S/<experiment>/freeze/freeze_record.json` (+ `final_map.json`) of the first `--cls-pool` tree (`--record` overrides); the confirmation configs go to `--out-dir` (required: they are run inputs, kept under `configs/t1/`) |
 | `tools/t1_cbm_diagnostics.py <runs/t1/S/<experiment>>` | `manifest`, `case_statistics`, `history`, `case_maintenance` of every condition unit | prints the markdown; `--json`/`--md` (put them under `results/`) |
-| `tools/t1_confirm_report.py --runs <runs/t1/S/<experiment>>... --baselines <grid or evaluate output>...` | rows, manifests (source fingerprint, device), `retrieval_events`; baseline test metrics and predictions from the grid's evaluation trial units (the output's `completed.json`/`evaluation.json` says which; an output that records no `"study"` is refused) | `results/t1/S/<experiment>/confirm_report/` of the first `--runs` tree (`--out` overrides) |
+| `tools/t1_confirm_report.py --runs <runs/t1/S/<experiment>>... --baselines <grid or evaluate output>...` | rows, manifests (source fingerprints listed as provenance, device), `retrieval_events`; baseline test metrics and predictions from the grid's evaluation trial units (the output's `completed.json`/`evaluation.json` says which; an output that records no `"study"` is refused) | `results/t1/S/<experiment>/confirm_report/` of the first `--runs` tree (`--out` overrides) |
 | `tools/t1_confirm_audit.py <runs/t1/S/<experiment>>` | unit status, row rebuilt from `manifest` + `metrics` against `row`, unit path, fingerprints, `[done]` lines with `--logs`; stage units are checked for status only | prints; `--json` (put it under `results/`) |
 | `tools/t1_core_ablation.py CONFIG --study S [--summarize-only]` | every variant's trial units (`trial` records) in study S; baselines from the grid's evaluation trial units (a grid that records no `"study"` gives no baselines, with a warning) | `results/t1/S/core_ablation/summary.{md,csv,json}` (`--out` overrides; an `--out` whose `study.json` names another study is refused) |
 | `tools/t1_pre_topk_pilot.py`, `tools/t1_mask_joint_pilot.py` | their run units | `--out`, default `results/t1/...` |

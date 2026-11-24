@@ -2,13 +2,14 @@
 
 t1_grid_search.py gives each (dataset, family) job one worker and fits its trials one after
 another, so cores sit idle when a few slow jobs remain. This tool fits the same trials with the
-grid's own ``run_trial`` (same run units, config and source hash), several at a time, stage by stage:
+grid's own ``run_trial`` (same run units and config), several at a time, stage by stage:
 every screen trial; then the refit of the finalists that the grid's ``rank_candidates`` picks from
 those trials; then the evaluation of the winner it picks from the refits. Afterwards rerun the
 grid's full command unchanged: it reads every complete trial back and writes completed.json itself.
 
-All grid logic is loaded from ``--grid-repo``, the checkout the grid was started from, whose
-source fingerprint must equal the grid's study.json. The grid must record its trials as run units
+All grid logic is loaded from ``--grid-repo`` (default: this checkout). Its source fingerprint may differ from the
+grid's study.json (owner's order 2026-11-23: same configuration, not same code); each trial records the source that
+fitted it, and trials recorded under another source are reused as they are. The grid must record its trials as run units
 (``--study S``, so its study.json holds ``"study": S``, and the checkout's ``run_trial`` takes ``study``); the
 prefill fits the trials into the same units and reads the complete units' ``trial`` records. Grids that wrote
 trial files (receipts) are refused. Stop the grid's own run on these jobs first.
@@ -58,13 +59,12 @@ def deterministic_requested():
 
 
 def load_study(gs, repo, out):
-    """The grid's frozen study, refused unless ``repo`` is the source and setting it was started with."""
+    """The grid's frozen study, refused unless it is consistent and was started with this determinism setting. The
+    source fingerprint of ``repo`` is not compared: it is provenance, not identity."""
     frozen = json.loads((Path(out) / "study.json").read_text())
     study = dict(frozen["configuration"])
     if gs.config_id(study) != frozen["configuration_id"]:
         raise ValueError("study.json configuration does not match its configuration_id")
-    if gs.source_fingerprint(Path(repo)) != frozen["source_sha256"]:
-        raise ValueError(f"{repo} is not the source the grid was started from; use its pinned checkout")
     if frozen.get("deterministic_algorithms", False) != deterministic_requested():
         raise ValueError("NNKNN_DETERMINISTIC differs from the grid's study.json")
     study["source_sha256"] = frozen["source_sha256"]
@@ -96,7 +96,7 @@ def fit_trial(repo, study, ds, family, out, stage, cid, seed, test, run_study):
         if "study" not in inspect.signature(getattr(gs, "run_trial", lambda: None)).parameters:
             raise ValueError("the grid records run units but its pinned checkout's run_trial cannot")
         row = gs.run_trial(job, family, cid, grid[cid], stage, gs.split_loader(study, ds), seed, epochs, patience,
-                           study["source_sha256"], test, study=run_study)
+                           test, study=run_study)
     return row["status"]
 
 
@@ -114,10 +114,12 @@ def receipt(job, stage, cid, seed, run_study, config):
 def write_frozen(gs, path, obj):
     """Write a selection record as the grid would, before the stage that depends on it.
 
-    The grid rewrites the same dict when it is rerun. An existing file that holds anything else is refused.
+    The grid rewrites the same dict when it is rerun. An existing file that holds anything else is refused; its
+    ``source_sha256`` (provenance) is not compared.
     """
     if path.exists():
-        if json.loads(path.read_text()) != json.loads(json.dumps(obj)):
+        strip = lambda d: {k: v for k, v in d.items() if k != "source_sha256"}  # noqa: E731
+        if strip(json.loads(path.read_text())) != strip(json.loads(json.dumps(obj))):
             raise ValueError(f"{path} disagrees with the selection recomputed from the receipts")
         return
     gs.write_json(path, obj)
@@ -140,7 +142,7 @@ def next_trials(gs, study, out, ds, family, running=(), *, run_study):
     def config(stage, cid, seed):
         epochs, patience = ((study["screen_epochs"], study["screen_patience"]) if stage == "screen"
                             else (study["refit_epochs"], study["refit_patience"]))
-        return gs.trial_config(job, family, cid, grid[cid], stage, data, seed, epochs, patience, study["source_sha256"],
+        return gs.trial_config(job, family, cid, grid[cid], stage, data, seed, epochs, patience,
                                stage == "evaluation", torch_threads=study["torch_threads"])
 
     def receipts(stage, trials):
@@ -196,7 +198,8 @@ CUT_OFF = "cut off by a dead worker process"
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--grid-repo", required=True, help="checkout the grid was started from")
+    parser.add_argument("--grid-repo", default=str(Path(__file__).resolve().parents[1]),
+                        help="checkout whose grid code fits the trials (default: this one); any code state")
     parser.add_argument("--out", required=True, help="the grid's output directory")
     parser.add_argument("--jobs", nargs="+", required=True, help="TASK_KEY/FAMILY, longest first")
     parser.add_argument("--workers", type=int, default=4)

@@ -23,13 +23,14 @@ upper bound is reported alongside. Secondary analyses
 (ECE_T, flips, six-method ranks) use Benjamini-Hochberg; log loss and macro-F1 on churn
 and MIC are descriptive (recorded log losses; macro-F1 from the saved per-example test
 predictions). Writes ``report.json`` (every number, the final map and the run source
-fingerprints per task) and ``report.md``.
+fingerprints per task) and ``report.md``. Rows are matched by configuration, not by code (owner's order
+2026-11-23): rows from several source fingerprints are analysed together and the fingerprints are listed as
+provenance (``--allow-mixed-code`` is accepted and has no effect).
 
 Refused: a prereg file whose sha256 differs from --prereg-sha256; an analysed row or
 baseline entry on a seed outside the evaluation seeds (plus the small-task seeds for
 small tasks); a bare small-task name shared by several analysed tasks; a declared
-small task whose test set has 100 or more rows; duplicate rows that differ; rows from
-different run source fingerprints (unless --allow-mixed-code); with
+small task whose test set has 100 or more rows; duplicate rows that differ; with
 --expect-fingerprints, a row without a run manifest or whose source fingerprint starts
 with no prefix allowed for its task (an exact key entry, else an exact name entry, else
 the first matching glob; a pattern matching no task is a warning); a neural-CBR
@@ -355,9 +356,6 @@ def load_runs(ev: Evidence, dirs: list[Path], tasks: list[Task], cond: Condition
     if unexpected:
         raise SystemExit(f"{len(unexpected)} row(s) whose run source fingerprint --expect-fingerprints does not allow "
                          f"for their task, e.g. {unexpected[:5]}")
-    if len(fingerprints) > 1 and not allow_mixed_code:
-        raise SystemExit(f"rows come from {len(fingerprints)} run source fingerprints {sorted(fingerprints)}; "
-                         "pass --allow-mixed-code to analyse them together")
     if not any(c == cond.final for _, c in ev.rows):
         raise SystemExit(f"no rows for the final condition {cond.final}")
     for key, c in cond.final_map.items():  # a map entry that selects nothing leaves that task's F without evidence
@@ -1153,7 +1151,9 @@ def main(argv: list[str] | None = None) -> dict:
     ap.add_argument("--small-tasks", nargs="*", default=[], help="small-task names/keys, or a .json list")
     ap.add_argument("--n-test", help="fallback JSON {task key or name: n_test or {seed: n_test}}")
     ap.add_argument("--min-within-var", type=float, help="within-task variance floor (default: smallest positive)")
-    ap.add_argument("--allow-mixed-code", action="store_true")
+    ap.add_argument("--allow-mixed-code", action="store_true",
+                    help="no effect (kept for old command lines): rows of several code states are always analysed "
+                         "together, their source fingerprints are listed")
     ap.add_argument("--expect-fingerprints", nargs="+",
                     help="allowed run source fingerprint prefixes per task: .json or inline JSON {task, name or glob: "
                          "prefix or [prefixes]}, or pattern=prefix[,prefix...]; an exact key beats an exact name, "
