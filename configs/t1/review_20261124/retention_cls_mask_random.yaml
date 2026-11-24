@@ -1,0 +1,38 @@
+# Review 2026-11-24 (problems A6, A7): Phase 1 retention at K 0.5 (full_memory, random, provenance_only, bias_current)
+# from p1_retention_classification with the core
+# Top-5 masked as in _base.yaml and tie_break
+# seeded_random. Seeds 30-32 (S5's). Asks how much of provenance_only / bias_current is case-id
+# order and mask-induced zero exposure, and what the evidence rule does under all-case softmax.
+base: ../_base.yaml
+experiment: retention_cls_mask_random_20261124
+type: retention
+status: exploratory_review_20261124_retention
+seeds:
+- 30
+- 31
+- 32
+datasets:
+- name: iris
+  task_type: classification
+- name: wine
+  task_type: classification
+- name: breast_cancer
+  task_type: classification
+- name: balance
+  task_type: classification
+- name: digits
+  task_type: classification
+protocol:
+  finetune_epochs: 30
+  finetune_lr_scale: 0.1
+core:
+  pre_topk_mask: true
+retention:
+  tie_break: seeded_random
+K:
+- 0.5
+conditions:
+- policy: full_memory
+- policy: random
+- policy: provenance_only
+- policy: bias_current

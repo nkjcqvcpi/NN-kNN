@@ -1,0 +1,61 @@
+# Review 2026-11-24 (problem A2): pre_topk_long_20261121_a-f (12 datasets, seeds 70-72, epochs 400, patience 60)
+# with {'tau': 0.25} and everything else unchanged (bias_init_k stays 5). Asks whether 'all-case beats Top-5 at tau 1' is a
+# mask effect or an untuned K / tau effect. Run with tools/t1_pre_topk_pilot.py, one study per file.
+status: exploratory_review_20261124_pre_topk_confound
+seeds:
+- 70
+- 71
+- 72
+splits:
+  test_frac: 0.2
+  val_frac: 0.2
+core:
+  representation: raw
+  glocal_fw_set_num: 1
+  case_normalizer: softmax
+  tau: 0.25
+  top_k: 5
+  bias_init: knn_mean
+  bias_init_k: 5
+  lr_case: 0.01
+  lr_glocal: 0.01
+  lr_feature: 0.001
+  batch_size: 64
+  epochs: 400
+  patience: 60
+datasets:
+- name: linear_regression
+  task_type: regression
+  generator:
+    n: 400
+    d: 5
+    noise_scale: 1.0
+- name: digits
+  task_type: classification
+- name: yacht
+  task_type: regression
+- name: student_performance
+  task_type: regression
+- name: iris
+  task_type: classification
+- name: airfoil
+  task_type: regression
+- name: energy_efficiency
+  task_type: regression
+- name: wine
+  task_type: classification
+- name: balance
+  task_type: classification
+- name: mixture_two_linear_models
+  task_type: regression
+  generator:
+    n: 400
+    d: 4
+    noise_scale: 0.5
+- name: breast_cancer
+  task_type: classification
+- name: redundant_features
+  task_type: regression
+  generator:
+    n: 400
+    noise_scale: 0.1

@@ -11,6 +11,11 @@ Writes ``summary.csv`` (mean, sd, n, 95% t-interval per dataset x condition x me
 and, with ``--reference``, ``paired_vs_<reference>.csv`` (per-seed paired differences,
 mean difference, 95% t-interval, paired t-test p, number of seeds where the condition
 beats the reference). Conclusions are left to the reader; nothing is hard-coded.
+
+"Beats" follows each metric's direction (``metric_lower_is_better``): error, loss, rmse/mae/mse, nll, brier, drift
+and churn metrics are lower-is-better, every other metric higher-is-better; ``--lower-is-better M`` /
+``--higher-is-better M`` override it for metric M. Until 2026-11-24 ``seeds_better`` always counted d > 0, which
+inverted the counts for lower-is-better metrics (``mean_diff`` was always right).
 """
 
 from __future__ import annotations
@@ -37,12 +42,28 @@ def t_interval(x: np.ndarray) -> tuple[float, float]:
     return (m - h, m + h)
 
 
+LOWER_IS_BETTER_TOKENS = ("error", "loss", "rmse", "mae", "mse", "nll", "brier", "drift", "churn", "regret")
+
+
+def metric_lower_is_better(metric: str, lower: list[str] | None = None, higher: list[str] | None = None) -> bool:
+    """Direction of a metric: True when a smaller value is better (explicit overrides first, then the name)."""
+    if metric in (higher or []):
+        return False
+    if metric in (lower or []):
+        return True
+    name = metric.lower()
+    return any(tok in name for tok in LOWER_IS_BETTER_TOKENS)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("exp_dir", help="run-unit tree of one experiment: NN-KNN/runs/t1/<study>/<experiment>")
     ap.add_argument("--metric", action="append", required=True)
     ap.add_argument("--reference", default=None, help="condition label used as the paired reference")
-    ap.add_argument("--higher-is-better", action="store_true", default=True)
+    ap.add_argument("--lower-is-better", action="append", default=[], metavar="METRIC",
+                    help="treat METRIC as lower-is-better (default: from its name, see metric_lower_is_better)")
+    ap.add_argument("--higher-is-better", action="append", default=[], metavar="METRIC",
+                    help="treat METRIC as higher-is-better")
     ap.add_argument("--out", default=None, help="output directory (default: <worktree>/results/t1/<study>/<experiment>)")
     args = ap.parse_args()
     src = require_unit_tree(args.exp_dir)
@@ -80,7 +101,8 @@ def main() -> None:
                     d = gc.loc[seeds, m].to_numpy(float) - ref.loc[seeds, m].to_numpy(float)
                     lo, hi = t_interval(d)
                     p = float(stats.ttest_1samp(d, 0.0).pvalue) if np.std(d) > 0 else float("nan")
-                    pr.append({"dataset": ds, "condition": cond, "reference": args.reference, "metric": m, "n_paired": len(seeds), "mean_diff": d.mean(), "ci95_lo": lo, "ci95_hi": hi, "paired_t_p": p, "seeds_better": int((d > 0).sum()), "seeds_worse": int((d < 0).sum())})
+                    gain = -d if metric_lower_is_better(m, args.lower_is_better, args.higher_is_better) else d
+                    pr.append({"dataset": ds, "condition": cond, "reference": args.reference, "metric": m, "n_paired": len(seeds), "mean_diff": d.mean(), "ci95_lo": lo, "ci95_hi": hi, "paired_t_p": p, "seeds_better": int((gain > 0).sum()), "seeds_worse": int((gain < 0).sum())})
         pdf = pd.DataFrame(pr)
         pdf.to_csv(exp / f"paired_vs_{args.reference}.csv", index=False)
         print()
