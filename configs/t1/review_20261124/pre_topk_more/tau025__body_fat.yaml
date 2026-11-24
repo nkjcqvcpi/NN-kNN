@@ -1,0 +1,29 @@
+# Review 2026-11-24 batch 3 (problem A2): pre_topk_long_20261121_a (seeds 70-72, epochs 400, patience 60, Top-5 /
+# tau 1 core) with {'tau': 0.25} on regression body_fat only (no row cap,
+# as in confirm_final_20261013 for this task). With review_ktau and pre_topk_heavy this covers every confirmation task
+# the pilot can load. Study review_pretopkheavy_tau025_r760 (no dataset name overlap); all variants of a dataset on one host.
+status: exploratory_review_20261124_pre_topk_confound_more
+seeds:
+- 70
+- 71
+- 72
+splits:
+  test_frac: 0.2
+  val_frac: 0.2
+core:
+  representation: raw
+  glocal_fw_set_num: 1
+  case_normalizer: softmax
+  tau: 0.25
+  top_k: 5
+  bias_init: knn_mean
+  bias_init_k: 5
+  lr_case: 0.01
+  lr_glocal: 0.01
+  lr_feature: 0.001
+  batch_size: 64
+  epochs: 400
+  patience: 60
+datasets:
+- name: body_fat
+  task_type: regression

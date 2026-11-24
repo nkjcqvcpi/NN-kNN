@@ -1,0 +1,193 @@
+# Review 2026-11-24 batch 3 (problems A4, A5): review_20261124/core_ablation_allcase.yaml (16 variants on an all-case base) on the 7 tasks of grid_full_20261009 that the 13-task core
+# ablation left out: iris, anneal (tabarena_363614), airfoil, body_fat, diabets, abalone, regression wine. Only status,
+# datasets and grid_winners differ from the source (same experiment name, variants, epochs, evaluation seeds 30-32);
+# winners copied from <grid>/<task>/nnknn/selection.json (q-lab copy; sha256 is that of the selection file). The masked
+# and all-case files of a task run on the same host; the study is the source's (core_ablation_r760 /
+# review_coreabl_allcase_r760), whose units are keyed by task, so nothing collides.
+status: exploratory_review_20261124_core_ablation_allcase_more
+experiment: core_ablation_allcase_20261124
+grid: results/t1_pi20260920/grid_full_20261009
+evaluation_seeds:
+- 30
+- 31
+- 32
+epochs: 300
+patience: 40
+torch_threads: 1
+splits:
+  test_frac: 0.2
+  val_frac: 0.2
+  maint_frac: 0.0
+  reg_cohort_bins: 5
+datasets:
+- name: iris
+  task_type: classification
+  cost: 2
+- name: tabarena_363614
+  task_type: classification
+  cost: 5
+  display: anneal
+- name: airfoil
+  task_type: regression
+  cost: 15
+- name: body_fat
+  task_type: regression
+  cost: 2
+- name: diabets
+  task_type: regression
+  cost: 3
+- name: abalone
+  task_type: regression
+  cost: 60
+- name: wine
+  task_type: regression
+  cost: 100
+variants:
+- name: allcase_base
+  override:
+    pre_topk_mask: false
+- name: allcase_tau0.1
+  override:
+    pre_topk_mask: false
+    tau: 0.1
+- name: allcase_tau0.25
+  override:
+    pre_topk_mask: false
+    tau: 0.25
+- name: allcase_tau0.5
+  override:
+    pre_topk_mask: false
+    tau: 0.5
+- name: allcase_tau1.0
+  override:
+    pre_topk_mask: false
+    tau: 1.0
+- name: allcase_tau2.0
+  override:
+    pre_topk_mask: false
+    tau: 2.0
+- name: allcase_lr0.003
+  override:
+    pre_topk_mask: false
+    lr_case: 0.003
+- name: allcase_lr0.03
+  override:
+    pre_topk_mask: false
+    lr_case: 0.03
+- name: allcase_frozen_bias
+  override:
+    pre_topk_mask: false
+    lr_case: 0.0
+    lr_glocal: base
+    lr_feature: base
+- name: allcase_frozen_feature_weights
+  override:
+    pre_topk_mask: false
+    lr_case: base
+    lr_glocal: 0.0
+    lr_feature: base
+- name: allcase_soft_kernel_tau0.1
+  override:
+    pre_topk_mask: false
+    lr_case: 0.0
+    lr_glocal: 0.0
+    lr_feature: 0.0
+    tau: 0.1
+- name: allcase_soft_kernel_tau0.25
+  override:
+    pre_topk_mask: false
+    lr_case: 0.0
+    lr_glocal: 0.0
+    lr_feature: 0.0
+    tau: 0.25
+- name: allcase_soft_kernel_tau0.5
+  override:
+    pre_topk_mask: false
+    lr_case: 0.0
+    lr_glocal: 0.0
+    lr_feature: 0.0
+    tau: 0.5
+- name: allcase_soft_kernel_tau1.0
+  override:
+    pre_topk_mask: false
+    lr_case: 0.0
+    lr_glocal: 0.0
+    lr_feature: 0.0
+    tau: 1.0
+- name: allcase_mlp128_64_lrf_equal
+  override:
+    pre_topk_mask: false
+    representation: mlp
+    mlp_dims:
+    - 128
+    - 64
+    lr_feature: =lr_case
+- name: allcase_long
+  override:
+    pre_topk_mask: false
+    epochs: 1000
+    patience: 100
+grid_winners:
+  classification__iris:
+    candidate_id: 9f6524b68be0b6e7
+    parameters:
+      representation: raw
+      top_k: 3
+      lr_case: 0.01
+      glocal_fw_set_num: 4
+      tau: 1.0
+    sha256: f60a237029364ad31fa663489e1b51cb2d1ab6b6fadf5204236a26265ab353cd
+  classification__tabarena_363614:
+    candidate_id: 79be138421623dcf
+    parameters:
+      representation: mlp
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 4
+      tau: 0.5
+    sha256: eb846082e57c41e9c5f2470a587c181e4443622cd1062a8639cb2b9a4cfb8b57
+  regression__airfoil:
+    candidate_id: 0a343ea25204a673
+    parameters:
+      representation: mlp
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 4
+      tau: 1.0
+    sha256: e77b9b896b70161ae012068e922959b37d2c7fc1ec5361f98a5e4ae785690884
+  regression__body_fat:
+    candidate_id: e447bf3607f00eef
+    parameters:
+      representation: raw
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 4
+      tau: 1.0
+    sha256: dfcd16262828a5b985bc84a2dc715d63fb52b12ec4cd52b7da0f2da63cc7d6b4
+  regression__diabets:
+    candidate_id: e447bf3607f00eef
+    parameters:
+      representation: raw
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 4
+      tau: 1.0
+    sha256: dfcd16262828a5b985bc84a2dc715d63fb52b12ec4cd52b7da0f2da63cc7d6b4
+  regression__abalone:
+    candidate_id: 79be138421623dcf
+    parameters:
+      representation: mlp
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 4
+      tau: 0.5
+    sha256: eb846082e57c41e9c5f2470a587c181e4443622cd1062a8639cb2b9a4cfb8b57
+  regression__wine:
+    candidate_id: ce9562187fd7d8b9
+    parameters:
+      representation: raw
+      top_k: 10
+      lr_case: 0.01
+      glocal_fw_set_num: 1
+      tau: 0.5
+    sha256: 62bf06b8d9854a9e74226135483cf55ddea2104723268915b66980b80766f0aa
