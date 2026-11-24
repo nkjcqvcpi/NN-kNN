@@ -2,6 +2,7 @@ import concurrent.futures
 import json
 import shutil
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import torch
@@ -91,6 +92,10 @@ def test_another_source_is_accepted_an_unknown_job_refused(tmp_path, monkeypatch
     monkeypatch.setenv("NNKNN_DETERMINISTIC", "1")
     with pytest.raises(ValueError, match="NNKNN_DETERMINISTIC"):
         prefill.main(["--grid-repo", str(REPO), "--out", str(tmp_path), "--jobs", f"{KEY}/knn"])
+    monkeypatch.delenv("NNKNN_DETERMINISTIC")
+    old_code = SimpleNamespace(run_trial=lambda job, source, test=False, *, study: None)
+    with pytest.raises(ValueError, match="still takes the source"):  # a checkout whose run_trial has other arguments
+        prefill.load_study(old_code, REPO, tmp_path)
     path = tmp_path / "selection.json"  # a selection recorded under another source is the same selection
     path.write_text(json.dumps(dict(candidate_id="c", source_sha256="old")))
     prefill.write_frozen(gs, path, dict(candidate_id="c", source_sha256="new"))

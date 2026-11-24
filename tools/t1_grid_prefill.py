@@ -61,6 +61,10 @@ def deterministic_requested():
 def load_study(gs, repo, out):
     """The grid's frozen study, refused unless it is consistent and was started with this determinism setting. The
     source fingerprint of ``repo`` is not compared: it is provenance, not identity."""
+    import inspect
+    if "source" in inspect.signature(gs.run_trial).parameters:  # the grid code before 2026-11-23: other arguments
+        raise ValueError(f"{repo}: its run_trial still takes the source fingerprint; use a checkout whose trial "
+                         "config holds no source (identity is the configuration), e.g. this one (omit --grid-repo)")
     frozen = json.loads((Path(out) / "study.json").read_text())
     study = dict(frozen["configuration"])
     if gs.config_id(study) != frozen["configuration_id"]:
