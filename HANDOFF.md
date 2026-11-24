@@ -46,6 +46,14 @@ Branch `neural-cbr` (`neural-cbr/`): shared NN-kNN core + T1. Current scope: `to
   `docs/T1_RUN_RECORDS.md`, "Identity".
 - Tests: the Windows-only exact golden became Linux CPU goldens (`tests/goldens/t1_tuning_toy_linux_cpu.json`) checked
   with relative tolerance 1e-5 and equal best epochs.
+- Checked on r760 (2026-11-24, code a5286e7 in a temporary worktree, run root = a copy of real units): 80 grid and 30
+  evaluate trial units of `baselines_r760`, 50 `plan_full_r760` units (the `_core` stage included), 64 screen trials of
+  `grid_bigreg_r760` and 4 `confirm_repro_r760` units (the `_core__tuned` stage included), all recorded by 3ab1549
+  (source 281f14cc), are found complete; the matching grid, evaluate and `t1_run` commands fit nothing; a changed
+  config raises `ConfigMismatchError`; a unit removed from the copy is trained again alone (old stage loaded) with the
+  same row, and `t1_summarize` and the evaluate read-back give the same output over old and new units. An interrupted
+  grid trial has no checkpoint: it starts again in its unit. `t1_grid_prefill` refuses a `--grid-repo` from before
+  this change. The supervisor on r760 (`logs/t1par/t1_supervisor.py`) needs no change.
 
 ## History
 

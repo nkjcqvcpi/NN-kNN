@@ -124,7 +124,8 @@ dataset entry, runtime) still raises `ConfigMismatchError`.
   setting and study match; an evaluate output (`evaluate.json`) when its grid and grid configuration match. Another
   source fingerprint is recorded (each evaluate invocation holds its `source_sha256`), not refused. The grid's
   `selection.json` keeps the source of the grid's `study.json`.
-- `t1_grid_prefill`: `--grid-repo` (default: this checkout) may be any code state; `selection.json` and
+- `t1_grid_prefill`: `--grid-repo` (default: this checkout) may be any code state whose `run_trial` takes no source
+  argument (a checkout from before this change is refused before anything is fitted); `selection.json` and
   `shortlist.json` are compared without their `source_sha256`.
 - `t1_confirm_report` analyses rows of several source fingerprints together and lists them per task
   (`--allow-mixed-code` has no effect); `--expect-fingerprints` remains an opt-in check.
