@@ -1,0 +1,34 @@
+# Review 2026-11-24 batch 3 (problems A6, A7): retention_reg_allcase_random.yaml unchanged except experiment, status and
+# the datasets: body_fat, diabets, tabarena_363625, tabarena_363675 (the confirmation tasks that no retention review config covers;
+# no row cap, all are small). The four configs of a task type run on one host for each dataset.
+base: ../_base.yaml
+experiment: retention_reg_allcase_random_more_20261124
+type: retention
+status: exploratory_review_20261124_retention_more
+seeds:
+- 30
+- 31
+- 32
+datasets:
+- name: body_fat
+  task_type: regression
+- name: diabets
+  task_type: regression
+- name: tabarena_363625
+  task_type: regression
+- name: tabarena_363675
+  task_type: regression
+protocol:
+  finetune_epochs: 30
+  finetune_lr_scale: 0.1
+core:
+  pre_topk_mask: false
+retention:
+  tie_break: seeded_random
+K:
+- 0.5
+conditions:
+- policy: full_memory
+- policy: random
+- policy: provenance_only
+- policy: bias_current
