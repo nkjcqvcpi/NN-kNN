@@ -1,0 +1,41 @@
+# Review 2026-11-24 batch 2 (problems A6, A7, heavier datasets): retention_cls_allcase_random.yaml unchanged except
+# experiment, status and the datasets: tabarena_363623, tabarena_363681, tabarena_363702, tabarena_363704, tabarena_363711, training capped at 3000 rows
+# (QSAR 363697 excluded). All eight retention configs of a dataset run on one host.
+base: ../_base.yaml
+experiment: retention_cls_allcase_random_heavy_20261124
+type: retention
+status: exploratory_review_20261124_retention_heavy
+seeds:
+- 30
+- 31
+- 32
+datasets:
+- name: tabarena_363623
+  task_type: classification
+  max_train: 3000
+- name: tabarena_363681
+  task_type: classification
+  max_train: 3000
+- name: tabarena_363702
+  task_type: classification
+  max_train: 3000
+- name: tabarena_363704
+  task_type: classification
+  max_train: 3000
+- name: tabarena_363711
+  task_type: classification
+  max_train: 3000
+protocol:
+  finetune_epochs: 30
+  finetune_lr_scale: 0.1
+core:
+  pre_topk_mask: false
+retention:
+  tie_break: seeded_random
+K:
+- 0.5
+conditions:
+- policy: full_memory
+- policy: random
+- policy: provenance_only
+- policy: bias_current
