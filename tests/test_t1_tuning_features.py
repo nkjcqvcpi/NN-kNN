@@ -3,13 +3,11 @@
 Retrieval guard, error-based early stopping, score scale, adapter weight decay
 and dropout, validation-fitted temperature, fixed-metric input locality, the
 runner's ``splits.max_train`` fallback and CPU-only checkpoints. Every option
-defaults to the earlier behavior; the first test pins that bit for bit.
+defaults to the earlier behavior; the first test pins that against goldens recorded on Linux CPU (relative 1e-5).
 """
 import copy
-import hashlib
 import json
 import math
-import sys
 from collections import OrderedDict
 from pathlib import Path
 from types import SimpleNamespace
@@ -129,20 +127,32 @@ def one_thread():
     torch.set_num_threads(threads)
 
 
-# Captured with the pre-change source (commit 6bc0428), torch 2.14.0 on CPU, one thread:
-# SHA-256 of json.dumps(outputs, sort_keys=True) plus readable headline values.
-PRE_CHANGE_DIGEST = "75eac8233eeb38c61ac7f18567e82db1742e9aaa434decc5075cffb881a15410"
-PRE_CHANGE_HEADLINES = {
-    "sync_cls_alternating": (4, 1.0877645015716553), "sync_cls_independent": (6, 1.0973247289657593),
-    "sync_cls_joint_mlp_logit": (6, 0.38731637597084045), "sync_reg_joint": (6, 0.2165873944759369),
-    "sync_reg_alternating": (8, 0.23687344789505005), "reuse_scores": (12, 0.75), "reuse_logit": (1, 0.8333333134651184),
-    "reuse_regression": (12, 0.33790048132837025)}
+# Goldens recorded on Linux (r760, 2026-11-23: torch 2.15.0 CPU, numpy 2.5.5, Python 3.14.10, one thread) from the
+# code of neural-cbr 8dbe48e, whose defaults reproduce the pre-change source (commit 6bc0428; same best epochs, headline
+# values within 1.2e-7 of the 2026-10 Windows goldens). The same outputs came out bit for bit under the default glibc
+# allocator and with MALLOC_ARENA_MAX=1, a 32 MB mmap threshold, glibc.malloc.hugetlb=1 and the glibc.malloc tunables.
+# The owner does not require bitwise identity (2026-11-23), and another allocator or BLAS build may change the last
+# digits, so the check is: equal best epochs and accuracies' supports, every other number within a relative 1e-5.
+GOLDEN = Path(__file__).with_name("goldens") / "t1_tuning_toy_linux_cpu.json"
+REL_TOL, ABS_TOL = 1e-5, 1e-7
 
 
-@pytest.mark.skipif(sys.platform != "win32", reason=(
-    "float goldens recorded with the Windows torch build; Linux CPU differs in the last digits (r760, 2026-11-23: "
-    "equal best epochs, 4 of 8 headline values differ by <1e-6), so the bit-exact check runs on win32 only"))
-def test_defaults_reproduce_pre_change_toy_outputs_exactly(one_thread):
+def assert_close(got, want, path="out"):
+    if isinstance(want, dict):
+        assert isinstance(got, dict) and sorted(got) == sorted(want), path
+        for k in want:
+            assert_close(got[k], want[k], f"{path}.{k}")
+    elif isinstance(want, list):
+        assert isinstance(got, list) and len(got) == len(want), path
+        for i, (g, w) in enumerate(zip(got, want)):
+            assert_close(g, w, f"{path}[{i}]")
+    elif isinstance(want, bool) or isinstance(want, int) or want is None:
+        assert got == want, f"{path}: {got!r} != {want!r}"
+    else:
+        assert math.isclose(got, want, rel_tol=REL_TOL, abs_tol=ABS_TOL), f"{path}: {got!r} vs golden {want!r}"
+
+
+def test_defaults_reproduce_the_recorded_toy_outputs(one_thread):
     out = {
         "sync_cls_alternating": sync_scenario("classification", "alternating_rr"),
         "sync_cls_independent": sync_scenario("classification", "independent", patience=1),
@@ -154,11 +164,9 @@ def test_defaults_reproduce_pre_change_toy_outputs_exactly(one_thread):
         "reuse_logit": reuse_scenario("logit_residual"),
         "reuse_regression": regression_reuse_scenario(),
     }
-    headlines = {k: (v["best_epoch"], v.get("best_val_L_post", v.get("accuracy_post", v.get("rmse_post"))))
-                 for k, v in out.items()}
-    assert headlines == PRE_CHANGE_HEADLINES
-    text = json.dumps(out, sort_keys=True)
-    assert hashlib.sha256(text.encode()).hexdigest() == PRE_CHANGE_DIGEST, text
+    golden = json.loads(GOLDEN.read_text(encoding="utf-8"))
+    assert {k: v["best_epoch"] for k, v in out.items()} == {k: v["best_epoch"] for k, v in golden.items()}
+    assert_close(json.loads(json.dumps(out)), golden)
 
 
 # --------------------------------------------------------------------------- synchronization
