@@ -1,0 +1,30 @@
+# Review 2026-11-24 batch 2 (problem A2, heavier datasets): pre_topk_long_20261121_a (seeds 70-72, epochs 400,
+# patience 60, Top-5 / tau 1 core) with {'top_k': 10} on classification tabarena_363623 only
+# (training capped at 3000 rows as in confirm_final_20261013; regression uses the pilot own split, no cap).
+# One study per variant (review_pretopkheavy_k10_r760); all variants of a dataset run on one host.
+status: exploratory_review_20261124_pre_topk_confound_heavy
+seeds:
+- 70
+- 71
+- 72
+splits:
+  test_frac: 0.2
+  val_frac: 0.2
+  max_train: 3000
+core:
+  representation: raw
+  glocal_fw_set_num: 1
+  case_normalizer: softmax
+  tau: 1.0
+  top_k: 10
+  bias_init: knn_mean
+  bias_init_k: 5
+  lr_case: 0.01
+  lr_glocal: 0.01
+  lr_feature: 0.001
+  batch_size: 64
+  epochs: 400
+  patience: 60
+datasets:
+- name: tabarena_363623
+  task_type: classification
