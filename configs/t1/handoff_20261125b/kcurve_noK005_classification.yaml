@@ -1,0 +1,259 @@
+# Handoff 2026-11-25b (gap list item 8, fuller quality-versus-memory curve). The grid values in this file are exploratory suggestions from the 2026-11-25 gap list, not PI decisions.
+# Answers T1_FULL_CYCLE_NNKNN standard 2: "reporting the complete task-quality-versus-memory curve rather than one favorable
+# operating point" (plan: "fixed-K selection curves").
+# plan_full_r760 retention__classification unchanged (tuned cores, masked core, finetune 30 at 0.1, the 8 simple policies) except
+# experiment, status, seeds 30-32 and K [0.1, 0.33, 0.9] (plan_full 0.2/0.5/0.75, so together 0.05-0.9). These tasks leave out K 0.05: round(0.05 n) is below the 2-per-cohort coverage floors (min_per_cohort 2), so select_active_set would raise.
+# Hosts (one per dataset, those of the plan_full retention rows): q-lab: balance, breast_cancer, digits, tabarena_363614, tabarena_363626; xps8960: iris, wine, zebra, zebra_special, synthetic_diag. Study handoff_kcurve_r760.
+status: exploratory_handoff_20261125b
+specification_commit: cd77277600841438d98ac5793867da28b8ec6dd0
+pipeline_revision: pi_20260920_v2
+torch_threads: 1
+splits:
+  test_frac: 0.2
+  val_frac: 0.2
+  maint_frac: 0.0
+  reg_cohort_bins: 5
+core:
+  representation: raw
+  glocal_fw_set_num: 1
+  tau: 1.0
+  top_k: 5
+  pre_topk_mask: true
+  case_normalizer: softmax
+  lr_case: 0.01
+  lr_glocal: 0.01
+  lr_feature: 0.001
+  epochs: 300
+  patience: 40
+  batch_size: 32
+  bias_init: knn_mean
+  bias_init_k: 5
+statistics:
+  source: train_loo
+  accumulation: per_checkpoint
+  counterfactual: false
+  smoothing: 1.0
+  min_retrieval_count: 2
+  min_activation_mass: 0.1
+  bias_normalization: within_cohort_percentile
+  bias_source: current
+  regression_success_tolerance: 0.5
+retention:
+  policy: provenance_only
+  min_per_cohort: 2
+  protect_rare_cohort_below: 0
+  boundary_protect_fraction: 0.0
+  activation_threshold: 0.05
+  zero_reachability: zero
+  cache_activation_threshold: 0.05
+  allowed_loss_increase: 0.05
+experiment: kcurve_noK005__classification
+type: retention
+seeds:
+- 30
+- 31
+- 32
+datasets:
+- name: iris
+  task_type: classification
+- name: wine
+  task_type: classification
+- name: zebra
+  task_type: classification
+protocol:
+  finetune_epochs: 30
+  finetune_lr_scale: 0.1
+K:
+- 0.1
+- 0.33
+- 0.9
+conditions:
+- policy: full_memory
+- policy: random
+- policy: stratified
+- policy: bias_current
+- policy: provenance_only
+- policy: bias_normalized
+- policy: kcenter
+- policy: coverage_reachability
+core_by_dataset:
+  classification__iris:
+    representation: raw
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__wine:
+    representation: mlp
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__breast_cancer:
+    representation: raw
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__balance:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__digits:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__zebra:
+    representation: raw
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__zebra_special:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__energy_efficiency:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__yacht:
+    representation: raw
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__airfoil:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__student_performance:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__abalone:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__body_fat:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__diabets:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__car:
+    representation: raw
+    top_k: 3
+    lr_case: 0.001
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.001
+    lr_feature: 0.0001
+  regression__wine:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__tabarena_363614:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__tabarena_363626:
+    representation: raw
+    top_k: 10
+    lr_case: 0.001
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.001
+    lr_feature: 0.0001
+  regression__tabarena_363625:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__tabarena_363675:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
