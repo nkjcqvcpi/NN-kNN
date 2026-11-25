@@ -1,0 +1,31 @@
+# Handoff 2026-11-25 (E2): t12_revise_synthetic.yaml with the data of plan_full_r760 revision_stress synthetic_reference
+# (generator independent_v1, same name, seeds 30-32), so its _core stage is the same core as those rows (same _base core:
+# 300 epochs, patience 40, untuned). Methods, budgets 10/25/50/75, retrain 30 epochs and lr scale 0.1 are t12's.
+# matched_training_control is on as in revision_stress (the MC control runs under a forked RNG; M0/M1/M2 are unchanged).
+# Run on r760 (revision_stress rows: host cs-peng-research). Study handoff_revise_r760.
+base: ../t12_revise_synthetic.yaml
+experiment: t12_revise_synthetic_iv1
+status: exploratory_handoff_20261125
+seeds:
+- 30
+- 31
+- 32
+datasets:
+- name: synthetic_reference
+  task_type: classification
+  synthetic:
+    generator_version: independent_v1
+revise:
+  budgets:
+  - 10
+  - 25
+  - 50
+  - 75
+  methods:
+  - provenance_only
+  - bias_only
+  - random
+  - oracle
+  retrain_epochs: 30
+  retrain_lr_scale: 0.1
+  matched_training_control: true
