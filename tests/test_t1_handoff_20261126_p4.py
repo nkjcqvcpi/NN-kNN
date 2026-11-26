@@ -317,8 +317,9 @@ def test_pack_p4_tabpfn_configs():
             covered.add((f"{d['task_type']}__{d['name']}", cfg["evaluation_seeds"][0]))
     confirm = {p.stem for p in (REPO / "configs/t1/confirm_final_20261013").glob("*.yaml")} - {"regression__tabarena_363697"}
     tasks = {k for k, _ in covered}
-    assert tasks == confirm - {"regression__car", "regression__wine"} and len(tasks) == 27
-    assert len(covered) == 27 * 3
+    infeasible = {"classification__tabarena_363681", "regression__tabarena_363705", "regression__tabarena_363631"}
+    assert tasks == confirm - {"regression__car", "regression__wine"} - infeasible and len(tasks) == 24
+    assert len(covered) == 24 * 3
 
 
 def test_pack_p4_shift_configs_differ_from_their_sources_only_in_declared_keys():

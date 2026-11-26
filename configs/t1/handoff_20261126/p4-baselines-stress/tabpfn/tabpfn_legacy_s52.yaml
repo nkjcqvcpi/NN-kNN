@@ -8,6 +8,7 @@
 # ignore_pretraining_limits true, random_state = seed, no HPO (selection: fixed, one candidate), regime at most 3000
 # training rows, 500 features, 10 classes; refit_epochs / refit_patience 0 are recorded in each trial's config and unused
 # (nothing is trained). Excluded (training stream above 3000 rows): regression__car, regression__wine.
+#
 # Study handoff_tabpfn_r760; host = the task's p1 baselines host (job lists in /var/tmp/nnknn-handoff1126/p4-baselines-stress).
 status: exploratory_handoff_20261126_p4_tabpfn
 experiment: tabpfn_legacy_20261126

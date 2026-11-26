@@ -7,7 +7,8 @@
 # (the Nature 2025 model; later versions are gated), the pinned default v2 checkpoints, n_estimators 4, CPU, one thread,
 # ignore_pretraining_limits true, random_state = seed, no HPO (selection: fixed, one candidate), regime at most 3000
 # training rows, 500 features, 10 classes; refit_epochs / refit_patience 0 are recorded in each trial's config and unused
-# (nothing is trained). Every task of this group is inside the regime (training stream capped at 3000 rows).
+# (nothing is trained). Training streams are capped at 3000 rows.
+# Excluded as infeasible on CPU (estimated > 15 CPU-h per seed, large validation/test streams): classification__tabarena_363681, regression__tabarena_363631, regression__tabarena_363705.
 # Study handoff_tabpfn_r760; host = the task's p1 baselines host (job lists in /var/tmp/nnknn-handoff1126/p4-baselines-stress).
 status: exploratory_handoff_20261126_p4_tabpfn
 experiment: tabpfn_transfer_20261126
@@ -33,24 +34,15 @@ datasets:
 - name: tabarena_363704
   task_type: classification
   display: students_dropout_and_academic_success
-- name: tabarena_363681
-  task_type: classification
-  display: in_vehicle_coupon_recommendation
 - name: tabarena_363623
   task_type: classification
   display: churn
 - name: tabarena_363711
   task_type: classification
   display: MIC
-- name: tabarena_363705
-  task_type: regression
-  display: superconductivity
 - name: tabarena_363686
   task_type: regression
   display: miami_housing
-- name: tabarena_363631
-  task_type: regression
-  display: diamonds
 - name: tabarena_363693
   task_type: regression
   display: physiochemical_protein
