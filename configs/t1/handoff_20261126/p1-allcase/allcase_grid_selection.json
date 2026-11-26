@@ -1,0 +1,935 @@
+{
+ "study": "review_gridallcase_r760",
+ "selection_stream": "development_validation_only (seeds 20, 21)",
+ "test_stream_used": false,
+ "tasks": {
+  "classification__balance": {
+   "candidate_id": "1f47071a1a1f05e1",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 1.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 1.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__balance/classification__balance/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__breast_cancer": {
+   "candidate_id": "d3f7d8f97e36aab5",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 2.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 2.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__breast_cancer/classification__breast_cancer/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__digits": {
+   "candidate_id": "9f0508df47360526",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 1.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 1.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__digits/classification__digits/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__iris": {
+   "candidate_id": "d3f7d8f97e36aab5",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 2.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 2.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__iris/classification__iris/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__tabarena_363614": {
+   "candidate_id": "9d38084b1b101794",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.001,
+    "glocal_fw_set_num": 4,
+    "tau": 0.25
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.001,
+    "glocal_fw_set_num": 4,
+    "tau": 0.25,
+    "batch_size": 64,
+    "lr_glocal": 0.001,
+    "lr_feature": 0.0001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__tabarena_363614/classification__tabarena_363614/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__tabarena_363623": {
+   "candidate_id": "e198ddb9621fa522",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__tabarena_363623/classification__tabarena_363623/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__tabarena_363626": {
+   "candidate_id": "4c51e23e092310b1",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 2.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 2.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__tabarena_363626/classification__tabarena_363626/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__tabarena_363681": {
+   "candidate_id": "e5d5a755c5565fe3",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.25
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.25,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__tabarena_363681/classification__tabarena_363681/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__tabarena_363702": {
+   "candidate_id": "74c0f7a9f94d4a3d",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__tabarena_363702/classification__tabarena_363702/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__tabarena_363704": {
+   "candidate_id": "6fe09c36d263e39d",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__tabarena_363704/classification__tabarena_363704/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__tabarena_363711": {
+   "candidate_id": "9f0508df47360526",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 1.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 1.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__tabarena_363711/classification__tabarena_363711/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__wine": {
+   "candidate_id": "1f47071a1a1f05e1",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 1.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 1.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__wine/classification__wine/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__zebra": {
+   "candidate_id": "74c0f7a9f94d4a3d",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__zebra/classification__zebra/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "classification__zebra_special": {
+   "candidate_id": "e5d5a755c5565fe3",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.25
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.25,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/classification__zebra_special/classification__zebra_special/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__abalone": {
+   "candidate_id": "d3f7d8f97e36aab5",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 2.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 2.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__abalone/regression__abalone/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__airfoil": {
+   "candidate_id": "6fe09c36d263e39d",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__airfoil/regression__airfoil/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__body_fat": {
+   "candidate_id": "e198ddb9621fa522",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__body_fat/regression__body_fat/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__car": {
+   "candidate_id": "8e42112f4582e250",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 0.25
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 0.25,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__car/regression__car/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__diabets": {
+   "candidate_id": "74c0f7a9f94d4a3d",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__diabets/regression__diabets/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__energy_efficiency": {
+   "candidate_id": "e5d5a755c5565fe3",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.25
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.25,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__energy_efficiency/regression__energy_efficiency/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__student_performance": {
+   "candidate_id": "4c51e23e092310b1",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 2.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 2.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__student_performance/regression__student_performance/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__tabarena_363625": {
+   "candidate_id": "d3f7d8f97e36aab5",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 2.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 2.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__tabarena_363625/regression__tabarena_363625/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__tabarena_363631": {
+   "candidate_id": "d5e86f6da9c71182",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 2.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "mlp",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 2.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__tabarena_363631/regression__tabarena_363631/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__tabarena_363675": {
+   "candidate_id": "74c0f7a9f94d4a3d",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__tabarena_363675/regression__tabarena_363675/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__tabarena_363686": {
+   "candidate_id": "74c0f7a9f94d4a3d",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 1.0,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__tabarena_363686/regression__tabarena_363686/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__tabarena_363693": {
+   "candidate_id": "e198ddb9621fa522",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__tabarena_363693/regression__tabarena_363693/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__tabarena_363705": {
+   "candidate_id": "e198ddb9621fa522",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 4,
+    "tau": 0.5,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__tabarena_363705/regression__tabarena_363705/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__wine": {
+   "candidate_id": "8e42112f4582e250",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 0.25
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 0.25,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__wine/regression__wine/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  },
+  "regression__yacht": {
+   "candidate_id": "0dafe332cc384a92",
+   "parameters": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5
+   },
+   "core_by_dataset_entry": {
+    "pre_topk_mask": false,
+    "representation": "raw",
+    "top_k": 10,
+    "lr_case": 0.01,
+    "glocal_fw_set_num": 1,
+    "tau": 0.5,
+    "batch_size": 64,
+    "lr_glocal": 0.01,
+    "lr_feature": 0.001
+   },
+   "selection": "r760:/mnt/largedata/NN-KNN/neural-cbr/results/t1/review_gridallcase_r760/regression__yacht/regression__yacht/nnknn/selection.json",
+   "screen_epochs_patience": [
+    150,
+    30
+   ],
+   "refit_epochs_patience": [
+    600,
+    60
+   ],
+   "recomputed_from_runs": true
+  }
+ }
+}
