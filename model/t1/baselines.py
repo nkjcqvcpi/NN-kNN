@@ -32,7 +32,8 @@ Policies (higher priority = kept earlier):
   pass). Survivors first, edited after; inside each group the ``fill_policy`` order (an existing policy's ranking).
 * ``energy_compress`` (Badra et al. 2025, modified): sequential deletion of the eligible case with the lowest removal
   competence L_D(S without c) - L_D(S), recomputed after every deletion with the fixed reference set D, until K cases
-  remain (protected cases and cohort floors are never deleted). Classification loss: hinge on the energy 1 - P with
+  remain (protected cases and cohort floors are never deleted; exact ties go largest tie key first, the case the
+  retention ranking would keep last). Classification loss: hinge on the energy 1 - P with
   margin ``energy_margin``; regression (outside the paper): squared error of the prediction. The paper's final
   accuracy-based choice among visited case bases is replaced by the fixed budget K.
 * ``knn_shapley`` (Jia et al. 2019, closed form): exact Shapley values of the unweighted K-NN utility
@@ -534,9 +535,14 @@ def _energy_compress(ref, cfg, scores, K, dist, tie, regression):
     active = np.ones(n, dtype=bool)
     rows = np.arange(ref.nq)
     members, delta, nxt, base = ref.removal_rows(active, rows, kind, margin)
-    total = np.zeros(n)
-    valid = members >= 0
-    np.add.at(total, members[valid], delta[valid])
+
+    def totals():
+        # Recomputed from the current per-row deltas at every step (not updated incrementally), so a case that
+        # enters no neighborhood has exactly 0 and exact ties are decided by the tie key, not by rounding drift.
+        valid = members >= 0
+        return np.bincount(members[valid], weights=delta[valid], minlength=n)
+
+    total = totals()
     initial_loss = float(base.mean()) if ref.nq else 0.0
     step_of = np.full(n, -1.0)
     score_at = np.full(n, np.nan)
@@ -550,7 +556,9 @@ def _energy_compress(ref, cfg, scores, K, dist, tie, regression):
             break
         comp = total / max(ref.nq, 1)
         pool = np.flatnonzero(eligible)
-        j = int(pool[np.lexsort((tie[pool], comp[pool]))[0]])
+        # lowest competence first; exact ties: the case select_active_set would rank last (largest tie key), so the
+        # retention tie convention (smaller key kept first) holds here too
+        j = int(pool[np.lexsort((-tie[pool], comp[pool]))[0]])
         step_of[j], score_at[j] = len(removed), comp[j]
         removed.append(j)
         active[j] = False
@@ -560,14 +568,9 @@ def _energy_compress(ref, cfg, scores, K, dist, tie, regression):
         else:
             aff = np.flatnonzero((members == j).any(1) | (nxt == j))
         if len(aff):
-            old_m, old_d = members[aff], delta[aff]
-            ok = old_m >= 0
-            np.add.at(total, old_m[ok], -old_d[ok])
             m2, d2, n2, b2 = ref.removal_rows(active, aff, kind, margin)
             members[aff], delta[aff], nxt[aff], base[aff] = m2, d2, n2, b2
-            ok = m2 >= 0
-            np.add.at(total, m2[ok], d2[ok])
-        total[j] = 0.0
+        total = totals()
     comp = total / max(ref.nq, 1)
     survivors = [int(j) for j in np.lexsort((tie, -comp)) if active[j]]
     pr = _priority_from_sequence(survivors, removed[::-1], n)

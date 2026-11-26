@@ -281,7 +281,7 @@ def test_energy_compress_matches_a_brute_force_deletion_sequence(top_k):
             m = active.copy()
             m[c] = False
             comp = mean_loss(m) - base
-            if best is None or comp < best[0] - 1e-12:
+            if best is None or comp <= best[0] + 1e-12:  # exact ties: the largest slot (tie key) goes first
                 best = (comp, c)
         order.append(best[1])
         active[best[1]] = False
@@ -290,6 +290,23 @@ def test_energy_compress_matches_a_brute_force_deletion_sequence(top_k):
     assert sorted(np.argsort(-extra["energy_compress"])[:3].tolist()) == sorted(np.flatnonzero(active).tolist())
     assert np.isclose(summary["energy_final_reference_loss"],
                       np.mean([hinge(eng.predict(active)[q], y[q], 0.2) for q in range(12)]))
+
+
+def test_energy_compress_breaks_exact_ties_like_the_retention_ranking():
+    """Cases 2..5 enter no top-1 neighborhood (competence exactly 0, also after earlier deletions): they leave in
+    decreasing tie-key order, so the smaller keys survive, as in select_active_set (smaller key kept first)."""
+    labels = np.array([0, 1, 0, 1, 0, 1])
+    Z = np.full((4, 6), -5.0)
+    Z[[0, 1], 0] = 0.0
+    Z[[2, 3], 1] = 0.0
+    y = np.array([0, 0, 1, 1])
+    eng = ActivationEngine.from_arrays(Z, labels, y, top_k=1)
+    extra, summary = policy_priority(rcfg("energy_compress", energy_margin=0.2), case_scores(labels), 4, eng)
+    step = extra["energy_removal_step"]
+    assert step[5] == 0 and step[4] == 1 and step[[0, 1, 2, 3]].tolist() == [-1, -1, -1, -1]
+    ids = np.array([50, 40, 30, 20, 10, 0])  # reversed keys reverse the order among the zero-competence cases
+    extra, _ = policy_priority(rcfg("energy_compress", energy_margin=0.2), case_scores(labels, ids=ids), 4, eng)
+    assert extra["energy_removal_step"][2] == 0 and extra["energy_removal_step"][3] == 1
 
 
 # --------------------------------------------------------------------------- config validation and runner glue
