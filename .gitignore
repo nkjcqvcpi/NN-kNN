@@ -38,6 +38,7 @@ checkpoints/regression_covid_physical_reg.h5
 # reports/ and docs/experiments/ on the experiment host stay ignored (owner's rules O1-O3, 2026-11-22).
 /results/
 /logs/
+/runs/
 /reports/figures/
 /reports/*.csv
 /reports/*.json

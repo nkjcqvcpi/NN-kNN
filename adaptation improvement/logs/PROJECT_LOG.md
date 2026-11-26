@@ -1,0 +1,50 @@
+# Project activity log
+
+## November 24, 2026
+
+- Created the `adaptation improvement` project folder and its code, results, logs, discussion and documentation directories at the owner's request.
+- Recorded the initial adaptation-weight proposal and relevant source references.
+- Recorded the owner's preference for a single gate mechanism across classification and regression, acceptance of overlapping inputs, and preference for both minimum and weighted mean distance. Added proposed common concentration and label-disagreement statistics to the discussion.
+- Clarified that concentration uses query-dependent normalized retrieval activations, not case biases. Recorded the owner's decision that gate and adapter train and freeze together across sequential, alternating and joint schedules; gate-only training is now an optional diagnostic comparison.
+- Documented proposed controls for gate/residual scale compensation: preserve raw-residual supervision, evaluate a fixed residual bound if needed, and distinguish these from penalties on the applied correction. These safeguards have not been adopted or tested.
+- Recorded the owner's alternative alpha-to-one penalty and question about removing the correction-size penalty. Clarified their different effects, the regression/classification distinction, and that neither new penalty is mandatory or finalized.
+- Recorded the latest two-head magnitude/direction proposal, its distinction from confidence, the conditional-mean cancellation argument, and open questions about unit normalization and scalar direction training. Updated the project overview to reflect this proposal while preserving the earlier gate design.
+- No model implementation was changed and no training or evaluation was run.
+
+## November 25, 2026
+
+- Owner approved implementation and experiments, then clarified local runs only; no r760 access is available.
+- Created isolated `code/neural-cbr/` worktree on `adaptation-improvement` from `origin/neural-cbr` (`411abd4`). Implemented stage-only magnitude/direction adapter, frozen reuse, synchronization and retrieval-aware prediction/logging. Shared core and published Table 1 are unchanged.
+- Installed the locked Python environment through uv locally (Python 3.14.10, torch 2.15.0+xpu running on CPU). Existing local data are read from the sibling `NN-kNN/datasets/`; no dataset was downloaded for the selected suite.
+- Confirmed all 42 splits (14 tasks, seeds 40-42) load locally. New study `am1` compares existing/new adapters from an identical recorded retrieval core, Adam state and starting RNG; the historical report remains contextual only.
+- Focused model tests: 14 passed; existing regression/joint integration plus model tests: 44 passed. Comparison/reuse/new schedule/core-contract combined check: 71 passed, followed by 19 focused reuse/logging tests as the event recorder was extended. Checks overlap; counts are not additive.
+- Launched six CPU workers with one numerical thread per worker, preserving original per-task F budgets and all original loss coefficients. Runtime logs are `local_am1_*.log`. Completion and findings are recorded in the results index and report.
+- Completed all 42 paired comparisons. Car seed 42 was assigned a separate worker; the original Car worker was stopped after its seed 41 pair was recorded to avoid duplicating seed 42. All completed cores/arms were preserved.
+- Findings: 5/7 classification and 2/7 regression task means improve, but geometric mean new/existing error is 1.03683 and 1.03032 respectively. The new adapter remains opt-in; the historical default is retained. Saved the full report, exact per-seed metrics, coverage, diagnostics and limitations.
+- Full branch suite finished: 558 passed, 1 failed, 5 skipped, 2 xfailed in 696.77 seconds. All 49 new tests pass. The one legacy Linux-golden numerical mismatch was independently reproduced on untouched commit `411abd4` with exactly the same local value; no golden or tolerance was changed.
+- Independent review verified all 14 numerical report rows, historical F context, aggregates, seed counts and diagnostic interpretation. The uv-based Python launcher successfully rebuilt the complete 42-pair summary. A PowerShell launcher was replaced by the Python launcher because this machine disallows PowerShell script files; no execution policy was changed.
+
+### Adaptation behavior analysis
+
+- At the owner's request, analyzed all 84 saved old/new adapted run units in `am1`, covering 17,064 test evaluations. No training, new model evaluation or source run mutation was performed.
+- Added a read-only diagnostic script and seven passing tests for regression direction/overshoot, classification positive-scale intervals, score-offset invariance, ties and count reconciliation. Every saved unit reproduced its recorded pre/post metric, paired data and targets matched, and new magnitude values matched applied correction norms.
+- Wrote `reports/ADAPTATION_BEHAVIOR_2026-11-25.md` in the isolated T1 worktree. Generated per-query tables, task/unit summaries, scale curves, retrieval/adaptation decompositions and two inspected figures remain in `results/adaptation_improvement/am1/behavior/` there.
+- Findings: the new model loses useful classification corrections as well as reducing damage. Regression direction errors remain the dominant source of added error on harmed cases; destructive overshoot is worse on Yacht. A global correction increase does not resolve the mixed behavior. Test-label scale diagnostics are explicitly descriptive and were not used to select new parameters.
+
+### Shelved magnitude/direction; apply-or-skip exploration
+
+- Owner shelved the magnitude/direction design and authorized local exploration, specifically including a confidence head that either applies full adaptation or skips it. Marked its design/project status accordingly while preserving completed evidence.
+- Declared `ag1` protocol before its results: old selected retrieval cores frozen; validation selects global on/off, shrinkage and disagreement thresholds; two neural gate objectives train with the residual adapter. Added an equally budgeted no-gate continuation control. Gate features include the shared hidden representation, four neighborhood statistics, retrieval prediction and full proposal. The hard inference decision never scales the proposal.
+- Implemented isolated T1 experimental module, recorded runner, resumable training, tests and a uv launcher. No shared core or default adapter path was changed. The frozen continuation uses original adapter-side loss coefficients; the old synchronized retrieval objective is not part of this new adapter-only stage.
+- Completed all 42 local dataset/seed comparisons: 126 recorded adapter continuations plus 42 input-reconstruction and 42 control units. All 42 source prediction reconstructions passed; all 672 saved validation/test metric records reconciled. Completed-unit reuse was exercised without retraining. The CPU torch build emitted an XPU-availability warning; all run units completed, with no training exception.
+- Results: the disagreement threshold improves 5/7 tasks in each family, with GMR error changes -3.68% classification and -0.52% regression versus the old adapter. Classification fixes/harmful flips change from 25/24 to 13/4. Learned gates have mixed results and worsen classification relative to their own full proposals. Extra no-gate training helps classification but has a large Car regression loss; it is retained in the comparison.
+- Wrote the gate experiment report, numerical evidence and inspected figure, and linked them from the project/results index. Eight focused gate tests pass; 15 pass with the earlier diagnostic tests. The old adapter remains default. Proposed fresh-split confirmation of the simple disagreement rule; no new hyperparameters were chosen from test results.
+
+### Learning the disagreement threshold
+
+- Owner requested replacing the validation-chosen disagreement cutoff with a trainable scalar and comparing with the previous alternatives. Added `model/t1/disagreement_threshold.py`, a recorded driver, a uv launcher, a pre-result protocol, and focused tests. The exact full-or-skip decision remains; a fixed-temperature sigmoid trains only the scalar cutoff from detached classification 0/1 or regression MSE branch costs.
+- Study `ag2` completed all 84 new units: 14 tasks, seeds 40-42, frozen-adapter and joint-adapter threshold arms. The frozen arm uses its final training iterate without validation selection. The joint arm trains both components in the same stage and uses the previous continuation budget/checkpoint criterion. Retrieval stays frozen; all eight `ag1` methods are reused.
+- Results: frozen learned threshold 9.945% classification error / 0.338856 regression RMSE; joint threshold 9.359% / 0.347770; validation threshold 9.164% / 0.337424. The joint classification GMR is slightly better than the validation rule but its arithmetic mean is worse, and regression is worse by both. No overall improvement or default change.
+- Diagnostics: five frozen classification runs have no difference in training branch 0/1 cost. The frozen learned gate applies all test corrections in 19/21 regression runs. The joint gate selects epoch zero in 11/21 classification and 6/21 regression runs. Car seed 42 reproduces the earlier extra-training RMSE of 0.424215; retained without exclusion.
+- Verified 252 saved prediction sets and 84 frozen-versus-original proposal comparisons. All 84 complete units were reused on a full rerun. Nine focused model/training tests plus eight prior gate tests passed; a further single-family plotting regression test passed after fixing that summary edge case. The shared-core manifest check passed.
+- Wrote `reports/ADAPTATION_THRESHOLD_LOCAL_2026-11-25.md`, added a follow-up link to the prior report, and updated project/evidence indexes. Generated tables and figure are under the T1 worktree's `results/adaptation_improvement/ag2/`; run states, predictions and curves remain under `runs/t1/ag2/`.
