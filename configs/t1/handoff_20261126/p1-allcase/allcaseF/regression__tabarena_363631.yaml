@@ -5,7 +5,7 @@
 # glocal_fw_set_num 1, top_k 10 (inert under all-case), with the grid's batch 64 and
 # lr_glocal/lr_feature rule), recomputed from the recorded trial units; core epochs/patience 300/40, sync schedule and loss
 # weights exactly as the frozen F; correction-size penalty = the recorded default (trained_bias_region allowance);
-# plus F_zero_radius: F with free_radius_method zero (squared L2 of the correction from zero, scaled by s_task), the one declared penalty variant.
+# plus the two declared penalty variants of the 10-30 notes' three-way comparison: F_zero_radius (F with free_radius_method zero, squared L2 of the correction from zero scaled by s_task) and F_no_penalty (F with v_small 0, no size penalty); all other weights equal to F's.
 # The alternating_default_matched and F_global arms of the frozen file are left out (not part of the declaration);
 # retrieval_only and the frozen-core reuse arm are kept (matched retrieval-only and retrieval-plus-adapter baselines).
 # Seeds 50-52 (owner's order; in the prereg they are evaluation_small_tasks seeds, never run for T1 F before).
@@ -114,3 +114,12 @@ conditions:
   adapter_lr: 0.003
   name: F_zero_radius
   free_radius_method: zero
+- schedule: joint_rr
+  joint_objective: summed
+  adapter_warmup_epochs: 5
+  retrieval_lr_scale: 1.0
+  w_post: 0.5
+  w_near: 0.0
+  v_small: 0.0
+  adapter_lr: 0.003
+  name: F_no_penalty

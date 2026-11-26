@@ -5,7 +5,7 @@
 # glocal_fw_set_num 1, top_k 10 (inert under all-case), with the grid's batch 64 and
 # lr_glocal/lr_feature rule), recomputed from the recorded trial units; core epochs/patience 300/40, sync schedule and loss
 # weights exactly as the frozen F; correction-size penalty = the recorded default (trained_bias_region allowance);
-# no F_zero_radius arm: frozen F has v_small 0 here, so the penalty is off and the variant would train the same model.
+# no F_zero_radius or F_no_penalty arm: frozen F has v_small 0 here, so F is itself the no-penalty condition and the zero-radius variant would train the same model.
 # The alternating_default_matched and F_global arms of the frozen file are left out (not part of the declaration);
 # retrieval_only and the frozen-core reuse arm are kept (matched retrieval-only and retrieval-plus-adapter baselines).
 # Seeds 50-52 (owner's order; in the prereg they are evaluation_small_tasks seeds, never run for T1 F before).

@@ -6,6 +6,7 @@ configs are new files and no recorded unit's configuration changes.
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import sys
@@ -94,12 +95,19 @@ def test_allcase_f_applies_the_declaration_and_nothing_else(key):
     sync_maintenance_for(F[0], new, 50)
     assert merged.get("free_radius_method", "trained_bias_region") == "trained_bias_region"
     if sc_f.v_small > 0:
-        assert [c["name"] for c in new["conditions"]] == ["F", "F_zero_radius"]
-        zero = new["conditions"][1]
+        # the three penalty conditions of the 10-30 notes (section 3) on one all-case core
+        assert [c["name"] for c in new["conditions"]] == ["F", "F_zero_radius", "F_no_penalty"]
+        zero, nopen = new["conditions"][1], new["conditions"][2]
         sync_maintenance_for(zero, new, 50)
         sc_z, merged_z = _sync(new, zero, task)
         assert sc_z == sc_f and merged_z["free_radius_method"] == "zero"
         assert {k for k in set(zero) | set(F[0]) if zero.get(k) != F[0].get(k)} == {"name", "free_radius_method"}
+        sync_maintenance_for(nopen, new, 50)
+        sc_n, merged_n = _sync(new, nopen, task)
+        assert sc_n.v_small == 0.0 and merged_n.get("free_radius_method", "trained_bias_region") == "trained_bias_region"
+        assert {k for k in set(nopen) | set(F[0]) if nopen.get(k) != F[0].get(k)} == {"name", "v_small"}
+        # every other weight, including the total post-adaptation weight, equals F's
+        assert dataclasses.replace(sc_n, v_small=sc_f.v_small) == sc_f
     else:
         assert [c["name"] for c in new["conditions"]] == ["F"]
 

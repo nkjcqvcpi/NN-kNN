@@ -14,12 +14,12 @@ Nothing below replaces a PI decision, and no result of this pack is confirmatory
 | core training budget | 300 epochs, patience 40, as in the frozen F configuration (the all-case grid refit used 600/60; we keep F's schedule, as ordered). |
 | training schedule and loss weights | as in the frozen F configuration of each task (`confirm_final_20261013/<task>.yaml`, condition `F`): `joint_rr`, summed objective, 5 adapter warm-up epochs, retrieval_lr_scale 1, adapter_lr 0.003, w_pre 1, w_post / w_near / v_small as frozen per task, v_post 1, v_delta 1, s_task 0.5, 120 sync epochs, patience 30. Diabetes keeps its frozen F, the frozen-core reuse arm. |
 | correction-size penalty | the recorded default: `L_small` above the trained-bias-region allowance (`free_radius_method: trained_bias_region`, mean aggregation, identity transform), weight `v_small` as frozen. |
-| one declared variant | `F_zero_radius`: F with `free_radius_method: zero`, i.e. scale-normalised squared L2 of the correction from zero. Only on the 18 tasks whose frozen F has `v_small > 0`; on the 10 tasks with `v_small: 0` the penalty is off and the variant would train the same model, so it is not run. Everything else, including the total post-adaptation weight, is equal between F and F_zero_radius. |
+| declared penalty variants | The three-way comparison the 10-30 notes propose (section 3: no size penalty, the calibrated allowance, squared L2 from zero), on the same all-case core: F (calibrated allowance), `F_zero_radius` (F with `free_radius_method: zero`, i.e. scale-normalised squared L2 of the correction from zero) and `F_no_penalty` (F with `v_small: 0`; added in the pack review). Only on the 18 tasks whose frozen F has `v_small > 0`; on the 10 tasks with `v_small: 0` F is itself the no-penalty condition and the zero-radius variant would train the same model, so neither variant is run there. Everything else, including the total post-adaptation weight (v_post, v_delta, w_post), is equal between the three arms. The penalty weight is the frozen, validation-selected `v_small` of the masked F; we do not re-select it under all-case (our choice). |
 
 ## Experiments
 
 1. `allcaseF/<task>.yaml` (29 confirmation tasks, QSAR `regression__tabarena_363697` excluded), study
-   `handoff_allcaseF_r760`, seeds 50, 51, 52. Arms: retrieval_only, the frozen-core reuse arm, F, F_zero_radius.
+   `handoff_allcaseF_r760`, seeds 50, 51, 52. Arms: retrieval_only, the frozen-core reuse arm, F, F_zero_radius, F_no_penalty.
    - `maskedF/<task>.yaml`: the frozen masked configuration (masked-grid core, `pre_topk_mask: true`) with only the F arm,
      same study, same seeds and host, so all-case vs masked is paired on unseen seeds.
    - Matched baselines kNN, MLP, CatBoost and TabM: `tools/t1_grid_search.py evaluate` of their recorded selections
@@ -42,3 +42,6 @@ Nothing below replaces a PI decision, and no result of this pack is confirmatory
 - The all-case grid selected under a 600/60 refit; the F core trains 300/40. Earlier pilots saw all-case pretrains reach
   their epoch cap more often; `core_best_epoch` is recorded per unit to check this.
 - Under all-case softmax `top_k` is inert for prediction but still sets the stability tracker's neighbourhood size.
+- The notes ask to assess correction magnitude (upper tail) and the fraction of corrections above `tau_task`; the runner records
+  only the mean training-time correction norm, so these test-time quantities must be computed later from the recorded
+  weights (read-only summary, not part of this pack).
