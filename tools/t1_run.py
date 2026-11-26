@@ -51,7 +51,8 @@ from model.t1.data import make_splits  # noqa: E402
 from model.t1.candidates import MaintenanceReference
 from model.t1.maintenance import CaseArchive, run_maintenance  # noqa: E402
 from model.t1.mcb import StabilityTracker  # noqa: E402
-from model.t1.provenance import CaseStatisticsStore, ScoreConfig, active_cohorts, audit_provenance, score_cases  # noqa: E402
+from model.t1.provenance import (CaseStatisticsStore, ScoreConfig, active_cohorts, audit_provenance, score_cases,  # noqa: E402
+                                 seed_initial_bias)
 from model.t1.retention import BASELINE_FIELDS, RetentionConfig  # noqa: E402
 from model.t1.reuse import ReuseConfig, calibrate_temperature, evaluate_reuse, evaluate_regression_reuse, reuse_logits, train_classification_adapter, train_regression_adapter  # noqa: E402
 from model.t1.revise import flagging_ablation  # noqa: E402
@@ -750,6 +751,8 @@ class Runner:
                 K = resolve_K(K_spec, n)
                 label = f"{cond['policy']}_K{K_spec}"
                 store, archive = CaseStatisticsStore(data.task_type), CaseArchive()
+                if "initial_bias" in self.cfg["statistics"]:  # opt-in: b_init = the build-time bias (p0 item a)
+                    seed_initial_bias(store, model, self.cfg["statistics"]["initial_bias"], data.reg_bins)
                 rcfg = retention_cfg_for(cond, self.cfg, seed)
                 scfg = score_cfg_for(self.cfg)
                 opt = clone_optimizer(tr.optimizer, model, cc)  # continue the core's Adam state (see clone_optimizer)
@@ -1397,6 +1400,8 @@ def main() -> None:
     cfg = load_config(Path(args.config))
     if args.seeds is not None:
         cfg["seeds"] = args.seeds
+    if "initial_bias" in (cfg.get("statistics") or {}) and cfg["type"] != "retention":
+        ap.error("statistics.initial_bias is implemented for type retention only")
     runner = Runner(cfg, Path(args.out), args.study)
     fn = getattr(runner, f"run_{cfg['type']}")
     seeds = args.seeds if args.seeds else cfg["seeds"]

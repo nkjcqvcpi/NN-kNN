@@ -87,7 +87,7 @@ class ActivationEngine:
         device = model.cases.device
         active_ids = model.active_case_ids()
         labels = model.labels[:n].float().view(n, -1)
-        rows, model_pred = [], []
+        rows, rows32, model_pred = [], [], []
         with frozen_evaluation(model):
             for start in range(0, len(y), batch_size):
                 xb = X[start:start + batch_size].to(device)
@@ -97,11 +97,19 @@ class ActivationEngine:
                     raise ValueError("The engine needs full active-case retrieval")
                 d = r["distances"].double()
                 z = -d if mode == "neg_distance" else model.biases[:n].detach().double().unsqueeze(0) - d
+                # the scores model.retrieve ranks for its pre-top-k mask, in its own dtype and operations
+                d32 = r["distances"].detach()
+                z32 = -d32 if mode == "neg_distance" else model.biases[:n].detach().unsqueeze(0) - d32
                 if qb is not None:
-                    z = z.masked_fill(qb.view(-1, 1) == active_ids.view(1, -1), float("-inf"))
+                    self_mask = qb.view(-1, 1) == active_ids.view(1, -1)
+                    z = z.masked_fill(self_mask, float("-inf"))
+                    z32 = z32.masked_fill(self_mask, float("-inf"))
                 rows.append((z / tau).cpu().numpy())
+                rows32.append(z32.cpu().numpy())
                 model_pred.append((r["weights"] @ labels).double().cpu().numpy())
         self.Z = np.concatenate(rows) if rows else np.zeros((0, n))
+        # Pre-top-k membership follows model.retrieve exactly: torch.topk over these scores (see neighborhoods)
+        self.Z_select = np.concatenate(rows32) if rows32 else np.zeros((0, n), dtype=np.float32)
         self.n, self.nq = n, self.Z.shape[0]
         self.task = model.task_type
         self.Y = labels.double().cpu().numpy()
@@ -142,6 +150,7 @@ class ActivationEngine:
             eng.y = np.asarray(y, dtype=float)
         eng.top_k = eng.n if top_k is None else int(top_k)
         eng.topk = None if top_k is None else min(int(top_k), eng.n)
+        eng.Z_select = None  # hand-written scores: the engine's own (score, index) order decides membership
         eng.check_max_abs_diff = 0.0
         return eng
 
@@ -169,11 +178,38 @@ class ActivationEngine:
             part = np.take_along_axis(part, o, 1)
             members = part[:, :self.topk]
             nxt = part[:, self.topk] if m > self.topk else np.full(r, -1)
+            if getattr(self, "Z_select", None) is not None and self.topk < n:
+                members, nxt = self._model_tie_rule(Z, mask, rows, members, nxt)
         zm = np.take_along_axis(Z, members, 1)
         members = np.where(np.isfinite(zm), members, -1)
         znx = np.where(nxt >= 0, Z[np.arange(r), np.maximum(nxt, 0)], -np.inf)
         nxt = np.where(np.isfinite(znx), nxt, -1)
         return members, zm, nxt, znx
+
+    def _model_tie_rule(self, Z, mask, rows, members, nxt):
+        """Pre-top-k members as model.retrieve picks them. Where several cases tie exactly at the k-th place, the
+        model's ``torch.topk`` (on its float32 scores) keeps a different subset than the engine's own (score, index)
+        order (handoff 2026-11-26 p2, classification wine s32 on xps8960: the self-check failed by 0.332). Only rows
+        whose member set differs from the model's are changed: their members become the model's, in (score, index)
+        order, and the next case is the best remaining one in that order. Every other row keeps exactly what the
+        engine computed before, so results without such a tie are unchanged."""
+        Zs = self.Z_select[rows]
+        if not mask.all():
+            Zs = np.where(mask[None, :], Zs, np.float32(-np.inf))
+        sel = torch.topk(torch.from_numpy(np.ascontiguousarray(Zs)), self.topk, dim=1).indices.numpy()
+        def eligible(idx):  # members without an eligible case (score -inf) end as -1 either way
+            return np.sort(np.where(np.isfinite(np.take_along_axis(Z, idx, 1)), idx, -1), 1)
+        differ = np.flatnonzero((eligible(sel) != eligible(members)).any(1))
+        if not len(differ):
+            return members, nxt
+        members, nxt = members.copy(), nxt.copy()
+        s = sel[differ]
+        zs = np.take_along_axis(Z[differ], s, 1)
+        members[differ] = np.take_along_axis(s, np.lexsort((s, -zs), axis=1), 1)
+        rest = Z[differ].copy()
+        np.put_along_axis(rest, s, -np.inf, 1)
+        nxt[differ] = rest.argmax(1)  # first index among equal scores
+        return members, nxt
 
     @staticmethod
     def _exp(zm, znx):

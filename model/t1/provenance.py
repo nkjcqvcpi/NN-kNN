@@ -181,6 +181,35 @@ class CaseScores:
         return d
 
 
+INITIAL_BIAS_SOURCES = ("first_audit", "build_time")  # statistics.initial_bias (opt-in; absent = first_audit)
+
+
+def seed_initial_bias(store: CaseStatisticsStore, model, source: str, reg_bins: np.ndarray | None = None) -> int:
+    """Opt-in (handoff 2026-11-26 p0 item a): record the core's build-time bias as every active case's
+    ``initial_bias`` before the first audit, so ``bias_source: delta_from_init`` scores b - b_build instead of
+    b - b(first audit) = 0. ``first_audit`` (the default) leaves the store untouched. The build-time bias is the value
+    ``build_model`` gave every case (``model.t1_bias_init["value"]``, the knn_mean or percentile rule). Returns the
+    number of cases seeded; a case already in the store keeps its recorded initial bias."""
+    if source not in INITIAL_BIAS_SOURCES:
+        raise ValueError(f"statistics.initial_bias must be one of {INITIAL_BIAS_SOURCES}")
+    if source == "first_audit":
+        return 0
+    info = getattr(model, "t1_bias_init", None)
+    if not info or "value" not in info:
+        raise ValueError("initial_bias build_time needs the core's recorded build-time bias (model.t1_bias_init)")
+    b0 = float(info["value"])
+    n = model.case_count()
+    ids = model.active_case_ids().detach().cpu().numpy()
+    cohorts = active_cohorts(model, reg_bins)
+    biases = model.biases[:n].detach().cpu().numpy()
+    seeded = 0
+    for j, cid in enumerate(ids):
+        if store._stats.get(int(cid)) is None:
+            store.ensure(int(cid), cohort=cohorts[j], initial_bias=b0, current_bias=float(biases[j]))
+            seeded += 1
+    return seeded
+
+
 def score_cases(
     case_ids: np.ndarray,
     cohorts: list[str],

@@ -223,7 +223,15 @@ def train_synchronized(
     torch.manual_seed(cfg.seed)
     device = model.cases.device
     X, y = data.X_train.to(device), data.y_train.to(device)
-    feat_dim = model.retrieve(X[:1], exclude_identical=False)["query_features"].shape[1]
+    # Shape probe only, so no gradient: in eval mode ``retrieve`` writes case features into the model's
+    # evaluation cache, and a probe with gradients enabled left that cache attached to this call's autograd
+    # graph whenever it (re)computed a row (the cache treats an all-zero feature row as not cached, so an
+    # mlp encoder with a dead-ReLU case recomputes it on every eval call). The adapter-only phase (model in
+    # eval mode, parameters frozen) then backpropagated through that stale graph: the first minibatch freed
+    # it and the second raised "Trying to backward through the graph a second time" (all-case F, wine).
+    # The probe's value is unchanged; no other forward pass ever read gradients through it.
+    with torch.no_grad():
+        feat_dim = model.retrieve(X[:1], exclude_identical=False)["query_features"].shape[1]
     nominal_train = nominal_val = None
     if model.task_type == "classification":
         if cfg.nominal_fields:
