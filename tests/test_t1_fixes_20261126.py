@@ -205,3 +205,25 @@ def test_initial_bias_key_is_refused_outside_retention(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["t1_run.py", str(path), "--out", str(tmp_path / "out"), "--study", "t"])
     with pytest.raises(SystemExit):
         t1_run.main()
+
+
+@pytest.mark.parametrize("change", ["bad_value", "reliability"])
+def test_initial_bias_key_is_refused_before_training_when_it_would_not_apply(tmp_path, monkeypatch, change):
+    """A misspelt value would otherwise fail only after the core is trained, and the ch_reliability unit scores B with
+    its own unseeded store, so a retention config with both would record a rule that unit did not use."""
+    import sys
+    from tools import t1_run
+    cfg = yaml.safe_load((REPO / "configs/t1/handoff_20261126/p0a/deltainit_percentile_classification.yaml").read_text())
+    if change == "bad_value":
+        cfg["statistics"]["initial_bias"] = "build-time"
+    else:
+        cfg["reliability"] = {"subset_fractions": [0.5]}
+    path = tmp_path / "c.yaml"
+    path.write_text(yaml.safe_dump(cfg))
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    monkeypatch.setenv("NNKNN_RUNS", str(runs))
+    monkeypatch.setattr(sys, "argv", ["t1_run.py", str(path), "--out", str(tmp_path / "out"), "--study", "t"])
+    with pytest.raises(SystemExit):
+        t1_run.main()
+    assert not any(runs.rglob("*"))  # refused before anything was recorded

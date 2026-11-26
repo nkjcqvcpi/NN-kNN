@@ -157,3 +157,29 @@ They are built by `mkjobs.py` from the btransform job lists, one to one; the con
 original errors.
 
 Full suite on accel (hub venv, scratch under `/var/tmp`): 904 passed, 3 skipped, 3 xfailed, 1 failed. The failure is the known pre-existing `test_t1_tuning_features.py::test_defaults_reproduce_the_recorded_toy_outputs`. Log: `/var/tmp/nnknn-fix1126/pytest_full.log`.
+
+## Review (2026-11-26, after 4235e10)
+
+An adversarial review checked the commit and found no defect in the three fixes. It made one small change, in a
+follow-up commit.
+
+- **Defaults are bit-identical.** The review compared old code (2bd6c4a) and new code (4235e10) on accel with three
+  configs the builder had not compared. These are newpol classification zebra s30 (it builds the activation engine),
+  allcaseF regression body_fat s31 (adapter warm-up), and pctinit_sync regression yacht s30 (`train_synchronized`).
+  All 141 weights files are bitwise equal, apart from Python's unseeded `random` state.
+- **The root cause is fixed.** The probe was the only eval-mode `retrieve` that ran with gradients on while encoder
+  parameters were trainable. Every other eval-mode call either runs under `no_grad` or `frozen_parameters`, or comes
+  after a train-mode call that clears the cache. A cache loaded from a recorded stage is rebuilt on first use, because
+  its key records the old storage pointers. So the r760 requeue, which loads the recorded `_core`, starts from a clean
+  cache. The new regression tests fail on 2bd6c4a with the original errors and pass on the new code.
+- **The new units do not collide with recorded ones.** Study `handoff_deltainit_r760` does not exist on r760, q-lab or
+  xps8960. The experiment names `deltainit_*` are new.
+- **Each job list uses the host that recorded the units it is compared with.** The review read the host name from the
+  event file names of the `plan_full_r760` retention units and the `handoff_btransform_r760` units on r760. In both,
+  abalone, airfoil, car and regression wine were run on r760 (cs-peng-research). Iris, wine, zebra, zebra_special,
+  synthetic_diag, body_fat, diabets and yacht were run on xps8960 (haotang-lab). The other nine datasets were run on
+  q-lab. The p0a job lists put every dataset on the same host.
+- **Change made.** `tools/t1_run.py` now refuses two cases before any training. The first is an `initial_bias` value
+  that is not allowed; before, this failed only after the core was trained. The second is `initial_bias: build_time`
+  together with `reliability`. The `ch_reliability` unit scores B with its own store, which the key does not seed, so
+  that unit would have recorded a rule it did not use. No p0a config uses `reliability`. Two tests were added.

@@ -1400,8 +1400,17 @@ def main() -> None:
     cfg = load_config(Path(args.config))
     if args.seeds is not None:
         cfg["seeds"] = args.seeds
-    if "initial_bias" in (cfg.get("statistics") or {}) and cfg["type"] != "retention":
-        ap.error("statistics.initial_bias is implemented for type retention only")
+    if "initial_bias" in (cfg.get("statistics") or {}):
+        from model.t1.provenance import INITIAL_BIAS_SOURCES
+        if cfg["type"] != "retention":
+            ap.error("statistics.initial_bias is implemented for type retention only")
+        # checked before any training: a bad value would otherwise fail only after the core is trained
+        if cfg["statistics"]["initial_bias"] not in INITIAL_BIAS_SOURCES:
+            ap.error(f"statistics.initial_bias must be one of {INITIAL_BIAS_SOURCES}")
+        # the ch_reliability unit scores B with its own fresh store (model.t1.reliability), which this key does not
+        # seed: refuse the combination rather than record a unit whose config claims a rule it did not use
+        if cfg.get("reliability") is not None and cfg["statistics"]["initial_bias"] != "first_audit":
+            ap.error("statistics.initial_bias build_time is not implemented for the reliability unit")
     runner = Runner(cfg, Path(args.out), args.study)
     fn = getattr(runner, f"run_{cfg['type']}")
     seeds = args.seeds if args.seeds else cfg["seeds"]
