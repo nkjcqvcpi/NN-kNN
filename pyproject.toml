@@ -23,6 +23,8 @@ dependencies = [
     "openml",
     "tabm",
     "catboost",
+    # neural-cbr: TabPFN comparator (CPU inference; pinned, pretrained weights fetched separately)
+    "tabpfn==10.2.0",
     # llm: T3 host models
     "transformers",
     "huggingface-hub",
