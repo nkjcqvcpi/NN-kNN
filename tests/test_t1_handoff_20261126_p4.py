@@ -210,6 +210,14 @@ def test_evaluate_split_mode_is_opt_in_and_recorded(tmp_path, monkeypatch, reque
     assert plain["test_metrics"] == graded["test_metrics"] and "shift" not in plain["dataset"]
     assert shifted["dataset"]["shift"]["split_mode"] == "covariate_pc1"
     assert shifted["dataset"]["split_indices_sha256"] != plain["dataset"]["split_indices_sha256"]
+    # per-half test metrics only on the shift split; the random split's rows are unchanged
+    assert "test_group_metrics" not in plain and "test_group_metrics" not in graded
+    halves = shifted["test_group_metrics"]
+    assert set(halves) == {"shift_near", "shift_far"}
+    n = [halves[g]["n"] for g in ("shift_near", "shift_far")]
+    assert sum(n) == 45 and n[0] == 23
+    weighted = sum(halves[g]["n"] * halves[g]["accuracy"] for g in halves) / 45
+    assert weighted == pytest.approx(shifted["test_metrics"]["accuracy"])
     # the shifted trial unit carries the split mode in its config (unit identity)
     from model.common.tracking import iter_runs, load_run
     (unit,) = list(iter_runs(tmp_path / "runs/t1/S"))
@@ -218,6 +226,57 @@ def test_evaluate_split_mode_is_opt_in_and_recorded(tmp_path, monkeypatch, reque
         search.main(base + ["--out", str(tmp_path / "shift"), "--study", "S"])
     with pytest.raises(SystemExit):
         search.main(base + ["--out", str(tmp_path / "q"), "--study", "S", "--shift-quantile", "0.6"])
+
+
+def test_group_metrics_per_half():
+    import tools.t1_grid_search as search
+    y = np.array([0, 0, 1, 1])
+    p = np.array([[.9, .1], [.2, .8], [.3, .7], [.6, .4]])
+    groups = {"shift_near": np.array([True, True, False, False]), "shift_far": np.array([False, False, True, True]),
+              "empty": np.zeros(4, dtype=bool)}
+    out = search.group_metrics(p, y, "classification", None, groups)
+    # a half with one class has no ROC AUC (it would raise), but accuracy and log loss
+    assert out["shift_near"] == pytest.approx(dict(n=2, accuracy=.5, loss=-(np.log(.9) + np.log(.2)) / 2))
+    assert "roc_auc" not in out["shift_far"] and out["empty"] == {"n": 0}
+    both = search.group_metrics(p, y, "classification", None, {"all": np.ones(4, dtype=bool)})["all"]
+    assert both == pytest.approx(dict(n=4, **search.numeric_metrics(p, y, "classification")))
+    r = search.group_metrics(np.array([0., 1., 2., 4.]), np.array([0., 0., 2., 2.]), "regression", (0., 2.),
+                             {"far": np.array([False, False, True, True])})["far"]
+    assert r == pytest.approx(dict(n=2, rmse_standardized=2 ** .5, rmse_original=2 * 2 ** .5, loss=2.))
+    with pytest.raises(ValueError, match="align"):
+        search.group_metrics(p, y, "classification", None, {"bad": np.ones(3, dtype=bool)})
+
+
+def test_regression_test_groups_are_reported_only_when_present():
+    from model.common.core import CoreConfig, build_model
+    from model.t1.reuse import evaluate_regression_reuse, train_regression_adapter, ReuseConfig
+    import tools.t1_run as T
+    torch.manual_seed(0)
+    d = data_module.make_splits("yacht", "regression", 30, test_frac=0.2, val_frac=0.2, **SHIFT)
+    plain = data_module.make_splits("yacht", "regression", 30, test_frac=0.2, val_frac=0.2)
+    assert plain.test_groups == {} and set(d.test_groups) == {"shift_near", "shift_far"}
+    model = build_model(d.X_train, d.y_train, CoreConfig(task_type="regression", top_k=3, seed=1), None)
+    m = T.test_metrics(model, d)
+    e = T.evaluate(model, d.X_test, d.y_test)
+    for g, mask in d.test_groups.items():
+        mt = torch.as_tensor(mask)
+        assert m[f"test_n_{g}"] == int(mt.sum())
+        assert m[f"test_rmse_{g}"] == pytest.approx(float(((e["pred_pre"][mt] - d.y_test[mt]) ** 2).mean()) ** .5)
+    n = [m[f"test_n_{g}"] for g in ("shift_near", "shift_far")]
+    assert m["test_rmse_pre"] ** 2 == pytest.approx(sum(k * m[f"test_rmse_{g}"] ** 2 for k, g in zip(n, ("shift_near", "shift_far"))) / sum(n), rel=1e-5)
+    pm = T.test_metrics(build_model(plain.X_train, plain.y_train, CoreConfig(task_type="regression", top_k=3, seed=1),
+                                    None), plain)
+    assert not any(k.startswith(("test_n_", "test_rmse_shift")) for k in pm)
+    adapter, _ = train_regression_adapter(model, d, ReuseConfig("nominal_residual_scores", "combined", 1., 1., "softmax",
+                                                                      hidden_dims=(8, 4), epochs=2, patience=1))
+    base = evaluate_regression_reuse(model, adapter, d.X_test, d.y_test, success_tolerance=.5)
+    grouped = evaluate_regression_reuse(model, adapter, d.X_test, d.y_test, success_tolerance=.5, test_groups=d.test_groups)
+    assert {k: v for k, v in grouped.items() if k in base} == base
+    extra = set(grouped) - set(base)
+    assert extra == {f"{a}_{g}" for g in d.test_groups for a in ("n", "rmse_pre", "rmse_post")}
+    for suffix in ("pre", "post"):
+        assert base[f"rmse_{suffix}"] ** 2 == pytest.approx(sum(
+            grouped[f"n_{g}"] * grouped[f"rmse_{suffix}_{g}"] ** 2 for g in d.test_groups) / len(d.y_test), rel=1e-5)
 
 
 # --------------------------------------------------------------------------- TabPFN family

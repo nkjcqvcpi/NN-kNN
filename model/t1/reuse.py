@@ -424,8 +424,11 @@ def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseC
 
 
 @torch.no_grad()
-def evaluate_regression_reuse(model, adapter, X, y, *, success_tolerance):
-    """Actual aggregate NN-CDH pre/post outputs, in training-standardized units."""
+def evaluate_regression_reuse(model, adapter, X, y, *, success_tolerance, test_groups=None):
+    """Actual aggregate NN-CDH pre/post outputs, in training-standardized units.
+
+    ``test_groups`` (opt-in; only the covariate-shift split of handoff 2026-11-26 p4 gives regression test groups) adds
+    ``n_<group>``, ``rmse_pre_<group>`` and ``rmse_post_<group>`` per named boolean mask over the queries."""
     from .outcomes import final_prediction, frozen_evaluation, prediction_loss, query_success
 
     device = model.cases.device
@@ -449,4 +452,12 @@ def evaluate_regression_reuse(model, adapter, X, y, *, success_tolerance):
         metrics.update({f"loss_{suffix}": mse, f"rmse_{suffix}": mse ** .5,
                         f"mae_{suffix}": float((pred - target).abs().mean()),
                         f"success_rate_{suffix}": float(query_success(pred, target, "regression", success_tolerance).float().mean())})
+    for group, mask in (test_groups or {}).items():
+        mask = torch.as_tensor(mask, dtype=torch.bool, device=target.device)
+        if mask.shape != target.shape:
+            raise ValueError("test group masks must align with targets")
+        metrics[f"n_{group}"] = int(mask.sum())
+        if mask.any():
+            for suffix, pred in (("pre", pre), ("post", post)):
+                metrics[f"rmse_{suffix}_{group}"] = float(prediction_loss(pred[mask], target[mask], "squared_error").mean()) ** .5
     return metrics

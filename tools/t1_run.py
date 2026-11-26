@@ -254,6 +254,13 @@ def test_metrics(model, data, prefix="test"):
         for g, m in data.test_groups.items():
             mt = torch.as_tensor(m)
             out[f"{prefix}_accuracy_{g}"] = float((pred[mt] == data.y_test[mt]).float().mean())
+    elif data.test_groups:  # regression test groups exist only under the opt-in covariate-shift split (p4)
+        pred, target = e["pred_pre"].view(-1), data.y_test.float().view(-1)
+        for g, m in data.test_groups.items():
+            mt = torch.as_tensor(m, dtype=torch.bool)
+            out[f"{prefix}_n_{g}"] = int(mt.sum())
+            if mt.any():
+                out[f"{prefix}_rmse_{g}"] = float(torch.mean((pred[mt] - target[mt]) ** 2)) ** .5
     return out
 
 
@@ -283,7 +290,8 @@ def adapted_metrics(model, adapter, data, stream, cfg, rc=None):
             out["temperature_degenerate"] = degenerate
     else:
         out = evaluate_regression_reuse(model, adapter, X, y,
-                                        success_tolerance=cfg["statistics"]["regression_success_tolerance"])
+                                        success_tolerance=cfg["statistics"]["regression_success_tolerance"],
+                                        test_groups=data.test_groups if stream == "test" else None)
     # Synchronization's post-adaptation task loss (cross-entropy or MSE), so frozen-core
     # reuse and every schedule share one selection criterion.
     from model.common.outcomes import frozen_evaluation
@@ -898,7 +906,7 @@ class Runner:
                 return evaluate_reuse(m, a, data.X_test, data.y_test, rc,
                     query_nominal=encoded_queries(a, data, "test"), test_groups=data.test_groups)
             return evaluate_regression_reuse(m, a, data.X_test, data.y_test,
-                success_tolerance=self.cfg["statistics"]["regression_success_tolerance"])
+                success_tolerance=self.cfg["statistics"]["regression_success_tolerance"], test_groups=data.test_groups)
         def checkpoint(m, a, opt, astate, *, initial=False):
             return {"model_state": m.state_dict(), "adapter_state": a.state_dict(),
                 "optimizer_state": opt.state_dict(), "adapter_optimizer_state": astate,

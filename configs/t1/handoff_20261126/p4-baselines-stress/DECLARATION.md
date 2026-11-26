@@ -26,7 +26,7 @@ intervention was chosen, so we choose them here. Nothing is confirmatory.
 | item | value |
 |---|---|
 | split | `splits.split_mode: covariate_pc1`, `shift_quantile: 0.7` (`model/t1/data.py`): PC1 of the standardized numeric features over all rows (median imputation, constant columns dropped, sign: largest loading positive, ties by row index); training side = lower 70 %, test = upper 30 %; validation = `val_frac / (1 - test_frac)` = 25 % of the training side (seeded, stratified where possible); OpenML outer splits not used |
-| test groups | `shift_near` / `shift_far`: lower / upper half of the test rows by PC1 (per-group accuracy is recorded for classification) |
+| test groups | `shift_near` / `shift_far`: lower / upper half of the test rows by PC1 (the near half gets the extra row of an odd count). Recorded per half: accuracy for classification (`test_accuracy_<group>`, `accuracy_pre/post_<group>`), RMSE for regression (`test_rmse_<group>`, `rmse_pre/post_<group>`, with `n_<group>`), and `test_group_metrics` (n, accuracy/log loss/ROC AUC when both classes occur, or RMSE) in the shifted baselines' trial rows |
 | tasks | the 20 real plan_full tasks; `synthetic_diag` is left out (fixed-design generator with its own shifted test group; the split mode refuses synthetic data) |
 | NN-kNN | `shift/shiftF/<task>.yaml`: p1's maskedF config (frozen confirmation config, F arm) with seeds 30-32 and the shift split: units retrieval_only, the frozen-core reuse arm, F (diabets: F is the reuse arm). `shift/shift_retention_<task>.yaml`: plan_full retention (8 policies, tuned masked cores, finetune 30) at K 0.5 only |
 | baselines | `t1_grid_search.py evaluate --split-mode covariate_pc1 --shift-quantile 0.7` of the recorded `grid_full_20261009` kNN, MLP and CatBoost selections, seeds 30-32 |
@@ -35,6 +35,7 @@ intervention was chosen, so we choose them here. Nothing is confirmatory.
 
 ## Known limits
 
+- The test side depends only on PC1, so the three seeds share one test set; the seeds move rows between training and validation and change the model's initialization.
 - Validation lies on the training side, so model selection and early stopping see no shifted rows (intended).
 - A class can be rare or absent on the training side; the split records `classes_missing_from_training` (none at seed 30
   on the 9 classification tasks; iris, wine and digits have strongly skewed class mixes between sides).

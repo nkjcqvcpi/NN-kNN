@@ -97,6 +97,30 @@ def numeric_metrics(prediction, y, task, scale=None):
     return dict(rmse_standardized=rmse, rmse_original=rmse * (scale[1] if scale else 1.), loss=rmse**2)
 
 
+def group_metrics(prediction, y, task, scale, groups):
+    """Test metrics per named boolean mask (the covariate-shift halves of handoff 2026-11-26 p4): ``n`` and accuracy
+    and log loss (classification; ROC AUC only when both classes occur in the group) or RMSE (regression)."""
+    prediction = np.asarray(prediction)
+    out = {}
+    for g, m in groups.items():
+        m = np.asarray(m, dtype=bool)
+        if m.shape != (len(y),):
+            raise ValueError("test group masks must align with the test targets")
+        out[g] = dict(n=int(m.sum()))
+        if not m.any():
+            continue
+        if task == "classification":
+            p = np.clip(np.asarray(prediction[m], dtype=np.float64), 1e-12, None)
+            p /= p.sum(1, keepdims=True)
+            out[g].update(accuracy=float(accuracy_score(y[m], p.argmax(1))),
+                          loss=float(log_loss(y[m], p, labels=np.arange(p.shape[1]))))
+            if p.shape[1] == 2 and len(np.unique(y[m])) == 2:
+                out[g]["roc_auc"] = float(roc_auc_score(y[m], p[:, 1]))
+        else:
+            out[g].update(numeric_metrics(prediction.reshape(-1)[m], y[m], task, scale))
+    return out
+
+
 def prediction(model, family, X, task, num_classes=None):
     if family == "tabpfn":  # opt-in comparator (handoff 2026-11-26 p4); never part of the recorded grids
         from model.t1.tabpfn_baseline import predict
@@ -391,6 +415,9 @@ def fit_trial(out, family, cid, params, stage, data, seed, epochs, patience, tes
             row["training_case_count"] = len(full.y_train)
             row["active_case_count"] = model.case_count() if family == "nnknn" else len(full.y_train) if family == "knn" else None
             row["test_metrics"] = numeric_metrics(pred, full.y_test.numpy(), full.task_type, full.y_scale)
+            if full.meta.get("shift") and full.test_groups:  # opt-in covariate-shift split (p4): per-half metrics
+                row["test_group_metrics"] = group_metrics(pred, full.y_test.numpy(), full.task_type, full.y_scale,
+                                                          full.test_groups)
             out.predictions("test", pred, full.y_test)
             out.data(tensorize(dataclasses.asdict(full)))
             out.model(model, family, info)
