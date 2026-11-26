@@ -22,7 +22,7 @@ def test_pack_has_every_config_and_declares_our_choice():
     names = {p.name for p in P0.glob("*.yaml")}
     assert {"synthetic_protect_rare10.yaml", "reuse_sweep_classification.yaml", "reuse_sweep_regression.yaml",
             "sync_sens_classification.yaml", "sync_sens_regression.yaml", "pretopk_bik3.yaml", "pretopk_bik10.yaml",
-            "pretopk_bik20.yaml"} <= names
+            "pretopk_bik20.yaml", "retention_protect_rare10_tabarena_363614.yaml"} <= names
     assert len([n for n in names if n.startswith("mcbmom")]) == 8
     for p in P0.glob("*.yaml"):
         header = p.read_text(encoding="utf-8").split("\nstatus:")[0]
@@ -83,3 +83,25 @@ def test_pretopk_configs_change_only_bias_init_k(k):
            {key: v for key, v in old.items() if key not in ("status", "core")}
     assert {key for key in old["core"] if old["core"][key] != new["core"][key]} == {"bias_init_k"}
     assert CoreConfig(task_type="regression", seed=70, pre_topk_mask=False, **new["core"]).bias_init_k == k
+
+
+def test_rare10_on_anneal_binds_and_synthetic_rare10_does_not():
+    """The real-task rare10 config protects a cohort (anneal has a class of <= 10 training cases); the synthetic one
+    cannot (smallest class 118), which its header states. Cohorts are classes (model/t1/provenance.active_cohorts)."""
+    import numpy as np
+    from tools.t1_run import load_config
+    real = load_config(P0 / "retention_protect_rare10_tabarena_363614.yaml")
+    assert [d["name"] for d in real["datasets"]] == ["tabarena_363614"]
+    assert real["retention"]["protect_rare_cohort_below"] == 10
+    assert [c["policy"] for c in real["conditions"]] == ["random", "bias_current", "provenance_only",
+                                                          "coverage_reachability"]
+    runner_split = __import__("tools.t1_run", fromlist=["make_splits"]).make_splits
+    sp = real["splits"]
+    try:
+        data = runner_split("tabarena_363614", "classification", 30, test_frac=sp["test_frac"], val_frac=sp["val_frac"],
+                            maint_frac=sp.get("maint_frac", 0.0), reg_cohort_bins=sp.get("reg_cohort_bins", 5),
+                            max_train=None, synthetic=None)
+    except (FileNotFoundError, OSError) as exc:
+        pytest.skip(f"shared datasets not available: {exc}")
+    counts = np.bincount(np.asarray(data.y_train).astype(int))
+    assert 0 < counts[counts > 0].min() <= 10
