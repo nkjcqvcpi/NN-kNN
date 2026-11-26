@@ -1,0 +1,113 @@
+# Handoff 2026-11-26 pack p0 item (e): MCB momentum, synchronization group. Every value chosen here is exploratory, our choice, not a PI decision (owner's order 2026-11-26).
+# plan_full_r760 sync_mcb__classification unchanged (untuned MLP core with mcb_enabled and normalize_embeddings, masked, 300/40;
+# sync 120 epochs, capacity match K 0.75 provenance_only) except experiment, status, seeds 30-32, core.mcb_momentum 0.9
+# (plan_full 0.99; it acts in the core and in every sync epoch) and the conditions: only the three schedules
+# independent, alternating_rr and alternating_rrr (our choice, to keep the cost near a third of the group; the seven
+# loss/radius ablations are left out).
+# Hosts (one per dataset, the hosts of the plan_full sync_mcb rows): q-lab: balance, breast_cancer, digits, tabarena_363614, tabarena_363626; xps8960: iris, wine, zebra, zebra_special, synthetic_diag.
+# Study handoff_mcbmom_r760.
+status: exploratory_handoff_20261126_p0
+specification_commit: cd77277600841438d98ac5793867da28b8ec6dd0
+pipeline_revision: pi_20260920_v2
+torch_threads: 1
+splits:
+  test_frac: 0.2
+  val_frac: 0.2
+  maint_frac: 0.0
+  reg_cohort_bins: 5
+core:
+  representation: mlp
+  glocal_fw_set_num: 1
+  tau: 1.0
+  top_k: 5
+  pre_topk_mask: true
+  case_normalizer: softmax
+  lr_case: 0.01
+  lr_glocal: 0.01
+  lr_feature: 0.001
+  epochs: 300
+  patience: 40
+  batch_size: 32
+  bias_init: knn_mean
+  bias_init_k: 5
+  mlp_dims:
+  - 32
+  - 16
+  mcb_enabled: true
+  mcb_momentum: 0.9
+  normalize_embeddings: true
+statistics:
+  source: train_loo
+  accumulation: per_checkpoint
+  counterfactual: false
+  smoothing: 1.0
+  min_retrieval_count: 2
+  min_activation_mass: 0.1
+  bias_normalization: within_cohort_percentile
+  bias_source: current
+  regression_success_tolerance: 0.5
+retention:
+  policy: provenance_only
+  min_per_cohort: 2
+  protect_rare_cohort_below: 0
+  boundary_protect_fraction: 0.0
+  activation_threshold: 0.05
+  zero_reachability: zero
+  cache_activation_threshold: 0.05
+  allowed_loss_increase: 0.05
+experiment: mcbmom0p9_sync__classification
+type: sync
+seeds:
+- 30
+- 31
+- 32
+datasets:
+- name: balance
+  task_type: classification
+- name: breast_cancer
+  task_type: classification
+- name: digits
+  task_type: classification
+- name: iris
+  task_type: classification
+- name: synthetic_diag
+  task_type: classification
+  synthetic:
+    generator_version: independent_v1
+- name: tabarena_363614
+  task_type: classification
+  display: anneal
+- name: tabarena_363626
+  task_type: classification
+  display: credit-g
+- name: wine
+  task_type: classification
+- name: zebra
+  task_type: classification
+- name: zebra_special
+  task_type: classification
+sync:
+  s_task: 0.5
+  retrieval_lr_scale: 0.1
+  w_pre: 1.0
+  w_post: 0.5
+  w_near: 0.1
+  v_post: 1.0
+  v_delta: 1.0
+  v_small: 0.1
+  epochs: 120
+  block_epochs: 2
+  patience: 30
+  K: 0.75
+  maintenance_epochs:
+  - 40
+  - 80
+  probability_mode: softmax
+  free_radius_method: trained_bias_region
+conditions:
+- schedule: independent
+- schedule: alternating_rr
+- schedule: alternating_rrr
+capacity_match:
+  K: 0.75
+  policy: provenance_only
