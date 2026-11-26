@@ -1,0 +1,17 @@
+# Generated outputs stay local. Evidence indexes and written activity logs are tracked.
+/results/*
+!/results/INDEX.md
+/logs/*
+!/logs/PROJECT_LOG.md
+
+# Training units, weights and datasets belong in shared storage, not this project folder.
+events.out.tfevents.*
+*.pt
+*.pth
+*.h5
+*.ckpt
+__pycache__/
+
+# Separate stage worktree and uv runtime; code is tracked on its own branch.
+/code/neural-cbr/
+/.tools/
