@@ -1,0 +1,107 @@
+# Handoff 2026-11-26 pack p3. Every value chosen here is exploratory, our choice, not a PI decision (owner's order 2026-11-26).
+# Item (e): the classification adapter without the explicit nominal channel Delta_u_q (T1_IMPLEMENTATION_HANDOFF
+# "Classification-adapter baselines and ablations" item 4: "on tasks where Delta_z_q excludes nominal information, the
+# same adapter without Delta_u_q, isolating the value of the explicit nominal-attribute channel").
+# The recorded configs could not express it: declaring the fields covered contradicts the data's documented coverage
+# (fit_nominal_schema refuses it) and omitting the declaration is refused for nominal data. New opt-in ReuseConfig key
+# omit_nominal_channel: the fields stay declared uncovered (still checked against the data) and the aggregate adapter
+# gets [Delta_z_q, p0_q] only. synthetic_nominal is the only plan_full task whose Delta_z_q excludes nominal fields.
+# plan_full_r760 nominal_reuse__classification unchanged except experiment, status, seeds 30-32 and the conditions:
+# the six recorded conditions, each with omit_nominal_channel true (labels no_du__<output_mode>_<loss>).
+# Compared with the recorded plan_full nominal_reuse units (with Delta_u_q) on the same host.
+# Host: r760: synthetic_nominal. Study handoff_nodu_r760.
+status: exploratory_handoff_20261126_p3
+specification_commit: cd77277600841438d98ac5793867da28b8ec6dd0
+pipeline_revision: pi_20260920_v2
+torch_threads: 1
+splits:
+  test_frac: 0.2
+  val_frac: 0.2
+  maint_frac: 0.0
+  reg_cohort_bins: 5
+core:
+  representation: raw
+  glocal_fw_set_num: 1
+  tau: 1.0
+  top_k: 5
+  pre_topk_mask: true
+  case_normalizer: softmax
+  lr_case: 0.01
+  lr_glocal: 0.01
+  lr_feature: 0.001
+  epochs: 300
+  patience: 40
+  batch_size: 32
+  bias_init: knn_mean
+  bias_init_k: 5
+statistics:
+  source: train_loo
+  accumulation: per_checkpoint
+  counterfactual: false
+  smoothing: 1.0
+  min_retrieval_count: 2
+  min_activation_mass: 0.1
+  bias_normalization: within_cohort_percentile
+  bias_source: current
+  regression_success_tolerance: 0.5
+retention:
+  policy: provenance_only
+  min_per_cohort: 2
+  protect_rare_cohort_below: 0
+  boundary_protect_fraction: 0.0
+  activation_threshold: 0.05
+  zero_reachability: zero
+  cache_activation_threshold: 0.05
+  allowed_loss_increase: 0.05
+experiment: nodu_nominal_reuse__classification
+type: reuse
+seeds:
+- 30
+- 31
+- 32
+datasets:
+- name: synthetic_nominal
+  task_type: classification
+reuse:
+  lambda_diff: 1.0
+  lambda_cls: 1.0
+  probability_mode: softmax
+  epochs: 30
+  patience: 15
+  lr: 0.001
+  hidden_dims:
+  - 32
+  - 16
+  nominal_fields_covered_by_representation: false
+  nominal_fields:
+  - name: color
+    covered_by_representation: false
+  - name: shape
+    covered_by_representation: false
+  - name: size
+    covered_by_representation: true
+conditions:
+- name: no_du__nominal_residual_scores_combined
+  output_mode: nominal_residual_scores
+  loss: combined
+  omit_nominal_channel: true
+- name: no_du__nominal_residual_scores_diff_only
+  output_mode: nominal_residual_scores
+  loss: diff_only
+  omit_nominal_channel: true
+- name: no_du__nominal_residual_scores_cls_only
+  output_mode: nominal_residual_scores
+  loss: cls_only
+  omit_nominal_channel: true
+- name: no_du__logit_residual_combined
+  output_mode: logit_residual
+  loss: combined
+  omit_nominal_channel: true
+- name: no_du__logit_residual_diff_only
+  output_mode: logit_residual
+  loss: diff_only
+  omit_nominal_channel: true
+- name: no_du__logit_residual_cls_only
+  output_mode: logit_residual
+  loss: cls_only
+  omit_nominal_channel: true

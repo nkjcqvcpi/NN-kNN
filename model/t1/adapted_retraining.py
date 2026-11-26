@@ -203,6 +203,8 @@ own continued adapter. Rejected forks cannot change the accepted memory.
 def _validate_task_adapter(model, core_cfg, adapter, reuse_cfg):
     if model.task_type != core_cfg.task_type or model.task_type not in {"classification", "regression"}:
         raise ValueError("Matching supported task types are required")
+    if hasattr(adapter, "forward_retrieval") or getattr(adapter, "output_mode", None) == "per_case_2022":
+        raise ValueError("adapted retraining supports the aggregate adapters only")
     if model.task_type == "classification":
         if getattr(adapter, "output_mode", None) != reuse_cfg.output_mode:
             raise ValueError("Continuation output mode must match the selected adapter")

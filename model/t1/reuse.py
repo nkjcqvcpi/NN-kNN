@@ -38,7 +38,7 @@ def adapter_optimizer(params, lr: float, weight_decay: float, device) -> torch.o
 
 @dataclass
 class ReuseConfig:
-    output_mode: str  # nominal_residual_scores | logit_residual
+    output_mode: str  # nominal_residual_scores | logit_residual | per_case_2022 | direct_head (reuse_variants.py)
     loss: str  # combined | diff_only | cls_only
     lambda_diff: float
     lambda_cls: float
@@ -54,10 +54,21 @@ class ReuseConfig:
     score_scale: float = 1.0  # kappa: l_cls = cross_entropy(kappa * s, y) (nominal_residual_scores only)
     weight_decay: float = 0.0  # > 0 switches the adapter optimizer from Adam to AdamW
     dropout: float = 0.0  # classification adapters only
+    # opt-in ablation (handoff "the same adapter without Delta_u_q"): uncovered nominal fields stay declared
+    # uncovered, but the aggregate adapter gets no explicit nominal channel (input [Delta_z_q, p0_q])
+    omit_nominal_channel: bool = False
 
     def validate(self) -> None:
-        if self.output_mode not in {"nominal_residual_scores", "logit_residual"}:
+        from .reuse_variants import DIRECT_HEAD, VARIANT_MODES
+        if self.output_mode not in {"nominal_residual_scores", "logit_residual"} | VARIANT_MODES:
             raise ValueError(self.output_mode)
+        if self.output_mode == DIRECT_HEAD and self.loss != "cls_only":
+            raise ValueError("direct_head is a plain classifier: loss must be cls_only")
+        if self.omit_nominal_channel:
+            if self.output_mode not in {"nominal_residual_scores", "logit_residual"}:
+                raise ValueError("omit_nominal_channel ablates the aggregate adapter only")
+            if not any(not f["covered_by_representation"] for f in self.nominal_fields):
+                raise ValueError("omit_nominal_channel needs at least one declared uncovered nominal field")
         if self.loss not in {"combined", "diff_only", "cls_only"}:
             raise ValueError(self.loss)
         if self.loss == "combined" and not (self.lambda_diff > 0 and self.lambda_cls > 0):
@@ -90,11 +101,23 @@ def neighborhood_inputs(model, X: torch.Tensor, *, exclude_identical: bool, X_no
     z_bar = w @ r["case_features"]
     dz = r["query_features"] - z_bar
     du = None
+    if nominal_adapter is not None and hasattr(nominal_adapter, "forward_retrieval"):
+        # opt-in variants (reuse_variants.py) read the retrieval event itself and handle their own nominal inputs
+        out = nominal_adapter.forward_retrieval(model, r, X_nominal)
+        return {"dz": dz.detach(), "p0": p0.detach(), "du": None, "weights": w.detach(),
+                "outputs": (out[0].detach(), out[1].detach())}
     if nominal_adapter is not None:
         du = nominal_difference(nominal_adapter, model, r, X_nominal)
     elif X_nominal is not None or nominal_case is not None:
         raise ValueError("nominal inputs require a fitted schema and stable case-ID binding via nominal_adapter")
     return {"dz": dz.detach(), "p0": p0.detach(), "du": du, "weights": w.detach()}
+
+
+def adapter_outputs(adapter, nb) -> tuple[torch.Tensor, torch.Tensor]:
+    """``(residual, scores)`` of ``adapter`` on the neighborhoods ``nb`` of ``neighborhood_inputs``."""
+    if "outputs" in nb:
+        return nb["outputs"]
+    return adapter(nb["dz"], nb["p0"], nb["du"])
 
 
 def _probs_from_scores(s: torch.Tensor, mode: str) -> torch.Tensor:
@@ -192,10 +215,15 @@ def _adapter_losses(adapter, out_r, out_s, p0, y, cfg: ReuseConfig) -> dict[str,
 
 def train_classification_adapter(model, data, cfg: ReuseConfig) -> tuple[ClassificationNNCDHAdapter, dict[str, Any]]:
     cfg.validate()
+    from .reuse_variants import VARIANT_MODES, train_classification_variant
+    if cfg.output_mode in VARIANT_MODES:  # opt-in per-case / direct-head variants
+        return train_classification_variant(model, data, cfg)
     torch.manual_seed(cfg.seed)
     C = int(data.num_classes)
     schema, train_nominal, val_nominal = None, None, None
-    if cfg.nominal_fields:
+    if cfg.nominal_fields and cfg.omit_nominal_channel:
+        fit_nominal_schema(data, cfg.nominal_fields)  # the declared coverage is still checked against the data
+    elif cfg.nominal_fields:
         schema = fit_nominal_schema(data, cfg.nominal_fields)
         train_nominal = schema.encode(data.nominal_train, rows=len(data.y_train))
         val_nominal = schema.encode(data.nominal_val, rows=len(data.y_val))
@@ -248,6 +276,8 @@ def train_classification_adapter(model, data, cfg: ReuseConfig) -> tuple[Classif
     info = {"history": hist, "best_epoch": best[2], "epochs_run": len(hist),
             "optimizer_state": best[3], "optimizer_checkpoint_epoch": best[2],
             "n_train_examples": int(ytr.numel()), "neighborhoods": "leave_one_out"}
+    if cfg.omit_nominal_channel:
+        info["nominal_channel"] = "omitted (ablation): adapter input [Delta_z_q, p0_q]"
     if schema is not None:
         info["nominal_manifest"] = schema.state_dict()
     return adapter, info
@@ -274,6 +304,11 @@ def train_regression_adapter(model, data, cfg: ReuseConfig):
         raise ValueError("Regression reuse needs an explicit regression task and continuous inputs")
     if cfg.dropout > 0 or cfg.score_scale != 1.0:
         raise ValueError("adapter dropout and score_scale apply to classification adapters only")
+    from .reuse_variants import DIRECT_HEAD, PER_CASE, train_per_case_regression_adapter
+    if cfg.output_mode == PER_CASE:  # opt-in historical per-case adapter
+        return train_per_case_regression_adapter(model, data, cfg)
+    if cfg.output_mode == DIRECT_HEAD:
+        raise ValueError("direct_head is a classification capacity reference")
     device = model.cases.device
     torch.manual_seed(cfg.seed)
     def inputs(X, ids=None):
@@ -330,7 +365,7 @@ def train_regression_adapter(model, data, cfg: ReuseConfig):
 def reuse_logits(model, adapter, X: torch.Tensor, cfg: ReuseConfig, *, query_nominal=None) -> torch.Tensor:
     """``calibration_logits`` of the adapted output on one stream (frozen retrieval, no LOO)."""
     nb = neighborhood_inputs(model, X, exclude_identical=False, X_nominal=query_nominal, nominal_adapter=adapter)
-    return calibration_logits(adapter(nb["dz"], nb["p0"], nb["du"])[1], cfg)
+    return calibration_logits(adapter_outputs(adapter, nb)[1], cfg)
 
 
 @torch.no_grad()
@@ -344,7 +379,7 @@ def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseC
     nb = neighborhood_inputs(model, X, exclude_identical=False, X_nominal=query_nominal, nominal_adapter=adapter)
     p0 = nb["p0"]
     y = y.to(p0.device).long()
-    r, s = adapter(nb["dz"], p0, nb["du"])
+    r, s = adapter_outputs(adapter, nb)
     pre = p0.argmax(1)
     post = s.argmax(1)
     # kappa * s is the trained softmax input; 1.0 * s == s keeps the default exact
@@ -356,13 +391,14 @@ def evaluate_reuse(model, adapter, X: torch.Tensor, y: torch.Tensor, cfg: ReuseC
         "wrong_to_other_wrong": int((~ok_pre & ~ok_post & (pre != post)).sum()),
         "unchanged": int((pre == post).sum()),
     }
-    mag = (s - p0).abs().sum(1) if cfg.output_mode == "nominal_residual_scores" else (probs_post - p0).abs().sum(1)
+    # every mode but logit_residual returns class scores s (s - p0 is the applied correction)
+    mag = (s - p0).abs().sum(1) if cfg.output_mode != "logit_residual" else (probs_post - p0).abs().sum(1)
     metrics = {
         "accuracy_pre": float(ok_pre.float().mean()),
         "accuracy_post": float(ok_post.float().mean()),
         "ece_pre": expected_calibration_error(p0.cpu(), y.cpu()),
         "ece_post": expected_calibration_error(probs_post.cpu(), y.cpu()),
-        "probability_mode": cfg.probability_mode if cfg.output_mode == "nominal_residual_scores" else "softmax(log p0 + delta)",
+        "probability_mode": cfg.probability_mode if cfg.output_mode != "logit_residual" else "softmax(log p0 + delta)",
         "flips": flips,
         "net_beneficial_flips": flips["wrong_to_correct"] - flips["correct_to_wrong"],
         "correction_l1_mean": float(mag.mean()),

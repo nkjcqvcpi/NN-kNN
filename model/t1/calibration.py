@@ -9,6 +9,13 @@
 
 Training cases only; self pairs excluded; computed only at declared outer
 checkpoints. Degenerate regions are reported, never silently patched.
+
+Classification ``d_y`` is ``one_hot_euclidean`` (||e(y_i) - e(y_j)||_2). The opt-in
+ablation ``label_metric="probability_vector_distance"`` (handoff: "Retain distance
+between class-probability vectors as a prespecified ablation") uses
+||p_i - p_j||_2 instead, where p_i is case i's leave-one-out retrieval class-mass
+vector under the same frozen snapshot (case i's own input as the query, its own
+stable ID excluded; the vectors are snapshotted with the pairs).
 """
 
 from __future__ import annotations
@@ -57,7 +64,15 @@ def calibrate_free_radius(
     bias_transform: str = "identity",
     shrink_factor: float = 0.5,
     clipping_quantile: float = 0.95,
+    label_metric: str | None = None,
 ) -> tuple[FreeRadius, dict[str, Any]]:
+    """``label_metric``: None keeps the task default (classification ``one_hot_euclidean``, regression
+    ``absolute_difference``); ``probability_vector_distance`` is the classification ablation."""
+    if label_metric not in (None, "one_hot_euclidean", "probability_vector_distance", "absolute_difference"):
+        raise ValueError(f"Unknown free-radius label metric: {label_metric}")
+    if model.task_type == "classification" and label_metric == "absolute_difference" or \
+            model.task_type != "classification" and label_metric in ("one_hot_euclidean", "probability_vector_distance"):
+        raise ValueError(f"label metric {label_metric} does not apply to {model.task_type}")
     if s_task <= 0:
         raise ValueError("s_task must be > 0 (plan: divide by s_task, not tau_task)")
     n = model.case_count()
@@ -104,7 +119,12 @@ def calibrate_free_radius(
     elif method == "zero":
         act.zero_()
     labels = model.labels[:n].detach().float().clone()
-    if model.task_type == "classification":
+    probabilities = None
+    if model.task_type == "classification" and label_metric == "probability_vector_distance":
+        probabilities = loo_class_probabilities(model)
+        dy = torch.cdist(probabilities, probabilities)
+        metric = "probability_vector_distance"
+    elif model.task_type == "classification":
         same = labels @ labels.t()  # 1 if same class
         dy = torch.sqrt((2.0 * (1.0 - same)).clamp_min(0))
         metric = "one_hot_euclidean"
@@ -128,12 +148,35 @@ def calibrate_free_radius(
     fr = FreeRadius(tau, float(s_task), n_pairs, possible, frac, status, float(b.mean()), float(b.std()) if n > 1 else 0.0, snapshot_step, metric, method, aggregation, bias_transform)
     # Save the actual measuring scale and pair identities, not two floating-point
     # sums that cannot reconstruct the frozen activation regions.
-    return fr, {"bias_snapshot": b.cpu(), "trained_bias_snapshot": trained_b.cpu(), "distance_snapshot": D.cpu(),
+    snapshot = {"bias_snapshot": b.cpu(), "trained_bias_snapshot": trained_b.cpu(), "distance_snapshot": D.cpu(),
                 "labels_snapshot": labels.cpu(), "pair_mask": act.cpu(),
                 "case_ids": model.active_case_ids().detach().cpu().clone(),
                 "free_radius": fr.to_dict(),
                 "transformation_parameters": {"shrink_factor": shrink_factor, "clipping_quantile": clipping_quantile},
                 "distance_snapshot_hash": torch.tensor([float(D.sum()), float((D ** 2).sum())])}
+    if probabilities is not None:
+        snapshot["label_probability_snapshot"] = probabilities.cpu()
+    return fr, snapshot
+
+
+@torch.no_grad()
+def loo_class_probabilities(model, chunk: int = 256) -> torch.Tensor:
+    """[n, C] leave-one-out retrieval class mass of every active case (eval mode, own stable ID excluded)."""
+    was = model.training
+    model.eval()
+    n = model.case_count()
+    ids = model.active_case_ids()
+    rows = []
+    try:
+        for s in range(0, n, chunk):
+            slots = torch.arange(s, min(n, s + chunk), device=model.cases.device)
+            r = model.retrieve(model.cases[slots], exclude_identical=False, query_case_ids=ids[slots])
+            p = r["weights"] @ model.labels[r["case_indices"]].float()
+            rows.append(p / p.sum(1, keepdim=True).clamp_min(1e-12))
+    finally:
+        if was:
+            model.train()
+    return torch.cat(rows)
 
 
 def l_small(c_q: torch.Tensor, fr: FreeRadius, eps: float = 1e-8) -> torch.Tensor:

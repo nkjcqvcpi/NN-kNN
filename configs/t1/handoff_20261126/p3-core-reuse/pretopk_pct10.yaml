@@ -1,0 +1,72 @@
+# Handoff 2026-11-26 pack p3. Every value chosen here is exploratory, our choice, not a PI decision (owner's order 2026-11-26).
+# Item (a): learned-distance percentile bias initializer (T1_FULL_CYCLE_IMPLEMENTATION_PLAN section 7: "A learned-distance
+# percentile initializer is an ablation"; handoff config surface component_sync_free_correction_bias_initializer_ablation
+# = "learned_distance_percentile"), the requested alternative to knn_mean with k = 5.
+# Rule (model/common/core.py learned_distance_percentile): b_default^(0) = the 10th percentile (linear interpolation)
+# of all ordered non-self learned case-case distances of the training cases at initialization (exact, not sampled;
+# self pairs excluded by identity). Percentiles 10/25/50 are our choice (10 is the old find_default_bias_percentage
+# default). bias_init_k stays 5 (read only by knn_mean and the exact_kth_pair radius).
+# configs/t1/pre_topk_expanded_20261030.yaml (raw core, 120/20, top_k 5, 12 datasets, seeds 70-72) unchanged except
+# status, core.bias_init learned_distance_percentile and core.bias_init_percentile 10. Run by tools/t1_pre_topk_pilot.py,
+# which fits both arms (masked and all_cases) from one paired initialization; the all-case arm is the comparison asked
+# for. Compared with the all_cases units of pretopk_expanded_r760 (knn_mean k 5) and handoff_bik3/10/20_r760.
+# Host: xps8960 (pretopk_expanded_r760 was recorded there for all 12 datasets). Study handoff_pct10_r760.
+status: exploratory_handoff_20261126_p3
+seeds:
+- 70
+- 71
+- 72
+splits:
+  test_frac: 0.2
+  val_frac: 0.2
+core:
+  representation: raw
+  glocal_fw_set_num: 1
+  case_normalizer: softmax
+  tau: 1.0
+  top_k: 5
+  bias_init: learned_distance_percentile
+  bias_init_k: 5
+  lr_case: 0.01
+  lr_glocal: 0.01
+  lr_feature: 0.001
+  batch_size: 64
+  epochs: 120
+  patience: 20
+  bias_init_percentile: 10
+datasets:
+- name: linear_regression
+  task_type: regression
+  generator:
+    n: 400
+    d: 5
+    noise_scale: 1.0
+- name: yacht
+  task_type: regression
+- name: energy_efficiency
+  task_type: regression
+- name: iris
+  task_type: classification
+- name: wine
+  task_type: classification
+- name: breast_cancer
+  task_type: classification
+- name: balance
+  task_type: classification
+- name: digits
+  task_type: classification
+- name: airfoil
+  task_type: regression
+- name: student_performance
+  task_type: regression
+- name: mixture_two_linear_models
+  task_type: regression
+  generator:
+    n: 400
+    d: 4
+    noise_scale: 0.5
+- name: redundant_features
+  task_type: regression
+  generator:
+    n: 400
+    noise_scale: 0.1

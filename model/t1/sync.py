@@ -166,11 +166,14 @@ def _forward_terms(model, adapter, X, y, fr: FreeRadius | None, *, output_mode: 
     else:
         p0 = (w @ labels) / (w @ labels).sum(1, keepdim=True).clamp_min(1e-12)
         L_pre = F.nll_loss(torch.log(p0.clamp_min(1e-8)), y.long())
-        dz = r["query_features"] - w @ r["case_features"]
-        du = nominal_difference(adapter, model, r, query_nominal)
-        rh, s = adapter(dz, p0, du)
+        if hasattr(adapter, "forward_retrieval"):  # opt-in reuse variants (reuse_variants.py): class scores
+            rh, s = adapter.forward_retrieval(model, r, query_nominal)
+        else:
+            dz = r["query_features"] - w @ r["case_features"]
+            du = nominal_difference(adapter, model, r, query_nominal)
+            rh, s = adapter(dz, p0, du)
         y1 = F.one_hot(y.long(), p0.size(1)).float()
-        if output_mode == "nominal_residual_scores":
+        if output_mode != "logit_residual":  # class scores (nominal_residual_scores and the opt-in variants)
             L_post = F.cross_entropy(score_scale * s, y.long())  # x * 1.0 is exact: default unchanged
             L_delta = F.mse_loss(rh, y1 - p0)
         else:

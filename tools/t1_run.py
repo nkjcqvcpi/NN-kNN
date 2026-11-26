@@ -195,8 +195,21 @@ def retention_cfg_for(cond: dict[str, Any], cfg: dict[str, Any], seed: int) -> R
 # retrieval learning-rate scale and free-radius calibration (each merged over
 # ``sync``), and in-training maintenance (``sync_maintenance_for``).
 SYNC_RUNNER_KEYS = frozenset({"name", "core_pretrain", "retrieval_lr_scale", "s_task", "free_radius_method",
-                              "radius_aggregation", "bias_transform", "shrink_factor", "clipping_quantile"})
+                              "radius_aggregation", "bias_transform", "shrink_factor", "clipping_quantile",
+                              "free_radius_label_metric"})
 SYNC_MAINTENANCE_KEYS = frozenset({"K", "maintenance_epochs"})
+# Component description of the opt-in reuse variants (model/t1/reuse_variants.py); the default modes keep theirs.
+REUSE_VARIANT_COMPONENT = {
+    "per_case_2022": "historical 2022 per-case NN-CDH ({output_mode}, {loss})",
+    "direct_head": "direct neural classification head on z_q (capacity reference, not adaptation; {loss})",
+}
+
+
+def reuse_component(rc, output_mode: str, loss: str) -> str:
+    if rc.output_mode in REUSE_VARIANT_COMPONENT:
+        return REUSE_VARIANT_COMPONENT[rc.output_mode].format(output_mode=output_mode, loss=loss)
+    text = f"aggregate label-conditioned NN-CDH ({output_mode}, {loss})"
+    return text + " without the explicit nominal channel" if rc.omit_nominal_channel else text
 
 
 def sync_maintenance_for(cond: dict[str, Any], cfg: dict[str, Any], seed: int):
@@ -584,7 +597,8 @@ class Runner:
         return self.stage(ds, seed, "core" if arm is None else f"core__{arm['name']}", units, compute)
 
     def reuse_unit(self, task_type, cond, arm=None):
-        output_mode = cond["output_mode"] if task_type == "classification" else "aggregate_regression"
+        output_mode = cond["output_mode"] if task_type == "classification" else (
+            "per_case_2022_regression" if cond.get("output_mode") == "per_case_2022" else "aggregate_regression")
         return arm_label(arm, cond.get("name", f"{output_mode}_{cond['loss']}")), {**arm_fields(arm), **cond}
 
     def sync_unit(self, cond, arm=None):
@@ -791,7 +805,7 @@ class Runner:
             output_mode = cond["output_mode"]
         else:
             adapter, info = train_regression_adapter(model, data, rc)
-            output_mode = "aggregate_regression"
+            output_mode = "per_case_2022_regression" if rc.output_mode == "per_case_2022" else "aggregate_regression"
         ev = adapted_metrics(model, adapter, data, "test", self.cfg, rc)
         vev = adapted_metrics(model, adapter, data, "val", self.cfg, rc)
         store_b = CaseStatisticsStore(data.task_type)
@@ -804,7 +818,7 @@ class Runner:
              "provenance_semantics": ainfo["provenance_semantics"],
              "test_locality_input": input_locality(model, data.X_test)}
         self.finish(ds=ds, seed=seed, cond_label=label, cond={**arm_fields(arm), **cond}, data=data, model=model, store=store_b, archive=None, metrics=m, history={"core": tr.history, "adapter": info["history"]}, events=[],
-                    components={"retrieve": "trained NN-kNN core (frozen)", "reuse_or_adapter": f"aggregate label-conditioned NN-CDH ({output_mode}, {cond['loss']})", "revise": "off", "retain": "none", "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": "off (retrieval frozen first)"},
+                    components={"retrieve": "trained NN-kNN core (frozen)", "reuse_or_adapter": reuse_component(rc, output_mode, cond['loss']), "revise": "off", "retain": "none", "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": "off (retrieval frozen first)"},
                     budgets={"case_capacity": model.case_count(), "adapter_epochs_max": rc.epochs,
                              "adapter_epochs_run": info["epochs_run"], "adapter_best_epoch": info["best_epoch"]},
                     maintenance={"policy": "none"}, model_desc={"core": cc.__dict__, "adapter": rc.__dict__},
@@ -1134,7 +1148,8 @@ class Runner:
                 bias_transform=merged.get("bias_transform", "identity"),
                 shrink_factor=float(merged.get("shrink_factor", .5)),
                 clipping_quantile=float(merged.get("clipping_quantile", .95)),
-                initial_bias=None if initial_bias is None else initial_bias[ids])
+                initial_bias=None if initial_bias is None else initial_bias[ids],
+                label_metric=merged.get("free_radius_label_metric"))
             snapshot["model_state"] = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
             snapshot["active_case_count"] = model.case_count()
             calibration_snapshots.append(compact_calibration_snapshot(snapshot))
@@ -1175,6 +1190,8 @@ class Runner:
             "snapshot_file": "calibration_snapshots.pt",
             "snapshot_steps": [s["free_radius"]["snapshot_step"] for s in calibration_snapshots],
             "recompute": "declared_maintenance_checkpoints_only"}}
+        if merged.get("free_radius_label_metric") is not None:  # opt-in label-metric ablation
+            extra_files["calibration_protocol.json"]["label_metric"] = merged["free_radius_label_metric"]
         if capacity_match:
             binary_files["before_capacity_match.pt"] = {
                 "model_state": copy.deepcopy(model.state_dict()), "active_case_count": model.case_count(),

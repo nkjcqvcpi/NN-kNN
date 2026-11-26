@@ -1,0 +1,276 @@
+# Handoff 2026-11-26 pack p3. Every value chosen here is exploratory, our choice, not a PI decision (owner's order 2026-11-26).
+# Item (c): a direct neural classification head as a capacity reference, reported separately (T1_IMPLEMENTATION_HANDOFF:
+# "A direct neural classification head may be included as a capacity reference, but it is not an adaptation method
+# and must be reported separately"; plan section 5.3 leakage/capacity control). Its own experiment and study.
+# Declared head (model/t1/reuse_variants.py, output_mode direct_head): class logits = g(z_q), z_q the frozen trained
+# core's query representation (the features retrieval uses), same hidden sizes, lr, epochs and patience as the
+# recorded adapters, cross-entropy only (loss cls_only), best validation loss; retrieval is not used for the decision
+# (the row's pre metrics are still the retrieval-only p0).
+# plan_full_r760 reuse_classification__classification unchanged except experiment, status, seeds 30-32 and the condition.
+# Hosts (one per dataset, those of the plan_full reuse_classification rows): q-lab: balance, breast_cancer, digits, tabarena_363614, tabarena_363626; xps8960: iris, synthetic_diag, wine, zebra, zebra_special.
+# Study handoff_directhead_r760.
+status: exploratory_handoff_20261126_p3
+specification_commit: cd77277600841438d98ac5793867da28b8ec6dd0
+pipeline_revision: pi_20260920_v2
+torch_threads: 1
+splits:
+  test_frac: 0.2
+  val_frac: 0.2
+  maint_frac: 0.0
+  reg_cohort_bins: 5
+core:
+  representation: raw
+  glocal_fw_set_num: 1
+  tau: 1.0
+  top_k: 5
+  pre_topk_mask: true
+  case_normalizer: softmax
+  lr_case: 0.01
+  lr_glocal: 0.01
+  lr_feature: 0.001
+  epochs: 300
+  patience: 40
+  batch_size: 32
+  bias_init: knn_mean
+  bias_init_k: 5
+statistics:
+  source: train_loo
+  accumulation: per_checkpoint
+  counterfactual: false
+  smoothing: 1.0
+  min_retrieval_count: 2
+  min_activation_mass: 0.1
+  bias_normalization: within_cohort_percentile
+  bias_source: current
+  regression_success_tolerance: 0.5
+retention:
+  policy: provenance_only
+  min_per_cohort: 2
+  protect_rare_cohort_below: 0
+  boundary_protect_fraction: 0.0
+  activation_threshold: 0.05
+  zero_reachability: zero
+  cache_activation_threshold: 0.05
+  allowed_loss_increase: 0.05
+experiment: directhead_reuse_classification__classification
+type: reuse
+seeds:
+- 30
+- 31
+- 32
+datasets:
+- name: balance
+  task_type: classification
+- name: breast_cancer
+  task_type: classification
+- name: digits
+  task_type: classification
+- name: iris
+  task_type: classification
+- name: synthetic_diag
+  task_type: classification
+  synthetic:
+    generator_version: independent_v1
+- name: tabarena_363614
+  task_type: classification
+  display: anneal
+- name: tabarena_363626
+  task_type: classification
+  display: credit-g
+- name: wine
+  task_type: classification
+- name: zebra
+  task_type: classification
+- name: zebra_special
+  task_type: classification
+reuse:
+  lambda_diff: 1.0
+  lambda_cls: 1.0
+  probability_mode: softmax
+  epochs: 300
+  patience: 30
+  lr: 0.001
+conditions:
+- output_mode: direct_head
+  loss: cls_only
+core_by_dataset:
+  classification__iris:
+    representation: raw
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__wine:
+    representation: mlp
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__breast_cancer:
+    representation: raw
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__balance:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__digits:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__zebra:
+    representation: raw
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__zebra_special:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__energy_efficiency:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__yacht:
+    representation: raw
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__airfoil:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__student_performance:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__abalone:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__body_fat:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__diabets:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__car:
+    representation: raw
+    top_k: 3
+    lr_case: 0.001
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.001
+    lr_feature: 0.0001
+  regression__wine:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__tabarena_363614:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__tabarena_363626:
+    representation: raw
+    top_k: 10
+    lr_case: 0.001
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.001
+    lr_feature: 0.0001
+  regression__tabarena_363625:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__tabarena_363675:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
