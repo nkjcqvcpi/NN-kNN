@@ -2,7 +2,13 @@
 
 Created November 24, 2026.
 
-Study whether explicitly controlling adaptation can preserve accurate NN-kNN retrieval predictions while allowing useful corrections. **Current direction (November 25, 2026): the owner shelved the magnitude/direction design and authorized exploration of alternatives, including a learned apply-or-skip head on the old residual adapter.** See the [new experiment protocol](code/neural-cbr/docs/ADAPTATION_GATE_EXPERIMENT.md). The new gate and residual head train together while retrieval stays frozen in this first controlled experiment.
+Study whether changing adaptation can preserve accurate NN-kNN retrieval predictions while allowing useful corrections. **Latest completed experiment (November 25, 2026): query-aware NN-CDH without the retrieved prediction input, study `aq2`.** The owner requested removing that input to prevent direct subtraction of retrieval. See the [new report](code/neural-cbr/reports/QUERY_NO_PREDICTION_LOCAL_2026-11-25.md) and [protocol](code/neural-cbr/docs/QUERY_NO_PREDICTION_EXPERIMENT.md).
+
+The new residual network receives only `[query - neighborhood_mean, query]`; retrieved prediction is added outside it. The direct subtraction path is absent and verified. All 42 new models are complete, with 336 comparison rows reusing the previous baselines. Classification mean error is 10.146% (query-aware with prediction: 9.359%; original: 9.945%), although geometric mean ratios and five of seven tasks improve against the original. Regression RMSE worsens to 0.358695, with an extreme Car overcorrection. The original default remains unchanged. This variant is available for controlled follow-up, not promoted as an overall improvement.
+
+The preceding [query-aware study `aq1`](code/neural-cbr/reports/QUERY_AWARE_LOCAL_2026-11-25.md) improves mean classification error from 9.945% to 9.359%, but worsens mean regression RMSE from 0.338910 to 0.345176, mainly through harmful Car adaptation. Its 42 query-aware runs and compact local MLP, TabM, CatBoost and kNN comparisons are complete, with 672 recorded units and 294 comparison rows. NN-kNN beats the local neural baselines on family means, but their smaller search/budget does not establish superiority over the historical tuned baselines. Residual output alone cannot guarantee retrieval dependence; the recorded intervention probes show substantial retrieval sensitivity.
+
+Earlier exploration covered a learned apply-or-skip head and a trainable disagreement cutoff. The magnitude/direction design remains shelved. Their protocols, code and results below are preserved as previous experiments.
 
 The shelved magnitude/direction proposal used:
 

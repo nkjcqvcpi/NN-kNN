@@ -1,5 +1,31 @@
 # Experiment results index
 
+## Query-aware without prediction input: aq2 (November 25, 2026)
+
+Status: **complete, 42 new model units, 336 comparison rows, no missing units**. The residual network receives the query and query-to-neighborhood difference, with no retrieved-prediction input columns. Retrieval remains in the final addition. All previous baselines are reused.
+
+Mean classification error is **10.146%**, versus 9.359% for query-aware with prediction and 9.945% for the original. Classification GMR is better (0.91477 and 0.89108 respectively), so the ranking depends on aggregation. Regression RMSE is **0.358695**, versus 0.345176 and 0.338910. A single Car seed-40 overcorrection of +21.20 when +0.124 was needed accounts for 98.6% of that run's adaptation harm. No failure was excluded or default changed.
+
+- [Full report](../code/neural-cbr/reports/QUERY_NO_PREDICTION_LOCAL_2026-11-25.md), [declared protocol](../code/neural-cbr/docs/QUERY_NO_PREDICTION_EXPERIMENT.md), [adapter classes](../code/neural-cbr/model/t1/query_aware.py), [recorded driver](../code/neural-cbr/tools/t1_query_no_prediction.py), [local launcher](../code/run_query_no_prediction_experiment.py).
+- [All model/seed rows](../code/neural-cbr/results/adaptation_improvement/aq2/runs.csv), [task means](../code/neural-cbr/results/adaptation_improvement/aq2/tasks.csv), [family means](../code/neural-cbr/results/adaptation_improvement/aq2/families.csv), [pairwise comparisons](../code/neural-cbr/results/adaptation_improvement/aq2/comparisons.csv), [full evidence](../code/neural-cbr/results/adaptation_improvement/aq2/comparison.json).
+- [Correction contribution](../code/neural-cbr/results/adaptation_improvement/aq2/adaptation.csv), [regression direction/overshoot](../code/neural-cbr/results/adaptation_improvement/aq2/regression_behavior.csv), [largest harmful cases](../code/neural-cbr/results/adaptation_improvement/aq2/harm_examples.csv), [retrieval interventions](../code/neural-cbr/results/adaptation_improvement/aq2/intervention_summary.csv), [comparison figure](../code/neural-cbr/results/adaptation_improvement/aq2/query_no_prediction_comparison.png).
+- Run store: `NNKNN_RUNS/t1/aq2/nopred_v1/`. Matched cores come from `am1`; cached data and query-aware/conventional references come from `aq1`. No baseline was trained again.
+- Verified 252 new prediction/metric comparisons and 840 reference comparisons, all source target matches, all parameter-count reductions and the prediction-only invariance checks. All 42 completed units were reused with fitting prohibited. The integration suite passed 96 tests (including 35 query-adapter tests); three additional new driver tests passed. Shared-core manifest passed.
+- Runtime logs: `../logs/local_aq2_*.log`. Rebuild generated evidence with `--study aq2 --mode summarize`.
+
+## Query-aware original adapter: aq1 (November 25, 2026)
+
+Status: **complete, 42 query-aware models, 672 new recorded units, 294 comparison rows, no missing units**. The original residual adapter gains the query representation as an input, retaining its residual output and selected training schedule. No new gate or magnitude/direction experiment was included.
+
+Mean classification error improves **9.945% -> 9.359%**; mean standardized regression RMSE worsens **0.338910 -> 0.345176**. Query-aware improves four task means in each family, but harmful Car corrections dominate the regression loss. Original and query-aware NN-kNN both beat the compact local MLP/TabM searches on family means; those searches do not reproduce the historical tuned winners. The original residual default remains unchanged.
+
+- [Full report](../code/neural-cbr/reports/QUERY_AWARE_LOCAL_2026-11-25.md), [declared protocol](../code/neural-cbr/docs/QUERY_AWARE_EXPERIMENT.md), [adapter](../code/neural-cbr/model/t1/query_aware.py), [recorded driver](../code/neural-cbr/tools/t1_query_aware.py), [local launcher](../code/run_query_aware_experiment.py).
+- [All model/seed rows](../code/neural-cbr/results/adaptation_improvement/aq1/runs.csv), [task means](../code/neural-cbr/results/adaptation_improvement/aq1/tasks.csv), [family means](../code/neural-cbr/results/adaptation_improvement/aq1/families.csv), [pairwise comparisons](../code/neural-cbr/results/adaptation_improvement/aq1/comparisons.csv), [full evidence](../code/neural-cbr/results/adaptation_improvement/aq1/comparison.json).
+- [Correction contribution](../code/neural-cbr/results/adaptation_improvement/aq1/adaptation.csv), [retrieval/query interventions](../code/neural-cbr/results/adaptation_improvement/aq1/intervention_summary.csv), [comparison figure](../code/neural-cbr/results/adaptation_improvement/aq1/query_aware_comparison.png).
+- Run store: `NNKNN_RUNS/t1/aq1/query_v1/`. Includes 42 data units, 42 query-aware units, 420 validation candidates and 168 selected-baseline evaluations. Old full models and pretrained retrieval are reused from `am1`.
+- All 840 saved prediction/metric comparisons and 168 family selections passed reconciliation. Completed query-aware/baseline units were reused without fitting; old predictions were reconstructed successfully for all 42 splits. The latest focused suite passed 46 tests, including all 19 query-aware tests; 11 grid-search/prefill tests passed. Shared-core manifest passed. See report for overlapping broader checks.
+- Runtime logs: `../logs/local_aq1_*.log`. Rebuild generated summaries with `--study aq1 --mode summarize`.
+
 ## Apply-or-skip exploration: ag1 (November 25, 2026)
 
 Status: **complete, 42 dataset/seed comparisons, 210 recorded units, no missing units**. The magnitude/direction design is shelved. Six alternatives were tested against the old full adapter and its selected retrieval core: global on/off, global shrinkage, disagreement threshold, extra training without a gate, probability gate and utility-weighted gate.
