@@ -168,7 +168,25 @@ def make_splits(
     reg_cohort_bins: int = 5,
     max_train: int | None = None,
     synthetic: dict[str, Any] | None = None,
+    split_mode: str = "random",
+    shift_quantile: float = 0.7,
 ) -> T1Data:
+    """Train/validation/test(/maintenance) streams of one dataset and seed.
+
+    ``split_mode`` "random" (default) is the recorded split. "covariate_pc1" (opt-in, handoff 2026-11-26 pack p4,
+    exploratory, our choice) is a covariate-shift split: see ``covariate_pc1_order``. The training side is the lower
+    ``shift_quantile`` of the first principal component of the standardized numeric features over all rows, the test
+    stream is the rest; validation (and maintenance, ``max_train``) are then carved from the training side exactly as
+    in the random split (validation = ``val_frac / (1 - test_frac)`` of the training side, seeded). OpenML outer
+    splits are not used in this mode; synthetic generators have fixed designs and refuse it.
+    """
+    if split_mode not in SPLIT_MODES:
+        raise ValueError(f"unknown split_mode {split_mode!r}; expected one of {sorted(SPLIT_MODES)}")
+    if split_mode != "random":
+        if name.startswith("synthetic"):
+            raise ValueError("synthetic generators have fixed designs; split_mode must be 'random'")
+        if isinstance(shift_quantile, bool) or not 0.0 < float(shift_quantile) < 1.0:
+            raise ValueError("shift_quantile must lie strictly between 0 and 1")
     if name.startswith("synthetic"):
         if task_type != "classification":
             raise ValueError("synthetic diagnostics support classification only")
@@ -182,20 +200,50 @@ def make_splits(
     X, y, meta = _load_raw(name, task_type, seed)
     idx = np.arange(len(y))
     strat = y if task_type == "classification" else None
-    if "outer_train_indices" in meta:
+    shift_groups = None
+    if split_mode == "covariate_pc1":
+        meta.pop("outer_train_indices", None)
+        meta.pop("outer_test_indices", None)
+        for key in ("outer_repeat", "outer_fold"):
+            meta.pop(key, None)
+        order, info = covariate_pc1_order(X)
+        n_low = int(round(float(shift_quantile) * len(order)))
+        if not 0 < n_low < len(order):
+            raise ValueError("shift_quantile leaves an empty training or test side")
+        tr_idx, te_idx = np.sort(order[:n_low]), np.sort(order[n_low:])
+        # test rows in PC1 order: the half nearer the training side and the far half
+        rank = np.empty(len(order), dtype=np.int64)
+        rank[order] = np.arange(len(order))
+        far = rank[te_idx] >= n_low + (len(te_idx) + 1) // 2
+        shift_groups = {"shift_near": ~far, "shift_far": far}
+        meta["protocol"] = ("T1 covariate-shift split (handoff 2026-11-26 p4): training side = lower shift_quantile of "
+                            "PC1 of the standardized numeric features over all rows; test = the rest; OpenML outer splits "
+                            "not used")
+        meta["shift"] = {"split_mode": split_mode, "shift_quantile": float(shift_quantile),
+                         "threshold": float(info["scores"][order[n_low - 1]]), **{k: v for k, v in info.items() if k != "scores"}}
+    elif "outer_train_indices" in meta:
         tr_idx, te_idx = np.asarray(meta.pop("outer_train_indices")), np.asarray(meta.pop("outer_test_indices"))
     else:
         tr_idx, te_idx = train_test_split(idx, test_size=test_frac, random_state=seed, stratify=strat)
     strat_tr = y[tr_idx] if task_type == "classification" else None
     rel_val = val_frac / (1.0 - test_frac)
+    if split_mode == "covariate_pc1" and strat_tr is not None and not _stratifiable(strat_tr, rel_val):
+        strat_tr = None  # a class with < 2 training-side rows (or too few validation rows): unstratified, recorded
+    if split_mode == "covariate_pc1":
+        meta["shift"]["validation_stratified"] = strat_tr is not None
     tr_idx, va_idx = train_test_split(tr_idx, test_size=rel_val, random_state=seed + 1, stratify=strat_tr)
     mt_idx = None
     if maint_frac > 0:
         strat_tr = y[tr_idx] if task_type == "classification" else None
         rel_m = maint_frac / (1.0 - test_frac - val_frac)
+        if split_mode == "covariate_pc1" and strat_tr is not None and not _stratifiable(strat_tr, rel_m):
+            strat_tr = None
         tr_idx, mt_idx = train_test_split(tr_idx, test_size=rel_m, random_state=seed + 2, stratify=strat_tr)
     if max_train is not None and len(tr_idx) > max_train:
         strat_tr = y[tr_idx] if task_type == "classification" else None
+        if (split_mode == "covariate_pc1" and strat_tr is not None
+                and not _stratifiable(strat_tr, 1.0 - max_train / len(tr_idx))):
+            strat_tr = None
         tr_idx, _ = train_test_split(tr_idx, train_size=max_train, random_state=seed + 3, stratify=strat_tr)
     if isinstance(X, pd.DataFrame):
         numeric = X.select_dtypes(include="number").columns.tolist()
@@ -243,7 +291,61 @@ def make_splits(
         y_scale=y_scale,
         meta={**meta, "split_seed": seed, "test_frac": test_frac, "val_frac": val_frac, "maint_frac": maint_frac},
     )
+    if shift_groups is not None:
+        data.test_groups = {k: np.asarray(v, dtype=bool) for k, v in shift_groups.items()}
+        if task_type == "classification":
+            data.meta["shift"]["classes_missing_from_training"] = sorted(
+                int(c) for c in set(np.unique(y).tolist()) - set(np.unique(y[tr_idx]).tolist()))
     return data
+
+
+SPLIT_MODES = frozenset({"random", "covariate_pc1"})
+
+
+def _stratifiable(labels, test_size) -> bool:
+    """Whether sklearn can stratify a split of ``labels`` with this test share: every class has >= 2 rows and both
+    sides can hold one row of every class."""
+    _, counts = np.unique(labels, return_counts=True)
+    n, k = len(labels), len(counts)
+    n_test = int(np.ceil(test_size * n))
+    return bool(counts.min() >= 2 and n_test >= k and n - n_test >= k)
+
+
+def covariate_pc1_order(X) -> tuple[np.ndarray, dict[str, Any]]:
+    """Rows ordered by their score on the first principal component of the standardized numeric features.
+
+    Numeric features only (pandas number dtypes; every column of an array); missing values take the column median;
+    constant columns are dropped; each column is standardized with its mean and population std over all rows. PC1 is
+    the first right singular vector of that matrix, its sign fixed so that the loading of largest magnitude is positive
+    (first such column on ties). Rows are ordered by score, ties by row index. Returns the order and a description
+    (``scores``, ``features``, ``loadings``, ``explained_variance_ratio``).
+    """
+    if isinstance(X, pd.DataFrame):
+        cols = X.select_dtypes(include="number").columns.tolist()
+        M = X[cols].to_numpy(dtype=np.float64, na_value=np.nan)
+        names = [str(c) for c in cols]
+    else:
+        M = np.asarray(X, dtype=np.float64)
+        names = [str(i) for i in range(M.shape[1])]
+    if M.ndim != 2 or M.shape[1] == 0:
+        raise ValueError("covariate_pc1 needs at least one numeric feature")
+    med = np.nanmedian(np.where(np.isnan(M).all(0, keepdims=True), 0.0, M), axis=0)
+    M = np.where(np.isnan(M), med[None, :], M)
+    sd = M.std(0)
+    keep = sd > 1e-12
+    if not keep.any():
+        raise ValueError("covariate_pc1 needs a non-constant numeric feature")
+    Z = (M[:, keep] - M[:, keep].mean(0)) / sd[keep]
+    _, S, Vt = np.linalg.svd(Z, full_matrices=False)
+    v = Vt[0]
+    j = int(np.argmax(np.abs(v)))
+    if v[j] < 0:
+        v = -v
+    scores = Z @ v
+    order = np.lexsort((np.arange(len(scores)), scores))
+    var = S ** 2
+    return order, {"scores": scores, "features": [n for n, k in zip(names, keep) if k],
+                   "loadings": [float(a) for a in v], "explained_variance_ratio": float(var[0] / var.sum())}
 
 
 def make_synthetic(name: str, seed: int, *, generator_version="legacy",

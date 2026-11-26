@@ -1,0 +1,78 @@
+# Handoff 2026-11-26 pack p4 (a), exploratory, our choice, not a PI decision: TabPFN v2 as an extra comparator of the baselines grid
+# (tools/t1_grid_search.py family tabpfn, model/t1/tabpfn_baseline.py), evaluation seed 50 (one file per seed, so one
+# job per task and seed; the trial units do not depend on the file's seed list). Datasets and splits are those of
+# grid_search_20261009.yaml (the recorded baselines grid of these
+# confirmation tasks), so a seed gives exactly the recorded baselines' split; seeds 50-52 are those of the p1 matched
+# baselines (kNN, MLP, CatBoost, TabM evaluate) and of maskedF/allcaseF. Declared choices: package tabpfn 10.2.0, model v2
+# (the Nature 2025 model; later versions are gated), the pinned default v2 checkpoints, n_estimators 4, CPU, one thread,
+# ignore_pretraining_limits true, random_state = seed, no HPO (selection: fixed, one candidate), regime at most 3000
+# training rows, 500 features, 10 classes; refit_epochs / refit_patience 0 are recorded in each trial's config and unused
+# (nothing is trained). Excluded (training stream above 3000 rows): regression__car, regression__wine.
+# Study handoff_tabpfn_r760; host = the task's p1 baselines host (job lists in /var/tmp/nnknn-handoff1126/p4-baselines-stress).
+status: exploratory_handoff_20261126_p4_tabpfn
+experiment: tabpfn_legacy_20261126
+selection: fixed
+development_seeds: []
+evaluation_seeds:
+- 50
+refit_epochs: 0
+refit_patience: 0
+torch_threads: 1
+splits:
+  test_frac: 0.2
+  val_frac: 0.2
+  maint_frac: 0.0
+  reg_cohort_bins: 5
+families:
+- tabpfn
+datasets:
+- name: iris
+  task_type: classification
+- name: wine
+  task_type: classification
+- name: breast_cancer
+  task_type: classification
+- name: balance
+  task_type: classification
+- name: digits
+  task_type: classification
+- name: zebra
+  task_type: classification
+- name: zebra_special
+  task_type: classification
+- name: energy_efficiency
+  task_type: regression
+- name: yacht
+  task_type: regression
+- name: airfoil
+  task_type: regression
+- name: student_performance
+  task_type: regression
+- name: abalone
+  task_type: regression
+- name: body_fat
+  task_type: regression
+- name: diabets
+  task_type: regression
+- name: tabarena_363614
+  task_type: classification
+  display: anneal
+- name: tabarena_363626
+  task_type: classification
+  display: credit-g
+- name: tabarena_363625
+  task_type: regression
+  display: concrete_compressive_strength
+- name: tabarena_363675
+  task_type: regression
+  display: healthcare_insurance_expenses
+grids:
+  tabpfn:
+    model_version:
+    - v2
+    n_estimators:
+    - 4
+    max_train_rows:
+    - 3000
+    max_features:
+    - 500

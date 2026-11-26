@@ -97,7 +97,10 @@ def numeric_metrics(prediction, y, task, scale=None):
     return dict(rmse_standardized=rmse, rmse_original=rmse * (scale[1] if scale else 1.), loss=rmse**2)
 
 
-def prediction(model, family, X, task):
+def prediction(model, family, X, task, num_classes=None):
+    if family == "tabpfn":  # opt-in comparator (handoff 2026-11-26 p4); never part of the recorded grids
+        from model.t1.tabpfn_baseline import predict
+        return predict(model, X, task, num_classes)
     if family in {"knn", "catboost"}:
         return model.predict_proba(X.numpy()) if task == "classification" else model.predict(X.numpy()).reshape(-1)
     model.eval()
@@ -133,6 +136,9 @@ def fit_candidate(family, params, data, seed, epochs, patience):
         tr = train_retrieval(model, data["X_train"], data["y_train"], data["X_val"], data["y_val"], cc)
         return model, dict(core=dataclasses.asdict(cc), best_epoch=tr.best_epoch, epochs_run=tr.epochs_run,
             optimizer_state=tr.optimizer.state_dict(), history=tr.history)
+    if family == "tabpfn":
+        from model.t1.tabpfn_baseline import fit
+        return fit(params, data, seed)
     if family == "knn":
         from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
         ctor = KNeighborsClassifier if data["task"] == "classification" else KNeighborsRegressor
@@ -188,6 +194,12 @@ def fit_candidate(family, params, data, seed, epochs, patience):
                 break
     model.load_state_dict(best[1])
     return model, dict(best_epoch=best[2], epochs_run=epoch, history=history)
+
+
+def extra_classes(family, full):
+    """The class count a TabPFN prediction is expanded to (labels absent from its context get probability 0); the
+    other families' calls are unchanged."""
+    return (full.num_classes,) if family == "tabpfn" and full.num_classes else ()
 
 
 def tensorize(value):
@@ -284,6 +296,10 @@ class TrialUnit:
         self.run.save_state("data", records.storable(obj))
 
     def model(self, model, family, info):
+        if family == "tabpfn":  # nothing trained: the pinned checkpoint and settings (model/t1/tabpfn_baseline.py)
+            from model.t1.tabpfn_baseline import state
+            self.run.save_state("model", records.storable(state(info)))
+            return
         if family in {"knn", "catboost"}:
             import io
             buffer = io.BytesIO()
@@ -357,7 +373,7 @@ def fit_trial(out, family, cid, params, stage, data, seed, epochs, patience, tes
         allowed = dict(X_train=full.X_train, y_train=full.y_train, X_val=full.X_val,
                        y_val=full.y_val, task=full.task_type, classes=full.num_classes)
         model, info = fit_candidate(family, params, allowed, seed, epochs, patience)
-        val_prediction = prediction(model, family, full.X_val, full.task_type)
+        val_prediction = prediction(model, family, full.X_val, full.task_type, *extra_classes(family, full))
         metrics = numeric_metrics(val_prediction, full.y_val.numpy(), full.task_type, full.y_scale)
         row = compact_row(dict(status="completed", family=family, candidate_id=cid, parameters=params,
             seed=seed, stage=stage, validation_error=1.-metrics["accuracy"] if full.num_classes else metrics["rmse_standardized"],
@@ -369,7 +385,7 @@ def fit_trial(out, family, cid, params, stage, data, seed, epochs, patience, tes
         if test:
             # Winner was frozen before this branch can execute.
             inference_started = time.perf_counter()
-            pred = prediction(model, family, full.X_test, full.task_type)
+            pred = prediction(model, family, full.X_test, full.task_type, *extra_classes(family, full))
             row["inference_seconds"] = time.perf_counter() - inference_started
             row["inference_queries"] = len(full.y_test)
             row["training_case_count"] = len(full.y_train)
@@ -389,6 +405,15 @@ def fit_trial(out, family, cid, params, stage, data, seed, epochs, patience, tes
         return failure
 
 
+def fixed_selection(study):
+    """True for the opt-in ``selection: fixed`` (one declared candidate per family, evaluated without HPO); the
+    default ``grid`` (key absent) is the recorded screen/refit/select procedure."""
+    mode = study.get("selection", "grid")
+    if mode not in ("grid", "fixed"):
+        raise ValueError(f"selection must be 'grid' or 'fixed', not {mode!r}")
+    return mode == "fixed"
+
+
 def dataset_family(study, ds, family, out, run_study):
     out = Path(out)
     job = out / task_key(ds) / family
@@ -403,22 +428,31 @@ def dataset_family(study, ds, family, out, run_study):
     with (job / "training.log").open("a", encoding="utf-8") as log, contextlib.redirect_stdout(log):
         def trial(stage, cid, seed, epochs, patience, test=False):
             return run_trial(job, family, cid, grid[cid], stage, data, seed, epochs, patience, test, study=run_study)
-        for cid in grid:
-            for seed in study["development_seeds"]:
-                rows.append(trial("screen", cid, seed, study["screen_epochs"], study["screen_patience"]))
-        ranked = rank_candidates(rows, grid, study["development_seeds"])
-        finalists = ranked[:study["finalists"]]
-        write_json(job / "shortlist.json", dict(candidate_ids=finalists, selection_stream="development_validation_only"))
-        final_rows = [trial("refit", cid, seed, study["refit_epochs"], study["refit_patience"])
-                      for cid in finalists for seed in study["development_seeds"]]
-        ranked = rank_candidates(final_rows, finalists, study["development_seeds"])
-        if not ranked:
-            write_json(job / "failed.json", dict(reason="No candidate completed on every development seed"))
-            return dict(dataset=ds, family=family, status="failed")
-        winner = ranked[0]
-        write_json(job / "selection.json", dict(candidate_id=winner, parameters=grid[winner],
-            development_seeds=study["development_seeds"], test_stream_used=False,
-            source_sha256=study["source_sha256"]))
+        if fixed_selection(study):
+            # opt-in (handoff 2026-11-26 p4): one declared candidate, nothing screened or ranked
+            if len(grid) != 1:
+                raise ValueError(f"selection: fixed needs exactly one {family} candidate, the grid has {len(grid)}")
+            winner, final_rows = next(iter(grid)), []
+            write_json(job / "selection.json", dict(candidate_id=winner, parameters=grid[winner],
+                development_seeds=[], test_stream_used=False, selection="fixed",
+                source_sha256=study["source_sha256"]))
+        else:
+            for cid in grid:
+                for seed in study["development_seeds"]:
+                    rows.append(trial("screen", cid, seed, study["screen_epochs"], study["screen_patience"]))
+            ranked = rank_candidates(rows, grid, study["development_seeds"])
+            finalists = ranked[:study["finalists"]]
+            write_json(job / "shortlist.json", dict(candidate_ids=finalists, selection_stream="development_validation_only"))
+            final_rows = [trial("refit", cid, seed, study["refit_epochs"], study["refit_patience"])
+                          for cid in finalists for seed in study["development_seeds"]]
+            ranked = rank_candidates(final_rows, finalists, study["development_seeds"])
+            if not ranked:
+                write_json(job / "failed.json", dict(reason="No candidate completed on every development seed"))
+                return dict(dataset=ds, family=family, status="failed")
+            winner = ranked[0]
+            write_json(job / "selection.json", dict(candidate_id=winner, parameters=grid[winner],
+                development_seeds=study["development_seeds"], test_stream_used=False,
+                source_sha256=study["source_sha256"]))
         evaluations = [trial("evaluation", winner, seed, study["refit_epochs"], study["refit_patience"], test=True)
                        for seed in study["evaluation_seeds"]]
         complete = all(r["status"] == "completed" for r in rows + final_rows + evaluations)
@@ -486,9 +520,9 @@ def check_trial_paths(parser, run_study, tasks, seeds):
             parser.error(f"--study: {exc}")
 
 
-def baseline_environment():
-    return {**environment_info(), "baseline_packages": {
-        p: importlib.metadata.version(p) for p in ("catboost", "openml", "tabm", "scikit-learn")}}
+def baseline_environment(families=()):
+    packages = ("catboost", "openml", "tabm", "scikit-learn") + (("tabpfn",) if "tabpfn" in families else ())
+    return {**environment_info(), "baseline_packages": {p: importlib.metadata.version(p) for p in packages}}
 
 
 def write_source_zip(target):
@@ -530,13 +564,23 @@ def evaluate_main(argv):
     parser.add_argument("--datasets", nargs="+", help="task keys <task_type>__<name>; default: every grid task")
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--study", required=True, help="every trial is recorded as a run unit under NN-KNN/runs/t1/<study>/")
+    parser.add_argument("--split-mode", choices=["covariate_pc1"],
+                        help="opt-in (handoff 2026-11-26 p4): refit the frozen winners on this split mode of "
+                             "model.t1.data.make_splits instead of the grid's random splits (recorded in the trial units)")
+    parser.add_argument("--shift-quantile", type=float, help="training-side quantile of --split-mode (default 0.7)")
     args = parser.parse_args(argv)
     check_run_study(parser, args.study)
+    if args.shift_quantile is not None and args.split_mode is None:
+        parser.error("--shift-quantile needs --split-mode")
+    split_override = None if args.split_mode is None else {
+        "split_mode": args.split_mode, "shift_quantile": 0.7 if args.shift_quantile is None else args.shift_quantile}
     grid, out = Path(args.grid).resolve(), Path(args.out).resolve()
     if out == grid or grid in out.parents:
         raise ValueError("--out must lie outside the grid directory")
     frozen = json.loads((grid / "study.json").read_text())
     study = dict(frozen["configuration"])
+    if split_override is not None:
+        study["splits"] = {**study["splits"], **split_override}
     datasets = {task_key(ds): ds for ds in study["datasets"]}
     keys, families = list(dict.fromkeys(args.datasets or datasets)), list(dict.fromkeys(args.families))
     unknown = sorted(set(keys) - set(datasets)) + sorted(set(families) - set(study["families"]))
@@ -563,12 +607,17 @@ def evaluate_main(argv):
             raise ValueError("NNKNN_DETERMINISTIC differs from earlier invocations; use a fresh output directory")
         if record.get("study") != args.study:
             raise ValueError(f"--study differs from earlier invocations ({record.get('study')!r}); resume with the same one")
+        if record.get("splits_override") != split_override:
+            raise ValueError(f"--split-mode/--shift-quantile differ from earlier invocations "
+                             f"({record.get('splits_override')!r}); use a fresh output directory")
         record["invocations"].append(invocation)
     else:
         record = dict(grid=str(grid), grid_configuration_id=frozen["configuration_id"],
             grid_source_sha256=frozen["source_sha256"], source_sha256=source, environment=baseline_environment(),
             git=git_state(REPO), test_based_selection=False, selection_source="grid selection.json, frozen",
             invocations=[invocation], study=args.study)
+        if split_override is not None:  # recorded only when used, so default evaluate.json files are unchanged
+            record["splits_override"] = split_override
         write_source_zip(out / "source.zip")
     write_json(record_path, record)
     study.update(source_sha256=record["source_sha256"], grid_source_sha256=frozen["source_sha256"])
@@ -611,7 +660,7 @@ def main(argv=None):
             raise ValueError(f"--study differs from the grid's study.json ({old.get('study')!r}); resume with the same one")
     else:
         write_json(frozen, dict(configuration=study, configuration_id=config_id(study), source_sha256=source,
-            environment=baseline_environment(), git=git_state(REPO), test_based_selection=False,
+            environment=baseline_environment(study["families"]), git=git_state(REPO), test_based_selection=False,
             expected_jobs=len(study["datasets"])*len(study["families"]), **deterministic, study=args.study))
         write_source_zip(out / "source.zip")
     # the grid's source as recorded (selection.json keeps it); every trial records the source that fitted it

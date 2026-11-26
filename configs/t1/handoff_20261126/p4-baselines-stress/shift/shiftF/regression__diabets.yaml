@@ -1,0 +1,93 @@
+# Handoff 2026-11-26 pack p4 (b), TabArena shift stress protocol declared by us (exploratory, our choice, not a PI decision).
+# Source: p1-allcase/maskedF/regression__diabets.yaml (the frozen confirm_final_20261013 configuration of the task: tuned masked core,
+# pre_topk_mask true, 300/40, its F schedule, loss weights and penalty; arms retrieval_only, the frozen-core reuse arm, F (none: on diabets F is the frozen-core reuse arm))
+# unchanged except experiment shiftF_20261126, status, seeds 30-32 and the split:
+# Covariate-shift split (exploratory, our choice, not a PI decision): splits.split_mode covariate_pc1, shift_quantile 0.7 (model/t1/data.py
+# make_splits): training side = the rows in the lower 70 % of the first principal component of the standardized numeric
+# features (all rows, column-median imputation, constant columns dropped, sign: largest loading positive), test = the upper
+# 30 %; validation = val_frac / (1 - test_frac) = 25 % of the training side (seeded, stratified where possible); OpenML
+# outer splits are not used. Test groups shift_near / shift_far (lower / upper half of the test rows by PC1) are recorded.
+# Study handoff_shift_r760. Hosts (the plan_full retention host of each task; all experiments of a task on it): q-lab: balance, breast_cancer, digits, tabarena_363614, tabarena_363626, energy_efficiency, student_performance, tabarena_363625, tabarena_363675; xps8960: iris, wine (classification), zebra, zebra_special, body_fat, diabets, yacht; r760: abalone, airfoil, car, wine (regression).
+base: ../../../../_base.yaml
+experiment: shiftF_20261126
+type: encoder_ablation
+status: exploratory_handoff_20261126_p4_shift
+seeds:
+- 30
+- 31
+- 32
+core:
+  representation: raw
+  glocal_fw_set_num: 1
+  tau: 1.0
+  top_k: 5
+  pre_topk_mask: true
+  case_normalizer: softmax
+  lr_case: 0.01
+  lr_glocal: 0.01
+  lr_feature: 0.001
+  epochs: 300
+  patience: 40
+  batch_size: 32
+  bias_init: knn_mean
+  bias_init_k: 5
+sync:
+  s_task: 0.5
+  retrieval_lr_scale: 0.1
+  w_pre: 1.0
+  w_post: 0.5
+  w_near: 0.1
+  v_post: 1.0
+  v_delta: 1.0
+  v_small: 0.1
+  epochs: 120
+  block_epochs: 2
+  patience: 30
+  probability_mode: softmax
+  adapter_lr: 0.001
+  diagnostics_every: 0
+reuse:
+  lambda_diff: 1.0
+  lambda_cls: 1.0
+  probability_mode: softmax
+  epochs: 300
+  patience: 30
+  lr: 0.001
+reuse_conditions:
+- output_mode: nominal_residual_scores
+  loss: combined
+statistics:
+  source: train_loo
+  accumulation: per_checkpoint
+  counterfactual: false
+  smoothing: 1.0
+  min_retrieval_count: 2
+  min_activation_mass: 0.1
+  bias_normalization: within_cohort_percentile
+  bias_source: current
+  regression_success_tolerance: 0.5
+splits:
+  test_frac: 0.2
+  val_frac: 0.2
+  maint_frac: 0.0
+  reg_cohort_bins: 5
+  split_mode: covariate_pc1
+  shift_quantile: 0.7
+arms:
+- name: tuned
+datasets:
+- name: diabets
+  task_type: regression
+core_by_dataset:
+  regression__diabets:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+core_selection_source:
+  regression__diabets: C:\Users\Administrator\NN-KNN\neural-cbr\results\t1_pi20260920\grid_full_20261009\regression__diabets\nnknn\selection.json
+conditions: []

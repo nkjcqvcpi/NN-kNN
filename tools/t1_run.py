@@ -470,7 +470,8 @@ class Runner:
     def data_for(self, ds: dict[str, Any], seed: int):
         sp = self.cfg["splits"]
         # A per-dataset cap wins; otherwise splits.max_train applies, as in tools/t1_grid_search.py.
-        return make_splits(ds["name"], ds["task_type"], seed, test_frac=sp["test_frac"], val_frac=sp["val_frac"], maint_frac=sp.get("maint_frac", 0.0), reg_cohort_bins=sp.get("reg_cohort_bins", 5), max_train=ds.get("max_train", sp.get("max_train")), synthetic=ds.get("synthetic"))
+        return make_splits(ds["name"], ds["task_type"], seed, test_frac=sp["test_frac"], val_frac=sp["val_frac"], maint_frac=sp.get("maint_frac", 0.0), reg_cohort_bins=sp.get("reg_cohort_bins", 5), max_train=ds.get("max_train", sp.get("max_train")), synthetic=ds.get("synthetic"),
+                           **{k: sp[k] for k in ("split_mode", "shift_quantile") if k in sp})  # opt-in shift split
 
     def dataset_key(self, ds):
         """Folder/row name of a task; role-qualified when the name has several task types here,
