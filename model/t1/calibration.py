@@ -122,7 +122,9 @@ def calibrate_free_radius(
     probabilities = None
     if model.task_type == "classification" and label_metric == "probability_vector_distance":
         probabilities = loo_class_probabilities(model)
-        dy = torch.cdist(probabilities, probabilities)
+        # direct differences, not the matrix-product shortcut torch.cdist takes for larger inputs: that one turns
+        # equal probability vectors into distances of ~1e-4 instead of 0
+        dy = torch.cdist(probabilities, probabilities, compute_mode="donot_use_mm_for_euclid_dist")
         metric = "probability_vector_distance"
     elif model.task_type == "classification":
         same = labels @ labels.t()  # 1 if same class

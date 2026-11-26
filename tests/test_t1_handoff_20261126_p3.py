@@ -142,7 +142,7 @@ def test_probability_vector_metric_is_an_opt_in_ablation():
     assert pv.label_metric == "probability_vector_distance" and pv.n_pairs == default.n_pairs
     P = loo_class_probabilities(model)
     assert torch.equal(psnap["label_probability_snapshot"], P)
-    dy = torch.cdist(P, P)
+    dy = (P.unsqueeze(1) - P.unsqueeze(0)).norm(dim=-1)  # exact pairwise differences
     assert pv.tau_task == pytest.approx(float(dy[psnap["pair_mask"]].mean()), rel=1e-6)
     assert 0 <= pv.tau_task <= 2 ** .5 + 1e-6
     med, _ = calibrate_free_radius(model, s_task=.5, snapshot_step=0, label_metric="probability_vector_distance",
@@ -157,6 +157,25 @@ def test_probability_vector_metric_is_an_opt_in_ablation():
     a, _ = calibrate_free_radius(rmodel, s_task=.5, snapshot_step=0)
     b, _ = calibrate_free_radius(rmodel, s_task=.5, snapshot_step=0, label_metric="absolute_difference")
     assert a == b
+
+
+def test_probability_vector_metric_gives_equal_vectors_distance_zero():
+    """Cases with equal leave-one-out probability vectors (here: exact duplicates) are at label distance 0, not at
+    the ~1e-4 the matrix-product shortcut of torch.cdist leaves on inputs of more than 25 rows."""
+    data = toy_classification(n=100)
+    X = torch.cat([data.X_train, data.X_train[:20]])
+    y = torch.cat([data.y_train, data.y_train[:20]])
+    model = build_model(X, y, CoreConfig(task_type="classification", top_k=4, seed=3), 3)
+    fr, snap = calibrate_free_radius(model, s_task=.5, snapshot_step=0, label_metric="probability_vector_distance")
+    P = snap["label_probability_snapshot"]
+    n0 = len(data.y_train)
+    same = (P[:20] == P[n0:n0 + 20]).all(1)
+    assert same.any()
+    exact = (P.unsqueeze(1) - P.unsqueeze(0)).norm(dim=-1)
+    assert torch.equal(exact[torch.arange(20)[same], (n0 + torch.arange(20))[same]],
+                       torch.zeros(int(same.sum())))
+    # the shortcut moves tau by ~2e-7 here; direct differences agree to float32 rounding of the mean
+    assert abs(fr.tau_task - float(exact[snap["pair_mask"]].mean())) < 2e-8
 
 
 # --------------------------------------------------------------------------- (b) per-case adapter
