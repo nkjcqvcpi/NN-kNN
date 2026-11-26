@@ -47,13 +47,20 @@ def final_prediction(model, X, retrieval, *, adapter=None, case_mask=None, query
         if ad is None:
             return pre, pre, "nll"
         dz = retrieval["query_features"] - w @ retrieval["case_features"]
-        from .nominal import nominal_difference
-        du = nominal_difference(ad, model, retrieval, query_nominal)
-        residual, final = ad(dz, pre, du)
+        if hasattr(ad, "forward_retrieval"):
+            # opt-in adapters that read the whole retrieval event (e.g. a per-case adapter); they return
+            # (residual, class scores) and handle their own nominal inputs
+            du = None
+            residual, final = ad.forward_retrieval(model, retrieval, query_nominal)
+        else:
+            from .nominal import nominal_difference
+            du = nominal_difference(ad, model, retrieval, query_nominal)
+            residual, final = ad(dz, pre, du)
         if diagnostics is not None:
             diagnostics.update(delta_z=dz.detach(), delta_u=None if du is None else du.detach(),
                                residual=residual.detach(), final_values=final.detach(), output_mode=ad.output_mode)
-        return pre, final, "cross_entropy" if ad.output_mode == "nominal_residual_scores" else "nll"
+        # probabilities only from logit_residual; every other mode returns class scores
+        return pre, final, "nll" if ad.output_mode == "logit_residual" else "cross_entropy"
     if adapter is not None:
         final = adapter.forward_aggregate(retrieval["query_features"], retrieval["case_features"], labels, w)
     elif model.nn_cdh is not None and getattr(model, "adapt_enabled", True):

@@ -4,7 +4,9 @@ Built on the maintained ``NN_KNN_Model`` (plan section 4: preserve current
 behavior as the selectable reference). What this module adds:
 
 * case-bias warm start from the mean k-th nearest non-self *learned* distance
-  (plan section 7, k=5), instead of the core default manual bias 0;
+  (plan section 7, k=5), instead of the core default manual bias 0; opt-in
+  ablation ``bias_init="learned_distance_percentile"``: a percentile of all
+  non-self learned case-case distances;
 * leave-one-out retrieval during training (``ignore_identical_in_training``);
 * early stopping / checkpoint selection on the validation stream only;
 * declared maintenance checkpoints (epoch boundaries) with optimizer realignment;
@@ -56,8 +58,9 @@ class CoreConfig:
     epochs: int = 200
     patience: int = 30
     batch_size: int = 32
-    bias_init: str = "knn_mean"  # knn_mean | manual
+    bias_init: str = "knn_mean"  # knn_mean | manual | learned_distance_percentile (opt-in ablation)
     bias_init_k: int = 5
+    bias_init_percentile: float = 10.0  # read only by bias_init="learned_distance_percentile"
     bias_manual_value: float = 0.0
     mcb_enabled: bool = False
     mcb_momentum: float = 0.99
@@ -128,10 +131,14 @@ def build_model(X_train: torch.Tensor, y_train: torch.Tensor, cfg: CoreConfig, n
     init_bias = cfg.bias_manual_value
     if cfg.bias_init == "knn_mean":
         init_bias = kth_neighbor_learned_distance(model, cfg.bias_init_k)
+    elif cfg.bias_init == "learned_distance_percentile":
+        init_bias = learned_distance_percentile(model, cfg.bias_init_percentile)
     with torch.no_grad():
         model.biases.fill_(float(init_bias))
     model.case_default_bias = float(init_bias)
     model.t1_bias_init = {"rule": cfg.bias_init, "k": cfg.bias_init_k, "value": float(init_bias)}
+    if cfg.bias_init == "learned_distance_percentile":
+        model.t1_bias_init["percentile"] = float(cfg.bias_init_percentile)
     return model
 
 
@@ -148,6 +155,26 @@ def kth_neighbor_learned_distance(model: NN_KNN_Model, k: int) -> float:
     r = torch.topk(D, kk, dim=1, largest=False).values[:, -1]
     r = r[torch.isfinite(r)]
     return float(r.mean().item()) if r.numel() else 0.0
+
+
+@torch.no_grad()
+def learned_distance_percentile(model: NN_KNN_Model, percentile: float) -> float:
+    """b_default^(0) = the given percentile (0-100, linear interpolation) of all non-self learned distances.
+
+    The initializer ablation of plan section 7 (handoff: ``learned_distance_percentile``). Every ordered pair of
+    distinct training cases counts once (self pairs, the diagonal, are excluded by identity; distinct duplicates are
+    valid zero distances, as in ``kth_neighbor_learned_distance``); exact, not sampled.
+    """
+    if not 0.0 <= float(percentile) <= 100.0:
+        raise ValueError("bias_init_percentile must be within [0, 100]")
+    D = case_case_distance(model)
+    n = D.shape[0]
+    off = ~torch.eye(n, dtype=torch.bool, device=D.device)
+    values = D[off]
+    values = values[torch.isfinite(values)]
+    if not values.numel():
+        return 0.0
+    return float(np.percentile(values.double().cpu().numpy(), float(percentile)))
 
 
 def make_optimizer(model: NN_KNN_Model, cfg: CoreConfig) -> torch.optim.Optimizer:
