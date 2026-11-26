@@ -1,5 +1,18 @@
 # Experiment results index
 
+## Sequential, alternating and joint training: as1 (November 26, 2026)
+
+Status: **complete, 378 comparison cells, 252 new models, 126 reused references, no missing cells**. All three residual input designs were compared on the same 14 tasks and seeds 40–42. Sequential permanently freezes the same pretrained retrieval checkpoint; alternating and joint start from that checkpoint. Effective component objectives and maximum update budgets match. Existing joint models are reused for 13 tasks; existing sequential models are reused for Diabetes.
+
+For query + prediction, sequential / alternating / joint classification error is **10.980% / 9.502% / 9.359%**, and standardized regression RMSE is **0.371033 / 0.345628 / 0.345530**. Validation-selected schemes reach **8.745% / 0.345186**. This improves classification, while regression is essentially unchanged from the previous query-aware result. Alternating improves correction behavior but has weaker selected retrieval predictions. Severe Car corrections persist with frozen retrieval. The original default is retained.
+
+- [Full report](../code/neural-cbr/reports/ADAPTER_TRAINING_SCHEMES_LOCAL_2026-11-26.md), [declared protocol](../code/neural-cbr/docs/ADAPTER_TRAINING_SCHEMES_EXPERIMENT.md), [recorded driver](../code/neural-cbr/tools/t1_adapter_training_schemes.py), [local launcher](../code/run_training_schemes_experiment.py).
+- [Complete evidence](../code/neural-cbr/results/adaptation_improvement/as1/comparison.json), [all model rows](../code/neural-cbr/results/adaptation_improvement/as1/rows.csv), [task means](../code/neural-cbr/results/adaptation_improvement/as1/tasks.csv), [family means](../code/neural-cbr/results/adaptation_improvement/as1/families.csv), [paired comparisons](../code/neural-cbr/results/adaptation_improvement/as1/comparisons.csv).
+- [Validation-selected models](../code/neural-cbr/results/adaptation_improvement/as1/selected.csv), [selected means](../code/neural-cbr/results/adaptation_improvement/as1/selected_families.csv), [selection counts](../code/neural-cbr/results/adaptation_improvement/as1/selection_counts.csv), [update budgets](../code/neural-cbr/results/adaptation_improvement/as1/budgets.csv).
+- [Correction diagnostics](../code/neural-cbr/results/adaptation_improvement/as1/behavior.csv), [pooled counts](../code/neural-cbr/results/adaptation_improvement/as1/behavior_totals.csv), [harmful examples](../code/neural-cbr/results/adaptation_improvement/as1/harm_examples.csv), [figure](../code/neural-cbr/results/adaptation_improvement/as1/scheme_means.png).
+- Verified 714 saved prediction sets and the 840-check baseline/reference audit, 126 frozen-core hashes and 84 exact cross-adapter sequential prediction matches. All 378 complete cells reused with training disabled. Targeted suites passed 75 and 24 tests (overlapping); both core manifests passed.
+- Run store: `NNKNN_RUNS/t1/as1/schemes_v1/`, plus the recorded `am1`/`aq1`/`aq2` references. Worker logs: `logs/as1/`; reuse audit: `logs/as1_reuse_check.log`. No r760 access used.
+
 ## Query-aware without prediction input: aq2 (November 25, 2026)
 
 Status: **complete, 42 new model units, 336 comparison rows, no missing units**. The residual network receives the query and query-to-neighborhood difference, with no retrieved-prediction input columns. Retrieval remains in the final addition. All previous baselines are reused.
