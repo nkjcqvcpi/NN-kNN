@@ -9,6 +9,11 @@ IDs follow class and truth group, so under ``case_id`` the many Q = 0.5 ties of
 unevidenced cases are decided by row order (review F3). The retrained-removal
 loops (retraining.py, adapted_retraining.py) seed only boundary protection here;
 their removal choice still ties by ascending case ID and records no tie_break.
+
+``BASELINE_POLICIES`` (handoff 2026-11-26 pack p2, exploratory, opt-in) are established maintenance methods and
+data-valuation baselines turned into fixed-K keep priorities by ``model.t1.baselines``; ``run_maintenance`` computes
+the priority (``scores.extra[policy]``) and this module's ranking, floors and protection then apply unchanged. Their
+settings (``solve_tolerance``, ``fill_policy``, ``energy_margin``) default to None and are read by no other policy.
 """
 
 from dataclasses import dataclass, field
@@ -19,6 +24,11 @@ import numpy as np
 POLICIES = ("full_memory", "random", "stratified", "bias_current",
             "provenance_only", "bias_normalized", "kcenter",
             "coverage_reachability", "removal_influence", "removal_cached")
+BASELINE_POLICIES = ("rc_cnn", "crr", "bbnr", "enn", "energy_compress", "knn_shapley", "loo_value")
+POLICIES = POLICIES + BASELINE_POLICIES
+FILL_POLICIES = ("random", "bias_current", "bias_normalized", "provenance_only")
+# Settings read only by BASELINE_POLICIES (None elsewhere; see model.t1.baselines).
+BASELINE_FIELDS = ("solve_tolerance", "fill_policy", "energy_margin")
 RETIRED_POLICIES = {"trust", "trust_utility", "trust_utility_coverage", "utility_redundancy"}
 TIE_BREAKS = ("case_id", "seeded_random")
 
@@ -36,6 +46,9 @@ class RetentionConfig:
     seed: int = 0
     notes: dict = field(default_factory=dict)
     tie_break: str = "case_id"
+    solve_tolerance: float | None = None  # regression "solves": |error| <= tolerance (standardized target)
+    fill_policy: str | None = None  # enn / bbnr: order inside the kept and edited groups
+    energy_margin: float | None = None  # energy_compress, classification: hinge margin lambda
 
     def validate(self):
         if self.policy in RETIRED_POLICIES:
@@ -52,11 +65,27 @@ class RetentionConfig:
                 raise ValueError("Removal needs an explicit finite cumulative loss-increase budget")
             if self.policy == "removal_cached" and self.cache_activation_threshold is None:
                 raise ValueError("Cached removal needs an explicit activation threshold")
+        if self.policy in BASELINE_POLICIES:
+            self._validate_baseline()
+        elif any(getattr(self, name) is not None for name in BASELINE_FIELDS):
+            raise ValueError(f"{BASELINE_FIELDS} are read only by {BASELINE_POLICIES}; policy {self.policy!r} ignores them")
         if self.tie_break not in TIE_BREAKS:
             raise ValueError(f"Unknown tie_break {self.tie_break!r}; choose from {TIE_BREAKS}")
         bad_seed = isinstance(self.seed, bool) or not isinstance(self.seed, (int, np.integer)) or self.seed < 0
         if self.tie_break == "seeded_random" and bad_seed:
             raise ValueError("seeded_random tie-break needs a nonnegative integer seed")
+
+
+    def _validate_baseline(self):
+        if self.policy in {"rc_cnn", "crr", "bbnr"}:
+            if self.activation_threshold is None or not 0 <= self.activation_threshold < 1:
+                raise ValueError(f"{self.policy} needs an explicit activation_threshold in [0, 1) defining 'retrieved'")
+        if self.policy in {"enn", "bbnr"} and self.fill_policy not in FILL_POLICIES:
+            raise ValueError(f"{self.policy} needs fill_policy in {FILL_POLICIES}")
+        if self.solve_tolerance is not None and (not np.isfinite(self.solve_tolerance) or self.solve_tolerance < 0):
+            raise ValueError("solve_tolerance must be finite and nonnegative")
+        if self.energy_margin is not None and (not np.isfinite(self.energy_margin) or self.energy_margin < 0):
+            raise ValueError("energy_margin must be finite and nonnegative")
 
 
 @dataclass
@@ -132,6 +161,8 @@ def candidate_rank(scores, cfg):
         return np.where(scores.evidenced, scores.Q, 0.5)
     if cfg.policy == "kcenter":
         return np.zeros(len(scores.case_ids))
+    if cfg.policy in BASELINE_POLICIES and cfg.policy not in scores.extra:
+        raise ValueError(f"{cfg.policy} priorities are computed by run_maintenance (model.t1.baselines)")
     return scores.extra[cfg.policy].copy()
 
 

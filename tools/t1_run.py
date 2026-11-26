@@ -52,7 +52,7 @@ from model.t1.candidates import MaintenanceReference
 from model.t1.maintenance import CaseArchive, run_maintenance  # noqa: E402
 from model.t1.mcb import StabilityTracker  # noqa: E402
 from model.t1.provenance import CaseStatisticsStore, ScoreConfig, active_cohorts, audit_provenance, score_cases  # noqa: E402
-from model.t1.retention import RetentionConfig  # noqa: E402
+from model.t1.retention import BASELINE_FIELDS, RetentionConfig  # noqa: E402
 from model.t1.reuse import ReuseConfig, calibrate_temperature, evaluate_reuse, evaluate_regression_reuse, reuse_logits, train_classification_adapter, train_regression_adapter  # noqa: E402
 from model.t1.revise import flagging_ablation  # noqa: E402
 from model.t1.sync import SyncConfig, train_synchronized  # noqa: E402
@@ -698,8 +698,21 @@ class Runner:
                     budgets={"case_capacity": model.case_count(), "training_epochs_max": lcfg.get("training_epochs")}, maintenance={"policy": "none"}, model_desc={"baseline_or_nnknn_variant": "legacy maintained train_model", "cfg": lcfg})
 
     def run_retention(self, ds, seed):
+        """Fixed-K retention after core training. Opt-in keys (handoff 2026-11-26 pack p2): ``efficiency`` adds
+        ``eff_*`` maintenance-overhead, lookup-latency and case-memory scalars to every policy unit; ``reliability``
+        adds one ``ch_reliability`` unit per dataset and seed (C/H/Q on nested reference-query subsets), computed on
+        the same trained core after every policy unit, so it changes nothing the policy units compute."""
         data = self.data_for(ds, seed)
         units = [(f"{cond['policy']}_K{K_spec}", {**cond, "K": K_spec}) for cond in self.cfg["conditions"] for K_spec in self.cfg["K"]]
+        eff, rel = self.cfg.get("efficiency"), self.cfg.get("reliability")
+        if eff is not None:
+            from model.t1.efficiency import check_efficiency_cfg
+            check_efficiency_cfg(eff)
+        rel_cond = {"diagnostic": "ch_reliability"}
+        if rel is not None:
+            from model.t1.reliability import check_reliability_cfg
+            check_reliability_cfg(rel)
+            units.append(("ch_reliability", rel_cond))
         core = self.core_stage(ds, seed, data, units)
         if core is not None:
             base, cc, tr = core["model"], core["cc"], core["tr"]
@@ -717,8 +730,11 @@ class Runner:
                 rcfg = retention_cfg_for(cond, self.cfg, seed)
                 scfg = score_cfg_for(self.cfg)
                 opt = clone_optimizer(tr.optimizer, model, cc)  # continue the core's Adam state (see clone_optimizer)
+                t_audit = time.perf_counter()
                 ainfo = audit(model, data, self.cfg, store, step=0)
+                t_select = time.perf_counter()
                 res = run_maintenance(model, store, archive, K, rcfg, scfg, step=0, run_id=label, optimizer=opt, reg_bins=data.reg_bins, reference=maintenance_reference(data, self.cfg))
+                t_done = time.perf_counter()
                 m = {"K": K, "n_before": n, "n_cases": model.case_count(), **base_metrics, **test_metrics(model, data, "test_nofinetune"), "audit_mean_loss_pre": ainfo["mean_loss_pre"], "audit_mean_loss_final": ainfo["mean_loss_final"]}
                 hist = []
                 if proto["finetune_epochs"] > 0:
@@ -727,11 +743,29 @@ class Runner:
                 m.update(test_metrics(model, data))
                 m.update(truth_retention(model, data))
                 m.update({f"sel_{k}": v for k, v in res["summary"].items() if isinstance(v, (int, float))})
+                if eff is not None:
+                    from model.t1.efficiency import efficiency_metrics
+                    m.update(efficiency_metrics(model, base, data.X_test, eff, audit_seconds=t_select - t_audit,
+                                                maintenance_seconds=t_done - t_select))
                 self.finish(ds=ds, seed=seed, cond_label=label, cond={**cond, "K": K_spec}, data=data, model=model, store=store, archive=archive, metrics=m, history={"core": tr.history, "finetune": hist}, events=res["events"],
                             components={"retrieve": "trained NN-kNN core", "reuse_or_adapter": "off", "revise": "off", "retain": cond["policy"], "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": "off"},
                             budgets={"case_capacity": K, "core_epochs_run": tr.epochs_run, "finetune_epochs": proto["finetune_epochs"]},
                             maintenance={"policy": cond["policy"], "frequency_or_safe_checkpoint": "after core training (post-hoc), then fixed finetune", "thresholds_and_smoothing": self.cfg["statistics"], "archive_and_restore": "CaseArchive (exact state)"},
                             model_desc={"baseline_or_nnknn_variant": "t1 core", "core": cc.__dict__, "bias_init": getattr(base, "t1_bias_init", None)}, extra_files={"maintenance_scoring_trace.json": res.get("scoring_trace", []), "maintenance_summary.json": res["summary"]})
+        if rel is not None and not self.skip(ds, seed, "ch_reliability", rel_cond):
+            from model.t1.reliability import ch_reliability
+            from model.t1.retention import tie_keys
+            ids = base.active_case_ids().detach().cpu().numpy().copy()
+            rcfg0 = retention_cfg_for({}, self.cfg, seed)
+            m, details, store = ch_reliability(base, maintenance_reference(data, self.cfg), score_cfg_for(self.cfg), rel,
+                                               seed=seed, tie=tie_keys(ids, rcfg0), reg_bins=data.reg_bins,
+                                               counterfactual=bool(self.cfg["statistics"]["counterfactual"]))
+            m.update({"n_cases": base.case_count(), **base_metrics})
+            self.finish(ds=ds, seed=seed, cond_label="ch_reliability", cond=rel_cond, data=data, model=base, store=store, archive=None, metrics=m, history={"core": tr.history}, events=[],
+                        components={"retrieve": "trained NN-kNN core", "reuse_or_adapter": "off", "revise": "off", "retain": "none (diagnostic)", "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": "off"},
+                        budgets={"case_capacity": base.case_count(), "core_epochs_run": tr.epochs_run},
+                        maintenance={"policy": "none", "diagnostic": "C/H/Q reliability on nested reference subsets", "settings": rel, "thresholds_and_smoothing": self.cfg["statistics"]},
+                        model_desc={"baseline_or_nnknn_variant": "t1 core", "core": cc.__dict__, "bias_init": getattr(base, "t1_bias_init", None)}, extra_files={"reliability.json": details})
 
     def run_reuse(self, ds, seed):
         data = self.data_for(ds, seed)
@@ -1194,7 +1228,8 @@ class Runner:
         maintenance = {"policy": (self.cfg["retention"]["policy"] if rcfg is None else rcfg.policy) if events else "none"}
         if rcfg is not None:  # this condition's effective in-training settings (rows carry only its own keys)
             maintenance["in_training"] = {"K": K, "K_spec": k_spec, "maintenance_epochs": sorted(m_epochs),
-                                          "retention": dict(rcfg.__dict__)}
+                                          "retention": {k: v for k, v in rcfg.__dict__.items()
+                                                        if k not in BASELINE_FIELDS or v is not None}}
         self.finish(ds=ds, seed=seed, cond_label=label, cond={**arm_fields(arm), **cond}, data=data, model=model, store=store, archive=archive, metrics=m, history={"core": tr.history if pretrained else [], "sync": info["history"]}, events=events,
                     components={"retrieve": "NN-kNN core", "reuse_or_adapter": sc.output_mode, "revise": "off", "retain": "checkpoint maintenance" if events else "none", "mcb": "on" if cc.mcb_enabled else "off", "component_synchronization": sc.schedule},
                     budgets={"case_capacity": model.case_count(), "sync_epochs_max": sc.epochs,

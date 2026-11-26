@@ -16,7 +16,7 @@ import torch
 
 from .geometry import case_case_distance
 from .provenance import CaseStatisticsStore, ScoreConfig, active_cohorts, score_cases
-from .retention import RetentionConfig, select_active_set
+from .retention import BASELINE_POLICIES, RetentionConfig, select_active_set
 
 PER_CASE_PARAMS = ("biases", "negative_weights", "glocal_weights")
 PER_CASE_BUFFERS = ("cases", "labels", "case_ids")
@@ -152,7 +152,14 @@ def run_maintenance(
                                       activation_threshold=retention_cfg.activation_threshold,
                                       zero_reachability=retention_cfg.zero_reachability)
         scores.extra.update({k: v for k, v in result.items() if isinstance(v, np.ndarray)})
+    baseline_summary = None
+    if retention_cfg.policy in BASELINE_POLICIES:  # opt-in (pack p2): established methods as fixed-K priorities
+        from .baselines import baseline_priority
+        extra, baseline_summary = baseline_priority(model, reference, retention_cfg, scores, K, dist)
+        scores.extra.update(extra)
     sel = select_active_set(scores, K, retention_cfg, dist)
+    if baseline_summary is not None:
+        sel.summary.update(baseline_summary)
     keep = np.sort(sel.keep_slots)  # preserve relative slot order among kept cases
     slot_after = {int(s): i for i, s in enumerate(keep)}
     events = []

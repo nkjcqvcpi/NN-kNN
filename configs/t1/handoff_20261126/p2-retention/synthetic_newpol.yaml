@@ -1,0 +1,317 @@
+# Handoff 2026-11-26 pack p2: the 7 established-method and data-valuation policies on the 7 synthetic factor sets
+# (reference, overlap, noise, redundant, uncovered_rare, shift, combined; generator independent_v1).
+# configs/t1/handoff_20261125b/synthetic_retention.yaml (study handoff_synret_r760: untuned _base core, masked, 300/40,
+# finetune 30 at 0.1, K 0.2/0.5/0.75, seeds 30-32) unchanged except experiment, status, conditions, the retention keys
+# below and the opt-in efficiency and reliability blocks. Pairs with the 8 policies of handoff_synret_r760.
+# Declared choices (exploratory, our choice, not a PI decision; model/t1/baselines.py documents each method):
+# - the 7 policies rc_cnn, crr, bbnr, enn, energy_compress, knn_shapley, loo_value at the plan_full budgets K 0.2/0.5/0.75
+#   with the plan_full protection (min_per_cohort 2) and tie-break (case_id); protected cases and floors are kept first;
+# - 'retrieved' = activation > retention.activation_threshold (the plan_full 0.05 of coverage_reachability), read by
+#   rc_cnn, crr, bbnr; 'solves' = retrieved and the case's stored answer agrees with the query;
+# - enn and bbnr: retention.fill_policy random (the existing random policy's seeded order) inside the kept and the
+#   edited/deleted groups;
+# - energy_compress: sequential deletion to K (fixed budget instead of the paper's best visited case base);
+# - knn_shapley: K = the core's top_k, cases ordered by the learned retrieval score; loo_value: final-prediction loss
+#   (nll / squared error) on the full memory, one pass;
+# - efficiency (eff_* scalars per unit): lookup_repeats 5, single_queries 50 (median wall time of single-query and
+#   whole-test-set lookups of the maintained and the full-memory core, case-memory bytes, maintenance seconds);
+# - energy_compress classification hinge margin retention.energy_margin 0.2 (the survey's worked example);
+# - reliability (one ch_reliability unit per dataset and seed, on the same trained core, after the policy units):
+#   C, H, Q and the provenance_only rank recomputed on nested random subsets of the maintenance reference queries,
+#   fractions 0.1/0.25/0.5/1.0, 5 repeats, Spearman and top/bottom decile (0.1) overlap with the full set.
+# Host: r760 (handoff_synret_r760 and revision_stress rows of these sets). Study handoff_synnewpol_r760.
+status: exploratory_handoff_20261126_p2
+specification_commit: cd77277600841438d98ac5793867da28b8ec6dd0
+pipeline_revision: pi_20260920_v2
+torch_threads: 1
+splits:
+  test_frac: 0.2
+  val_frac: 0.2
+  maint_frac: 0.0
+  reg_cohort_bins: 5
+core:
+  representation: raw
+  glocal_fw_set_num: 1
+  tau: 1.0
+  top_k: 5
+  pre_topk_mask: true
+  case_normalizer: softmax
+  lr_case: 0.01
+  lr_glocal: 0.01
+  lr_feature: 0.001
+  epochs: 300
+  patience: 40
+  batch_size: 32
+  bias_init: knn_mean
+  bias_init_k: 5
+statistics:
+  source: train_loo
+  accumulation: per_checkpoint
+  counterfactual: false
+  smoothing: 1.0
+  min_retrieval_count: 2
+  min_activation_mass: 0.1
+  bias_normalization: within_cohort_percentile
+  bias_source: current
+  regression_success_tolerance: 0.5
+retention:
+  policy: provenance_only
+  min_per_cohort: 2
+  protect_rare_cohort_below: 0
+  boundary_protect_fraction: 0.0
+  activation_threshold: 0.05
+  zero_reachability: zero
+  cache_activation_threshold: 0.05
+  allowed_loss_increase: 0.05
+  fill_policy: random
+  energy_margin: 0.2
+experiment: synthetic_newpol__classification
+type: retention
+seeds:
+- 30
+- 31
+- 32
+datasets:
+- name: synthetic_reference
+  task_type: classification
+  synthetic:
+    generator_version: independent_v1
+- name: synthetic_overlap
+  task_type: classification
+  synthetic:
+    generator_version: independent_v1
+    center_scale: 0.9
+- name: synthetic_noise
+  task_type: classification
+  synthetic:
+    generator_version: independent_v1
+    corruption_rate: 0.4
+- name: synthetic_redundant
+  task_type: classification
+  synthetic:
+    generator_version: independent_v1
+    duplicate_count: 180
+- name: synthetic_uncovered_rare
+  task_type: classification
+  synthetic:
+    generator_version: independent_v1
+    rare_count: 0
+- name: synthetic_shift
+  task_type: classification
+  synthetic:
+    generator_version: independent_v1
+    shift: 4.5
+- name: synthetic_combined
+  task_type: classification
+  synthetic:
+    generator_version: independent_v1
+    center_scale: 0.9
+    corruption_rate: 0.4
+    shift: 4.5
+protocol:
+  finetune_epochs: 30
+  finetune_lr_scale: 0.1
+K:
+- 0.2
+- 0.5
+- 0.75
+conditions:
+- policy: rc_cnn
+- policy: crr
+- policy: bbnr
+- policy: enn
+- policy: energy_compress
+- policy: knn_shapley
+- policy: loo_value
+core_by_dataset:
+  classification__iris:
+    representation: raw
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__wine:
+    representation: mlp
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__breast_cancer:
+    representation: raw
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__balance:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__digits:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__zebra:
+    representation: raw
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__zebra_special:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__energy_efficiency:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__yacht:
+    representation: raw
+    top_k: 3
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__airfoil:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__student_performance:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__abalone:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__body_fat:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__diabets:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__car:
+    representation: raw
+    top_k: 3
+    lr_case: 0.001
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.001
+    lr_feature: 0.0001
+  regression__wine:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 1
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__tabarena_363614:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  classification__tabarena_363626:
+    representation: raw
+    top_k: 10
+    lr_case: 0.001
+    glocal_fw_set_num: 4
+    tau: 0.5
+    batch_size: 64
+    lr_glocal: 0.001
+    lr_feature: 0.0001
+  regression__tabarena_363625:
+    representation: mlp
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+  regression__tabarena_363675:
+    representation: raw
+    top_k: 10
+    lr_case: 0.01
+    glocal_fw_set_num: 4
+    tau: 1.0
+    batch_size: 64
+    lr_glocal: 0.01
+    lr_feature: 0.001
+efficiency:
+  lookup_repeats: 5
+  single_queries: 50
+reliability:
+  fractions:
+  - 0.1
+  - 0.25
+  - 0.5
+  - 1.0
+  repeats: 5
+  decile: 0.1
