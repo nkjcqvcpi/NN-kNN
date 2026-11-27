@@ -201,6 +201,8 @@ own continued adapter. Rejected forks cannot change the accepted memory.
 
 
 def _validate_task_adapter(model, core_cfg, adapter, reuse_cfg):
+    if getattr(adapter, "adapter_design", "residual") == "magnitude_direction" or getattr(reuse_cfg, "adapter_design", "residual") == "magnitude_direction":
+        raise ValueError("Magnitude/direction adapters are not supported by removal continuation; use recorded frozen reuse or synchronized training")
     if model.task_type != core_cfg.task_type or model.task_type not in {"classification", "regression"}:
         raise ValueError("Matching supported task types are required")
     if model.task_type == "classification":
@@ -304,7 +306,7 @@ starting with retrieval. Equal budgets mean equal examples/updates, not cost.
                     ad.train()
                     with frozen_parameters(trial):
                         # Both residual modes use their declared objective. The
-                        # neighborhood contract never supplies a raw embedding.
+                        # default contract uses differences; query-aware opts into z_q.
                         from .nominal import nominal_difference
                         r = trial.retrieve(X[b], exclude_identical=False, query_case_ids=qids[b])
                         w = r["weights"]
@@ -312,7 +314,9 @@ starting with retrieval. Equal budgets mean equal examples/updates, not cost.
                         if trial.task_type == "classification":
                             p0 = p0 / p0.sum(1, keepdim=True).clamp_min(1e-12)
                             dz = r["query_features"] - w @ r["case_features"]
-                            rh, final = ad(dz, p0, nominal_difference(ad, trial, r, query_nominal))
+                            from .query_aware import is_query_aware
+                            extra = {"query_features":r["query_features"]} if is_query_aware(ad) else {}
+                            rh, final = ad(dz, p0, nominal_difference(ad, trial, r, query_nominal), **extra)
                             losses = _adapter_losses(ad, rh, final, p0, y[b], reuse_cfg)
                         else:
                             final = ad.forward_aggregate(r["query_features"], r["case_features"],

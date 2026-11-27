@@ -354,7 +354,7 @@ def test_score_scale_multiplies_scores_inside_post_loss_only():
 @pytest.mark.parametrize("kw,task", [
     (dict(score_scale=3., output_mode="logit_residual"), "classification"),
     (dict(score_scale=0.), "classification"), (dict(score_scale=float("nan")), "classification"),
-    (dict(adapter_dropout=.1, output_mode="aggregate_regression"), "regression"),
+    (dict(adapter_dropout=.1, output_mode="aggregate_regression", adapter_design="magnitude_direction"), "regression"),
     (dict(adapter_dropout=1.), "classification"), (dict(adapter_weight_decay=-1.), "classification"),
     (dict(early_stopping="val_accuracy"), "classification"), (dict(retrieval_guard=-.1), "classification")])
 def test_sync_option_validation(kw, task):
@@ -362,15 +362,27 @@ def test_sync_option_validation(kw, task):
         SyncConfig("joint_rr", 1., .5, .1, 1., 1., .1, **kw).validate(task)
 
 
-def test_reuse_option_validation_and_regression_rejects_dropout():
+def test_reuse_option_validation_and_regression_supports_residual_dropout():
     for kw in (dict(score_scale=2., output_mode="logit_residual"), dict(score_scale=-1.), dict(dropout=1.),
                dict(weight_decay=-1.)):
         with pytest.raises(ValueError):
             reuse_cfg(**kw).validate()
     data, _, model, _ = trained_core("regression")
-    for kw in (dict(dropout=.1), dict(score_scale=2.)):
-        with pytest.raises(ValueError, match="classification"):
-            train_regression_adapter(model, data, reuse_cfg(**kw))
+    with pytest.raises(ValueError, match="classification"):
+        train_regression_adapter(model, data, reuse_cfg(score_scale=2.))
+    # Residual-regression dropout is now supported; magnitude/direction remains
+    # outside that extension. Check the trained/evaluation contract explicitly.
+    SyncConfig("joint_rr", 1., .5, .1, 1., 1., .1,
+        adapter_dropout=.1, output_mode="aggregate_regression").validate("regression")
+    adapter, info = train_regression_adapter(model, data, reuse_cfg(dropout=.1, epochs=2))
+    layers = [layer for layer in adapter.modules() if isinstance(layer, torch.nn.Dropout)]
+    assert layers and all(layer.p == .1 and not layer.training for layer in layers)
+    assert info["epochs_run"] == 2
+    before = evaluate_regression_reuse(model, adapter, data.X_test, data.y_test, success_tolerance=.5)
+    after = evaluate_regression_reuse(model, adapter, data.X_test, data.y_test, success_tolerance=.5)
+    assert before == after
+    with pytest.raises(ValueError, match="residual adapters"):
+        train_regression_adapter(model, data, reuse_cfg(dropout=.1, adapter_design="magnitude_direction"))
 
 
 def test_adamw_is_used_iff_weight_decay_is_positive():

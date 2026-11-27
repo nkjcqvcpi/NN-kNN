@@ -122,7 +122,7 @@ def nnknn_core_settings(params):
     return {**params, "batch_size": 64, "lr_glocal": params["lr_case"], "lr_feature": params["lr_case"] * .1}
 
 
-def fit_candidate(family, params, data, seed, epochs, patience):
+def fit_candidate(family, params, data, seed, epochs, patience, *, run=None):
     # data intentionally contains train/validation only.
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -161,7 +161,20 @@ def fit_candidate(family, params, data, seed, epochs, patience):
     opt = torch.optim.Adam(model.parameters(), lr=params["lr"], weight_decay=params["weight_decay"])
     best, bad, history = (float("inf"), None, -1), 0, []
     gen = torch.Generator().manual_seed(seed)
-    for epoch in range(1, epochs + 1):
+    start, stopped = 1, False
+    if run is not None:
+        if getattr(run, "run_id", None) is None:
+            raise TypeError("an open recorded run is required")
+        resumed = run.load_resume()
+        if resumed is not None:
+            state = resumed.state
+            model.load_state_dict(state["model"])
+            opt.load_state_dict(state["optimizer"])
+            best, bad, history = state["best"], state["bad"], state["history"]
+            start, stopped = state["epoch"]+1, state["stopped"]
+            resumed.restore_rng({"shuffle":gen})
+    epoch = start-1
+    for epoch in range(start, epochs + 1) if not stopped else ():
         model.train()
         perm = torch.randperm(len(data["y_train"]), generator=gen)
         for b in perm.split(64):
@@ -184,8 +197,14 @@ def fit_candidate(family, params, data, seed, epochs, patience):
             best, bad = (val["loss"], copy.deepcopy(model.state_dict()), epoch), 0
         else:
             bad += 1
-            if bad > patience:
-                break
+        stopped = bad > patience
+        if run is not None:
+            run.log_step(epoch, {"validation_loss":val["loss"]})
+            run.save_resume(records.storable(dict(epoch=epoch, model=model.state_dict(),
+                optimizer=opt.state_dict(), best=best, bad=bad, history=history, stopped=stopped)),
+                step=epoch, generators={"shuffle":gen})
+        if stopped:
+            break
     model.load_state_dict(best[1])
     return model, dict(best_epoch=best[2], epochs_run=epoch, history=history)
 
