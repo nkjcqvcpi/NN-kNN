@@ -1,14 +1,74 @@
-# Gating Random Forest adaptation: discussion and proposed experiment
+# Adaptation work handoff: completed experiments and RF gating
 
 Date: November 27, 2026  
 Project: Adaptation improvement  
-Status: **Design proposal. RF gating has not been implemented or evaluated.**
+Scope: NN-kNN adaptation experiments and the current RF-gating design.
+
+**Current state:** all recorded adaptation studies listed below are complete through `ar4`. The active research direction is **per-forest, per-pair gating**. Its design is discussed here; **RF gating has not been implemented or evaluated**. Magnitude/direction separation remains shelved, and the original production/default adapter behavior has not been changed.
+
+This is the combined handoff and RF-gating discussion. Start with the completed-work index, then the motivation, three gate variants and training proposal. The final sections identify implementation locations, experiment conventions and the work still needed.
 
 **Preferred design: one shared gate applied to the entire forest's prediction for each query–retrieved-case pair.** A case that passes the gate receives its full forest adaptation. A case that fails the gate retains its original solution. Both kinds of cases remain in the final average with their original retrieval weights.
 
 The motivation is to preserve RF's useful corrections while avoiding harmful ones. Existing results establish that the forest helps overall; they do not establish that we can reliably identify its mistakes in advance.
 
-## 1. Motivation: useful overall, but frequent harmful corrections
+## Completed adaptation work
+
+The [consolidated adapter results](ADAPTER_RESULTS_SUMMARY_2026-11-26.md) contain the full historical comparisons. The [merged alternatives report](NNCDH_ALTERNATIVES_REPORT_2026-11-27.md) is the primary numerical reference for the forest redesign.
+
+| Study | What we tried | Main finding / current disposition | Report |
+| --- | --- | --- | --- |
+| `am1` | Original NN-CDH versus separate correction magnitude and direction; shared adaptation representation, neighborhood statistics and residual supervision | New design did not improve overall performance and was shelved. Saved-prediction analysis found direction errors, overshoot and discarded useful corrections. | [Design comparison](ADAPTATION_IMPROVEMENT_LOCAL_2026-11-25.md), [behavior analysis](ADAPTATION_BEHAVIOR_2026-11-25.md) |
+| `ag1` | Global on/off, global shrinkage, disagreement threshold, extra adapter training, probability gate and utility gate | Simple disagreement gating gave modest gains. Learned gates did not establish reliable selection; see the denominator analysis below. | [Apply-or-skip gates](ADAPTATION_GATE_LOCAL_2026-11-25.md) |
+| `ag2` | One trainable disagreement cutoff, with the adapter frozen or trained alongside it | No consistent advantage over validation-selected disagreement gating. Frozen-adapter regression remained almost always-adapt. | [Trainable threshold](ADAPTATION_THRESHOLD_LOCAL_2026-11-25.md) |
+| `aq1` | Query-aware NN-CDH with retrieved prediction as an input; compact MLP, TabM, CatBoost and kNN references | Initial classification mean improved from 9.945% to 9.359%; regression worsened from 0.338910 to 0.345176. Compact baseline searches are not equivalent to historical tuned benchmarks. | [Query-aware adapter](QUERY_AWARE_LOCAL_2026-11-25.md) |
+| `aq2` | Query-aware NN-CDH without retrieved prediction as an input | Removed the direct subtraction input path, but gave no general improvement. Mean classification error 10.146%; regression RMSE 0.358695. | [Without prediction input](QUERY_NO_PREDICTION_LOCAL_2026-11-25.md) |
+| `as1` | Original, query + prediction, and query without prediction; sequential, alternating and joint training | Training scheme materially changes results. Sequential runs share the same pretrained retrieval. No universal winner. | [Training schemes](ADAPTER_TRAINING_SCHEMES_LOCAL_2026-11-26.md) |
+| `ad1` | All three input variants and all three schemes with dropout 0%, 10% and 20% | Dropout helps selectively. Original sequential 20% is the clearest matched regression gain: 0.350429 to 0.338523, better on six of seven datasets. | [Dropout](ADAPTER_DROPOUT_LOCAL_2026-11-26.md) |
+| `ar1` | Individual-pair neural adapter, mixed-pair ExtraTrees, and local ridge | Pair trees were the strongest replacement. The tested pair MLP and local ridge did not solve adaptation reliability. | [Pairwise redesign](ADAPTER_PAIRWISE_REDESIGN_LOCAL_2026-11-26.md) |
+| `ar2` | Retrieved-only ExtraTrees, direct-tree control, cross-fitted anchor transport, retrieval-error memory and neural vote attention | Retrieved-only pair training strengthened regression. Transport helped but trailed pair trees; memory gains were small; bounded attention mostly discarded useful adaptation. | [Merged alternatives](NNCDH_ALTERNATIVES_REPORT_2026-11-27.md) |
+| `ar3` | Ordinary Random Forest on mixed and retrieved-only pairs, matched to the ExtraTrees recipes | RF improved classification in these comparisons; retrieved-only RF and ExtraTrees were close on regression. RF's slightly better RMSE came with more total harmful squared error. | [RF comparisons](NNCDH_ALTERNATIVES_REPORT_2026-11-27.md#random-forest-on-the-same-pair-formulations) |
+| `ar4` | Alternating retrieval updates and forest refits: RF/ExtraTrees × mixed/retrieved-only pairs | All four variants completed. Improvements were selective and small; wrong-direction frequency was essentially unchanged. | [Alternating forests](NNCDH_ALTERNATIVES_REPORT_2026-11-27.md#alternating-forests-matched-continuations-ar4) |
+
+### Model and comparison distinctions to preserve
+
+The original NN-CDH is a residual MLP with hidden widths 64 and 32. Its input variants are:
+
+```text
+Original:                 [query - neighborhood_mean, retrieved_prediction]
+Query-aware + prediction: [query - neighborhood_mean, retrieved_prediction, query]
+Query-aware, no prediction: [query - neighborhood_mean, query]
+
+final = retrieved_prediction + adapter_correction
+```
+
+Residual output alone does not prevent an adapter from learning to cancel retrieval. Removing the prediction input removes a direct path, not a general mathematical guarantee.
+
+The forest redesign keeps individual cases separate until adaptation. It uses pair features `[query, case, query - case]` in the saved standardized representation. Regression predicts antisymmetric target differences; classification predicts symmetric same-class affinity. It then averages adapted cases using the original activations.
+
+`ar1`–`ar3` freeze retrieval. “Mixed pairs” means retrieved plus random training pairs, not a mixed training schedule. `ar4` alternates two retrieval epochs and a forest refit for five cycles; validation may retain cycle zero. Final loss reaches retrieval through its prediction and case weights, while tree predictions are detached. This is not gradient descent through tree splits.
+
+### Performance references
+
+Lower is better. These means weight the seven datasets in each task family equally after seed averaging; they are not pooled per-query rates.
+
+| Reference | Classification error % | Regression RMSE |
+| --- | ---: | ---: |
+| Frozen pretrained retrieval | 11.680 | 0.348690 |
+| Original NN-CDH, sequential, 20% dropout | 10.804 | 0.338523 |
+| ExtraTrees, retrieved-only, sequential | 4.350 | 0.314960 |
+| RF, mixed pairs, sequential | 3.636 | 0.321912 |
+| RF, retrieved-only, sequential | 3.325 | 0.314232 |
+| RF, mixed pairs, alternating | **3.191** | 0.322119 |
+| RF, retrieved-only, alternating | 3.255 | **0.313608** |
+
+The lowest observed forest classification mean is mixed-pair alternating RF. The lowest regression mean is retrieved-only alternating RF, only **0.20%** below its sequential baseline. Classification gains concentrate on a few datasets, especially the Zebra tasks. Keep sequential retrieved-only RF as the simple starting point for the proposed gate experiment; these are retrospective exploratory results, not proof of a universal winner.
+
+Within the earlier NN-CDH studies, query + prediction remains a useful classification option, while original sequential NN-CDH with dropout gives the clearest fixed-retrieval regression improvement. The numerically best dropout classification setting was query without prediction + alternating + 20% dropout, but its advantage concentrated on Zebra. See the consolidated report before generalizing that choice.
+
+The initial `am1`/`aq1` comparisons used joint training on 13 tasks and frozen sequential training on Diabetes. Their “original” baseline is therefore different from the all-sequential reference above. A full model's own selected retrieval core is also different from the standalone pretrained retrieval baseline.
+
+## Motivation: useful overall, but frequent harmful corrections
 
 Our pair RF adapts each retrieved case separately, then combines the adapted solutions. All current RF variants use 64 trees, maximum depth 12, and minimum leaf size 5 or 20 selected on validation. Regression learns query–case target differences; classification learns a same-class affinity that is converted into an adapted class distribution.
 
@@ -45,7 +105,7 @@ Classification requires a different interpretation. Sequential retrieved-only RF
 
 Sources: [merged alternatives report](NNCDH_ALTERNATIVES_REPORT_2026-11-27.md#direct-rf-direction-and-severity-check), [independent RF audit](../tools/t1_forest_direction_audit.py), [audit evidence](../results/adaptation_improvement/ar4/rf_direction_audit.json).
 
-## 2. Working hypothesis
+## Working hypothesis
 
 Some learned pair-adaptation rules may transfer poorly beyond the training situations that support them. A leaf can fit its observed training pairs while extending into regions with weak support or different relationships. A gate could use evidence about the current pair to decide whether that forest proposal is applicable.
 
@@ -53,7 +113,7 @@ This is a **hypothesis**, not an established explanation of the observed errors.
 
 Before attributing failures to particular trees or pairs, we need diagnostics at those levels. The final query-level wrong-direction rate alone cannot establish that attribution.
 
-## 3. Three gating variants
+## Three gating variants
 
 | Variant | Decision unit | What a closed gate does | Main consideration |
 | --- | --- | --- | --- |
@@ -86,7 +146,7 @@ For regression, `s_i = y_i` and `a_i = y_i + Delta_RF(query, case_i)`. For class
 
 The query-level alternative instead uses a single `g(query)` for every term.
 
-## 4. What earlier gating experiments tell us
+## What earlier gating experiments tell us
 
 Earlier studies `ag1` and `ag2` gated the older NN-CDH adapter's aggregate correction. They did not gate RF or individual retrieved cases.
 
@@ -107,7 +167,7 @@ These studies support the possibility of limiting damage, but do not show reliab
 
 Sources: [gating report and denominator clarification](ADAPTATION_GATE_LOCAL_2026-11-25.md#wrong-direction-rates-all-queries-versus-applied-corrections), [trainable-threshold report](ADAPTATION_THRESHOLD_LOCAL_2026-11-25.md), [independent gate recount](../results/adaptation_improvement/ag2/gating_direction_denominators.json).
 
-## 5. Gate inputs and training proposal
+## Gate inputs and training proposal
 
 ### Shared gate, pair-specific evidence
 
@@ -169,7 +229,7 @@ The proposed gate therefore learns whether adapting this case helps **the final 
 
 During deployment, use hard decisions such as `g_i = 1[p_i > 0.5]`. Select checkpoints using actual deterministic hard-gated validation predictions. Stochastic training performance does not guarantee identical deterministic performance. Cross-entropy improvement also does not guarantee classification-accuracy improvement; report both.
 
-## 6. Proposed first comparison and open questions
+## Proposed first comparison and open questions
 
 Start with the retrieved-only sequential RF and keep its retrieval, forest, case store and weights fixed. Compare:
 
@@ -191,6 +251,56 @@ Evaluation should include:
 - Helpful corrections discarded, harmful updates prevented, and comparisons with forced-open/forced-closed gates.
 
 The main open question is whether the new pair-specific evidence can identify useful corrections more reliably than the earlier aggregate NN-CDH gates. Lowering the all-query mistake rate by adapting less is insufficient on its own; the intended improvement is **less harmful adaptation while retaining enough useful adaptation to improve final performance**.
+
+## Continuing the work
+
+RF gating is the next experiment, not a completed result. The gate architecture, data fractions, training budget and new study ID remain to be specified. Continue in this order:
+
+1. Write the matched protocol for ungated RF, a per-query gate and the preferred per-pair gate. Reserve gate-training examples before fitting either retrieval or the forest; keep validation and test separate. Start with sequential retrieved-only RF.
+2. Implement pair-proposal caching and the shared gate in the T1 adaptation worktree. Train on complete query neighborhoods using the conditional on/off loss above. Preserve the existing case store, normalization and retrieval weights.
+3. Check forced-open parity with the original forest and forced-closed parity with retrieval, valid classification probabilities, original-example separation, and completed-unit reuse. On a tiny synthetic neighborhood, compare the gate gradient with exact enumeration of all binary decisions.
+4. Run the matched local comparison with recorded units. Report final error and the full benefit/harm diagnostics; use fresh local confirmation before treating the best exploratory result as general evidence.
+
+The existing forests were fitted using their original training sets. Those saved models cannot retrospectively provide independent gate-training predictions for examples they already used. A reserved gate-training split requires a new base-model configuration and new recorded units. Preserve and reuse the completed historical units for their original configurations; do not overwrite or retrain them.
+
+### Code map
+
+| Location | Purpose |
+| --- | --- |
+| [Pair prediction and aggregation](../model/t1/pairwise_adaptation.py) | Pair features, antisymmetric regression / symmetric classification proposals, and weighted final predictions |
+| [Pair-model training](../model/t1/pairwise_training.py) | Neural, ExtraTrees and Random Forest fitting |
+| [Alternative adapters](../model/t1/alternative_adaptation.py) | Retrieved-only pair construction, transport, error memory and vote attention |
+| [RF runner](../tools/t1_pair_random_forest.py) | Recorded `ar3` comparisons |
+| [Alternating implementation](../model/t1/forest_alternating.py), [runner](../tools/t1_forest_alternating.py) | Retrieval updates with detached forest proposals and subsequent forest refits (`ar4`) |
+| [Earlier NN-CDH gates](../model/t1/adaptation_gate.py), [trainable threshold](../model/t1/disagreement_threshold.py) | Prior aggregate-gating experiments; these are not RF pair gates |
+| [Query-aware NN-CDH](../model/t1/query_aware.py) | Earlier adapter input variants |
+| [Forest audit](../tools/t1_forest_direction_audit.py), [old-gate audit](../tools/t1_gate_direction_audit.py) | Recount saved predictions, correction directions, denominators and harm severity |
+| [Merged results reader](../tools/t1_alternative_redesign_summary.py) | Read recorded studies and regenerate alternative-adapter summaries |
+| [Local launcher](../../run_pairwise_redesign_experiment.py) | Existing CPU environment and job conventions; a new gate driver is still needed |
+
+### Workspace and recording conventions
+
+The current workspace root is `C:/Users/yexia/Documents/GitHub/NN-kNN-haotang`. Adaptation code is in its isolated `adaptation improvement/code/neural-cbr` worktree, on branch `adaptation-improvement`. Keep T1 implementation there; the outer checkout owns the shared NN-kNN core. Follow each checkout's `AGENTS.md` and do not modify the published Table 1 benchmark path or its numbers.
+
+| Material | Current location, relative to workspace root |
+| --- | --- |
+| Recorded models, predictions, per-run metrics and TensorBoard data | `runs/t1/<study>/` |
+| Generated summaries and audit evidence | `adaptation improvement/code/neural-cbr/results/adaptation_improvement/<study>/` |
+| Hand-written reports and this handoff | `adaptation improvement/code/neural-cbr/reports/` |
+| Local launcher logs | `adaptation improvement/logs/` |
+| Project index | [adaptation improvement/PROJECT.md](../../../PROJECT.md) |
+
+Use uv and the existing environment; no pip or new hand-made environment. The local launcher selects the root `.venv`, local uv/cache under `adaptation improvement/.tools`, `NNKNN_RUNS=<root>/runs`, and the sibling `NN-kNN/datasets` data directory. It uses CPU, deterministic settings and one thread per worker. The user explicitly limited this project to locally available runs because r760 is inaccessible; do not introduce a remote-host dependency. Preserve the repository's Linux numeric references.
+
+Training/evaluation drivers require a study and recorded run units. Detect completed units before fitting and load them; preserve resume state. Configuration/data identity determines reuse, while source commit and path are provenance. Generated summaries read recorded units and go to `results/`; do not track data or model weights in Git. See [T1 recording rules](../docs/T1_RUN_RECORDS.md).
+
+The completed local suite uses seeds 40/41/42: classification on Iris, Wine, Breast Cancer, Balance, Digits, Zebra and Zebra Special; regression on Airfoil, Car, Yacht, Energy Efficiency, Student Performance, Body Fat and Diabetes (the existing task identifier is `regression__diabets`). This is the comparison scope, not a claim that these tasks establish general superiority.
+
+### Verification already completed
+
+The `ar4` report records **57 passing focused tests**, including 15 new cases. Its reader audits 840 retrieval states, 840 forest refits and 168 selected tests, and verifies reuse of all **1,848 new units** with fitting/inference disabled. All 798 preceding comparison rows were preserved. The independent RF direction audit reads 168 selected test units; the earlier-gate audit reads 126 regression method/split prediction sets. These checks cover existing implementations, not the proposed RF gate.
+
+Do not describe the entire test suite as passing: a broader local Windows sweep had failures, followed by focused repairs/rechecks, and a Linux numeric-reference discrepancy was reproduced on the unchanged baseline. The Linux reference was preserved and the full sweep was not repeated. Details and logs are in [implementation, evidence and verification](NNCDH_ALTERNATIVES_REPORT_2026-11-27.md#implementation-evidence-and-verification).
 
 ## Evidence and reading
 
