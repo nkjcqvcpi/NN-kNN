@@ -45,7 +45,8 @@ import yaml  # noqa: E402
 
 from model.common.artifacts import build_manifest, case_statistics_rows, config_id, source_fingerprint  # noqa: E402
 from model.t1.calibration import calibrate_free_radius, compact_calibration_snapshot  # noqa: E402
-from model.common.core import CoreConfig, build_model, clone_optimizer, evaluate, make_optimizer, retrieval_events, train_retrieval  # noqa: E402
+from model.common.core import CoreConfig, build_model, clone_optimizer, evaluate, make_optimizer, train_retrieval  # noqa: E402
+from model.t1.core import retrieval_events  # noqa: E402
 from model.common.geometry import active_case_features, query_features  # noqa: E402
 from model.t1.data import make_splits  # noqa: E402
 from model.t1.candidates import MaintenanceReference

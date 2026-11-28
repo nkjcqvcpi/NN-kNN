@@ -22,6 +22,12 @@ keeps the plan's split (L_R -> retrieval parameters, L_A -> adapter parameters);
 ``"summed"`` backpropagates L_R + L_A into every trainable parameter.
 ``adapter_warmup_epochs`` trains a fresh adapter alone before joint updates.
 
+For the controlled adapter study, ``comparison_scheme`` optionally executes
+``joint_rr`` settings as frozen-retrieval sequential training or as one full
+retrieval pass followed by one full adapter pass per cycle. It preserves the
+effective summed/separated objective and maximum per-component pass budget.
+Historical schedule behavior is unchanged when this override is absent.
+
 Every term is logged separately each epoch. Training queries are training cases
 with leave-one-out retrieval. Early stopping uses the validation stream only:
 ``val_L_post`` (default) or ``val_error`` (post-adaptation error, then L_post).
@@ -52,6 +58,9 @@ from .chunked import retrieve_chunked
 from .core import CoreConfig, make_optimizer
 from .nominal import NominalSchema, NominalClassificationAdapter, nominal_difference, fit_nominal_schema
 from .reuse import adapter_optimizer
+from .magnitude_direction import make_magnitude_direction_adapter, neighborhood_statistics
+from .query_aware import QUERY_AWARE_DESIGNS, is_query_aware, query_adapter_type
+from .adapter_regularization import add_hidden_dropout, validate_dropout_placement
 
 
 SCHEDULES = {"independent", "alternating_rr", "alternating_rrr", "joint_rr", "joint_rrr"}
@@ -83,16 +92,29 @@ class SyncConfig:
     # They run in eval mode without gradients and never change training.
     diagnostics_every: int = 1
     adapter_weight_decay: float = 0.0  # > 0 switches the adapter optimizer from Adam to AdamW
-    adapter_dropout: float = 0.0  # classification adapters only
+    adapter_dropout: float = 0.0  # legacy first hidden; all_hidden override covers both hidden layers
     score_scale: float = 1.0  # kappa: L_post = cross_entropy(kappa * s, y) (nominal_residual_scores only)
     early_stopping: str = "val_L_post"  # val_L_post | val_error (lexicographic on (error, L_post))
     retrieval_guard: float | None = None  # eligible iff val L_pre <= (1 + guard) * epoch-0 val L_pre
+    adapter_design: str = "residual"  # opt-in; historical adapter stays unchanged
+    initial_scale: float = 0.01  # magnitude in standardized target / class-score units
 
     @property
     def maintains(self) -> bool:
         return self.schedule.endswith("_rrr")
 
     def validate(self, task_type):
+        if self.adapter_design not in {"residual", "magnitude_direction"} | QUERY_AWARE_DESIGNS:
+            raise ValueError("Unknown adapter_design")
+        if self.adapter_design in QUERY_AWARE_DESIGNS and (self.nominal_fields or self.output_mode == "logit_residual"):
+            raise ValueError("query-aware synchronization requires represented numeric inputs and additive residuals")
+        if not math.isfinite(self.initial_scale) or self.initial_scale <= 0:
+            raise ValueError("initial_scale must be finite and positive")
+        if self.adapter_design == "magnitude_direction":
+            if self.v_delta <= 0 or self.v_post <= 0:
+                raise ValueError("Magnitude/direction needs positive raw-proposal and final-output losses")
+            if self.output_mode == "logit_residual":
+                raise ValueError("Magnitude/direction classification uses nominal_residual_scores")
         if self.schedule not in SCHEDULES:
             raise ValueError("Unknown synchronization schedule")
         alternating = self.schedule.startswith("alternating")
@@ -115,8 +137,8 @@ class SyncConfig:
             raise ValueError(f"Output mode {self.output_mode!r} is invalid for {task_type}")
         if not self.adapter_weight_decay >= 0 or not 0 <= self.adapter_dropout < 1:
             raise ValueError("adapter weight decay must be nonnegative and dropout in [0, 1)")
-        if self.adapter_dropout > 0 and task_type != "classification":
-            raise ValueError("adapter dropout applies to classification adapters only")
+        if self.adapter_dropout > 0 and task_type != "classification" and self.adapter_design == "magnitude_direction":
+            raise ValueError("regression dropout is supported for residual adapters")
         if not (math.isfinite(self.score_scale) and self.score_scale > 0):
             raise ValueError("score_scale must be finite and positive")
         if self.score_scale != 1.0 and self.output_mode != "nominal_residual_scores":
@@ -154,12 +176,20 @@ def _forward_terms(model, adapter, X, y, fr: FreeRadius | None, *, output_mode: 
     w = r["weights"]
     labels = model.labels[r["case_indices"]].float()
     L_near = (w * r["distances"]).sum(1).mean() / max(near_scale, 1e-8)
+    split_output = getattr(adapter, "adapter_design", "residual") == "magnitude_direction"
+    parts = None
     if model.task_type == "regression":
         p0 = w @ labels.view(w.shape[1], -1)
-        s = adapter.forward_aggregate(r["query_features"], r["case_features"], labels, w)
+        if split_output:
+            parts = adapter.forward_parts(r["query_features"] - w @ r["case_features"], p0,
+                neighborhood_statistics(r, labels, task_type="regression"))
+            s = parts.final
+        else:
+            s = adapter.forward_aggregate(r["query_features"], r["case_features"], labels, w)
         target = y.float().view_as(p0)
         L_pre, L_post = F.mse_loss(p0, target), F.mse_loss(s, target)
-        L_delta = F.mse_loss(s - p0, target - p0)
+        # The raw proposal supplies the gradient blocked by scalar sign(v).
+        L_delta = F.mse_loss(parts.raw_proposal if split_output else s - p0, target - p0)
         c_q = torch.linalg.vector_norm(s - p0, dim=1)
         with torch.no_grad():
             err_pre, err_post = F.mse_loss(p0, target).sqrt(), F.mse_loss(s, target).sqrt()
@@ -171,7 +201,13 @@ def _forward_terms(model, adapter, X, y, fr: FreeRadius | None, *, output_mode: 
         else:
             dz = r["query_features"] - w @ r["case_features"]
             du = nominal_difference(adapter, model, r, query_nominal)
-            rh, s = adapter(dz, p0, du)
+            if split_output:
+                parts = adapter.forward_parts(dz, p0,
+                    neighborhood_statistics(r, labels, task_type="classification"), du)
+                rh, s = parts.raw_proposal, parts.final
+            else:
+                extra = {"query_features":r["query_features"]} if is_query_aware(adapter) else {}
+                rh, s = adapter(dz, p0, du, **extra)
         y1 = F.one_hot(y.long(), p0.size(1)).float()
         if output_mode != "logit_residual":  # class scores (nominal_residual_scores and the opt-in variants)
             L_post = F.cross_entropy(score_scale * s, y.long())  # x * 1.0 is exact: default unchanged
@@ -184,8 +220,15 @@ def _forward_terms(model, adapter, X, y, fr: FreeRadius | None, *, output_mode: 
             err_pre = (p0.argmax(1) != y.long()).float().mean()
             err_post = (s.argmax(1) != y.long()).float().mean()
     L_sm = l_small(c_q, fr) if fr is not None else torch.zeros((), device=p0.device)
-    return {"L_pre": L_pre, "L_post": L_post, "L_near": L_near, "L_delta": L_delta, "L_small": L_sm, "correction_norm": c_q.mean(),
-            "err_pre": err_pre.detach(), "err_post": err_post.detach()}
+    terms = {"L_pre": L_pre, "L_post": L_post, "L_near": L_near, "L_delta": L_delta, "L_small": L_sm, "correction_norm": c_q.mean(),
+             "err_pre": err_pre.detach(), "err_post": err_post.detach()}
+    if parts is not None:
+        terms.update(predicted_magnitude=parts.magnitude.mean(),
+                     raw_proposal_norm=torch.linalg.vector_norm(parts.raw_proposal, dim=1).mean(),
+                     direction_norm=torch.linalg.vector_norm(parts.direction, dim=1).mean())
+        if not all(bool(torch.isfinite(value).all()) for value in terms.values()):
+            raise ValueError("Nonfinite magnitude/direction loss or diagnostic")
+    return terms
 
 
 def joint_backward(T: dict[str, torch.Tensor], cfg: SyncConfig, retrieval_params, adapter_params) -> None:
@@ -217,12 +260,25 @@ def train_synchronized(
     recalibrate: Callable[[int], FreeRadius] | None = None,
     core_optimizer: torch.optim.Optimizer | None = None,
     epoch_observer: Callable[[int, Any, Any], dict[str, Any]] | None = None,
+    run=None,
+    comparison_scheme: str | None = None,
+    dropout_placement: str | None = None,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
     cfg.validate(model.task_type)
+    validate_dropout_placement(dropout_placement, cfg.adapter_design)
+    constructor_dropout = 0.0 if dropout_placement == "all_hidden" else cfg.adapter_dropout
+    if comparison_scheme is not None and (comparison_scheme not in {"sequential", "alternating"} or cfg.schedule != "joint_rr"):
+        raise ValueError("controlled scheme comparison requires joint_rr settings and sequential or alternating execution")
+    if run is not None and (getattr(run, "run_id", None) is None or cfg.maintains):
+        raise ValueError("recorded epoch resume requires an open run and a schedule without maintenance")
     started = time.perf_counter()
     torch.manual_seed(cfg.seed)
     device = model.cases.device
     X, y = data.X_train.to(device), data.y_train.to(device)
+    if cfg.adapter_design in QUERY_AWARE_DESIGNS or comparison_scheme is not None or dropout_placement is not None:
+        # A shape probe must not seed the eval feature cache with an autograd
+        # graph that would be reused across frozen-retrieval warm-up batches.
+        model._invalidate_case_cache()
     # Shape probe only, so no gradient: in eval mode ``retrieve`` writes case features into the model's
     # evaluation cache, and a probe with gradients enabled left that cache attached to this call's autograd
     # graph whenever it (re)computed a row (the cache treats an all-zero feature row as not cached, so an
@@ -233,25 +289,42 @@ def train_synchronized(
     with torch.no_grad():
         feat_dim = model.retrieve(X[:1], exclude_identical=False)["query_features"].shape[1]
     nominal_train = nominal_val = None
-    if model.task_type == "classification":
+    if cfg.adapter_design == "magnitude_direction":
+        schema = None
+        if cfg.nominal_fields:
+            schema = fit_nominal_schema(data, cfg.nominal_fields)
+            nominal_train = schema.encode(data.nominal_train, rows=len(data.y_train)).to(device)
+            nominal_val = schema.encode(data.nominal_val, rows=len(data.y_val)).to(device)
+        elif getattr(data, "nominal_train", None):
+            raise ValueError("nominal synchronization requires explicit per-field coverage declarations")
+        adapter = make_magnitude_direction_adapter(model.task_type, feat_dim,
+            num_classes=data.num_classes, hidden_dims=cfg.hidden_dims, output_mode=cfg.output_mode,
+            dropout=cfg.adapter_dropout, initial_magnitude=cfg.initial_scale, schema=schema,
+            case_ids=torch.arange(len(data.y_train)) if schema is not None else None,
+            case_values=nominal_train).to(device)
+    elif model.task_type == "classification":
         if cfg.nominal_fields:
             schema = fit_nominal_schema(data, cfg.nominal_fields)
             nominal_train = schema.encode(data.nominal_train, rows=len(data.y_train)).to(device)
             nominal_val = schema.encode(data.nominal_val, rows=len(data.y_val)).to(device)
             adapter = NominalClassificationAdapter(schema=schema, case_ids=torch.arange(len(data.y_train)),
                 case_values=nominal_train, feature_dim=feat_dim, num_classes=int(data.num_classes),
-                hidden_dims=cfg.hidden_dims, output_mode=cfg.output_mode, dropout=cfg.adapter_dropout).to(device)
+                hidden_dims=cfg.hidden_dims, output_mode=cfg.output_mode, dropout=constructor_dropout).to(device)
         else:
             if getattr(data, "nominal_train", None):
                 raise ValueError("nominal synchronization requires explicit per-field coverage declarations")
-            adapter = ClassificationNNCDHAdapter(feat_dim, int(data.num_classes), 0, cfg.hidden_dims, cfg.output_mode,
-                                                 dropout=cfg.adapter_dropout).to(device)
+            adapter_type = query_adapter_type("classification", cfg.adapter_design) if cfg.adapter_design in QUERY_AWARE_DESIGNS else ClassificationNNCDHAdapter
+            adapter = adapter_type(feat_dim, int(data.num_classes), 0, cfg.hidden_dims, cfg.output_mode,
+                                   dropout=constructor_dropout).to(device)
     else:
-        adapter = NNCDHAdapter(feat_dim, 1, cfg.hidden_dims).to(device)
+        adapter_type = query_adapter_type("regression", cfg.adapter_design) if cfg.adapter_design in QUERY_AWARE_DESIGNS else NNCDHAdapter
+        adapter = adapter_type(feat_dim, 1, cfg.hidden_dims).to(device)
         # The preserved foundation contains a historical pair network; the T1
         # aggregate path never trains or uses that extra information channel.
         for p in adapter.adapt_net_pair.parameters():
             p.requires_grad_(False)
+    if dropout_placement == "all_hidden" or model.task_type == "regression":
+        add_hidden_dropout(adapter, cfg.adapter_dropout, all_hidden=dropout_placement == "all_hidden")
     ropt = core_optimizer if core_optimizer is not None else make_optimizer(model, core_cfg)
     aopt = adapter_optimizer([p for p in adapter.parameters() if p.requires_grad], cfg.adapter_lr,
                              cfg.adapter_weight_decay, device)
@@ -291,14 +364,37 @@ def train_synchronized(
     adapter_params = [p for p in adapter.parameters() if p.requires_grad]
 
     def phase_of(ep: int) -> str:
+        if comparison_scheme == "sequential":
+            return "adapter"
+        if comparison_scheme == "alternating":
+            return "adapter" if ep <= cfg.adapter_warmup_epochs else "alternating"
         if cfg.schedule == "independent":
             return "retrieval" if ep <= cfg.epochs // 2 else "adapter"
         if cfg.schedule.startswith("joint"):
             return "adapter" if ep <= cfg.adapter_warmup_epochs else "joint"
         return "retrieval" if ((ep - 1) // cfg.block_epochs) % 2 == 0 else "adapter"
 
-    for ep in range(1, cfg.epochs + 1):
+    start, already_stopped = 1, False
+    if run is not None:
+        from . import records
+        resumed = run.load_resume()
+        if resumed is not None:
+            state = records.unpack(resumed.state["sync_state"])
+            if state.get("comparison_scheme") != comparison_scheme:
+                raise ValueError("resume comparison scheme differs")
+            if state.get("dropout_placement") != dropout_placement:
+                raise ValueError("resume dropout placement differs")
+            model.load_state_dict(state["model"])
+            model._invalidate_case_cache()
+            adapter.load_state_dict(state["adapter"])
+            ropt.load_state_dict(state["retrieval_optimizer"])
+            aopt.load_state_dict(state["adapter_optimizer"])
+            best, bad, hist, fr = state["best"], state["bad"], state["history"], state["free_radius"]
+            start, already_stopped = state["epoch"]+1, state["stopped"]
+            resumed.restore_rng({"shuffle":g})
+    for ep in range(start, cfg.epochs + 1) if not already_stopped else ():
         ph = phase_of(ep)
+        phases = ("retrieval", "adapter") if ph == "alternating" else (ph,)
         # Same train-only LOO stream before/after the update; eval mode keeps
         # dropout and mutable encoders from confounding the comparison.
         def diagnostic_terms():
@@ -323,56 +419,71 @@ def train_synchronized(
         adapter.train()
         perm = torch.randperm(y.numel(), generator=g)
         agg = {k: 0.0 for k in ("L_pre", "L_post", "L_near", "L_delta", "L_small", "correction_norm")}
+        if cfg.adapter_design == "magnitude_direction":
+            agg.update(predicted_magnitude=0.0, raw_proposal_norm=0.0, direction_norm=0.0)
         nb = 0
         query_case_pairs = 0
-        for s in range(0, y.numel(), core_cfg.batch_size):
-            b = perm[s : s + core_cfg.batch_size].to(device)
-            query_case_pairs += len(b) * model.case_count()
-            if ph == "retrieval":
-                adapter.eval()  # frozen adapter: no dropout noise (LayerNorm/ReLU nets are mode-free otherwise)
-                with frozen_parameters(adapter):
+        component_updates = {"retrieval": 0, "adapter": 0}
+        for phase in phases:
+            for s in range(0, y.numel(), core_cfg.batch_size):
+                b = perm[s : s + core_cfg.batch_size].to(device)
+                query_case_pairs += len(b) * model.case_count()
+                if phase == "retrieval":
+                    adapter.eval()  # frozen adapter: no dropout noise (LayerNorm/ReLU nets are mode-free otherwise)
+                    with frozen_parameters(adapter):
+                        T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b, query_nominal=None if nominal_train is None else nominal_train[b], score_scale=cfg.score_scale)
+                    adapter.train()
+                    if cfg.schedule == "independent":
+                        L = T["L_pre"]
+                    else:
+                        L = cfg.w_pre * T["L_pre"] + cfg.w_post * T["L_post"] + cfg.w_near * T["L_near"]
+                    if comparison_scheme is not None and cfg.joint_objective == "summed":
+                        L_A = cfg.v_post*T["L_post"] + cfg.v_delta*T["L_delta"] + cfg.v_small*T["L_small"]
+                        L = L + L_A
+                    ropt.zero_grad()
+                    aopt.zero_grad()
+                    L.backward()
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), core_cfg.grad_clip)
+                    ropt.step()  # adapter grads are discarded: L_R updates retrieval only
+                    if core_cfg.mcb_enabled:
+                        model.update_momentum_encoder(core_cfg.mcb_momentum)
+                elif phase == "joint":
                     T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b, query_nominal=None if nominal_train is None else nominal_train[b], score_scale=cfg.score_scale)
-                adapter.train()
-                if cfg.schedule == "independent":
-                    L = T["L_pre"]
+                    ropt.zero_grad()
+                    aopt.zero_grad()
+                    joint_backward(T, cfg, retrieval_params, adapter_params)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), core_cfg.grad_clip)
+                    ropt.step()
+                    aopt.step()
+                    if core_cfg.mcb_enabled:
+                        model.update_momentum_encoder(core_cfg.mcb_momentum)
                 else:
-                    L = cfg.w_pre * T["L_pre"] + cfg.w_post * T["L_post"] + cfg.w_near * T["L_near"]
-                ropt.zero_grad()
-                aopt.zero_grad()
-                L.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), core_cfg.grad_clip)
-                ropt.step()  # adapter grads are discarded: L_R updates retrieval only
-                if core_cfg.mcb_enabled:
-                    model.update_momentum_encoder(core_cfg.mcb_momentum)
-            elif ph == "joint":
-                T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b, query_nominal=None if nominal_train is None else nominal_train[b], score_scale=cfg.score_scale)
-                ropt.zero_grad()
-                aopt.zero_grad()
-                joint_backward(T, cfg, retrieval_params, adapter_params)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), core_cfg.grad_clip)
-                ropt.step()
-                aopt.step()
-                if core_cfg.mcb_enabled:
-                    model.update_momentum_encoder(core_cfg.mcb_momentum)
-            else:
-                model.eval()  # frozen retrieval, LOO still enforced explicitly
-                with frozen_parameters(model):
-                    T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b, query_nominal=None if nominal_train is None else nominal_train[b], score_scale=cfg.score_scale)
-                if cfg.schedule == "independent":
-                    L = cfg.v_post * T["L_post"] + cfg.v_delta * T["L_delta"]  # v0 adapter losses, no L_small
-                else:
-                    L = cfg.v_post * T["L_post"] + cfg.v_delta * T["L_delta"] + cfg.v_small * T["L_small"]
-                aopt.zero_grad()
-                L.backward()
-                aopt.step()
-                model.train()
-            for k in agg:
-                agg[k] += float(T[k].detach())
-            nb += 1
+                    model.eval()  # frozen retrieval, LOO still enforced explicitly
+                    with frozen_parameters(model):
+                        T = _forward_terms(model, adapter, X[b], y[b], fr, output_mode=cfg.output_mode, near_scale=near_scale, query_case_ids=b, query_nominal=None if nominal_train is None else nominal_train[b], score_scale=cfg.score_scale)
+                    if cfg.schedule == "independent":
+                        L = cfg.v_post * T["L_post"] + cfg.v_delta * T["L_delta"]  # v0 adapter losses, no L_small
+                    else:
+                        L = cfg.v_post * T["L_post"] + cfg.v_delta * T["L_delta"] + cfg.v_small * T["L_small"]
+                    if comparison_scheme is not None and ep > cfg.adapter_warmup_epochs and cfg.joint_objective == "summed":
+                        L_R = cfg.w_pre*T["L_pre"] + cfg.w_post*T["L_post"] + cfg.w_near*T["L_near"]
+                        L = L_R + L
+                    aopt.zero_grad()
+                    L.backward()
+                    aopt.step()
+                    model.train()
+                for k in agg:
+                    agg[k] += float(T[k].detach())
+                nb += 1
+                for component in component_updates:
+                    if phase in {component, "joint"}:
+                        component_updates[component] += 1
         rec = {"epoch": ep, "phase": ph, "optimizer_updates": nb,
-               "training_examples": len(y), "retrieval_query_case_pairs": query_case_pairs,
+               "training_examples": len(y)*len(phases), "retrieval_query_case_pairs": query_case_pairs,
                **({"train_before_update": before_update, "train_after_update": diagnostic_terms()} if log_terms else {}),
                **{k: v / max(nb, 1) for k, v in agg.items()}}
+        if comparison_scheme is not None:
+            rec.update(retrieval_updates=component_updates["retrieval"], adapter_updates=component_updates["adapter"])
         if ep in maintenance_epochs and maintenance_hook is not None and cfg.maintains:
             before_count = model.case_count()
             before_state = copy.deepcopy(model.state_dict())
@@ -402,7 +513,8 @@ def train_synchronized(
         hist.append(rec)
         # select only after the adapter has trained at least once; guard-rejected
         # epochs are never selected but still count toward patience
-        adapter_trained = any(h["phase"] in {"adapter", "joint"} for h in hist)
+        adapter_trained = any(h["phase"] in {"adapter", "joint", "alternating"} for h in hist)
+        should_stop = False
         if adapter_trained and not guard_rejected and improves(v_err, v_post):
             best, bad = (v_post, copy.deepcopy(model.state_dict()), copy.deepcopy(adapter.state_dict()), ep,
                          copy.deepcopy(ropt.state_dict()), copy.deepcopy(aopt.state_dict()), copy.deepcopy(fr), v_err), 0
@@ -411,7 +523,16 @@ def train_synchronized(
             pending_maintenance = (cfg.maintains and maintenance_hook is not None and
                                    any(ep < e <= cfg.epochs for e in maintenance_epochs))
             if bad > cfg.patience and not pending_maintenance:
-                break
+                should_stop = True
+        if run is not None:
+            run.log_step(ep, {k:v for k,v in rec.items() if isinstance(v, (int, float))})
+            run.save_resume({"sync_state":records.pack(dict(epoch=ep, model=model.state_dict(),
+                adapter=adapter.state_dict(), retrieval_optimizer=ropt.state_dict(),
+                adapter_optimizer=aopt.state_dict(), best=best, bad=bad, history=hist,
+                free_radius=fr, stopped=should_stop, comparison_scheme=comparison_scheme,
+                dropout_placement=dropout_placement))}, step=ep, generators={"shuffle":g})
+        if should_stop:
+            break
     no_eligible = best[1] is None
     if no_eligible and guarded:
         # Never return a guard-violating state: fall back to epoch 0 (eligible by
