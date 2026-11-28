@@ -153,7 +153,7 @@ They are built by `mkjobs.py` from the btransform job lists, one to one; the con
 
 ## Tests
 
-`tests/test_t1_fixes_20261126.py` (7 tests). The three regression tests for items 1 and 2 fail on 2bd6c4a with the
+`tests/test_t1_fixes_20261126.py` (9 tests). The three regression tests for items 1 and 2 fail on 2bd6c4a with the
 original errors.
 
 Full suite on accel (hub venv, scratch under `/var/tmp`): 904 passed, 3 skipped, 3 xfailed, 1 failed. The failure is the known pre-existing `test_t1_tuning_features.py::test_defaults_reproduce_the_recorded_toy_outputs`. Log: `/var/tmp/nnknn-fix1126/pytest_full.log`.
