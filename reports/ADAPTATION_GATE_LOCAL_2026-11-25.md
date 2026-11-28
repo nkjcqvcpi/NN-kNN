@@ -73,6 +73,23 @@ Regression's arithmetic mean RMSE improves by only **0.44%**. The gate applies 4
 
 The rule trades away useful corrections as well as harmful ones. The task-level losses on Balance and Iris and the small regression loss on Student Performance remain in the result.
 
+### Wrong-direction rates: all queries versus applied corrections
+
+November 27 clarification: an independent recount of 126 saved regression method/split prediction sets confirms the following. All methods have 6,339 test-query evaluations, including repeated observations across seeds. The applied denominator uses the saved gate-open decisions. [Recount code](../tools/t1_gate_direction_audit.py), [counts and run sources](../results/adaptation_improvement/ag2/gating_direction_denominators.json).
+
+| Method | Queries adapted % | Wrong direction / all queries % | Wrong direction / applied corrections % | Mean RMSE |
+| --- | ---: | ---: | ---: | ---: |
+| Original full adapter | 100.00 | 41.27 | 41.27 | 0.338910 |
+| Validation disagreement gate | 74.70 | 31.06 | 41.58 | 0.337424 |
+| Learned probability gate | 57.69 | 23.55 | 40.83 | 0.337206 |
+| Learned utility gate | 59.17 | 24.64 | 41.64 | 0.339802 |
+| Learned threshold, frozen adapter (`ag2`) | 98.58 | 40.64 | 41.22 | 0.338856 |
+| Learned threshold + adapter (`ag2`) | 95.90 | 37.56 | 39.17 | 0.347770 |
+
+**Lower wrong-direction frequency across all queries mostly reflects fewer corrections being attempted.** The disagreement gate suppresses 647 wrong-direction updates but also 640 helpful corrections; wrong-direction frequency among accepted corrections does not improve. It nevertheless reduces harmful overshoots and makes a small improvement in final RMSE. The probability gate has a modest direction-selection benefit: its own full proposal has 41.99% wrong directions, versus 40.83% among accepted corrections. The equivalent comparisons are 42.06% to 41.64% for utility gating and 39.45% to 39.17% for the jointly trained threshold. The learned models also change the adapter, so their own forced-open proposals are the appropriate control for the immediate gate effect.
+
+These experiments support reducing exposure to harmful corrections, but do not show reliable identification of wrong directions. An always-closed gate would make the all-query wrong-direction rate zero while discarding every useful adaptation. RMSE and retained benefit must therefore accompany that rate. All these results concern the earlier NN-CDH adapter and its selected retrieval cores; **gating the RF pair adapter remains untested**, and the historical percentages are not a matched RF comparison.
+
 ## The learned heads: separate better proposals from better decisions
 
 The additional training changes the full proposal. To assess the gate's immediate contribution, I also compare the chosen checkpoint with its **own** gate forced open:

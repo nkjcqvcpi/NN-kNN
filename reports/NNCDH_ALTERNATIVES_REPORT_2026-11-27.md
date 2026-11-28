@@ -1,10 +1,10 @@
 # Alternatives to NN-CDH: merged experiments and results
 
-November 27, 2026. Completed studies `ar1`, `ar2` and `ar3`, plus recorded NN-CDH references. Latest addition: ordinary Random Forest on both existing pair formulations. [1: merged numerical evidence](../results/adaptation_improvement/ar3/comparison.json), [2: creative-alternatives protocol](../docs/NNCDH_ALTERNATIVES_FOLLOWUP_EXPERIMENT.md), [3: first alternatives report](ADAPTER_PAIRWISE_REDESIGN_LOCAL_2026-11-26.md).
+November 27, 2026. Completed studies `ar1`–`ar4`, plus recorded NN-CDH references. Latest addition: alternating retrieval and forest fitting for ExtraTrees/Random Forest with mixed/retrieved-only pairs. [1: merged numerical evidence](../results/adaptation_improvement/ar4/comparison.json), [alternating protocol](../docs/ADAPTER_FOREST_ALTERNATING_EXPERIMENT.md), [2: creative-alternatives protocol](../docs/NNCDH_ALTERNATIVES_FOLLOWUP_EXPERIMENT.md), [3: first alternatives report](ADAPTER_PAIRWISE_REDESIGN_LOCAL_2026-11-26.md).
 
 ## Executive summary
 
-**Retrieved-only pairwise Random Forest now has the lowest individual-family mean in both tasks, with a clear classification gain and a very small regression difference.** Classification error falls from **4.350% for matching ExtraTrees to 3.325%**, a **1.025 percentage-point** reduction. Regression RMSE changes from **0.314960 to 0.314232**, only **0.23% lower**. Keep both tree learners as regression candidates; this small observed difference does not establish a reliable advantage.
+**Alternating training works technically, but gives limited and inconsistent improvements.** Mixed-pair Random Forest improves classification error from **3.636% to 3.191%**, now the lowest individual-family mean. Retrieved-only Random Forest improves regression RMSE from **0.314232 to 0.313608**, only **0.20% lower**, with five dataset wins, one tie and one loss. The other three regression variants are slightly worse on average. This does not justify adopting alternating training as a general default.
 
 **The broader result is that retrieved-only pair adaptation helps regression substantially.** Random Forest's **0.314232** and ExtraTrees' **0.314960** are below frozen retrieval's **0.348690** and original sequential NN-CDH with 20% dropout's **0.338523**. Mixed-pair Random Forest gives **3.636% / 0.321912** versus mixed ExtraTrees' **4.149% / 0.320848**: it improves classification but slightly worsens regression. Changing the tree learner is not an across-the-board improvement.
 
@@ -12,25 +12,26 @@ November 27, 2026. Completed studies `ar1`, `ar2` and `ar3`, plus recorded NN-CD
 
 **The three creative designs have mixed value.** Cross-fitted anchor transport is useful (**7.717% / 0.328438**) but trails pairwise trees. Retrieval-error memory makes smaller gains (**9.238% / 0.342571**). Neural vote attention prevents predictions outside the retrieved target range, yet achieves only **12.073% / 0.346362**. Making corrections conservative does not make them accurate.
 
-Classification gains over retrieval remain concentrated on Zebra and Zebra Special. The additional retrieved-only Random Forest gain over ExtraTrees comes from Iris and Zebra Special; the other five dataset means tie. The regression evidence for pair adaptation is broader than the evidence favoring one tree learner. These are exploratory results on repeatedly examined local splits; the original default remains unchanged.
+Classification gains over retrieval remain concentrated on Zebra and Zebra Special. In `ar3`, retrieved-only Random Forest improves over ExtraTrees on Iris and Zebra Special, tying the other five dataset means. The new mixed-RF alternating gain also comes from Iris and Zebra Special, while Balance worsens. The evidence for pair adaptation is broader than the evidence favoring a particular forest training schedule. These are exploratory results on repeatedly examined local splits; the original default remains unchanged.
 
 ## What was tested
 
-The shared unit is a dataset/seed split: seven classification and seven regression datasets, seeds **40, 41, 42**. All three studies use identical saved train/validation/test splits and pretrained NN-kNN core states. Query/case representations are scaled using training cases only. Training retrieval excludes the query's own case; all validation/test anchors come from training.
+The shared unit is a dataset/seed split: seven classification and seven regression datasets, seeds **40, 41, 42**. All four studies use identical saved train/validation/test splits and start from the same pretrained NN-kNN core states; `ar4` subsequently updates retrieval. Query/case representations are scaled using training cases only. Training retrieval excludes the query's own case; all validation/test anchors come from training.
 
-`ar1` tested three replacements. `ar2` added three designs and two controls. `ar3` adds two Random Forest pair families: **168 validation candidates and 84 selected-family tests, 252 new units**. Together the three studies contain **1,050 validation candidate units, 420 selected-family test units and 42 shared context units: 1,512 recorded units**. The merged comparison has **798 rows**, covering 19 methods/policies and 42 splits. New work was local CPU only. No previous model or completed unit was retrained.
+`ar1` tested three replacements. `ar2` added three designs and two controls. `ar3` added two Random Forest pair families. Together these frozen-core studies contain **1,050 validation candidate units, 420 selected-family test units and 42 shared context units: 1,512 recorded units**. `ar4` adds **840 retrieval blocks, 840 forest refits and 168 selected test units: 1,848 new units**. All four studies now contain **3,360 units**. The merged comparison has **966 rows**, covering 23 methods/policies and 42 splits; all **798 preceding rows are unchanged**. New work was local CPU only. Completed units were reused; alternating refits are new models on updated retrieval contexts.
 
 Classification numbers below are **percentage error**. Regression is **RMSE in training-standardized target units**. Lower is better. Family means average seeds within each dataset, then weight the seven datasets equally. Pooled behavior counts later in this report use a different weighting.
 
 ## Training scheme: sequential, with retrieval frozen
 
-**All new alternatives in `ar1`, `ar2` and `ar3` use the sequential frozen-retrieval protocol. No forest result in this report uses joint or alternating training.** First reuse the recorded pretrained NN-kNN core, then fit or construct the adaptation method from its saved training contexts. Its representation, distance parameters, case biases, case store, neighborhood membership and base normalized activations are fixed throughout adaptation. The adaptation loss does not update retrieval.
+**The `ar1`/`ar2`/`ar3` results are sequential frozen-retrieval baselines. The `ar4` rows explicitly add alternating training.** In the sequential studies, reuse the recorded pretrained NN-kNN core, then fit or construct adaptation from its saved training contexts. Its representation, distance parameters, case biases, case store, neighborhood membership and base normalized activations are fixed throughout adaptation. The adaptation loss does not update retrieval in those baseline rows.
 
 | Component / comparison | Training scheme actually tested | Can adaptation training change the NN-kNN core? |
 | --- | --- | --- |
 | ExtraTrees / Random Forest pair adapters; direct-tree and transport controls | Sequential, using frozen saved representations and neighborhoods | No |
 | Pair neural, error memory and vote attention in the redesign studies | Same sequential frozen-core protocol | No; attention changes only the adapter's final voting weights |
 | Local ridge | Local fit at inference on the fixed neighborhood; recorded under the same sequential comparison protocol | No |
+| Four forest continuations in `ar4` | Five cycles: two retrieval epochs, then a forest refit; validation can retain cycle zero | Yes, through final-prediction loss and retrieval loss; hard tree decisions are detached |
 | Earlier NN-CDH original / query-aware / query-without-prediction studies | Sequential, alternating and joint were separately tested in `as1` / `ad1` | Yes in alternating/joint, according to their retrieval objective; no in sequential |
 
 **“Mixed pairs” is a pair-sampling recipe, not a mixed training schedule.** It means retrieved pairs plus random training-case pairs. Both mixed-pair and retrieved-only forests here are sequential. The historical NN-CDH “mixed schedule” reference is different: it uses the earlier joint runs except for sequential Diabetes.
@@ -41,16 +42,16 @@ The read-only scheme audit checks **420 selected-family runs across 42 contexts*
 
 **Yes, with a deliberately designed feedback path; it does not happen automatically.** The current forest implementation calls scikit-learn on saved NumPy arrays. It is outside PyTorch autograd. Ordinary tree predictions are constant inside each leaf region, so the hard split decisions do not provide the useful input gradients that a neural adapter supplies. The existing NN-CDH joint/alternating optimizer cannot train these forests as a drop-in neural module. [Decision-tree formulation](https://scikit-learn.org/stable/modules/tree.html#mathematical-formulation).
 
-That does not block every possible gradient path. In a future custom retrieval step, hold each forest correction `delta_i` fixed and compute the aggregation in PyTorch:
+That does not block every possible gradient path. **The new `ar4` implementation uses this path:** hold each forest correction `delta_i` fixed within a forward/backward computation and compute aggregation in PyTorch:
 
 ```text
 regression:      final = p_retrieval(theta) + sum_i w_i(theta) * stop_gradient(delta_i)
 classification: final = sum_i w_i(theta) * stop_gradient(adapted_class_distribution_i)
 ```
 
-The final prediction loss could then update retrieval parameters `theta` through its prediction and/or activation weights. This would favor cases whose adapted predictions are useful. It would not differentiate through forest splits or discrete neighbor selection. If retrieval were updated only by its original retrieval loss, the forest would provide no adaptation-loss feedback even if the two training steps alternated.
+The final prediction loss updates retrieval parameters `theta` through its prediction and/or activation weights. The intended effect is to favor cases whose adapted predictions are useful. It does not differentiate through forest splits or discrete neighbor selection. Updating retrieval only by its original retrieval loss would not provide this adaptation-loss feedback.
 
-A possible alternating experiment would fit the forest, freeze it while updating retrieval using that final-loss path, then refresh representations/neighborhoods/pairs and refit the forest. Refreshing matters because changing the representation changes the forest's input distribution. This is a proposed custom training loop, **not an implemented or measured result**. True end-to-end differentiation through the tree path would require a different differentiable tree model or an explicit approximation. The current results establish the value of adaptation with retrieval fixed; they do not show whether forest-informed retrieval training would improve it.
+`ar4` now tests this alternating procedure: reuse the sequential forest, freeze its fitted trees while updating retrieval, then refresh representations/neighborhoods/pairs and refit. Forest outputs are recomputed for each minibatch; they are detached during backpropagation. Refreshing matters because changing the representation changes the forest's input distribution. All 840 retrieval blocks changed the core state, and the first-minibatch final-loss gradient probe was nonzero in 1,648 of 1,680 epochs. True end-to-end differentiation through the tree path remains unimplemented. [Measured alternating results](#alternating-forests-matched-continuations-ar4), [implementation](../model/t1/forest_alternating.py).
 
 ### Individual-case difference learning
 
@@ -106,7 +107,7 @@ Validation selects leaf size independently for each learner and pair recipe. Onl
 
 ## All merged performance results
 
-Candidate selection is validation-only: error, then final loss, then candidate ID. Only each family's winner reaches test. Neural checkpoints minimize validation final loss; attention also allows its initial epoch-zero checkpoint. The old NN-CDH policies retain their original validation-loss-first rule. No test-based overrides, clipping thresholds or exclusions were introduced. [1: family means](../results/adaptation_improvement/ar3/families.csv), [candidate results](../results/adaptation_improvement/ar3/candidates.csv).
+Candidate selection is validation-only: error, then final loss, then candidate ID; alternating checkpoints use earlier cycle as the final tie-breaker. Only each family's winner reaches test. Neural checkpoints minimize validation final loss; attention and alternating forests also allow their initial checkpoint. The old NN-CDH policies retain their original validation-loss-first rule. No test-based overrides, clipping thresholds or exclusions were introduced. [1: family means](../results/adaptation_improvement/ar4/families.csv), [candidate results](../results/adaptation_improvement/ar4/candidates.csv).
 
 | Model / policy | Classification error % | Regression RMSE |
 | --- | ---: | ---: |
@@ -121,7 +122,11 @@ Candidate selection is validation-only: error, then final loss, then candidate I
 | ExtraTrees, mixed training | 4.149 | 0.320848 |
 | Random Forest, mixed training | 3.636 | 0.321912 |
 | ExtraTrees, retrieved-only training | 4.350 | 0.314960 |
-| **Random Forest, retrieved-only training** | **3.325** | **0.314232** |
+| Random Forest, retrieved-only training | 3.325 | 0.314232 |
+| ExtraTrees, mixed pairs, alternating | 4.132 | 0.321036 |
+| ExtraTrees, retrieved-only pairs, alternating | 4.516 | 0.315106 |
+| **Random Forest, mixed pairs, alternating** | **3.191** | 0.322119 |
+| **Random Forest, retrieved-only pairs, alternating** | 3.255 | **0.313608** |
 | Direct ExtraTrees head, control | 7.365 | 0.339633 |
 | Cross-fitted anchor transport | 7.717 | 0.328438 |
 | Retrieval-error memory | 9.238 | 0.342571 |
@@ -130,13 +135,53 @@ Candidate selection is validation-only: error, then final loss, then candidate I
 | Validation choice: retrieval + seven alternatives (`ar2`) | 4.019 | 0.328706 |
 | Validation choice: retrieval + nine alternatives, including RF | 3.586 | 0.317036 |
 
-The 9/27-setting NN-CDH policies are not its strongest fixed regression baselines: they sometimes select a severe Car failure. The earlier probability gate reaches **0.337206**, and query + prediction with alternating training and 10% dropout reaches **0.337381**. Retrieved-only pair trees also improve on those means. Prior mixed/joint NN-CDH references can change the retrieval core; sequential references and all new alternatives use the common frozen core.
+The 9/27-setting NN-CDH policies are not its strongest fixed regression baselines: they sometimes select a severe Car failure. The earlier probability gate reaches **0.337206**, and query + prediction with alternating training and 10% dropout reaches **0.337381**. Retrieved-only pair trees also improve on those means. Prior mixed/joint NN-CDH references and `ar4` can change retrieval; sequential references and `ar1`/`ar2`/`ar3` use the common frozen core. The old cross-family validation policies are preserved; no policy selecting across the four alternating variants was added.
 
 ![Merged alternatives comparison](../results/adaptation_improvement/ar3/alternatives.png)
 
 The earlier compact local CatBoost result was **4.517% / 0.318980**, versus retrieved-only ExtraTrees' **4.350% / 0.314960** and retrieved-only Random Forest's **3.325% / 0.314232**. Both pair learners are lower on both means in this local comparison. This does not establish superiority to a tuned CatBoost benchmark: search budgets, learned representations and historical retrieval pretraining differ. MLP/TabM references and their limits remain in the [conventional baseline report](QUERY_AWARE_LOCAL_2026-11-25.md).
 
+## Alternating forests: matched continuations (`ar4`)
+
+All four requested variants are complete on all 42 dataset/seed splits. Each starts with its own recorded sequential winning forest and fixed leaf size. Run five cycles of two retrieval epochs plus a fresh 64-tree fit. Retrieval continues the pretrained Adam moments at one tenth of its original learning rates, optimizing `L_retrieval + L_final` and the existing case-bias penalty. The forest still learns the original pair target. Cases and labels stay fixed; neighbors, activations and learned representations can change. Standardization is fixed within each retrieval block and recomputed from training cases before refitting. The random-anchor IDs and forest seed stay fixed. [Predeclared protocol](../docs/ADAPTER_FOREST_ALTERNATING_EXPERIMENT.md).
+
+Validation chooses cycle 0–5 independently within each family. Cycle zero reuses the previous sequential prediction exactly. Test data is evaluated only for the selected checkpoint. The comparison has extra training and checkpoint-selection opportunities; it is not an equal-compute or fresh-split confirmation.
+
+| Forest / pairs | Classification error %, sequential → alternating | Regression RMSE, sequential → alternating | Classification dataset W/T/L | Regression dataset W/T/L |
+| --- | ---: | ---: | ---: | ---: |
+| ExtraTrees / mixed | 4.149 → 4.132 | 0.320848 → 0.321036 | 2 / 4 / 1 | 2 / 2 / 3 |
+| ExtraTrees / retrieved-only | 4.350 → 4.516 | 0.314960 → 0.315106 | 1 / 4 / 2 | 4 / 0 / 3 |
+| Random Forest / mixed | 3.636 → **3.191** | 0.321912 → 0.322119 | 2 / 4 / 1 | 3 / 1 / 3 |
+| Random Forest / retrieved-only | 3.325 → 3.255 | 0.314232 → **0.313608** | 1 / 5 / 1 | 5 / 1 / 1 |
+
+W/T/L compares alternating with its own matching sequential forest over seven dataset means. [Paired comparisons](../results/adaptation_improvement/ar4/comparisons.csv), [independent audit and seed rows](../results/adaptation_improvement/ar4/alternating_audit.json).
+
+![Matched sequential and alternating forests](../results/adaptation_improvement/ar4/alternatives.png)
+
+**Classification improves narrowly.** Mixed RF's 0.445-point gain comes from Iris (6.667% → 5.556%) and Zebra Special (3.788% → 1.515%); Balance worsens (6.933% → 7.200%), and four means tie. Across seeds it wins three, ties 17 and loses one. Excluding both Zebra tasks, mixed RF improves from 4.333% to 4.164%, a smaller 0.169-point gain. Retrieved-only RF improves only on Zebra Special and worsens on Balance. Three of four classification means improve, but most seed-level accuracy results are unchanged. [Dataset means](../results/adaptation_improvement/ar4/tasks.csv), [sensitivity analysis](../results/adaptation_improvement/ar4/classification_sensitivity.csv).
+
+**Regression gains are very small.** Retrieved-only RF is the only family whose mean improves: 0.000624 RMSE, or 0.20%. It wins ten seed comparisons, ties eight and loses three. Dataset means improve for Airfoil, Car, Energy Efficiency, Student Performance and Yacht; Body Fat ties and Diabetes worsens. For example, Energy Efficiency changes 0.045492 → 0.043941 and Yacht 0.052150 → 0.050567, while Diabetes changes 0.763927 → 0.766339. The other three aggregate RMSEs worsen by less than 0.00021.
+
+**Validation often rejects the continuation.** Cycle zero is retained in 15/84 classification and 37/84 regression models: **52/168 total**. At cycle five, validation error is worse than the initial model in **68/84 regression runs**. This does not measure their cycle-five test performance; those unselected checkpoints were not tested. Selecting an early cycle or the original forest matters. [All cycle records](../results/adaptation_improvement/ar4/alternating_cycles.csv), [selection counts](../results/adaptation_improvement/ar4/selection_counts.csv).
+
+**Retrieval itself usually does not explain the favorable means.** All four selected classification retrieval-only means worsen from the starting 11.680%. For mixed RF, retrieval error rises to 12.094% while final error falls to 3.191%. For retrieved-only RF regression, retrieval RMSE rises from 0.348690 to 0.349630 while final RMSE falls to 0.313608. Selected test neighborhoods change on an equal-dataset average of 14.6% of queries for mixed-RF classification and 16.4% for retrieved-only-RF regression, including runs that retained cycle zero. The core is changing, but retrieval-only and adapted performance can trade off. [Retrieval diagnostics](../results/adaptation_improvement/ar4/alternating_diagnostics.csv).
+
+**The correction-reliability problem remains.** The following counts are relative to each selected model's own retrieval prediction, over the same 6,339 regression evaluations:
+
+| Alternating forest / pairs | Wrong direction % | Harmful overshoot % | Prediction worsened % | Total harmful squared-error increase |
+| --- | ---: | ---: | ---: | ---: |
+| ExtraTrees / mixed | 36.17 | 6.28 | 44.87 | 55.458 |
+| ExtraTrees / retrieved-only | 33.73 | 7.07 | 43.26 | 49.505 |
+| Random Forest / mixed | 35.62 | 7.05 | 44.69 | 72.133 |
+| Random Forest / retrieved-only | 33.52 | 7.73 | 43.62 | 64.398 |
+
+For retrieved-only RF, sequential → alternating changes wrong-direction frequency **33.38% → 33.52%**, harmful overshoot **7.70% → 7.73%**, and worsened predictions **43.37% → 43.62%**. Total harm decreases **67.291 → 64.398**, so severity improves somewhat while frequency does not. Mixed-RF classification changes fixes/harmful flips from **65/15 to 70/11**, but its own retrieval errors also rise from 123 to 129; final mistakes fall only **73 → 70** across 2,193 evaluations. The equal-dataset mean gives the smaller Iris and Zebra Special gains more weight than this pooled count. [Behavior totals](../results/adaptation_improvement/ar4/behavior_totals.csv), [harmful examples](../results/adaptation_improvement/ar4/harm_examples.csv).
+
+**Interpretation:** the proposed feedback mechanism is feasible, with a promising localized classification gain and a marginal regression gain for RF. It has not produced a general advantage or substantially reduced wrong corrections. Keep sequential forests as the simpler baseline and retain alternating RF as an optional candidate for fresh-split validation. The experiment lacks an equal-budget retrieval-only continuation control; it cannot isolate the causal benefit of the forest final-loss term from additional retrieval training. In-sample forest predictions during retrieval updates and representation drift are possible limitations, not established explanations for the outcomes.
+
 ## Regression improves broadly; classification still depends on the dataset
+
+The following detailed comparisons preserve the sequential `ar1`/`ar2`/`ar3` results. The matched alternating changes are reported above and in the linked `ar4` dataset table.
 
 Regression dataset means:
 
@@ -171,6 +216,8 @@ Retrieved-only ExtraTrees wins/ties/loses **3/2/2 dataset means** against retrie
 Excluding both Zebra tasks gives **4.049% for retrieved-only RF**, **4.333% for mixed RF**, **4.272% for retrieved-only ExtraTrees**, **4.445% for mixed ExtraTrees**, and **4.382% for retrieval**. Original sequential 20% is **4.217%**, and the all-27 NN-CDH policy is **4.136%**. Retrieved-only RF's five-task improvement over matching ExtraTrees comes entirely from Iris; outside Iris and the Zebra tasks, their dataset means tie. This is a limited gain, not broad evidence of dominance. Both Zebra tasks remain in every primary mean. [1: all task means](../results/adaptation_improvement/ar3/tasks.csv), [classification sensitivity](../results/adaptation_improvement/ar3/classification_sensitivity.csv).
 
 ## How useful and how harmful are the corrections?
+
+This section preserves the frozen-retrieval diagnostics from `ar1`/`ar2`/`ar3`. The alternating diagnostics above use each continuation's own selected retrieval prediction.
 
 Define required residual `r = target - retrieval` and applied correction `c = final - retrieval`. Wrong direction means `r*c < 0` beyond the diagnostic tolerance. Harmful overshoot means the right direction but **more than twice** the needed magnitude. Passing the target by less than that can still help.
 
@@ -212,6 +259,21 @@ Retrieved-only RF fixes eight more retrieval errors and introduces one fewer har
 
 Failures remain. Both retrieved-only tree learners' largest harmful example is Diabetes seed 40, query index 85: it needs **+1.382** and receives **−0.538 from ExtraTrees or −0.652 from RF**. RF increases squared error by **2.227** on this example. Attention's largest is Car seed 42, index 421: it needs **+1.996** and receives **−0.786**, despite staying within the neighbor target range. The old pair neural and local ridge failures are retained: Car seed 40, index 1128, needs **−0.579**, but receives **+11.827** or **+17.163**. [1: per-run behavior](../results/adaptation_improvement/ar3/behavior.csv), [pooled behavior](../results/adaptation_improvement/ar3/behavior_totals.csv), [harmful examples](../results/adaptation_improvement/ar3/harm_examples.csv).
 
+### Direct RF direction and severity check
+
+An independent recount from **168 selected-test run units** confirms the reported rates. It uses a sign comparison on the saved final-minus-retrieval correction, without calling the original direction-diagnostic helper. Predictions, targets and each recorded final score were checked; no models were fitted or evaluated. [Reproducible audit](../tools/t1_forest_direction_audit.py), [counts, magnitudes and run sources](../results/adaptation_improvement/ar4/rf_direction_audit.json).
+
+**The 30%+ wrong-direction figure applies to regression only.** Every such correction increases that query's absolute error. The denominator is all 6,339 regression query evaluations, including negligible updates and repeated observations across seeds, and the correction is the final aggregate after combining neighbors.
+
+| RF pair recipe | Sequential wrong direction | Alternating wrong direction |
+| --- | ---: | ---: |
+| Mixed | 2,255 / 6,339 = 35.57% | 2,258 / 6,339 = 35.62% |
+| Retrieved-only | 2,116 / 6,339 = 33.38% | 2,125 / 6,339 = 33.52% |
+
+For sequential retrieved-only RF, the median wrong-direction correction is **0.01198** and the mean is **0.04005**, in each split's training-target standard-deviation units. Helpful corrections average **0.06201** in magnitude. Even excluding wrong updates of magnitude at most **0.001**, **1,997 / 6,339 = 31.50%** remain: the high rate is not merely floating-point noise. Many mistakes are small, but the largest 10% of wrong-direction mistakes account for **83.12%** of their harm. Wrong-direction updates contribute **62.062**, or **92.23%**, of the total **67.291** squared-error increase. They are consequential. Overall performance improves because the **174.293** total squared-error reduction from helpful updates is **2.59 times** the total increase from all harmful updates. These are pooled standardized-error totals, not equal-dataset averages.
+
+Classification has a different interpretation. Sequential retrieved-only RF leaves **2,126 / 2,193 (96.94%)** predicted labels unchanged, fixes **60** retrieval errors, and changes **6** correct predictions into errors (**0.274%** of evaluations). The remaining changed label goes from one wrong class to another. Errors therefore fall from **123 to 69**. Alternating retrieved-only RF fixes **66** and harms **7**, reducing errors from **128 to 69**. Probability changes without a label change do not affect accuracy, but can affect log loss: the true-class probability decreases on **1,884 / 2,193 (85.91%)** sequential retrieved-only evaluations, including **1,877** with unchanged labels. This is a separate diagnostic, not the regression wrong-direction measure. Mean pooled negative log likelihood nevertheless improves from **0.45326 to 0.12134** (probabilities clipped to `[1e-12, 1]` for this audit). A count of unfavorable changes does not capture their magnitude.
+
 ## What the attention experiment tells us
 
 The support restriction is verified in all 84 candidate validation sets and 42 selected test sets. It gives a real structural limit: the true class is missing from **27/2,193** test neighborhoods; in regression, **1,718/6,339 (27.10%)** targets lie outside the retrieved target range. No reweighting can exactly correct those regression targets.
@@ -249,13 +311,13 @@ These references have different schedules, objectives and search spaces. Their r
 
 ## Recommendation
 
-**Prioritize retrieved-only pairwise trees for regression, keeping both ExtraTrees and Random Forest.** RF has a marginally lower mean but loses three of seven dataset comparisons and causes more aggregate harmful correction damage. The stronger finding is the usefulness of individual-case difference learning on retrieved pairs. The experiment supports this practical recipe; it does not prove that removing random pairs alone causes the gain, because sample counts and weighting change together.
+**Prioritize retrieved-only pairwise trees for regression, keeping sequential ExtraTrees and Random Forest as the main baselines.** Alternating RF has the lowest observed mean, 0.313608, but its extra improvement over sequential RF is only 0.20%; alternating ExtraTrees does not improve its mean. This small gain is insufficient evidence to adopt the more expensive schedule by default. The stronger finding remains the usefulness of individual-case difference learning on retrieved pairs. The experiment supports this recipe; it does not prove that removing random pairs alone causes the gain, because sample counts and weighting change together.
 
-For classification, **retrieved-only pairwise Random Forest is the leading candidate for confirmation**: it has the lowest observed individual-family mean and fixes more retrieval errors while introducing fewer harmful flips than matching ExtraTrees. Its advantage is concentrated on two dataset means. Keep both pair recipes and existing neural options for validation; fresh splits are needed before treating this as an established winner.
+For classification, **mixed-pair Random Forest with alternating training has the lowest observed individual-family mean, 3.191%**. Retrieved-only RF gives 3.255% alternating and 3.325% sequential. Keep these for confirmation: the mixed-RF continuation's gain occurs on two dataset means, with one loss and four ties, and amounts to only three fewer pooled test mistakes. This is a retrospective comparison of the four families, not a new validated cross-family selection policy.
 
 Cross-fitted transport is the most useful of the new creative designs, but its five-forest cost and weaker performance make it a secondary candidate. Error memory and this bounded-attention implementation are useful negative/control results, not replacements to promote now.
 
-Before changing defaults, the next decision-changing test is a locked comparison of retrieved-only RF and ExtraTrees, mixed pair trees, direct trees and the regularized original NN-CDH on fresh splits/tasks. A bootstrap-matched comparison would separate threshold choice from row sampling; this study changes both. A differentiable individual-case model remains worth pursuing, but this study does not show that adding attention or enforcing small corrections is sufficient. Full TabR, gradient-boosted pair learners, richer set models, cycle-consistency training and joint retraining of the new adapters remain untested.
+Before changing defaults, the next decision-changing test is a locked comparison on fresh splits/tasks, retaining sequential forests and adding the promising RF continuations. An equal-budget retrieval-only continuation would test whether forest feedback adds value beyond extra core training. A bootstrap-matched comparison would separate threshold choice from row sampling; `ar3` changes both. Full TabR, gradient-boosted pair learners, richer set models, cycle-consistency training and end-to-end differentiable tree training remain untested.
 
 ## Implementation, evidence and verification
 
@@ -265,6 +327,8 @@ Random Forest addition: [shared pair fitting](../model/t1/pairwise_training.py),
 
 Training-scheme clarification: [read-only run audit](../tools/t1_adaptation_training_scheme_audit.py), [audit log](../../../logs/ar3_training_scheme_audit.log). It checks the recorded scheme, source hashes and saved predictions; it does not run new training or inference.
 
+Alternating implementation: [differentiable aggregation and retrieval block](../model/t1/forest_alternating.py), [recorded driver](../tools/t1_forest_alternating.py), [read-only cycle audit](../tools/t1_forest_alternating_summary.py), [independent metric/reuse audit](../tools/t1_forest_alternating_audit.py), [tests](../tests/test_t1_forest_alternating.py), [launcher](../../run_forest_alternating_experiment.py).
+
 From the mini-project's `code/` directory with the configured uv environment:
 
 ```text
@@ -273,11 +337,18 @@ uv run --project ../.. --no-sync python run_alternative_experiment.py --study ar
 uv run --project ../.. --no-sync python run_pair_random_forest_experiment.py --study ar3 --workers 6
 uv run --project ../.. --no-sync python run_pair_random_forest_experiment.py --study ar3 --mode summarize
 uv run --project ../.. --no-sync python neural-cbr/tools/t1_adaptation_training_scheme_audit.py --study ar3
+uv run --project ../.. --no-sync python run_forest_alternating_experiment.py --study ar4 --workers 6
+uv run --project ../.. --no-sync python run_forest_alternating_experiment.py --study ar4 --mode summarize
+uv run --project ../.. --no-sync python neural-cbr/tools/t1_forest_alternating_audit.py --study ar4 --reuse
 ```
 
 New RF training/evaluation data and weights remain under `NNKNN_RUNS/t1/ar3/rf_v1/`; `ar1` and `ar2` remain intact. Generated merged evidence is under `results/adaptation_improvement/ar3/`: [all comparison rows](../results/adaptation_improvement/ar3/rows.csv), [candidate validation rows](../results/adaptation_improvement/ar3/candidates.csv), [task means](../results/adaptation_improvement/ar3/tasks.csv), [family means](../results/adaptation_improvement/ar3/families.csv), [full JSON](../results/adaptation_improvement/ar3/comparison.json). Runtime logs are in the mini-project's `logs/ar3/`.
 
-**42 focused tests passed**, covering all three studies. They cover query-target isolation, train-only memory construction, self-exclusion, pair reversal, vote bounds and permutation invariance, gradients, valid class probabilities, cross-fit head exclusion, exact interrupted recovery, validation-only policy selection and completed-unit reuse. The eight added RF tests also verify matching pair recipes/settings and preserving the old selection policy. Fitted algorithms/settings were not changed in response to test results.
+The latest continuation states and curves are under `NNKNN_RUNS/t1/ar4/af_v1/`; generated merged evidence is under `results/adaptation_improvement/ar4/`. [All 966 rows](../results/adaptation_improvement/ar4/rows.csv), [322 task means](../results/adaptation_improvement/ar4/tasks.csv), [46 family means](../results/adaptation_improvement/ar4/families.csv), [cycle trajectories](../results/adaptation_improvement/ar4/alternating_cycles.csv), [retrieval diagnostics](../results/adaptation_improvement/ar4/alternating_diagnostics.csv), [full evidence](../results/adaptation_improvement/ar4/comparison.json).
+
+**Alternating verification:** 57 focused tests passed, including 15 new cases covering parity with the existing forest predictor, actual final-loss gradients into retrieval, self-exclusion, held-out-target isolation, exact interrupted retrieval/optimizer recovery, validation-only selection, saved-state audits and completed-unit reuse. The merged reader checks all **840 retrieval states, 840 refreshed pair digests/forest parameter sets, 840 refit validation predictions and 168 selected test predictions**. Independent calculations verify **1,008 validation metric pairs** (including 168 reused starts), all **168 selections/test metric pairs**, and all **1,848 new units reused with fitting/inference/data reconstruction disabled**. QA reconciles 322 task means, 46 family means and 16 independently calculated paired forest means; **798 historical rows and all 18 preceding generated artifacts are unchanged**. Import smoke and both core manifests pass. The figure was visually checked and its legend moved clear of the data. [Audit results](../results/adaptation_improvement/ar4/alternating_audit.json), [tests](../../../logs/ar4_focused_tests.log), [run log](../../../logs/ar4_launcher.log), [merged reader](../../../logs/ar4_summary.log), [independent audit log](../../../logs/ar4_audit.log), [summary QA](../../../logs/ar4_summary_qa.log).
+
+Before `ar4`, **42 focused tests passed** across `ar1`/`ar2`/`ar3`. They cover query-target isolation, train-only memory construction, self-exclusion, pair reversal, vote bounds and permutation invariance, gradients, valid class probabilities, cross-fit head exclusion, exact interrupted recovery, validation-only policy selection and completed-unit reuse. The eight added RF tests also verify matching pair recipes/settings and preserving the old selection policy. Fitted algorithms/settings were not changed in response to test results.
 
 The merged reader reconciled **1,050 validation prediction sets, 420 selected-family test sets and 210 reused NN-CDH test sets**, checked **42 contexts / 420 frozen-core hashes**, audited **126 transport candidates' fold exclusions**, verified **126 attention support sets**, and matched **168 RF pair-array digests** to the unchanged builders. The model audit verified all **168 RF estimator types, bootstrap flags, splitters and matched settings**, independently recomputed **168 validation errors and 168 matched RF/ExtraTrees test errors**, and reused all **252 new units with fitting and prediction disabled**. Earlier reuse audits remain linked in the project index.
 
@@ -285,4 +356,6 @@ Independent summary checks confirmed all **672 historical rows are unchanged**, 
 
 The pre-commit sweep of all 52 T1 test modules reported **600 passed, 5 failed, 5 skipped and 2 expected failures** on local Windows CPU. Two failures were obsolete assertions that regression dropout must be rejected; these now test the supported residual-dropout behavior and retain rejection for unsupported magnitude/direction dropout. Two grid checks encountered the experiment-only deterministic setting. Rechecking the three affected modules with that setting unset gave **37 passed, 3 skipped and 1 deselected**. The deselected Linux numeric-reference test still fails locally: the same value, `0.24344214471057057` versus reference `0.2433512657880783`, was reproduced on the unchanged `411abd4` commit. The Linux reference and tolerance were preserved. The full sweep was not repeated after the test updates; these are focused recheck results, not a claim of a fully passing suite. Import smoke and core-manifest checks passed. [Full sweep](../../../logs/adapter_commit_tests_2026-11-27.log), [rechecks](../../../logs/adapter_commit_rechecks_2026-11-27.log), [unchanged-commit reproduction](../../../logs/adapter_commit_baseline_golden.log).
 
-Core NN-kNN, Table 1 and default model selection remain unchanged. The limitations concern scientific generalization, not missing runs: every planned cell is complete and every failure is retained.
+Final report readback verifies the 23-row merged score table, both four-row matched tables, the four new behavior rows, local artifact links and heading anchors. [Report QA](../../../logs/ar4_report_qa.log).
+
+Shared NN-kNN code, Table 1 and default model selection remain unchanged. `ar4` updates learned retrieval parameters in its own run units. The limitations concern scientific generalization, not missing runs: every planned cell is complete and every failure is retained.

@@ -4,7 +4,7 @@ November 27, 2026. Owner-requested local study `ar3`, protocol `rf_v1`.
 
 Test whether ordinary Random Forest can match the pairwise ExtraTrees alternatives. Use the same 14 datasets and seeds 40/41/42 as `ar1` and `ar2`. Load their completed frozen NN-kNN contexts; never retrain retrieval or completed candidates.
 
-**Training scheme: sequential, frozen retrieval.** Forest fitting uses saved NumPy arrays after retrieval pretraining. It does not update retrieval parameters, representations, neighborhood membership or base activations. Neither joint nor alternating forest training is implemented or tested. “Mixed pairs” below describes pair sampling only. Later clarification of this existing protocol is documented in the [merged report](../reports/NNCDH_ALTERNATIVES_REPORT_2026-11-27.md#training-scheme-sequential-with-retrieval-frozen); the original run configurations and scores are unchanged.
+**Training scheme: sequential, frozen retrieval.** Forest fitting uses saved NumPy arrays after retrieval pretraining. It does not update retrieval parameters, representations, neighborhood membership or base activations. `ar3` contains no joint or alternating forest results. The later [ar4 continuation study](ADAPTER_FOREST_ALTERNATING_EXPERIMENT.md) tests alternating training separately; original `ar3` configurations and scores are unchanged. “Mixed pairs” below describes pair sampling only. [Scheme explanation](../reports/NNCDH_ALTERNATIVES_REPORT_2026-11-27.md#training-scheme-sequential-with-retrieval-frozen).
 
 Two families use exactly the existing pair builders, features, targets, sample weights, reversed-pair training and final aggregation:
 

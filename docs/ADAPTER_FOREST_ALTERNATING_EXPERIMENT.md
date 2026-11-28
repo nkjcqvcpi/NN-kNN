@@ -1,0 +1,18 @@
+# Alternating retrieval and pair forests
+
+November 27, 2026. Local study `ar4`, protocol `af_v1`, declared before new results.
+
+Test four variants on the same 14 datasets and seeds 40/41/42: ExtraTrees and Random Forest, each with mixed pairs and retrieved-only pairs. Compare each with its own recorded sequential winner from `ar1`/`ar2`/`ar3`. Reuse the exact pretrained retrieval model, optimizer state, data splits and validation-selected forest/leaf size. Do not retrain completed units or search another leaf-size grid.
+
+Each variant runs five alternating cycles:
+
+1. Hold the forest fixed. Continue retrieval for two shuffled training epochs, recomputing neighbors and forest outputs for every minibatch. Differentiate through retrieval activations and the base prediction, with forest outputs detached. Optimize `L_retrieval + L_final` (probability NLL for classification, MSE for regression), plus the original case-bias penalty if enabled. Continue the pretrained Adam moments at 0.1 times the original learning rates, preserving its weight decay, batch size and gradient clipping. Cases, labels and class priors remain fixed. No additional gate, dropout, maintenance or correction clipping is introduced.
+2. Refresh the training/validation neighborhoods and representations; fit feature standardization on training cases only. Refit a fresh 64-tree forest using the previous pair formulation and fixed leaf size. Keep the seed and random-anchor identities unchanged across cycles. A refit is a new model on a changed retrieval context, not a rerun of a completed unit.
+
+During a retrieval block, the preceding forest's feature standardization stays fixed. Regression uses `p0 + sum(w_i * detached_delta_i)`; classification uses the weighted mixture of detached per-case class distributions. Gradients do not cross tree decisions or discrete top-k membership. The original retrieval optimizer groups are continued; parameters involved in computing activations receive gradients. This is a block alternating procedure, not differentiable forest training.
+
+Validation chooses among the starting sequential model (cycle zero) and all five post-refit checkpoints by final error, then final task loss, then earlier cycle. Only the chosen checkpoint is evaluated on test. Retaining cycle zero makes the validation choice no worse than the starting model; it does not guarantee improvement on test. Do not select learning rates, cycle budgets, or exceptions using test results.
+
+Record retrieval blocks and forest refits as separate resumable run units, then one selected test unit: 10 training units plus one selected unit per variant/split, 1,848 planned new units. Save training curves, source identities, core/forest states, optimizer/RNG state, pair digests, refreshed contexts and validation/test predictions under `runs/t1/ar4/af_v1/`. Summaries read only these and the preceding recorded studies, and write to the T1 worktree's `results/adaptation_improvement/ar4/`.
+
+Report matched means, dataset/seed wins and losses, validation-selected cycles, retrieval-only versus final prediction errors, correction direction/overshoot/class-flip diagnostics, and neighborhood/activation changes. Preserve all preceding results in the merged report. These are exploratory continuations on repeatedly used splits, with more training and checkpoint selection than the sequential comparison. Training-pair forest predictions are in-sample; validation/test labels never enter a retrieval update, pair fit or prediction input. A fresh-split confirmation and an equal-budget retrieval-only continuation control remain outside this four-variant experiment.

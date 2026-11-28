@@ -146,10 +146,17 @@ def plot_comparison(out, families, *, include_rf=False):
     plt.close(fig)
 
 
-def summarize(study, tasks, seeds, *, forest_study=None):
+def summarize(study, tasks, seeds, *, forest_study=None, alternating_study=None):
     from tools import t1_pair_random_forest as rf
+    from tools import t1_forest_alternating as af
+    from tools import t1_forest_alternating_summary as af_summary
+    if alternating_study and (study != "ar2" or forest_study != "ar3"):
+        raise ValueError("alternating study requires its original ar2/ar3 comparisons")
     methods = METHODS + ((*rf.FAMILIES, "validation_choice_with_rf") if forest_study else ())
+    if alternating_study:
+        methods += tuple(f + "_alternating" for f in af.FAMILIES)
     rows, candidates, behavior, harms, selections, support = [], [], [], [], [], []
+    alternating_cycles = []
     checks = Counter()
     for task in tasks:
         kind = task.split("__")[0]
@@ -183,6 +190,10 @@ def summarize(study, tasks, seeds, *, forest_study=None):
             refs, sources = p.s.references(task, seed)
             # Validate the original context identity against its source configuration again.
             old.must_load(p.key_for("ar1", task, seed, "ctx"), p.context_config(task, seed, refs))
+            if alternating_study:
+                for family in af.FAMILIES:
+                    split_results.append(af_summary.load_family(alternating_study, task, seed, family,
+                        context_unit, context, refs[2], candidates, alternating_cycles, checks))
             for reference, saved in old.nncdh_references(task, seed, refs, sources, context):
                 old.validate_prediction(saved, test, kind, reference, "test_", frozen=reference["scheme"] == "sequential", probabilities=False)
                 checks["nncdh_test_predictions"] += 1
@@ -205,10 +216,14 @@ def summarize(study, tasks, seeds, *, forest_study=None):
     comparison_methods = (*p.FAMILIES, *a.FAMILIES, "validation_choice_all")
     if forest_study:
         comparison_methods += (*rf.FAMILIES, "validation_choice_with_rf")
+    if alternating_study:
+        comparison_methods += tuple(f + "_alternating" for f in af.FAMILIES)
     for method in comparison_methods:
         references = ("retrieval", "nncdh_original_seq20", "pair_trees", "direct_trees", "nncdh_all_selected")
         if forest_study and method in (*rf.FAMILIES, "validation_choice_with_rf"):
             references += ("local_pair_trees", "validation_choice_all")
+        if method.endswith("_alternating"):
+            references = tuple(dict.fromkeys((method.removesuffix("_alternating"), *references)))
         for reference in references:
             if reference == method:
                 continue
@@ -228,14 +243,58 @@ def summarize(study, tasks, seeds, *, forest_study=None):
     tables = dict(rows=rows, candidates=candidates, tasks=task_rows, families=families, comparisons=comparisons,
         selections=selections, selection_counts=counts, behavior=behavior, behavior_totals=totals,
         harm_examples=harms, support_limits=support, classification_sensitivity=sensitivity)
-    out = a.REPO / "results" / "adaptation_improvement" / (forest_study or study)
+    if alternating_study:
+        tables.update(alternating_cycles=alternating_cycles,
+            alternating_diagnostics=af_summary.aggregate_diagnostics(rows, alternating_cycles))
+    out = a.REPO / "results" / "adaptation_improvement" / (alternating_study or forest_study or study)
     out.mkdir(parents=True, exist_ok=True)
     for name, table in tables.items():
         p.s.write_csv(out / (name + ".csv"), table)
-    payload = dict(study=forest_study or study, merged_studies=["ar1", study] + ([forest_study] if forest_study else []),
-        checks=dict(checks), protocol=rf.PROTOCOL if forest_study else a.PROTOCOL,
+    payload = dict(study=alternating_study or forest_study or study,
+        merged_studies=["ar1", study] + ([forest_study] if forest_study else []) + ([alternating_study] if alternating_study else []),
+        checks=dict(checks), protocol=af.PROTOCOL if alternating_study else rf.PROTOCOL if forest_study else a.PROTOCOL,
         tasks_requested=list(tasks), seeds=list(seeds), **tables)
     (out / "comparison.json").write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n", encoding="utf-8")
-    plot_comparison(out, families, include_rf=bool(forest_study))
+    if alternating_study:
+        plot_alternating(out, families)
+    else:
+        plot_comparison(out, families, include_rf=bool(forest_study))
     print(json.dumps(dict(output=str(out), checks=dict(checks), families=families), indent=2), flush=True)
     return 0
+
+
+def plot_alternating(out, families):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    methods = ("pair_trees", "local_pair_trees", "pair_random_forest", "local_pair_random_forest")
+    labels = ("ExtraTrees: mixed", "ExtraTrees: retrieved", "Random Forest: mixed", "Random Forest: retrieved")
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), sharey=True)
+    for ax, kind in zip(axes, ("classification", "regression")):
+        mapping = {r["method"]: r["mean_error"] for r in families if r["task_type"] == kind}
+        if not mapping:
+            ax.set_visible(False)
+            continue
+        scale = 100 if kind == "classification" else 1
+        for offset, suffix, label, color in ((-.18, "", "Sequential", "#8a99a5"),
+                (.18, "_alternating", "Alternating (validation-selected)", "#17628a")):
+            values = [mapping[m + suffix] * scale for m in methods]
+            ax.barh(np.arange(4) + offset, values, height=.32, label=label, color=color)
+            for i, value in enumerate(values):
+                ax.text(value, i + offset, f" {value:.3f}" if scale == 100 else f" {value:.6f}", va="center", fontsize=8)
+        ax.set_xlim(0, max(mapping[m + suffix] * scale for m in methods for suffix in ("", "_alternating")) * 1.28)
+        ax.set_title(kind.title() + " — lower is better", loc="left")
+        ax.set_xlabel("Mean error (%)" if kind == "classification" else "Mean standardized RMSE")
+        ax.grid(axis="x", alpha=.18)
+        ax.set_axisbelow(True)
+        ax.spines[["top", "right"]].set_visible(False)
+    axes[0].set_yticks(range(4), labels)
+    axes[0].invert_yaxis()
+    handles, legend_labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, legend_labels, loc="upper right", bbox_to_anchor=(.99, .92),
+        ncol=2, frameon=False, fontsize=8)
+    fig.suptitle("Does alternating retrieval and forest fitting help?", x=.01, ha="left", weight="bold")
+    fig.text(.01, .01, "14 local datasets × 3 seeds; equal dataset weights. Same starting retrieval and forest.\nFive cycles of two retrieval epochs and a forest refit; validation can retain cycle zero. Extra compute and selection; reused splits.", fontsize=8)
+    fig.tight_layout(rect=(0, .09, 1, .94))
+    fig.savefig(out / "alternatives.png", dpi=160)
+    plt.close(fig)
