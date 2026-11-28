@@ -110,3 +110,36 @@ the tables in `results/t1/handoff_20261126/p2/` now use 10 classification tasks.
 `results/t1/handoff_20261126/p2/excluding_cla_wine_s32/`. The 10-task classification numbers are in
 `reports/2026-11-26-handoff-everything-results.md`. Regression is unchanged. Caveat: wine s30/s31 were recorded with
 the old engine member rule and s32 with the new one; whether s30/s31 had tied rows on xps8960 has not been checked.
+
+### Note (2026-11-27): wine s30/s31 tie count and raw-event check on the 10-task tables
+
+**Wine s30/s31 under the old engine rule.** xps8960 was unreachable all evening ("websocket: bad handshake" on six
+tries over about five minutes), so the check ran read-only on r760 instead. It used the same recorded inputs: the
+`_core` weights in `runs/t1/handoff_newpol_r760/newpol_retention__classification/wine/` and the data snapshots in
+`neural-cbr/results/t1/handoff_newpol_r760/inputs/`. It used the fixed code in r760's `neural-cbr` tree. No unit was
+retrained or deleted. The scripts are in `/var/tmp/nnknn-ties1127/` on accel:
+- `count_ties.py`: rows whose pre-top-k member set differs between the old rule and model.retrieve at full memory.
+  s30: 0 of 106. s31: 0 of 106. s32: 2 of 106. So the counter does find s32's known problem.
+- `any_ties.py`: rows with any exact float32 tie between two eligible cases in the scores model.retrieve ranks.
+  s30: 0 of 106. s31: 0 of 106. s32: 106 of 106. Without any tie, the old rule and the fixed rule pick the same
+  members under every case mask. So, computed on r760, the fixed code gives exactly the recorded s30/s31 results.
+  Zero rows can differ.
+- `gap.py`: the smallest gap between two adjacent eligible scores in any row. s30: 65 float32 ulps. s31: 18 ulps.
+  s32: 0. Neither seed has duplicate training rows.
+
+Caveat: the scores were computed on r760, not on xps8960, where the units ran. A tie on xps8960 would need the two
+hosts' float32 scores to differ by at least 18 ulps for s31 (65 ulps for s30). That is unlikely, but it has not been
+measured on xps8960. The check covers the reference engine (train_loo queries). The problem engine is the same
+object whenever its queries equal the cases.
+
+**Raw-event check on the 10-task tables.** `raw_event_check.py` was rerun on r760 without `--exclude`. The output is
+in `results/t1/handoff_20261126/p2/raw_event_check_10task.txt`. Every cell agrees with `paired_vs_reference.csv`
+(metric m, reference provenance_only) to all printed digits, and on W/T/L:
+- energy_compress K0.2 classification: +0.040387, sd 0.018245, 7/2/1 over 10 tasks.
+- rc_cnn K0.2 classification: +0.035743, sd 0.013569, 7/2/1.
+- crr K0.2 classification: −0.019803, sd 0.019289, 1/2/7.
+- rc_cnn K0.5 classification: +0.006058, sd 0.010122, 3/4/3.
+- rc_cnn K0.2 regression: −0.031194, sd 0.004454, 7/1/3 (unchanged).
+
+The per-task wine means (energy_compress +0.009259, rc_cnn +0.009259, crr −0.027778) equal the `cla:wine` rows of
+`paired_per_task.csv`. With `--exclude wine:s32`, the old 9-task numbers (+0.043845, 6/2/1) are reproduced exactly.

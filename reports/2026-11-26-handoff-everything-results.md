@@ -1,13 +1,18 @@
 # 2026-11-26 handoff packs p0-p4 and p0a: what was built, what it shows, what is left
 
+Updated 2026-11-27: added the p1 revision_stress comparison and the synthetic new-policy study (`handoff_synnewpol_r760`),
+the tie check for p2 classification wine s30/s31, the raw-event check of the 10-task p2 tables, the git state and the
+backup measurement. Detail for the first two is in `reports/2026-11-27-handoff-revstress-synnewpol-results.md`.
+
 Status: exploratory. Every value below that is not in Heuzi's handoff was chosen by us and is declared in the config
 headers as "exploratory, our choice, not a PI decision". Each comparison uses 3 seeds. Nothing here is a significance
 test. Table 1 code, frozen configs and the shared NN-kNN core defaults are unchanged; all new behaviour is opt-in.
 
 Per-pack reports with more detail:
 `reports/2026-11-26-handoff-p0-results.md`, `-p2-results.md`, `-p3-results.md`, `-p4-baselines-stress-summary.md`,
-`reports/2026-11-26-fixes-allcaseF-engine-deltainit.md` (the fixes and p0a). Pack p1 has no separate report; its
-results are only in this file and in `results/t1/handoff_20261126/p1/`.
+`reports/2026-11-26-fixes-allcaseF-engine-deltainit.md` (the fixes and p0a),
+`reports/2026-11-27-handoff-revstress-synnewpol-results.md` (p1 revision_stress and p2 synthetic). Pack p1 has no
+separate report for its other parts; those results are only in this file and in `results/t1/handoff_20261126/p1/`.
 
 ## 1. Where the numbers come from
 
@@ -16,8 +21,9 @@ results are only in this file and in `results/t1/handoff_20261126/p1/`.
   to accel. Nothing was copied by hand.
 - Every summary was produced in two steps: a read-only `dump` on r760 that reads only `runs/`, then a `summarize` or
   `analyze` step on accel. Scripts are in `tools/` (`t1_handoff_p0_summary.py`, `t1_handoff1126_p0a.py`,
-  `t1_handoff1126_p1_dump.py`, `t1_handoff1126_p1_summary.py`, `t1_handoff1126_p2.py`, `t1_handoff1126_p3.py`,
-  `t1_handoff_p4_summary.py`). Outputs are in `results/t1/handoff_20261126/<pack>/`.
+  `t1_handoff1126_p1_dump.py`, `t1_handoff1126_p1_summary.py`, `t1_handoff1126_p2.py` (`--set real` or
+  `--set synthetic`), `t1_handoff1126_p3.py`, `t1_handoff1126_revstress.py`, `t1_handoff_p4_summary.py`). Outputs are in
+  `results/t1/handoff_20261126/<pack>/`, plus `revstress/` and `synnewpol/`.
 - Each pack has an independent check: a separate reader decodes the raw TensorBoard event files without project code
   and reproduces two or more headline numbers exactly (files `indep_check*`, `raw_check_p1*`, `raw_event_check*`).
 - Every task's seeds and compared variants ran on one host, the host that recorded the units they are compared with.
@@ -25,9 +31,10 @@ results are only in this file and in `results/t1/handoff_20261126/p1/`.
 
 ## 2. What was built
 
-Commits on `neural-cbr` (local only, not pushed): p0 b12ec87 and review fix 7b57db1; p1 a06f8a2 and f993af3; p2 7272df3
+Commits on `neural-cbr`: p0 b12ec87 and review fix 7b57db1; p1 a06f8a2 and f993af3; p2 7272df3
 and ef21785; p3 7f09b54 and 91cee1f (shared-core change e2aa955 on main, synced as 6dba3cc); p4 6c00348, 034c35b and
-2bd6c4a (TabPFN pin ddf7e41 on main); fixes 4235e10 and 6ece140. Each pack was reviewed adversarially after the build,
+2bd6c4a (TabPFN pin ddf7e41 on main); fixes 4235e10 and 6ece140. The reports and summary scripts were committed on
+2026-11-27 (e94b930 and the commit that adds this update), and `neural-cbr` was pushed to origin the same day. Each pack was reviewed adversarially after the build,
 and each review fixed one defect (listed under each pack). The full test suite passes apart from the known
 pre-existing failure `test_t1_tuning_features.py::test_defaults_reproduce_the_recorded_toy_outputs`.
 
@@ -212,8 +219,35 @@ mean over tasks of error A / error B. These tables include the reruns (classific
 | adapted_retraining | 18/3/6, 0.793 | 14/0/19, 1.017 |
 
 Total 1223/20/417 over 1660 cells. The all-case twin has lower error in most cells of every group except regression
-adapted_retraining and classification sync_encoder_control. revision_stress is not compared (its rows carry only
-M0/M1/M2/MC metrics).
+adapted_retraining and classification sync_encoder_control. revision_stress carries only M0/M1/M2/MC metrics, so it is
+compared separately below.
+
+### p1 experiment 2: revision_stress, all-case twin vs masked plan_full (7 synthetic sets, seeds 30-32)
+
+A flagging method ranks the training cases of the trained core (M0); a simulated reviewer relabels the truly corrupted
+cases among the top b (b = 10 or 30). M1 is the core with the edit only, M2 the edit plus 5 retraining epochs, MC M0 plus
+the same 5 epochs without the edit. Both studies are complete (168 condition units and 42 stage units each). M0 and MC are
+identical across the 8 conditions of every task and seed, and random and oracle select exactly the same cases in both
+studies, so the two share data, corruption and the seeded order. d = arm − reference, paired by task and seed; ± is the
+sd over seeds of the per-seed mean; W/T/L over 7 tasks, tie when |mean d| ≤ 0.005.
+
+- Core: M0 accuracy 0.861 all-case vs 0.817 masked (d +0.0445 ± 0.0200, 5/2/0).
+- Flagging precision vs random (random 0.224 at b10, 0.244 at b30):
+
+| method | masked b10 | masked b30 | all-case b10 | all-case b30 |
+|---|---|---|---|---|
+| provenance_only | +0.090 ± 0.017, 5/1/1 | +0.089 ± 0.037, 7/0/0 | +0.343 ± 0.052, 6/0/1 | +0.251 ± 0.099, 5/1/1 |
+| bias_only | −0.095 ± 0.036, 0/3/4 | −0.137 ± 0.015, 0/0/7 | +0.600 ± 0.074, 7/0/0 | +0.446 ± 0.094, 7/0/0 |
+
+- M2 accuracy vs random (random M2 0.819 / 0.823 masked, 0.861 / 0.864 all-case at b10 / b30): provenance_only +0.006 /
+  +0.006 masked and +0.003 / +0.003 all-case; bias_only between −0.0002 and +0.003; oracle +0.007 / +0.020 masked and
+  +0.004 / +0.007 all-case. Even oracle flagging at b30 adds only +0.010 over M0 under all-case and +0.026 under masked.
+- All-case vs masked, same condition: M2 accuracy d +0.039 ± 0.012 (provenance_only b10, 5/2/0), +0.039 (bias_only b10),
+  +0.042 (random b10), +0.028 (oracle b30, 5/1/1). The M2 − M0 gain is smaller under all-case (oracle b30 −0.016, 0/2/5).
+
+Reading: under the masked core the learned case bias is a worse flag than random; under the all-case core it becomes the
+best non-oracle flag (precision 0.824 at b10). Better flags buy almost no accuracy after retraining. The all-case twin
+ends higher only because its core starts higher; the edits help it less.
 
 ### p2 (updated: classification wine s32 now included)
 
@@ -261,8 +295,44 @@ depends on K, not on the policy (batch lookup about 1 ms at K 0.2 against 13-15 
 
 Reading: at K 0.2 energy_compress and rc_cnn beat provenance_only and random on most tasks; energy_compress is the
 most consistent. Our knn_shapley adaptation is clearly worse. At K 0.75 nearly everything ties. In regression, car
-alone contributes about −0.22 RMSE to rc_cnn and energy_compress at K 0.2. The raw-event check
-(`raw_event_check.txt`) was made on the 9-task version and matches it exactly.
+alone contributes about −0.22 RMSE to rc_cnn and energy_compress at K 0.2. The raw-event check was first made on the
+9-task version (`raw_event_check.txt`) and rerun on 2026-11-27 on the 10-task version (`raw_event_check_10task.txt`).
+Both match the tables to all printed digits, including W/T/L (e.g. energy_compress K 0.2 classification +0.040387, sd
+0.018245, 7/2/1; with `--exclude wine:s32` the old 9-task value +0.043845, 6/2/1 comes back exactly).
+
+Tie check for classification wine s30/s31 (recorded with the old engine member rule). xps8960 was unreachable, so the
+check ran read-only on r760 from the same recorded `_core` weights and data snapshots, with the fixed code. Rows whose
+top-k member set differs between the two rules at full memory: s30 0 of 106, s31 0 of 106, s32 2 of 106 (the known
+case). Rows with any exact float32 tie between two eligible cases: s30 0, s31 0, s32 106 of 106. Without any tie the old
+and fixed rules pick the same members under every case mask, so the recorded s30/s31 results equal what the fixed code
+gives on r760. The smallest gap between adjacent scores is 65 float32 ulps (s30) and 18 ulps (s31); a tie on xps8960
+would need the two hosts to differ by at least that much, which is unlikely but not measured.
+
+### p2 on the 7 synthetic sets (`handoff_synnewpol_r760`, seeds 30-32)
+
+Untuned masked `_base` core, finetune 30 epochs at lr scale 0.1, compared with the 8 recorded policies of
+`handoff_synret_r760` on the same core (483 and 525 complete units; `fullmem_*` equal on all 42 task-seed pairs). Same
+conventions as the real-data p2 table; W/T/L over 7 tasks.
+
+Classification accuracy after finetune vs provenance_only (reference 0.836 / 0.835 / 0.824; full memory 0.820):
+
+| policy | K 0.2 | K 0.5 | K 0.75 |
+|---|---|---|---|
+| knn_shapley | +0.030±0.009 6/1/0 | +0.030±0.011 7/0/0 | +0.035±0.009 7/0/0 |
+| enn | +0.012±0.015 4/1/2 | +0.007±0.015 5/0/2 | +0.013±0.013 5/2/0 |
+| bbnr | −0.002±0.021 3/0/4 | −0.013±0.011 1/0/6 | +0.001±0.018 1/3/3 |
+| loo_value | −0.004±0.001 4/1/2 | −0.013±0.009 2/2/3 | +0.004±0.014 3/1/3 |
+| rc_cnn | −0.006±0.010 3/0/4 | −0.010±0.002 0/4/3 | −0.005±0.005 2/3/2 |
+| energy_compress | −0.011±0.011 1/3/3 | −0.025±0.007 0/1/6 | −0.010±0.006 2/1/4 |
+| crr | −0.124±0.103 1/0/6 | −0.017±0.025 2/1/4 | −0.003±0.016 2/0/5 |
+| random (recorded) | +0.006±0.018 4/0/3 | −0.004±0.009 2/2/3 | +0.006±0.017 3/2/2 |
+
+Reading: knn_shapley is clearly best here (0.866 at K 0.2 and 0.5, above full memory), with the largest gains on noise,
+combined and shift. This reverses the real-data result, where it lost at K 0.5 and 0.75. A likely reason is that the
+synthetic memories hold many mislabelled cases, which a low data value removes. enn is mildly positive; rc_cnn, bbnr,
+loo_value and energy_compress are at or below random; crr collapses at K 0.2 (0.713 after finetune, 0.533 before).
+C/H reliability at 10 / 25 / 50% of the queries: C 0.54 / 0.70 / 0.83, H 0.41 / 0.57 / 0.78. A raw-event recompute
+matches the table (knn_shapley K 0.5: +0.030403, sd 0.011278, 7/0/0).
 
 ### p3
 
@@ -328,7 +398,8 @@ Shift (seeds 30-32, 9 classification and 11 regression tasks, reference shifted 
 2. **p2 newpol classification wine s32 (xps8960)**: "Activation engine disagrees with model.retrieve by 0.332". Cause:
    with an exact tie at the k-th place, the engine's own member rule (float64 argpartition) kept different cases from
    `model.retrieve` (float32 `torch.topk`). Fix 4235e10: tied rows take the model's members; untied rows are unchanged.
-   s32 reran on xps8960 (22 new units, `_core` reused), exit 0, placed on r760. p2 tables above include it.
+   s32 reran on xps8960 (22 new units, `_core` reused), exit 0, placed on r760. p2 tables above include it. On
+   2026-11-27 the tie check showed that s30/s31 have no tied rows (computed on r760; see p2 above).
 3. **p0 (a) delta_from_init** could not be expressed without code (the store was seeded after training, so B was
    constant). The opt-in key came in 4235e10; 6ece140 made `t1_run` refuse invalid `initial_bias` values and the
    combination with `reliability` before any training. p0a ran 58 jobs on the three hosts, all exit 0.
@@ -342,7 +413,9 @@ Shift (seeds 30-32, 9 classification and 11 regression tasks, reference shifted 
 - **Human study**: needs participants and an IRB determination (Berry's review process). Not started.
 - **GPU image and text suites**: not run. The T1 benchmark strategy (2026-09-12) moved images and text out of the
   required T1 matrix, and the owner set GPU/XPU work aside.
-- **Heuzi's adaptation-improvement branch**: it is unpushed, so we do not have it; nothing in these packs uses it.
+- **Heuzi's adaptation work**: it arrived on origin (the `adaptation improvement/` folder on main and new commits on
+  neural-cbr) and was merged on 2026-11-27 (main c3d6a93, neural-cbr ff2bd3a). Nothing in these packs uses it, and it
+  is not summarized here.
 - **TabPFN on 5 tasks**: car and regression wine exceed 3000 training rows; 363681, 363705 and 363631 are estimated at
   25-37 CPU-h per seed on CPU (extrapolated, not confirmed). Only TabPFN v2 was used.
 - **v_small is not re-selected for all-case**; the frozen masked value is kept. The three-way penalty comparison runs
@@ -350,20 +423,24 @@ Shift (seeds 30-32, 9 classification and 11 regression tasks, reference shifted 
   are not recorded and would need a read-only pass over the weights.
 - **All-case core budget**: 300/40 against the grid's 600/60; 8 of 87 all-case cores hit the cap. The zebra collapse
   (seeds 50 and 52) is not investigated.
-- **Not summarized yet**: p1 revision_stress twin vs plan_full; `handoff_synnewpol_r760` (7 synthetic sets).
+- **revision_stress and synnewpol details**: the masked revision_stress rows were recorded at an earlier commit, so code
+  drift between the two studies cannot be fully excluded (random and oracle select the same cases in both). ECE, the
+  per-group accuracies and the flip matrices are recorded but not analyzed.
 - **p4 detail**: all-case F has no regression diabets row in the TabPFN table (the summary reads only `tuned__F`, and
   diabets' F is the reuse arm). Shifted baselines have no TabM or TabPFN and are not re-tuned. synthetic_diag is out
   of the shift protocol.
 - **p3 detail**: per_case_2022 on body_fat (d up to +1.5) looks like an instability and is not investigated. p3
   references were recorded at older commits (204c49b5, 3ab1549c; pre-top-K reference 2026-10-30), so differences
   around 1e-4 can mix in code drift.
-- **p2 detail**: newpol classification wine s30/s31 were recorded with the old engine member rule, s32 with the new
-  one. Their predictions agreed with the model in full memory, but whether s30/s31 had tied rows on xps8960 is
-  unchecked (the check is `/var/tmp/nnknn-fix1126/scripts/count_ties.py`; xps8960 was unreachable over ssh tonight).
-  The same holds for other newpol/latency units recorded before the fix.
+- **p2 detail**: the wine s30/s31 tie check ran on r760, not on xps8960 where the units ran (xps8960 was unreachable;
+  scripts in `/var/tmp/nnknn-ties1127/` on accel). Other newpol, latency and synnewpol units recorded before fix 4235e10
+  have not been checked for ties in the maintained cores.
 - **MCB momentum** was swept only on 3 sync_mcb schedules, and its pairs do not share a core.
-- **Backup and git**: r760 `runs/` is the only copy of every unit and needs a backup. The summary tools and the
-  2026-11-25/26 reports are untracked; nothing from this step is committed.
+- **Backup**: r760 `runs/` is still the only copy of every unit. Measured on 2026-11-27: 689.4 GB in 170,081 files
+  (627.5 GB event files, 61.9 GB weights); accel has 14.0 TB free; the ssh tunnel gives about 11 MB/s, so a full copy
+  takes about 17 hours uncompressed or about 5 hours with zstd on the wire. The proposed overnight rsync (command and
+  verification steps in `/srv/cyclone/workspace/NN-KNN/reports/2026-11-24-t1-multi-host-ops.md` on accel, not in git) has not been started; that needs the
+  owner or the experiment runner.
 - **Housekeeping**: the r760 budget file `logs/t1par/budget` is 28 (our `budget_follow.py` rewrote it from 15 before
   it was stopped). Two shell wait loops of unknown owner (pids 217579 and 227436, `pgrep -f "nnknn-hb/dump.py
   syncallcase"`) were left alone.
